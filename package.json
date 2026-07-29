@@ -1,7 +1,7 @@
 {
   "name": "shenpulse",
   "productName": "ShenPulse",
-  "version": "1.0.3",
+  "version": "1.0.4-beta2",
   "description": "Plateforme locale d'interactions pour livestreams et jeux",
   "main": "src/main/main.js",
   "author": "ShenPulse",

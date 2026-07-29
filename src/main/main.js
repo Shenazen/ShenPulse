@@ -71,6 +71,10 @@ function createWindow() {
       sandbox: true,
       webSecurity: true,
       spellcheck: false,
+      // Les connecteurs tournent dans le processus principal, tandis que le
+      // rendu reçoit le TTS, l'audio et les états en direct. Une minimisation
+      // ne doit ralentir aucun de ces échanges.
+      backgroundThrottling: false,
       devTools: !app.isPackaged
     }
   });

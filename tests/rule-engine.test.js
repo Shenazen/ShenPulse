@@ -48,6 +48,52 @@ test("exécute une règle et hydrate son action", async () => {
   assert.equal(actions[0].config.title, "Alice");
 });
 
+test("un déclencheur message du chat ignore tous les autres événements", async () => {
+  const events = [];
+  const rule = {
+    id: "tts_chat",
+    name: "Lecture des commentaires",
+    enabled: true,
+    priority: 10,
+    chance: 1,
+    trigger: { type: "chat", source: "*", threshold: 1 },
+    conditions: [],
+    cooldown: { globalMs: 0, perUserMs: 0 },
+    actions: [
+      {
+        id: "tts_comment",
+        type: "tts.speak",
+        config: { text: "{{data.message}}" }
+      }
+    ]
+  };
+  const engine = new RuleEngine({
+    store: createStore(rule),
+    actionRunner: {
+      async run(_action, context) {
+        events.push(context);
+      }
+    }
+  });
+
+  for (const type of ["gift", "like", "follow", "share", "subscribe", "join"]) {
+    await engine.process({
+      type,
+      user: { id: "viewer" },
+      data: { message: "Ne pas lire", giftName: "Rose", count: 1 }
+    });
+  }
+  await engine.process({
+    type: "chat",
+    user: { id: "viewer" },
+    data: { message: "Le seul commentaire à lire" }
+  });
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "chat");
+  assert.equal(events[0].data.message, "Le seul commentaire à lire");
+});
+
 test("exécute chaque cadeau d'un lot comme une interaction distincte", async () => {
   const executions = [];
   const rule = {

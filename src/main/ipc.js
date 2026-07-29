@@ -370,7 +370,8 @@ function registerIpc({
       type: action.type,
       config: action.config || {}
     }, {
-      type: safeString(action.testEventType || "gift", 40)
+      type: safeString(action.testEventType || "gift", 40),
+      message: safeString(action.testMessage || "", 1000)
     });
   });
   handle("timer:test", (_event, timerId) =>

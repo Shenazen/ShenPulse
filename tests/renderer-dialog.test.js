@@ -205,6 +205,111 @@ test("les sons, le TTS, Spotify et les cadeaux utilisent les services globaux", 
   assert.match(app, /spotify-control/);
 });
 
+test("les sons et le TTS restent uniquement dans leur atelier dédié", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const actionsStart = app.indexOf("function renderActions()");
+  const actionsEnd = app.indexOf("function renderRules()", actionsStart);
+  const actionsPage = app.slice(actionsStart, actionsEnd);
+
+  assert.match(
+    actionsPage,
+    /!\["audio\.play", "tts\.speak"\]\.includes\(action\.type\)/
+  );
+  assert.doesNotMatch(
+    actionsPage,
+    /Médias, sons, voix, overlays/
+  );
+});
+
+test("fermer l'éditeur arrête uniquement le son testé dans cette fenêtre", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const dialogPreviewStart = app.indexOf(
+    'const mediaPreview = event.target.closest("[data-media-preview-url]")'
+  );
+  const dialogPreviewEnd = app.indexOf(
+    'const giftChoice = event.target.closest("[data-gift-choice]")',
+    dialogPreviewStart
+  );
+  const dialogPreview = app.slice(dialogPreviewStart, dialogPreviewEnd);
+  const closeStart = app.indexOf('dialog.addEventListener("close"');
+  const closeEnd = app.indexOf(
+    'dialog.addEventListener("click"',
+    closeStart
+  );
+  const closeHandler = app.slice(closeStart, closeEnd);
+
+  assert.match(dialogPreview, /previewScope: "editor-dialog"/);
+  assert.match(app, /function stopEditorAudioPreview\(\)/);
+  assert.match(
+    app,
+    /activePreviewAudioScope !== "editor-dialog"/
+  );
+  assert.match(closeHandler, /stopEditorAudioPreview\(\)/);
+});
+
+test("le TTS propose les voix Windows et démarre sur les commentaires du chat", () => {
+  const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
+  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
+  const editorStart = app.indexOf("function openTtsEditor(row)");
+  const editorEnd = app.indexOf("function openSoundEditor", editorStart);
+  const editor = app.slice(editorStart, editorEnd);
+  const soundsStart = app.indexOf("function renderSounds()");
+  const soundsEnd = app.indexOf("function renderTimersPanel", soundsStart);
+  const sounds = app.slice(soundsStart, soundsEnd);
+  const ttsSectionStart = sounds.indexOf(
+    '<section class="studio-panel audio-panel panel-cyan"'
+  );
+  const ttsSectionEnd = sounds.indexOf(
+    '<section class="studio-panel spotify-panel',
+    ttsSectionStart
+  );
+  const ttsSection = sounds.slice(ttsSectionStart, ttsSectionEnd);
+  const actionTypesStart = app.indexOf("function actionTypeOptions");
+  const actionTypesEnd = app.indexOf(
+    "function gameInteractionRowData",
+    actionTypesStart
+  );
+  const actionTypes = app.slice(actionTypesStart, actionTypesEnd);
+
+  assert.match(app, /function readTtsVoices\(\)/);
+  assert.match(app, /window\.speechSynthesis\s*\.getVoices\(\)/);
+  assert.match(app, /data-tts-voice-select/);
+  assert.match(app, /voiceschanged/);
+  assert.match(editor, /type: "chat"/);
+  assert.match(editor, /text: "\{\{data\.message\}\}"/);
+  assert.match(editor, /conditions: \[\]/);
+  assert.match(editor, /cooldown: \{ globalMs: 0, perUserMs: 0 \}/);
+  assert.match(editor, /ttsVoiceField\("voice"/);
+  assert.match(editor, /ttsCommentFilterFields\(config\)/);
+  assert.match(editor, /data\.has\("ttsReadEmojis"\)/);
+  assert.match(editor, /data\.has\("ttsAllowMentions"\)/);
+  assert.match(editor, /data\.has\("ttsAllowCommands"\)/);
+  assert.match(editor, /data\.has\("ttsAllowLinks"\)/);
+  assert.match(app, /Lire les emojis/);
+  assert.match(app, /Lire les mentions commençant par @/);
+  assert.match(app, /Lire les commandes ! et \//);
+  assert.match(app, /Lire les messages contenant un lien/);
+  assert.doesNotMatch(editor, /field\("language"/);
+  assert.doesNotMatch(editor, /name="triggerType"/);
+  assert.doesNotMatch(editor, /Choisissez l’interaction/);
+  assert.doesNotMatch(ttsSection, /<th>DÉCLENCHEUR<\/th>/);
+  assert.match(ttsSection, /<th>VOIX<\/th>/);
+  assert.doesNotMatch(ttsSection, /<th>LANGUE<\/th>/);
+  assert.doesNotMatch(actionTypes, /tts\.speak/);
+  assert.match(
+    app,
+    /row\?\.action\.type === "tts\.speak"\s*\?\s*openTtsEditor\(row\)/
+  );
+  assert.match(app, /testEventType: "chat"/);
+  assert.match(app, /testMessage: "ShenPulse est prêt/);
+});
+
 test("l'éditeur d'action reste progressif et parle de déclencheurs", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
   const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
@@ -381,12 +486,43 @@ test("le formulaire d'essai garde l'adresse e-mail saisissable après un envoi",
     submitStart
   );
   const submit = app.slice(submitStart, submitEnd);
+  const revokeStart = app.indexOf('if (action === "admin-trial-revoke")');
+  const revokeEnd = app.indexOf(
+    'if (action === "admin-plan-edit")',
+    revokeStart
+  );
+  const revoke = app.slice(revokeStart, revokeEnd);
+  const restoreStart = app.indexOf(
+    "function restoreAdminTrialFormInteractivity"
+  );
+  const restoreEnd = app.indexOf(
+    "function renderAdminCommerce",
+    restoreStart
+  );
+  const restore = app.slice(restoreStart, restoreEnd);
 
   assert.match(form, /name="email" type="email"/);
   assert.match(form, /type="submit" \$\{adminBusy \? "disabled" : ""\}/);
   assert.doesNotMatch(submit, /if \(adminModuleError\("trials"\)\)/);
   assert.match(submit, /finally \{\s*adminBusy = false;\s*render\(\);/);
+  assert.match(
+    submit,
+    /restoreAdminTrialFormInteractivity\(\{ focusEmail: true \}\)/
+  );
+  assert.match(
+    revoke,
+    /restoreAdminTrialFormInteractivity\(\{ focusEmail: true \}\)/
+  );
+  assert.match(restore, /adminContent\?\.classList\.remove\("is-busy"\)/);
+  assert.match(restore, /control\.disabled = false/);
+  assert.match(restore, /emailInput\.readOnly = false/);
+  assert.match(restore, /emailInput\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(restore, /requestAnimationFrame\(restore\)/);
   assert.match(styles, /\.admin-trial-form input\[name="email"\]/);
+  assert.match(
+    styles,
+    /\.admin-content\.is-busy \.admin-trial-form[\s\S]*pointer-events: auto/
+  );
 });
 
 test("une session propriétaire resynchronise les accès offerts au démarrage", () => {

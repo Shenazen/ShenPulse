@@ -177,6 +177,27 @@
       </form>
     </dialog>
 
+    <dialog id="confirmation-dialog" class="confirmation-dialog">
+      <form method="dialog" id="confirmation-form">
+        <header>
+          <div>
+            <p>CONFIRMATION SHENPULSE</p>
+            <h2 id="confirmation-title">Confirmer l’action</h2>
+          </div>
+        </header>
+        <div class="confirmation-body">
+          <span aria-hidden="true">!</span>
+          <p id="confirmation-message"></p>
+        </div>
+        <footer>
+          <div class="dialog-actions">
+            <button class="button ghost" id="confirmation-cancel" type="button">Annuler</button>
+            <button class="button danger" id="confirmation-submit" type="submit">Confirmer</button>
+          </div>
+        </footer>
+      </form>
+    </dialog>
+
     <dialog id="media-library-dialog" class="media-library-dialog">
       <section class="media-library-shell">
         <header>

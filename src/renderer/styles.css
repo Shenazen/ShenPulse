@@ -1722,6 +1722,27 @@ main {
   font-size: 9px;
 }
 
+.tts-comment-filters {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.tts-comment-filters .check-row,
+.tts-comment-filters .check-row:last-child {
+  min-height: 66px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(12, 15, 25, 0.72);
+}
+
+.tts-comment-filters .check-row > span:first-child {
+  min-width: 0;
+}
+
 .activity-table {
   width: 100%;
   border-collapse: collapse;
@@ -2282,6 +2303,52 @@ dialog[data-variant="minecraft-modes"] {
 dialog::backdrop {
   background: rgba(2, 4, 10, 0.72);
   backdrop-filter: blur(6px);
+}
+
+.confirmation-dialog {
+  width: min(480px, calc(100vw - 48px));
+  border-color: rgba(251, 113, 133, 0.38);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(251, 113, 133, 0.1), transparent 34%),
+    #0d1120;
+}
+
+.confirmation-dialog > form {
+  grid-template-rows: auto auto auto;
+}
+
+.confirmation-body {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 22px;
+}
+
+.confirmation-body > span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(251, 113, 133, 0.34);
+  border-radius: 12px;
+  background: rgba(251, 113, 133, 0.09);
+  color: #fda4af;
+  font-weight: 900;
+}
+
+.confirmation-body p {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.confirmation-dialog .button.danger {
+  border-color: rgba(251, 113, 133, 0.48);
+  background: rgba(190, 24, 93, 0.2);
+  color: #fecdd3;
 }
 
 dialog form {
@@ -8291,6 +8358,13 @@ dialog[data-variant="overlay-preview"] {
 .admin-content.is-busy {
   pointer-events: none;
   opacity: 0.62;
+}
+
+.admin-content.is-busy .admin-trial-form,
+.admin-content.is-busy .admin-trial-form input,
+.admin-content.is-busy .admin-trial-form select,
+.admin-content.is-busy .admin-trial-form textarea {
+  pointer-events: auto;
 }
 
 .admin-module-warning {

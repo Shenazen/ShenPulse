@@ -8,6 +8,29 @@ const {
   applyOverlayOperation
 } = require("./overlay-session-state");
 
+const TTS_EMOJI_PATTERN =
+  /(?:[#*0-9]\uFE0F?\u20E3|[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u200D\u20E3\uFE0E\uFE0F])/gu;
+const TTS_LINK_PATTERN =
+  /(?:\bhttps?:\/\/|\bwww\.)\S+|\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b|\b(?:[\w-]+\.)+(?:com|fr|net|org|gg|tv|io|co)\b/iu;
+const TTS_EVENT_DEDUPE_MS = 30 * 60 * 1000;
+const TTS_CONTENT_DEDUPE_MS = 30 * 1000;
+const TTS_DEDUPE_MAX_ENTRIES = 4000;
+
+function filterTtsChatComment(value, config = {}) {
+  let text = safeString(value, 1000).trim();
+  if (!text) return "";
+  if (text.startsWith("@") && config.allowMentions !== true) return "";
+  if (/^[!/]/u.test(text) && config.allowCommands !== true) return "";
+  if (TTS_LINK_PATTERN.test(text) && config.allowLinks !== true) return "";
+  if (config.readEmojis !== true) {
+    text = text
+      .replace(TTS_EMOJI_PATTERN, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+  return safeString(text, 1000);
+}
+
 function normalizeWheelRuntimeSettings(settings = {}, design = "classic") {
   const referenceDefaults = {
     font: "Kalam",
@@ -69,7 +92,8 @@ class ActionRunner {
     spotifyService,
     notifyRenderer,
     onOverlayOperation = () => {},
-    setTimeoutImpl = setTimeout
+    setTimeoutImpl = setTimeout,
+    nowImpl = Date.now
   }) {
     this.store = store;
     this.overlayServer = overlayServer;
@@ -80,8 +104,55 @@ class ActionRunner {
     this.notifyRenderer = notifyRenderer;
     this.onOverlayOperation = onOverlayOperation;
     this.setTimeoutImpl = setTimeoutImpl;
+    this.nowImpl = nowImpl;
     this.wheelSpinActive = false;
     this.wheelSpinQueue = [];
+    this.ttsReadMessages = new Map();
+  }
+
+  #claimTtsChatComment(event = {}, text = "") {
+    const now = this.nowImpl();
+    const source = safeString(event.source || "unknown", 80).toLowerCase();
+    const viewer = safeString(
+      event.user?.id || event.user?.name || "anonymous",
+      160
+    ).toLowerCase();
+    const normalizedText = safeString(text, 1000)
+      .normalize("NFKC")
+      .toLocaleLowerCase("fr")
+      .replace(/\s+/g, " ")
+      .trim();
+    const keys = [
+      event.id
+        ? {
+            key: `event:${source}:${safeString(event.id, 160)}`,
+            ttl: TTS_EVENT_DEDUPE_MS
+          }
+        : null,
+      {
+        key: `content:${source}:${viewer}:${normalizedText}`,
+        ttl: TTS_CONTENT_DEDUPE_MS
+      }
+    ].filter(Boolean);
+    const duplicate = keys.some(({ key, ttl }) => {
+      const previous = this.ttsReadMessages.get(key);
+      return Number.isFinite(previous) && now - previous < ttl;
+    });
+    for (const { key } of keys) {
+      this.ttsReadMessages.delete(key);
+      this.ttsReadMessages.set(key, now);
+    }
+    if (this.ttsReadMessages.size > TTS_DEDUPE_MAX_ENTRIES) {
+      for (const [key, timestamp] of this.ttsReadMessages) {
+        if (now - timestamp >= TTS_EVENT_DEDUPE_MS) {
+          this.ttsReadMessages.delete(key);
+        }
+      }
+      while (this.ttsReadMessages.size > TTS_DEDUPE_MAX_ENTRIES) {
+        this.ttsReadMessages.delete(this.ttsReadMessages.keys().next().value);
+      }
+    }
+    return !duplicate;
   }
 
   #applyOverlayOperation(channel, payload, metadata = {}) {
@@ -136,10 +207,25 @@ class ActionRunner {
       }
       case "tts.speak": {
         if (!this.store.getState().settings.tts.enabled) return { skipped: true };
+        const isChatComment = context?.event?.type === "chat";
+        if (!isChatComment) {
+          return { skipped: true, reason: "chat-only" };
+        }
+        const text = filterTtsChatComment(
+          context.event?.data?.message,
+          config
+        );
+        if (!text) return { skipped: true };
+        if (
+          isChatComment &&
+          !this.#claimTtsChatComment(context.event, text)
+        ) {
+          return { skipped: true, reason: "duplicate" };
+        }
         const payload = {
-          text: safeString(config.text, 1000),
           ...this.store.getState().settings.tts,
-          ...config
+          ...config,
+          text
         };
         this.overlayServer.publish("tts", payload);
         this.notifyRenderer("playback", { type: "tts", ...payload });
@@ -148,7 +234,8 @@ class ActionRunner {
       case "audio.play": {
         const payload = {
           url: this.#localMediaUrl(config.url),
-          volume: clamp(config.volume ?? 1, 0, 1)
+          volume: clamp(config.volume ?? 1, 0, 1),
+          previewScope: safeString(config.previewScope || "", 40)
         };
         this.overlayServer.publish("audio", payload);
         this.notifyRenderer("playback", { type: "audio", ...payload });
@@ -546,4 +633,4 @@ class ActionRunner {
   }
 }
 
-module.exports = { ActionRunner };
+module.exports = { ActionRunner, filterTtsChatComment };

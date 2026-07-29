@@ -618,7 +618,10 @@ class StateStore {
   upsert(collection, item) {
     return this.mutate((state) => {
       const entries = state[collection];
-      const copy = clone(item);
+      const copy =
+        collection === "rules"
+          ? normalizeRules([item])[0]
+          : clone(item);
       if (!copy.id) copy.id = id(collection.slice(0, -1));
       const index = entries.findIndex((entry) => entry.id === copy.id);
       if (collection === "profiles") {
@@ -1302,13 +1305,37 @@ function gameInteractionPackId(rule) {
 
 function normalizeRules(rules) {
   if (!Array.isArray(rules)) return [];
-  return clone(rules).map((rule) => ({
-    ...rule,
-    trigger: {
-      ...(rule.trigger || {}),
-      source: "*"
-    }
-  }));
+  return clone(rules).map((rule) => {
+    const actions = Array.isArray(rule.actions) ? rule.actions : [];
+    const isTtsOnly =
+      actions.length > 0 &&
+      actions.every((action) => action?.type === "tts.speak");
+    return {
+      ...rule,
+      trigger: isTtsOnly
+        ? {
+            ...(rule.trigger || {}),
+            enabled: true,
+            type: "chat",
+            source: "*",
+            threshold: 1
+          }
+        : {
+            ...(rule.trigger || {}),
+            source: "*"
+          },
+      ...(isTtsOnly
+        ? {
+            conditions: [],
+            cooldown: { globalMs: 0, perUserMs: 0 }
+          }
+        : {})
+    };
+  });
 }
 
-module.exports = { StateStore, normalizeWheelSegmentActions };
+module.exports = {
+  StateStore,
+  normalizeRules,
+  normalizeWheelSegmentActions
+};

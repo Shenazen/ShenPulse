@@ -44,6 +44,16 @@ const dialogKicker = document.getElementById("dialog-kicker");
 const dialogBody = document.getElementById("dialog-body");
 const dialogError = document.getElementById("dialog-error");
 const dialogSubmitButton = document.getElementById("dialog-submit");
+const confirmationDialog = document.getElementById("confirmation-dialog");
+const confirmationForm = document.getElementById("confirmation-form");
+const confirmationTitle = document.getElementById("confirmation-title");
+const confirmationMessage = document.getElementById("confirmation-message");
+const confirmationCancelButton = document.getElementById(
+  "confirmation-cancel"
+);
+const confirmationSubmitButton = document.getElementById(
+  "confirmation-submit"
+);
 const mediaLibraryDialog = document.getElementById("media-library-dialog");
 const mediaLibraryTitle = document.getElementById("media-library-title");
 const mediaLibrarySources = document.getElementById("media-library-sources");
@@ -70,6 +80,7 @@ let renderedContentPage = "";
 let renderedContentMarkup = "";
 let dialogSubmitHandler = null;
 let dialogSessionId = 0;
+let confirmationResolver = null;
 let actionsSearch = "";
 let actionsSection = "actions";
 let onlyEnabledActions = false;
@@ -135,6 +146,7 @@ let giftRequestSequence = 0;
 let GIFT_CATALOG = [];
 let giftCatalogByName = new Map();
 let activePreviewAudio = null;
+let activePreviewAudioScope = "";
 let mediaLibraryContext = null;
 let mediaLibrarySource = "web";
 let mediaLibraryKind = "all";
@@ -148,6 +160,9 @@ let mediaLibrarySearchTimer = 0;
 let mediaLibraryRequestSequence = 0;
 let wheelEditorContext = null;
 let overlayPreviewRefreshTimer = 0;
+let entitlementSyncPromise = null;
+let pendingAccountLogoutPromise = null;
+const ENTITLEMENT_SYNC_INTERVAL_MS = 30 * 1000;
 const locallyHandledOverlayConfigs = new Map();
 let spotifyStatus = {
   configured: false,
@@ -160,6 +175,7 @@ let spotifyStatus = {
 
 let SOUND_LIBRARY = [];
 let MEDIA_LIBRARY = [];
+let ttsVoices = [];
 const mediaSessionEntries = new Map();
 
 const OVERLAY_THEMES = [
@@ -537,6 +553,41 @@ function toast(title, detail = "", isError = false) {
   node.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span>`;
   toastRegion.appendChild(node);
   setTimeout(() => node.remove(), 4200);
+}
+
+function finishConfirmation(confirmed) {
+  const resolve = confirmationResolver;
+  if (!resolve) return;
+  confirmationResolver = null;
+  if (confirmationDialog.open) {
+    confirmationDialog.close(confirmed ? "confirm" : "cancel");
+  }
+  requestAnimationFrame(() => {
+    window.focus();
+    resolve(confirmed);
+  });
+}
+
+function confirmAction(
+  message,
+  {
+    title = "Confirmer l’action",
+    confirmLabel = "Confirmer",
+    danger = true
+  } = {}
+) {
+  if (confirmationResolver) finishConfirmation(false);
+  confirmationTitle.textContent = title;
+  confirmationMessage.textContent = String(message || "");
+  confirmationSubmitButton.textContent = confirmLabel;
+  confirmationSubmitButton.classList.toggle("danger", danger);
+  return new Promise((resolve) => {
+    confirmationResolver = resolve;
+    if (!confirmationDialog.open) confirmationDialog.showModal();
+    requestAnimationFrame(() => {
+      confirmationCancelButton.focus({ preventScroll: true });
+    });
+  });
 }
 
 async function perform(work, successMessage) {
@@ -1700,6 +1751,25 @@ function accountDisplayName(session = visibleAccountSession()) {
   );
 }
 
+function signedOutAccountSession() {
+  return {
+    authenticated: false,
+    email: "",
+    uid: "",
+    displayName: "",
+    photoUrl: "",
+    providerId: "",
+    emailVerified: false,
+    lastAuthenticatedAt: "",
+    offline: false
+  };
+}
+
+async function waitForPendingAccountLogout() {
+  const logoutPromise = pendingAccountLogoutPromise;
+  if (logoutPromise) await logoutPromise;
+}
+
 function syncAccountChrome() {
   const visibleSession = visibleAccountSession();
   const authenticated = visibleSession.authenticated === true;
@@ -2314,8 +2384,10 @@ function renderMediaScreensPanel(rows) {
 }
 
 function renderActions() {
-  const rows = flattenActions().filter(({ action }) =>
-    canAccessActionType(action.type)
+  const rows = flattenActions().filter(
+    ({ action }) =>
+      !["audio.play", "tts.speak"].includes(action.type) &&
+      canAccessActionType(action.type)
   );
   const query = actionsSearch.trim().toLowerCase();
   const filteredRows = rows.filter(({ rule, action }) => {
@@ -2347,7 +2419,7 @@ function renderActions() {
       ${actionsSection === "actions" ? `
         <section class="studio-panel panel-violet">
           <header class="studio-panel-heading">
-            <div><span class="panel-accent"></span><div><h3>Actions</h3><p>Médias, sons, voix, overlays et commandes de jeu exécutés par le moteur local.</p></div></div>
+            <div><span class="panel-accent"></span><div><h3>Actions</h3><p>Médias, overlays, intégrations et commandes de jeu exécutés par le moteur local.</p></div></div>
             <span class="count-pill">${filteredRows.length}</span>
           </header>
           <div class="catalog-toolbar">
@@ -4484,17 +4556,16 @@ function renderSounds() {
         </div>
       </section>
       <section class="studio-panel audio-panel panel-cyan" ${canAccessFeature("tts.voices") && canAccessActionType("tts.speak") ? "" : "hidden"}>
-        <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Synthèse vocale</h3><p>Une règle TTS peut répondre à un cadeau, like, follow, message, partage, abonnement ou arrivée.</p></div></div><div class="button-row"><button class="button" data-action="preview-tts">Tester la voix</button><button class="button primary" data-action="add-tts">＋ Ajouter une règle TTS</button></div></header>
+        <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Synthèse vocale</h3><p>Chaque commentaire du chat peut être lu avec la voix Windows de votre choix.</p></div></div><div class="button-row"><button class="button" data-action="preview-tts">Tester la voix</button><button class="button primary" data-action="add-tts">＋ Ajouter une règle TTS</button></div></header>
         <div class="data-table-wrap">
           <table class="data-table">
-            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>DÉCLENCHEUR</th><th>TEXTE</th><th>LANGUE</th><th>VOLUME</th></tr></thead>
+            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>TEXTE</th><th>VOIX</th><th>VOLUME</th></tr></thead>
             <tbody>${ttsRows.map(({ rule, action, actionIndex }) => `
               <tr>
                 <td class="table-tools"><button data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶</button><button data-action="edit-tts" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">✎</button><button data-action="delete-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">×</button></td>
                 <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
-                <td>${triggerPill(rule)}</td>
-                <td>${escapeHtml(action.config?.text || "")}</td><td>${escapeHtml(action.config?.language || snapshot.state.settings.tts.language)}</td><td>${Math.round(Number(action.config?.volume ?? snapshot.state.settings.tts.volume) * 100)}%</td>
-              </tr>`).join("") || `<tr><td colspan="6">${emptyInline("Aucune règle de synthèse vocale.")}</td></tr>`}</tbody>
+                <td>Commentaire du chat</td><td>${escapeHtml(action.config?.voice || snapshot.state.settings.tts.voice || "Voix Windows par défaut")}</td><td>${Math.round(Number(action.config?.volume ?? snapshot.state.settings.tts.volume) * 100)}%</td>
+              </tr>`).join("") || `<tr><td colspan="5">${emptyInline("Aucune règle de synthèse vocale.")}</td></tr>`}</tbody>
           </table>
         </div>
       </section>
@@ -6338,7 +6409,7 @@ function gameInteractionReadinessIssues(pack) {
   });
 }
 
-function confirmGameInteractionReadiness(pack, operationLabel) {
+async function confirmGameInteractionReadiness(pack, operationLabel) {
   const issues = gameInteractionReadinessIssues(pack);
   if (!issues.length) return true;
   const visibleIssues = issues
@@ -6346,11 +6417,15 @@ function confirmGameInteractionReadiness(pack, operationLabel) {
     .map((issue) => `• ${issue.name} : ${issue.reason}`)
     .join("\n");
   const hiddenCount = Math.max(0, issues.length - 10);
-  return window.confirm(
+  return confirmAction(
     `Interactions à vérifier avant ${operationLabel}\n\n` +
       `${visibleIssues}` +
       (hiddenCount ? `\n• … et ${hiddenCount} autre${hiddenCount > 1 ? "s" : ""}` : "") +
-      "\n\nLe fonctionnement sera dégradé tant que ces réglages ne seront pas complétés.\n\nContinuer quand même ?"
+      "\n\nLe fonctionnement sera dégradé tant que ces réglages ne seront pas complétés.\n\nContinuer quand même ?",
+    {
+      title: "Interactions incomplètes",
+      confirmLabel: "Continuer quand même"
+    }
   );
 }
 
@@ -6589,7 +6664,7 @@ function renderSettings() {
       </section>
       <section class="card">
         <header class="card-header"><div><p class="eyebrow">AUDIO</p><h3>Synthèse vocale</h3></div></header>
-        <div class="card-body"><p>La langue, la voix, la vitesse et le volume restent consultables et modifiables uniquement par le compte connecté.</p></div>
+        <div class="card-body"><p>La voix, la vitesse et le volume restent consultables et modifiables uniquement par le compte connecté.</p></div>
       </section>
       <section class="card">
         <header class="card-header"><div><p class="eyebrow">INTÉGRATIONS</p><h3>OBS, Spotify et stockage</h3></div></header>
@@ -6629,7 +6704,7 @@ function renderSettings() {
         <section class="card">
           <header class="card-header"><div><p class="eyebrow">SYNTHÈSE VOCALE</p><h3>Voix du stream</h3></div></header>
           <div class="card-body form-grid">
-            <label class="field"><span>Langue</span><input name="ttsLanguage" value="${escapeHtml(settings.tts.language)}"></label>
+            ${ttsVoiceField("ttsVoice", settings.tts.voice || "")}
             <label class="field"><span>Vitesse</span><input type="number" name="ttsRate" min="0.5" max="2" step="0.1" value="${escapeHtml(settings.tts.rate)}"></label>
             <label class="field"><span>Hauteur</span><input type="number" name="ttsPitch" min="0" max="2" step="0.1" value="${escapeHtml(settings.tts.pitch)}"></label>
             <label class="field"><span>Volume</span><input type="number" name="ttsVolume" min="0" max="1" step="0.1" value="${escapeHtml(settings.tts.volume)}"></label>
@@ -6992,6 +7067,45 @@ function renderAdminTrials() {
   </div>`;
 }
 
+function restoreAdminTrialFormInteractivity({ focusEmail = false } = {}) {
+  if (
+    adminBusy ||
+    currentPage !== "admin" ||
+    adminWorkspace !== "trials"
+  ) {
+    return;
+  }
+  const restore = () => {
+    if (adminBusy) return;
+    const form = content.querySelector("#admin-trial-form");
+    if (!form) return;
+    const adminContent = form.closest(".admin-content");
+    [adminContent, form].filter(Boolean).forEach((element) => {
+      element.inert = false;
+      element.removeAttribute("inert");
+      element.removeAttribute("aria-disabled");
+    });
+    adminContent?.classList.remove("is-busy");
+    form
+      .querySelectorAll("input, select, textarea, button")
+      .forEach((control) => {
+        control.disabled = false;
+        control.removeAttribute("disabled");
+        control.removeAttribute("aria-disabled");
+      });
+    const emailInput = form.querySelector('input[name="email"]');
+    if (emailInput) {
+      emailInput.readOnly = false;
+      emailInput.removeAttribute("readonly");
+      if (focusEmail) {
+        emailInput.focus({ preventScroll: true });
+      }
+    }
+  };
+  restore();
+  requestAnimationFrame(restore);
+}
+
 function renderAdminCommerce() {
   const catalog = adminCommerceCatalog();
   const commerceBlocked = Boolean(adminModuleError("commerce"));
@@ -7223,6 +7337,7 @@ function openAccountLogin(mode = "login", preservedEmail = "") {
           </div>`}
     </div>`,
     onSubmit: async (data) => {
+      await waitForPendingAccountLogout();
       const email = data.get("email");
       accountSession = registering
         ? await api.account.register({
@@ -7246,18 +7361,36 @@ function openAccountLogin(mode = "login", preservedEmail = "") {
       );
     }
   });
-  resetAccountAuthDialog();
+  const activeDialogSessionId = dialogSessionId;
+  resetAccountAuthDialog(activeDialogSessionId);
+  requestAnimationFrame(() => {
+    resetAccountAuthDialog(activeDialogSessionId);
+  });
 }
 
-function resetAccountAuthDialog() {
-  if (dialog.dataset.variant !== "account-auth") return;
-  dialog.removeAttribute("inert");
-  dialogForm.removeAttribute("inert");
+function resetAccountAuthDialog(expectedSessionId = dialogSessionId) {
+  if (
+    expectedSessionId !== dialogSessionId ||
+    dialog.dataset.variant !== "account-auth"
+  ) {
+    return;
+  }
+  [dialog, dialogForm, dialogBody].forEach((element) => {
+    element.inert = false;
+    element.removeAttribute("inert");
+    element.removeAttribute("aria-disabled");
+    element.style.removeProperty("pointer-events");
+  });
   dialogForm.setAttribute("aria-busy", "false");
   dialogBody
     .querySelectorAll("input, select, textarea, button")
     .forEach((control) => {
       control.disabled = false;
+      control.removeAttribute("disabled");
+      if (control.matches("input, textarea")) {
+        control.readOnly = false;
+        control.removeAttribute("readonly");
+      }
       control.removeAttribute("aria-disabled");
       delete control.dataset.guestLocked;
       delete control.dataset.guestWasDisabled;
@@ -7591,6 +7724,89 @@ function field(name, label, value = "", type = "text", extra = "") {
   return `<label class="field ${extra.includes("full") ? "full" : ""}"><span>${escapeHtml(label)}</span><input name="${escapeHtml(name)}" type="${escapeHtml(type)}" value="${escapeHtml(value)}" ${extra.replace("full", "")}></label>`;
 }
 
+function readTtsVoices() {
+  if (!("speechSynthesis" in window)) return [];
+  return window.speechSynthesis
+    .getVoices()
+    .filter((voice) => voice?.name)
+    .sort((first, second) => {
+      const firstFrench = /^fr(?:-|$)/i.test(first.lang || "") ? 0 : 1;
+      const secondFrench = /^fr(?:-|$)/i.test(second.lang || "") ? 0 : 1;
+      return (
+        firstFrench - secondFrench ||
+        String(first.lang || "").localeCompare(String(second.lang || ""), "fr") ||
+        first.name.localeCompare(second.name, "fr")
+      );
+    });
+}
+
+function ttsVoiceOptions(currentVoice = "") {
+  const available = readTtsVoices();
+  if (available.length) ttsVoices = available;
+  const selectedVoice = String(currentVoice || "");
+  const voices = [...ttsVoices];
+  if (
+    selectedVoice &&
+    !voices.some((voice) => voice.name === selectedVoice)
+  ) {
+    voices.unshift({
+      name: selectedVoice,
+      lang: "",
+      legacy: true
+    });
+  }
+  return [
+    `<option value="" ${selectedVoice ? "" : "selected"}>Voix Windows par défaut</option>`,
+    ...voices.map(
+      (voice) =>
+        `<option value="${escapeHtml(voice.name)}" ${voice.name === selectedVoice ? "selected" : ""}>${escapeHtml(`${voice.name}${voice.lang ? ` · ${voice.lang}` : voice.legacy ? " · ancienne configuration" : ""}`)}</option>`
+    )
+  ].join("");
+}
+
+function ttsVoiceField(name, currentVoice = "", extraClass = "") {
+  return `<label class="field ${extraClass}"><span>Voix</span><select name="${escapeHtml(name)}" data-tts-voice-select>${ttsVoiceOptions(currentVoice)}</select><small>Voix de synthèse installées dans Windows.</small></label>`;
+}
+
+function refreshTtsVoiceSelects() {
+  const available = readTtsVoices();
+  if (available.length) ttsVoices = available;
+  document.querySelectorAll("[data-tts-voice-select]").forEach((select) => {
+    const selectedVoice = select.value;
+    select.innerHTML = ttsVoiceOptions(selectedVoice);
+    select.value = selectedVoice;
+  });
+}
+
+function ttsCommentFilterFields(config = {}) {
+  return `<div class="tts-comment-filters">
+    ${checkRow(
+      "Lire les emojis",
+      "Windows prononcera le nom des emojis présents dans le commentaire.",
+      "ttsReadEmojis",
+      config.readEmojis === true
+    )}
+    ${checkRow(
+      "Lire les mentions commençant par @",
+      "Autorise les commentaires adressés directement à un autre compte.",
+      "ttsAllowMentions",
+      config.allowMentions === true
+    )}
+    ${checkRow(
+      "Lire les commandes ! et /",
+      "Autorise les commentaires qui commencent comme une commande.",
+      "ttsAllowCommands",
+      config.allowCommands === true
+    )}
+    ${checkRow(
+      "Lire les messages contenant un lien",
+      "Autorise les URL et adresses présentes dans les commentaires.",
+      "ttsAllowLinks",
+      config.allowLinks === true
+    )}
+  </div>`;
+}
+
 function dialogSection(
   title,
   description,
@@ -7725,7 +7941,7 @@ async function ensureRuleInActiveProfile() {
 function actionTypeOptions(currentType) {
   const canonicalCurrentType = canonicalActionType(currentType);
   const groups = [
-    ["VISUEL & AUDIO", ["overlay.media", "audio.play", "tts.speak"]],
+    ["VISUEL & AUDIO", ["overlay.media", "audio.play"]],
     ["INTERACTIONS", ["goal.add", "timer.add", "wheel.spin", "chat.reply"]],
     ["INTÉGRATIONS", ["spotify.queue", "obs.request", "http.request", "websocket.send"]],
     ["SYSTÈME", ["system.keys", "system.open", "delay"]]
@@ -8110,12 +8326,12 @@ function openActionEditor(row) {
     conditionalFields(
       "tts.speak",
       `<div class="form-grid">
-        <label class="field full"><span>Texte prononcé</span><textarea name="text" required>${escapeHtml(config.text || "Merci {{user.displayName}} !")}</textarea><small>Variables disponibles : {{user.displayName}}, {{data.giftName}}, {{data.count}}, {{data.message}}.</small></label>
-        ${field("ttsLanguage", "Langue", config.language || snapshot.state.settings.tts.language || "fr-FR")}
-        ${field("ttsVoice", "Voix Windows (optionnel)", config.voice || "")}
+        <label class="field full"><span>Texte prononcé</span><textarea name="text" required>${escapeHtml(config.text || "{{data.message}}")}</textarea><small>Avec le déclencheur « Message du chat », ShenPulse lit uniquement le commentaire reçu.</small></label>
+        ${ttsVoiceField("ttsVoice", config.voice || snapshot.state.settings.tts.voice || "")}
         ${field("ttsRate", "Vitesse", config.rate ?? snapshot.state.settings.tts.rate ?? 1, "number", 'min="0.5" max="2" step="0.1"')}
         ${field("ttsPitch", "Hauteur", config.pitch ?? snapshot.state.settings.tts.pitch ?? 1, "number", 'min="0" max="2" step="0.1"')}
         ${field("ttsVolume", "Volume", config.volume ?? snapshot.state.settings.tts.volume ?? 0.9, "number", 'min="0" max="1" step="0.05"')}
+        ${ttsCommentFilterFields(config)}
       </div>`
     ),
     conditionalFields(
@@ -8279,12 +8495,16 @@ function openActionEditor(row) {
       } else if (type === "tts.speak") {
         Object.assign(nextConfig, {
           text: data.get("text"),
-          language: data.get("ttsLanguage"),
           voice: data.get("ttsVoice"),
           rate: Number(data.get("ttsRate")),
           pitch: Number(data.get("ttsPitch")),
-          volume: Number(data.get("ttsVolume"))
+          volume: Number(data.get("ttsVolume")),
+          readEmojis: data.has("ttsReadEmojis"),
+          allowMentions: data.has("ttsAllowMentions"),
+          allowCommands: data.has("ttsAllowCommands"),
+          allowLinks: data.has("ttsAllowLinks")
         });
+        delete nextConfig.language;
       } else if (type === "goal.add") {
         Object.assign(nextConfig, {
           goalId: data.get("goalId"),
@@ -8407,9 +8627,14 @@ function openTtsEditor(row) {
     name: "Nouvelle règle TTS",
     enabled: true,
     priority: 50,
-    trigger: { type: "gift", source: "*", threshold: 1 },
+    trigger: {
+      enabled: true,
+      type: "chat",
+      source: "*",
+      threshold: 1
+    },
     conditions: [],
-    cooldown: { globalMs: 750, perUserMs: 5000 },
+    cooldown: { globalMs: 0, perUserMs: 0 },
     chance: 1,
     actions: []
   };
@@ -8417,8 +8642,7 @@ function openTtsEditor(row) {
     id: "",
     type: "tts.speak",
     config: {
-      text: "{{user.displayName}} vient de déclencher {{event.type}}.",
-      language: settings.language || "fr-FR",
+      text: "{{data.message}}",
       voice: settings.voice || "",
       rate: settings.rate ?? 1,
       pitch: settings.pitch ?? 1,
@@ -8432,43 +8656,41 @@ function openTtsEditor(row) {
     variant: "wide",
     body: `<div class="action-editor">
       ${dialogSection(
-        "Message vocal",
-        "Configurez exactement ce qui sera prononcé.",
+        "Lecture des commentaires",
+        "Choisissez la voix et son rendu. Le texte lu sera toujours le commentaire reçu.",
         `${field("name", "Nom de la règle", currentRule.name, "text", "required full")}
-        <label class="field full"><span>Texte prononcé</span><textarea name="text" required>${escapeHtml(config.text || "")}</textarea><small>Variables : {{user.displayName}}, {{user.name}}, {{event.type}}, {{data.giftName}}, {{data.count}}, {{data.message}}.</small></label>
-        ${field("language", "Langue", config.language || settings.language || "fr-FR")}
-        ${field("voice", "Voix Windows (optionnel)", config.voice || "")}
+        ${ttsVoiceField("voice", config.voice || settings.voice || "")}
         ${field("rate", "Vitesse", config.rate ?? settings.rate ?? 1, "number", 'min="0.5" max="2" step="0.1"')}
         ${field("pitch", "Hauteur", config.pitch ?? settings.pitch ?? 1, "number", 'min="0" max="2" step="0.1"')}
         ${field("volume", "Volume", config.volume ?? settings.volume ?? 0.9, "number", 'min="0" max="1" step="0.05"')}`,
         "dialog-section-accent"
       )}
       ${dialogSection(
-        "Déclencheur",
-        "Choisissez l’interaction qui lancera la voix.",
-        `<label class="field"><span>Déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(currentRule.trigger?.type)}</select></label>
-        ${field("threshold", "Seuil / quantité minimale", currentRule.trigger?.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftPickerField("giftNameCondition", "Cadeau précis (optionnel)", conditionValue(currentRule.conditions, "data.giftName", "equals"), "full")}</div>
-        <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Message contient (optionnel)", conditionValue(currentRule.conditions, "data.message", "contains"), "text", "full")}</div>
-        ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(currentRule.conditions, "user.name", "equals"), "text", "full")}
-        ${field("globalCooldown", "Cooldown global (ms)", currentRule.cooldown?.globalMs || 0, "number", 'min="0"')}
-        ${field("userCooldown", "Cooldown viewer (ms)", currentRule.cooldown?.perUserMs || 0, "number", 'min="0"')}`
+        "Filtres des commentaires",
+        "Choisissez précisément quels messages peuvent être lus à voix haute.",
+        ttsCommentFilterFields(config),
+        "tts-filter-section"
       )}
     </div>`,
     onSubmit: async (data) => {
+      const actionConfig = {
+        ...config,
+        text: "{{data.message}}",
+        voice: data.get("voice"),
+        rate: Number(data.get("rate")),
+        pitch: Number(data.get("pitch")),
+        volume: Number(data.get("volume")),
+        readEmojis: data.has("ttsReadEmojis"),
+        allowMentions: data.has("ttsAllowMentions"),
+        allowCommands: data.has("ttsAllowCommands"),
+        allowLinks: data.has("ttsAllowLinks")
+      };
+      delete actionConfig.language;
       const action = {
         ...currentAction,
         id: currentAction.id || `action_${cryptoId()}`,
         type: "tts.speak",
-        config: {
-          ...config,
-          text: data.get("text"),
-          language: data.get("language"),
-          voice: data.get("voice"),
-          rate: Number(data.get("rate")),
-          pitch: Number(data.get("pitch")),
-          volume: Number(data.get("volume"))
-        }
+        config: actionConfig
       };
       const actions = [...(currentRule.actions || [])];
       if (row) actions[row.actionIndex] = action;
@@ -8480,16 +8702,13 @@ function openTtsEditor(row) {
         name: data.get("name"),
         enabled: currentRule.enabled !== false,
         trigger: {
-          ...(currentRule.trigger || {}),
-          type: data.get("triggerType"),
+          enabled: true,
+          type: "chat",
           source: "*",
-          threshold: Number(data.get("threshold"))
+          threshold: 1
         },
-        conditions: buildTriggerConditions(currentRule.conditions, data),
-        cooldown: {
-          globalMs: Number(data.get("globalCooldown")),
-          perUserMs: Number(data.get("userCooldown"))
-        },
+        conditions: [],
+        cooldown: { globalMs: 0, perUserMs: 0 },
         actions
       });
       await ensureRuleInActiveProfile(ruleId);
@@ -8912,7 +9131,13 @@ async function testActionRow(row) {
   if (!row) throw new Error("Action introuvable.");
   return api.testAction({
     ...row.action,
-    testEventType: row.rule.trigger?.type || "gift"
+    testEventType:
+      row.action.type === "tts.speak"
+        ? "chat"
+        : row.rule.trigger?.type || "gift",
+    ...(row.action.type === "tts.speak"
+      ? { testMessage: "Ceci est un test de lecture ShenPulse." }
+      : {})
   });
 }
 
@@ -8931,7 +9156,14 @@ async function duplicateActionRow(row) {
 
 async function deleteActionRow(row) {
   if (!row) throw new Error("Action introuvable.");
-  if (!confirm(`Supprimer l’action « ${actionTypeLabel(row.action.type)} » ?`)) return;
+  if (
+    !(await confirmAction(
+      `Supprimer l’action « ${actionTypeLabel(row.action.type)} » ?`,
+      { title: "Supprimer cette action", confirmLabel: "Supprimer" }
+    ))
+  ) {
+    return;
+  }
   const actions = (row.rule.actions || []).filter((_item, index) => index !== row.actionIndex);
   if (actions.length) await api.upsert("rules", { ...row.rule, actions });
   else await api.remove("rules", row.rule.id);
@@ -9368,13 +9600,21 @@ async function handleAction(target) {
   if (action === "account-logout") {
     const visibleSession = visibleAccountSession();
     if (
-      !confirm(
-        `Se déconnecter du compte ${visibleSession.email || "ShenPulse"} sur cet appareil ?`
-      )
+      !(await confirmAction(
+        `Se déconnecter du compte ${visibleSession.email || "ShenPulse"} sur cet appareil ?`,
+        { title: "Changer de compte", confirmLabel: "Se déconnecter" }
+      ))
     ) {
       return;
     }
-    accountSession = await api.account.logout();
+    const logoutOperation = (async () => {
+      const nextSession = await api.account.logout();
+      siteVisibility = await api.admin.visibility();
+      acceptSnapshot(await api.getSnapshot());
+      return nextSession;
+    })();
+    pendingAccountLogoutPromise = logoutOperation;
+    accountSession = signedOutAccountSession();
     liveEvents = [];
     adminSession = {
       authorized: false,
@@ -9383,13 +9623,21 @@ async function handleAction(target) {
       lastAuthenticatedAt: ""
     };
     adminDashboard = null;
-    siteVisibility = await api.admin.visibility();
     ensureCurrentPageAccess();
     accountMenu.hidden = true;
     accountMenuButton.setAttribute("aria-expanded", "false");
-    acceptSnapshot(await api.getSnapshot());
     render();
-    return toast("Compte ShenPulse déconnecté");
+    toast("Compte ShenPulse déconnecté");
+    openAccountLogin();
+    try {
+      accountSession = await logoutOperation;
+      render();
+    } finally {
+      if (pendingAccountLogoutPromise === logoutOperation) {
+        pendingAccountLogoutPromise = null;
+      }
+    }
+    return;
   }
   if (requireAccountForAction(action)) return;
   const requiredFeature = {
@@ -9427,7 +9675,17 @@ async function handleAction(target) {
     return;
   }
   if (action === "admin-logout") {
-    if (!confirm("Fermer la session d’administration sur cet appareil ?")) return;
+    if (
+      !(await confirmAction(
+        "Fermer la session d’administration sur cet appareil ?",
+        {
+          title: "Fermer l’administration",
+          confirmLabel: "Se déconnecter"
+        }
+      ))
+    ) {
+      return;
+    }
     await api.admin.logout();
     adminSession = { authorized: false, email: "", uid: "", lastAuthenticatedAt: "" };
     adminDashboard = null;
@@ -9461,9 +9719,10 @@ async function handleAction(target) {
   if (action === "admin-visibility-bulk") {
     const scope = target.dataset.value || "public";
     if (
-      !confirm(
-        `Appliquer « ${scope === "public" ? "Visible par tous" : scope === "admin" ? "Moi uniquement" : "Masqué"} » à toute cette catégorie ?`
-      )
+      !(await confirmAction(
+        `Appliquer « ${scope === "public" ? "Visible par tous" : scope === "admin" ? "Moi uniquement" : "Masqué"} » à toute cette catégorie ?`,
+        { title: "Modifier toute la catégorie", confirmLabel: "Appliquer" }
+      ))
     ) return;
     return perform(
       () => saveAdminVisibilityBulk(scope),
@@ -9480,7 +9739,15 @@ async function handleAction(target) {
       throw new Error("Le service des offres d’essai est temporairement indisponible.");
     }
     const trial = adminTrialRows().find((item) => item.id === id);
-    if (!trial || !confirm(`Retirer immédiatement l’essai de ${trial.email || trial.beneficiaryEmail} ?`)) return;
+    if (
+      !trial ||
+      !(await confirmAction(
+        `Retirer immédiatement l’essai de ${trial.email || trial.beneficiaryEmail} ?`,
+        { title: "Retirer l’offre d’essai", confirmLabel: "Retirer" }
+      ))
+    ) {
+      return;
+    }
     return perform(async () => {
       adminBusy = true;
       try {
@@ -9489,6 +9756,7 @@ async function handleAction(target) {
       } finally {
         adminBusy = false;
         render();
+        restoreAdminTrialFormInteractivity({ focusEmail: true });
       }
     }, "Offre d’essai retirée");
   }
@@ -9502,7 +9770,15 @@ async function handleAction(target) {
   }
   if (action === "admin-promotion-delete") {
     const promotion = adminCommerceCatalog().promotions?.[id];
-    if (!promotion || !confirm(`Supprimer la promotion « ${promotion.title} » ?`)) return;
+    if (
+      !promotion ||
+      !(await confirmAction(`Supprimer la promotion « ${promotion.title} » ?`, {
+        title: "Supprimer la promotion",
+        confirmLabel: "Supprimer"
+      }))
+    ) {
+      return;
+    }
     const catalog = cloneAdminData(adminCommerceCatalog());
     delete catalog.promotions[id];
     return saveAdminCommerce(catalog, "save-draft", "Promotion supprimée");
@@ -9510,7 +9786,15 @@ async function handleAction(target) {
   if (action === "admin-commerce-publish") {
     const publishAction = target.dataset.value;
     const channel = publishAction === "publish-prod" ? "PROD" : "TEST";
-    if (!confirm(`Publier le brouillon actuel sur ${channel} ?`)) return;
+    if (
+      !(await confirmAction(`Publier le brouillon actuel sur ${channel} ?`, {
+        title: `Publication ${channel}`,
+        confirmLabel: "Publier",
+        danger: false
+      }))
+    ) {
+      return;
+    }
     return saveAdminCommerce(
       cloneAdminData(adminCommerceCatalog()),
       publishAction,
@@ -9521,7 +9805,18 @@ async function handleAction(target) {
     if (adminModuleError("commerce")) {
       throw new Error("Le commerce est temporairement disponible en lecture seule.");
     }
-    if (!confirm("Restaurer cette version dans le brouillon ? TEST et PROD resteront inchangés.")) return;
+    if (
+      !(await confirmAction(
+        "Restaurer cette version dans le brouillon ? TEST et PROD resteront inchangés.",
+        {
+          title: "Restaurer cette version",
+          confirmLabel: "Restaurer",
+          danger: false
+        }
+      ))
+    ) {
+      return;
+    }
     adminBusy = true;
     try {
       adminDashboard.commerce = await api.admin.saveCommerce({
@@ -9673,10 +9968,10 @@ async function handleAction(target) {
   if (action === "download-game-interaction-overlay") {
     const pack = snapshot.packs.find((item) => item.id === id);
     if (
-      !confirmGameInteractionReadiness(
+      !(await confirmGameInteractionReadiness(
         pack,
         "de télécharger l’overlay"
-      )
+      ))
     ) {
       return;
     }
@@ -9745,7 +10040,12 @@ async function handleAction(target) {
       (item) => item.id === target.dataset.rule
     );
     if (!rule) throw new Error("Interaction introuvable.");
-    if (!confirm(`Supprimer l’interaction « ${rule.gameInteraction?.title || rule.name} » ?`)) {
+    if (
+      !(await confirmAction(
+        `Supprimer l’interaction « ${rule.gameInteraction?.title || rule.name} » ?`,
+        { title: "Supprimer l’interaction", confirmLabel: "Supprimer" }
+      ))
+    ) {
       return;
     }
     return perform(async () => {
@@ -9782,9 +10082,14 @@ async function handleAction(target) {
   }
   if (action === "add-action") return openActionEditor();
   if (action === "edit-action") {
-    return openActionEditor(
-      findActionRow(target.dataset.rule, id, target.dataset.index)
+    const row = findActionRow(
+      target.dataset.rule,
+      id,
+      target.dataset.index
     );
+    return row?.action.type === "tts.speak"
+      ? openTtsEditor(row)
+      : openActionEditor(row);
   }
   if (action === "test-action") {
     const row = findActionRow(target.dataset.rule, id, target.dataset.index);
@@ -9859,7 +10164,9 @@ async function handleAction(target) {
       () => api.testAction({
         id: "preview_tts",
         type: "tts.speak",
-        config: { text: "ShenPulse est prêt pour votre prochain live." }
+        testEventType: "chat",
+        testMessage: "ShenPulse est prêt pour votre prochain live.",
+        config: { text: "{{data.message}}" }
       }),
       "Test vocal lancé"
     );
@@ -9873,7 +10180,14 @@ async function handleAction(target) {
     }, "Spotify connecté");
   }
   if (action === "spotify-disconnect") {
-    if (!confirm("Déconnecter le compte Spotify de ShenPulse ?")) return;
+    if (
+      !(await confirmAction("Déconnecter le compte Spotify de ShenPulse ?", {
+        title: "Déconnecter Spotify",
+        confirmLabel: "Déconnecter"
+      }))
+    ) {
+      return;
+    }
     return perform(async () => {
       const result = await api.disconnectSpotify();
       spotifyStatus = result.status;
@@ -9923,9 +10237,10 @@ async function handleAction(target) {
   if (action === "restart-servers") return perform(async () => { await api.restartServers(); snapshot = await api.getSnapshot(); render(); }, "Services redémarrés");
   if (action === "rotate-public-overlay-urls") {
     if (
-      !confirm(
-        "Régénérer toutes les URL publiques ? Les anciennes sources TikTok LIVE Studio et OBS ne recevront plus aucun événement."
-      )
+      !(await confirmAction(
+        "Régénérer toutes les URL publiques ? Les anciennes sources TikTok LIVE Studio et OBS ne recevront plus aucun événement.",
+        { title: "Régénérer les URL", confirmLabel: "Régénérer" }
+      ))
     ) {
       return;
     }
@@ -10037,10 +10352,10 @@ async function handleAction(target) {
     if (showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
     if (
-      !confirmGameInteractionReadiness(
+      !(await confirmGameInteractionReadiness(
         pack,
         "de lancer le jeu et son serveur"
-      )
+      ))
     ) {
       return;
     }
@@ -10087,10 +10402,10 @@ async function handleAction(target) {
     if (showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
     if (
-      !confirmGameInteractionReadiness(
+      !(await confirmGameInteractionReadiness(
         pack,
         "d’activer la session de jeu"
-      )
+      ))
     ) {
       return;
     }
@@ -10130,11 +10445,25 @@ async function handleAction(target) {
   if (action === "export-data") return perform(() => api.exportData(), "Export terminé");
   if (action === "import-data") return perform(async () => { const result = await api.importData(); if (!result.canceled) { snapshot = result.snapshot; render(); } }, "Import terminé");
   if (action === "clear-data") {
-    if (!confirm("Effacer définitivement la configuration, les secrets et le journal local ?")) return;
+    if (
+      !(await confirmAction(
+        "Effacer définitivement la configuration, les secrets et le journal local ?",
+        { title: "Effacer les données locales", confirmLabel: "Tout effacer" }
+      ))
+    ) {
+      return;
+    }
     return perform(async () => { snapshot = await api.clearData(); render(); }, "Données locales effacées");
   }
   if (action === "delete-entity") {
-    if (!confirm("Supprimer cet élément ?")) return;
+    if (
+      !(await confirmAction("Supprimer cet élément ?", {
+        title: "Supprimer l’élément",
+        confirmLabel: "Supprimer"
+      }))
+    ) {
+      return;
+    }
     return perform(async () => { await api.remove(target.dataset.collection, id); snapshot = await api.getSnapshot(); render(); }, "Élément supprimé");
   }
 }
@@ -10587,6 +10916,7 @@ dialog.addEventListener("cancel", () => {
 });
 
 dialog.addEventListener("close", () => {
+  stopEditorAudioPreview();
   dialogSessionId += 1;
   dialogSubmitHandler = null;
   dialogForm.setAttribute("aria-busy", "false");
@@ -10637,8 +10967,8 @@ dialog.addEventListener("click", (event) => {
       accountCommand.disabled = true;
       accountCommand.innerHTML =
         '<span aria-hidden="true">G</span> Connexion dans le navigateur…';
-      api.account
-        .loginWithBrowser()
+      waitForPendingAccountLogout()
+        .then(() => api.account.loginWithBrowser())
         .then(async (status) => {
           if (activeDialogSessionId !== dialogSessionId) return;
           accountSession = status;
@@ -10776,7 +11106,8 @@ dialog.addEventListener("click", (event) => {
         type: "audio.play",
         config: {
           url: mediaPreview.dataset.mediaPreviewUrl,
-          volume: 0.9
+          volume: 0.9,
+          previewScope: "editor-dialog"
         }
       })
     ).catch(() => {});
@@ -10889,7 +11220,25 @@ mediaLibraryDialog.addEventListener("cancel", (event) => {
   globalMediaLibrary.close();
 });
 
-dialog.addEventListener("click", (event) => {
+confirmationForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  finishConfirmation(true);
+});
+
+confirmationCancelButton.addEventListener("click", () => {
+  finishConfirmation(false);
+});
+
+confirmationDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  finishConfirmation(false);
+});
+
+confirmationDialog.addEventListener("close", () => {
+  if (confirmationResolver) finishConfirmation(false);
+});
+
+dialog.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-wheel-command]");
   if (!target || !wheelEditorContext) return;
   event.preventDefault();
@@ -10946,7 +11295,14 @@ dialog.addEventListener("click", (event) => {
         true
       );
     }
-    if (!confirm(`Supprimer la roue « ${wheel.name} » ?`)) return;
+    if (
+      !(await confirmAction(`Supprimer la roue « ${wheel.name} » ?`, {
+        title: "Supprimer cette roue",
+        confirmLabel: "Supprimer"
+      }))
+    ) {
+      return;
+    }
     config.wheels = config.wheels.filter((entry) => entry.id !== wheel.id);
     config.selectedWheelId = config.wheels[0].id;
     wheelEditorContext.section = "setup";
@@ -11017,7 +11373,14 @@ dialog.addEventListener("click", async (event) => {
       toast("Suppression impossible", "ShenPulse doit conserver au moins un profil.", true);
       return;
     }
-    if (!confirm(`Supprimer le profil « ${profile.name} » ?`)) return;
+    if (
+      !(await confirmAction(`Supprimer le profil « ${profile.name} » ?`, {
+        title: "Supprimer ce profil",
+        confirmLabel: "Supprimer"
+      }))
+    ) {
+      return;
+    }
     await perform(async () => {
       if (snapshot.state.session.profileId === profile.id) {
         const fallback = snapshot.state.profiles.find(
@@ -11106,6 +11469,7 @@ content.addEventListener("submit", async (event) => {
       } finally {
         adminBusy = false;
         render();
+        restoreAdminTrialFormInteractivity({ focusEmail: true });
       }
     }, "Offre d’essai accordée");
     return;
@@ -11144,7 +11508,7 @@ content.addEventListener("submit", async (event) => {
       telemetry: data.has("telemetry"),
       overlayPort: Number(values.overlayPort),
       apiPort: Number(values.apiPort),
-      tts: { language: values.ttsLanguage, rate: Number(values.ttsRate), pitch: Number(values.ttsPitch), volume: Number(values.ttsVolume) },
+      tts: { voice: values.ttsVoice, rate: Number(values.ttsRate), pitch: Number(values.ttsPitch), volume: Number(values.ttsVolume) },
       obs: { url: values.obsUrl },
       obsPassword: values.obsPassword,
       spotify: {
@@ -11275,33 +11639,39 @@ api.on("live-event", (event) => {
 api.on("playback", (payload) => {
   if (payload.type === "tts" && "speechSynthesis" in window) {
     const utterance = new SpeechSynthesisUtterance(payload.text);
-    utterance.lang = payload.language || "fr-FR";
     utterance.rate = Number(payload.rate || 1);
     utterance.pitch = Number(payload.pitch || 1);
     utterance.volume = Number(payload.volume ?? 1);
+    let selectedVoice = null;
     if (payload.voice) {
-      const voice = window.speechSynthesis
+      selectedVoice = window.speechSynthesis
         .getVoices()
         .find((entry) => entry.name === payload.voice);
-      if (voice) utterance.voice = voice;
+      if (selectedVoice) utterance.voice = selectedVoice;
     }
+    utterance.lang = selectedVoice?.lang || payload.language || "fr-FR";
     window.speechSynthesis.speak(utterance);
   } else if (
     payload.type === "audio" &&
     /^https?:|^data:|^blob:/i.test(payload.url || "")
   ) {
     activePreviewAudio?.pause();
+    activePreviewAudio?.remove();
     const audioStage = document.getElementById("audio-stage");
     const audio = document.createElement("audio");
     audio.src = payload.url;
     audio.preload = "auto";
     audio.volume = Number(payload.volume ?? 1);
     activePreviewAudio = audio;
+    activePreviewAudioScope = payload.previewScope || "";
     audioStage.replaceChildren(audio);
     audio.addEventListener(
       "ended",
       () => {
-        if (activePreviewAudio === audio) activePreviewAudio = null;
+        if (activePreviewAudio === audio) {
+          activePreviewAudio = null;
+          activePreviewAudioScope = "";
+        }
         audio.remove();
       },
       { once: true }
@@ -11317,6 +11687,25 @@ api.on("playback", (payload) => {
       );
   }
 });
+
+function stopEditorAudioPreview() {
+  if (
+    activePreviewAudioScope !== "editor-dialog" ||
+    !activePreviewAudio
+  ) {
+    return;
+  }
+  const audio = activePreviewAudio;
+  activePreviewAudio = null;
+  activePreviewAudioScope = "";
+  audio.pause();
+  try {
+    audio.currentTime = 0;
+  } catch {
+    // Le média peut ne pas encore avoir chargé ses métadonnées.
+  }
+  audio.remove();
+}
 
 document.addEventListener(
   "scroll",
@@ -11429,6 +11818,33 @@ document.addEventListener("keydown", (event) => {
   handleOverlayKeyboardShortcut(event);
 });
 
+function refreshAccountEntitlements() {
+  if (!isAccountAuthenticated() || entitlementSyncPromise) {
+    return entitlementSyncPromise;
+  }
+  entitlementSyncPromise = api.account
+    .syncEntitlements()
+    .catch(() => null)
+    .finally(() => {
+      entitlementSyncPromise = null;
+    });
+  return entitlementSyncPromise;
+}
+
+window.addEventListener("focus", () => {
+  refreshAccountEntitlements();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    refreshAccountEntitlements();
+  }
+});
+
+setInterval(() => {
+  refreshAccountEntitlements();
+}, ENTITLEMENT_SYNC_INTERVAL_MS);
+
 setInterval(() => {
   if (
     (gameInstallBusyId || gameLaunchBusyId) &&
@@ -11446,6 +11862,14 @@ setInterval(() => {
     updateMinecraftRoundCountdowns();
   }
 }, 1000);
+
+if ("speechSynthesis" in window) {
+  refreshTtsVoiceSelects();
+  window.speechSynthesis.addEventListener(
+    "voiceschanged",
+    refreshTtsVoiceSelects
+  );
+}
 
 api.getSnapshot()
   .then(async (initialSnapshot) => {

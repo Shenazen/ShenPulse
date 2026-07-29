@@ -8,6 +8,7 @@ const IDENTITY_BASE_URL = "https://identitytoolkit.googleapis.com/v1";
 const TOKEN_BASE_URL = "https://securetoken.googleapis.com/v1";
 const DEFAULT_WEB_ORIGIN = "https://shenpulse.leuridan.fr";
 const BROWSER_AUTH_TIMEOUT_MS = 10 * 60 * 1000;
+const TRIAL_ENTITLEMENT_LEASE_MS = 10 * 60 * 1000;
 
 class AccountService {
   constructor({
@@ -180,24 +181,70 @@ class AccountService {
       const token = await this.#token();
       const uid = cleanUid(this.#session().uid);
       if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
-      const response = await this.fetch(
-        `${this.webOrigin}/api/account/entitlements?uid=${encodeURIComponent(
-          uid
-        )}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-          signal: AbortSignal.timeout(15000)
-        }
+      const [accountResult, publicResult] = await Promise.allSettled([
+        this.#accountEntitlements(token, uid),
+        this.#publicEntitlements(uid)
+      ]);
+      const accountPayload =
+        accountResult.status === "fulfilled"
+          ? accountResult.value
+          : null;
+      const publicPayload =
+        publicResult.status === "fulfilled"
+          ? publicResult.value
+          : null;
+      const payload = mergeEntitlementPayloads(
+        accountPayload,
+        publicPayload
       );
-      const payload = await readPayload(response);
-      if (!response.ok) throw apiError(payload, response.status);
+      if (!payload) {
+        throw (
+          (accountResult.status === "rejected"
+            ? accountResult.reason
+            : null) ||
+          (publicResult.status === "rejected"
+            ? publicResult.reason
+            : null) ||
+          new Error("Impossible de synchroniser les droits ShenPulse.")
+        );
+      }
       this.#applyEntitlements(payload);
       return payload;
     } catch (error) {
       if (silent) return null;
       throw error;
     }
+  }
+
+  async #accountEntitlements(token, uid) {
+    const response = await this.fetch(
+      `${this.webOrigin}/api/account/entitlements?uid=${encodeURIComponent(
+        uid
+      )}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000)
+      }
+    );
+    const payload = await readPayload(response);
+    if (!response.ok) throw apiError(payload, response.status);
+    return payload;
+  }
+
+  async #publicEntitlements(uid) {
+    const response = await this.fetch(
+      `${this.webOrigin}/api/entitlements/subscription?uid=${encodeURIComponent(
+        uid
+      )}`,
+      {
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000)
+      }
+    );
+    const payload = await readPayload(response);
+    if (!response.ok) throw apiError(payload, response.status);
+    return payload;
   }
 
   logout() {
@@ -458,10 +505,21 @@ class AccountService {
     )
       ? payload.source
       : "free";
+    const trialExpiresAtMs =
+      source === "trial"
+        ? entitlementExpiryMs(payload) ||
+          Date.now() + TRIAL_ENTITLEMENT_LEASE_MS
+        : 0;
+    const trialExpiresAt = trialExpiresAtMs
+      ? new Date(trialExpiresAtMs).toISOString()
+      : "";
     const gameEntitlements = Array.isArray(payload.gameEntitlements)
       ? payload.gameEntitlements
           .map((entry) => ({
             id: String(entry?.id || entry?.productId || "").trim(),
+            gameId: String(
+              entry?.gameId || entry?.productId || entry?.id || ""
+            ).trim(),
             productId: String(
               entry?.productId || entry?.id || ""
             ).trim(),
@@ -486,6 +544,8 @@ class AccountService {
         priceMonthly:
           source === "own" ? Math.max(0, Number(payload.priceMonthly) || 0) : 0,
         renewalDate: String(payload.renewalDate || ""),
+        expiresAt: trialExpiresAt,
+        expiresAtMs: trialExpiresAtMs,
         syncedAt: String(payload.checkedAt || new Date().toISOString())
       };
       state.commerce.premiumSeat = {
@@ -583,6 +643,82 @@ class AccountService {
     });
     this.#clearCommercialRights();
   }
+}
+
+function entitlementExpiryMs(payload = {}) {
+  const trial =
+    payload.trial && typeof payload.trial === "object"
+      ? payload.trial
+      : {};
+  for (const value of [
+    payload.expiresAtMs,
+    payload.subscriptionExpiresAtMs,
+    trial.expiresAtMs,
+    payload.expiresAt,
+    payload.subscriptionExpiresAt,
+    trial.expiresAt
+  ]) {
+    const numeric = Number(value || 0);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    const parsed = Date.parse(String(value || ""));
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return 0;
+}
+
+function mergeEntitlementPayloads(
+  accountPayload = null,
+  publicPayload = null
+) {
+  const account =
+    accountPayload && typeof accountPayload === "object"
+      ? accountPayload
+      : null;
+  const verifiedPublic =
+    publicPayload && typeof publicPayload === "object"
+      ? publicPayload
+      : null;
+  if (!account && !verifiedPublic) return null;
+
+  const publicHasAccess = ["pro", "premium"].includes(
+    String(verifiedPublic?.tier || "")
+  );
+  const accountHasAccess = ["pro", "premium"].includes(
+    String(account?.tier || "")
+  );
+  const primary =
+    publicHasAccess && !accountHasAccess
+      ? verifiedPublic
+      : account || verifiedPublic;
+  const gameEntitlements = [];
+  const seenGameIds = new Set();
+  for (const entry of [
+    ...(Array.isArray(account?.gameEntitlements)
+      ? account.gameEntitlements
+      : []),
+    ...(Array.isArray(verifiedPublic?.gameEntitlements)
+      ? verifiedPublic.gameEntitlements
+      : [])
+  ]) {
+    const gameId = String(
+      entry?.gameId || entry?.productId || entry?.id || ""
+    ).trim();
+    if (!gameId || seenGameIds.has(gameId)) continue;
+    seenGameIds.add(gameId);
+    gameEntitlements.push(entry);
+  }
+
+  return {
+    ...(account || {}),
+    ...(primary || {}),
+    checkedAt: String(
+      primary?.checkedAt ||
+      account?.checkedAt ||
+      verifiedPublic?.checkedAt ||
+      new Date().toISOString()
+    ),
+    gameEntitlements
+  };
 }
 
 async function createLoopbackCallback({

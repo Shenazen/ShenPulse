@@ -11,6 +11,7 @@ const {
 } = require("../src/main/defaults");
 const {
   StateStore,
+  normalizeRules,
   normalizeWheelSegmentActions
 } = require("../src/main/store");
 
@@ -19,6 +20,49 @@ function createStore(directory) {
     isEncryptionAvailable: () => false
   });
 }
+
+test("une règle exclusivement TTS est toujours normalisée sur les commentaires", () => {
+  const [rule] = normalizeRules([
+    {
+      id: "legacy_tts",
+      trigger: { enabled: false, type: "gift", threshold: 25 },
+      conditions: [
+        { field: "data.giftName", operator: "equals", value: "Rose" }
+      ],
+      cooldown: { globalMs: 5000, perUserMs: 10000 },
+      actions: [{ id: "speak", type: "tts.speak", config: {} }]
+    }
+  ]);
+
+  assert.deepEqual(rule.trigger, {
+    enabled: true,
+    type: "chat",
+    source: "*",
+    threshold: 1
+  });
+  assert.deepEqual(rule.conditions, []);
+  assert.deepEqual(rule.cooldown, { globalMs: 0, perUserMs: 0 });
+});
+
+test("une règle mixte conserve le déclencheur de ses autres actions", () => {
+  const [rule] = normalizeRules([
+    {
+      id: "mixed_rule",
+      trigger: { type: "gift", threshold: 2 },
+      conditions: [
+        { field: "data.giftName", operator: "equals", value: "Rose" }
+      ],
+      actions: [
+        { id: "sound", type: "audio.play", config: {} },
+        { id: "legacy_speak", type: "tts.speak", config: {} }
+      ]
+    }
+  ]);
+
+  assert.equal(rule.trigger.type, "gift");
+  assert.equal(rule.trigger.threshold, 2);
+  assert.equal(rule.conditions.length, 1);
+});
 
 test("une action choisie suffit à activer le secteur de roue", () => {
   const wheels = [{

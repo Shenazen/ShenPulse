@@ -1093,7 +1093,10 @@ class GameRuntimeService {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        webSecurity: true
+        webSecurity: true,
+        // Une fenêtre de jeu réduite continue à recevoir et exécuter les
+        // interactions transmises par ShenPulse.
+        backgroundThrottling: false
       }
     });
     this.gameWindows.set(gameId, gameWindow);
