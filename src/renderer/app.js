@@ -4880,7 +4880,9 @@ function renderGameInstallation(pack, unlocked) {
   let statusText = integrated
     ? "Ce jeu est déjà inclus dans ShenPulse. Vous pouvez passer directement aux interactions."
     : updateAvailable
-      ? "Mettez à jour le pack pour profiter des 178 véhicules du nouveau tirage aléatoire GTA."
+      ? pack.id === "gtav-montchiliad"
+        ? "Mettez à jour le pack pour profiter des 178 véhicules du nouveau tirage aléatoire GTA."
+        : `Mettez à jour le pack ${pack.name} pour installer la dernière version du mod et de sa passerelle ShenPulse.`
     : installation
       ? "Tous les éléments nécessaires sont installés. Vous pouvez continuer la configuration."
       : "ShenPulse recherche le jeu puis installe automatiquement tout ce qui est nécessaire. S’il ne le trouve pas, il vous demandera simplement de choisir son dossier.";
@@ -6756,6 +6758,18 @@ function cloneAdminData(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeAdminMoney(value, minimum = 0) {
+  const amount = Number(String(value ?? "").trim().replace(",", "."));
+  if (
+    !Number.isFinite(amount) ||
+    amount < minimum ||
+    amount > 100000
+  ) {
+    throw new Error("Renseignez un prix valide.");
+  }
+  return amount.toFixed(2);
+}
+
 async function refreshAdminDashboard() {
   if (!adminSession.authorized || adminBusy) return;
   adminBusy = true;
@@ -6878,7 +6892,7 @@ function openAdminPlanEditor(tier) {
     kicker: "TARIF MENSUEL PUBLIC",
     body: `<div class="form-grid">
       ${field("title", "Nom affiché", plan.title, "text", "full required maxlength=\"80\"")}
-      ${field("priceMonthly", "Prix mensuel", plan.priceMonthly, "number", 'min="0.01" max="100000" step="0.01" required')}
+      ${field("priceMonthly", "Prix mensuel", plan.priceMonthly, "text", 'inputmode="decimal" required')}
       ${field("sortOrder", "Ordre d’affichage", plan.sortOrder, "number", 'step="1"')}
       <label class="field"><span>Disponibilité</span><select name="enabled"><option value="true" ${plan.enabled ? "selected" : ""}>Disponible</option><option value="false" ${!plan.enabled ? "selected" : ""}>Indisponible</option></select></label>
     </div>`,
@@ -6887,7 +6901,7 @@ function openAdminPlanEditor(tier) {
       catalog.subscriptions[tier] = {
         ...plan,
         title: String(data.get("title") || "").trim(),
-        priceMonthly: Number(data.get("priceMonthly")).toFixed(2),
+        priceMonthly: normalizeAdminMoney(data.get("priceMonthly"), 0.01),
         sortOrder: Number(data.get("sortOrder") || 0),
         enabled: data.get("enabled") === "true"
       };
@@ -6905,10 +6919,11 @@ function openAdminProductEditor(productId) {
   openEditor({
     title: product.title,
     kicker: "OFFRE COMMERCIALE DU JEU",
+    submitLabel: "Enregistrer et publier",
     body: `<div class="form-grid">
       ${field("title", "Nom affiché", product.title, "text", "full required maxlength=\"120\"")}
       <label class="field"><span>Mode d’accès</span><select name="accessMode"><option value="purchase" ${product.accessMode === "purchase" ? "selected" : ""}>Achat séparé</option><option value="included" ${product.accessMode === "included" ? "selected" : ""}>Inclus</option></select></label>
-      ${field("baseAmount", "Prix", product.baseAmount, "number", 'min="0" max="100000" step="0.01" required')}
+      ${field("baseAmount", "Prix", product.baseAmount, "text", 'inputmode="decimal" required')}
       ${field("sortOrder", "Ordre", product.sortOrder, "number", 'step="1"')}
       <label class="field"><span>Disponibilité</span><select name="enabled"><option value="true" ${product.enabled ? "selected" : ""}>Disponible</option><option value="false" ${!product.enabled ? "selected" : ""}>Masqué à la vente</option></select></label>
       <label class="field full"><span>Offre d’essai</span><select name="trialEligible"><option value="true" ${product.trialEligible ? "selected" : ""}>Peut être offert en essai</option><option value="false" ${!product.trialEligible ? "selected" : ""}>Jamais en essai</option></select></label>
@@ -6920,12 +6935,18 @@ function openAdminProductEditor(productId) {
         ...product,
         title: String(data.get("title") || "").trim(),
         accessMode,
-        baseAmount: accessMode === "included" ? "0.00" : Number(data.get("baseAmount")).toFixed(2),
+        baseAmount: accessMode === "included"
+          ? "0.00"
+          : normalizeAdminMoney(data.get("baseAmount")),
         sortOrder: Number(data.get("sortOrder") || 0),
         enabled: data.get("enabled") === "true",
         trialEligible: data.get("trialEligible") === "true"
       };
-      await saveAdminCommerce(catalog, "save-draft", `${product.title} enregistré`);
+      await saveAdminCommerce(
+        catalog,
+        "publish-prod",
+        `${product.title} enregistré et publié`
+      );
     }
   });
 }

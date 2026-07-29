@@ -37,6 +37,7 @@ class GameRuntimeService {
     this.gameWindows = new Map();
     this.activeInstalls = new Set();
     this.minecraftServers = new Map();
+    this.minecraftAutoClickers = new Map();
     this.saveDeploymentJobs = new Map();
   }
 
@@ -50,6 +51,7 @@ class GameRuntimeService {
       automated: Boolean(installerForGame(gameId)),
       installing: this.activeInstalls.has(gameId),
       serverRunning: this.#minecraftServerRunning(gameId),
+      autoClickerRunning: this.#minecraftAutoClickerRunning(gameId),
       installation
     };
   }
@@ -391,6 +393,7 @@ class GameRuntimeService {
     const record = this.minecraftServers.get(gameId);
     if (record) {
       this.minecraftServers.delete(gameId);
+      await this.#stopMinecraftAutoClicker(gameId);
       await stopMinecraftServerRecord(record);
       return {
         stopped: true,
@@ -413,6 +416,7 @@ class GameRuntimeService {
 
   async dispose() {
     await this.#stopMinecraftServers();
+    await this.#stopMinecraftAutoClickers();
     for (const window of this.gameWindows.values()) {
       if (window && !window.isDestroyed()) window.close();
     }
@@ -428,11 +432,28 @@ class GameRuntimeService {
     );
   }
 
+  #minecraftAutoClickerRunning(gameId) {
+    const record = this.minecraftAutoClickers.get(gameId);
+    return Boolean(
+      record?.process &&
+        record.process.exitCode === null &&
+        !record.process.killed
+    );
+  }
+
   async #startMinecraftServer(gameId, installationPath, manifest) {
     if (this.#minecraftServerRunning(gameId)) {
       const existing = this.minecraftServers.get(gameId);
       await existing.ready;
-      return minecraftServerResult(existing);
+      const autoClicker = await this.#startMinecraftAutoClicker(
+        gameId,
+        installationPath,
+        manifest
+      );
+      return {
+        ...minecraftServerResult(existing),
+        autoClicker
+      };
     }
     await this.#stopMinecraftServers();
 
@@ -492,13 +513,23 @@ class GameRuntimeService {
       if (this.minecraftServers.get(gameId) === record) {
         this.minecraftServers.delete(gameId);
       }
+      this.#stopMinecraftAutoClicker(gameId).catch(() => {});
     });
 
     try {
       await record.ready;
       await silenceMinecraftCommandFeedback(record);
-      return minecraftServerResult(record);
+      const autoClicker = await this.#startMinecraftAutoClicker(
+        gameId,
+        installationPath,
+        manifest
+      );
+      return {
+        ...minecraftServerResult(record),
+        autoClicker
+      };
     } catch (error) {
+      await this.#stopMinecraftAutoClicker(gameId);
       await stopMinecraftServerRecord(record);
       if (this.minecraftServers.get(gameId) === record) {
         this.minecraftServers.delete(gameId);
@@ -510,7 +541,77 @@ class GameRuntimeService {
   async #stopMinecraftServers() {
     const records = [...this.minecraftServers.values()];
     this.minecraftServers.clear();
+    await this.#stopMinecraftAutoClickers();
     await Promise.all(records.map(stopMinecraftServerRecord));
+  }
+
+  async #startMinecraftAutoClicker(
+    gameId,
+    installationPath,
+    manifest
+  ) {
+    const config = manifest.autoClicker || {};
+    if (!config.autoStart || !config.executable) return null;
+    if (this.#minecraftAutoClickerRunning(gameId)) {
+      return minecraftAutoClickerResult(
+        this.minecraftAutoClickers.get(gameId)
+      );
+    }
+    await this.#stopMinecraftAutoClickers();
+
+    const executablePath = safeChildPath(
+      installationPath,
+      config.executable
+    );
+    const executable = await fs.promises
+      .stat(executablePath)
+      .catch(() => null);
+    if (!executable?.isFile()) {
+      throw new Error(
+        "Lâ€™AutoClicker Minecraft ShenPulse est introuvable. Mettez Ã  jour ou rÃ©parez lâ€™installation."
+      );
+    }
+    const child = spawn(executablePath, [], {
+      cwd: path.dirname(executablePath),
+      windowsHide: false,
+      shell: false,
+      stdio: "ignore"
+    });
+    const record = {
+      process: child,
+      gameId,
+      executablePath
+    };
+    this.minecraftAutoClickers.set(gameId, record);
+    child.once("exit", () => {
+      if (this.minecraftAutoClickers.get(gameId) === record) {
+        this.minecraftAutoClickers.delete(gameId);
+      }
+    });
+    try {
+      await waitForProcessSpawn(child, "AutoClicker Minecraft");
+      return minecraftAutoClickerResult(record);
+    } catch (error) {
+      if (this.minecraftAutoClickers.get(gameId) === record) {
+        this.minecraftAutoClickers.delete(gameId);
+      }
+      throw error;
+    }
+  }
+
+  async #stopMinecraftAutoClicker(gameId) {
+    const record = this.minecraftAutoClickers.get(gameId);
+    if (!record) return;
+    this.minecraftAutoClickers.delete(gameId);
+    await stopChildProcess(record.process);
+  }
+
+  async #stopMinecraftAutoClickers() {
+    const records = [...this.minecraftAutoClickers.values()];
+    this.minecraftAutoClickers.clear();
+    await Promise.all(
+      records.map((record) => stopChildProcess(record.process))
+    );
   }
 
   #scheduleGtaSaveDeployment(gameId) {
@@ -1188,6 +1289,58 @@ function minecraftServerResult(record) {
   };
 }
 
+function minecraftAutoClickerResult(record) {
+  return {
+    installed: Boolean(record?.executablePath),
+    running: Boolean(
+      record?.process &&
+        record.process.exitCode === null &&
+        !record.process.killed
+    ),
+    executablePath: record?.executablePath || ""
+  };
+}
+
+function waitForProcessSpawn(child, label) {
+  if (child.pid && child.exitCode === null) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const onSpawn = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (error) => {
+      cleanup();
+      reject(
+        new Error(
+          `${label} nâ€™a pas pu dÃ©marrer : ${error.message}`
+        )
+      );
+    };
+    const cleanup = () => {
+      child.off("spawn", onSpawn);
+      child.off("error", onError);
+    };
+    child.once("spawn", onSpawn);
+    child.once("error", onError);
+  });
+}
+
+async function stopChildProcess(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  const exited = new Promise((resolve) => child.once("exit", resolve));
+  try {
+    child.kill();
+  } catch {
+    return;
+  }
+  await Promise.race([
+    exited,
+    new Promise((resolve) => setTimeout(resolve, 2_000))
+  ]);
+}
+
 function sanitizeMinecraftConsoleCommand(value) {
   return String(value || "")
     .replace(/[\0\r\n]/g, " ")
@@ -1802,6 +1955,12 @@ async function detectInstalledGame(gameId, manifest, previousPath = "") {
   if (gameId === "gtav-montchiliad") {
     candidates.push(...(await gtaInstallCandidates()));
   }
+  if (
+    Array.isArray(manifest.steamAppIds) ||
+    Array.isArray(manifest.directoryNames)
+  ) {
+    candidates.push(...(await steamGameInstallCandidates(manifest)));
+  }
   for (const candidate of [
     ...new Set(candidates.map((item) => path.resolve(item)))
   ]) {
@@ -1815,6 +1974,69 @@ async function detectInstalledGame(gameId, manifest, previousPath = "") {
     if (executable) return path.dirname(executable);
   }
   return "";
+}
+
+async function steamGameInstallCandidates(manifest) {
+  const directoryNames = (manifest.directoryNames || [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const steamAppIds = (manifest.steamAppIds || [])
+    .map((value) => String(value || "").replace(/\D/g, ""))
+    .filter(Boolean);
+  const programFiles = [
+    process.env.ProgramW6432,
+    process.env.ProgramFiles,
+    process.env["ProgramFiles(x86)"],
+    "C:\\Program Files",
+    "C:\\Program Files (x86)"
+  ].filter(Boolean);
+  const steamRoots = [
+    ...programFiles.map((root) => path.join(root, "Steam")),
+    "C:\\Steam"
+  ];
+  const libraryRoots = new Set();
+  for (const steamRoot of [...new Set(steamRoots)]) {
+    libraryRoots.add(steamRoot);
+    const libraryFile = path.join(
+      steamRoot,
+      "steamapps",
+      "libraryfolders.vdf"
+    );
+    const source = await fs.promises
+      .readFile(libraryFile, "utf8")
+      .catch(() => "");
+    for (const match of source.matchAll(/"path"\s+"([^"]+)"/g)) {
+      libraryRoots.add(match[1].replace(/\\\\/g, "\\"));
+    }
+  }
+
+  const candidates = [];
+  for (const libraryRoot of libraryRoots) {
+    const steamApps = path.join(libraryRoot, "steamapps");
+    const common = path.join(steamApps, "common");
+    for (const directoryName of directoryNames) {
+      candidates.push(path.join(common, directoryName));
+    }
+    for (const appId of steamAppIds) {
+      const manifestSource = await fs.promises
+        .readFile(path.join(steamApps, `appmanifest_${appId}.acf`), "utf8")
+        .catch(() => "");
+      const installDirectory =
+        manifestSource.match(/"installdir"\s+"([^"]+)"/i)?.[1] || "";
+      if (installDirectory) {
+        candidates.push(path.join(common, installDirectory));
+      }
+    }
+  }
+  for (const root of programFiles) {
+    for (const directoryName of directoryNames) {
+      candidates.push(
+        path.join(root, directoryName),
+        path.join(root, "GOG Galaxy", "Games", directoryName)
+      );
+    }
+  }
+  return candidates;
 }
 
 async function gtaInstallCandidates() {

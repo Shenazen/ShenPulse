@@ -63,9 +63,18 @@
 
       <section id="coin-jar-view" class="view">
         <div class="coin-jar-widget">
+          <svg class="coin-jar-clip-definitions" aria-hidden="true">
+            <defs>
+              <clipPath id="coin-jar-glass-clip" clipPathUnits="objectBoundingBox">
+                <path d="M .335 .075 L .665 .075 L .665 .17 C .72 .19 .75 .24 .75 .31 L .75 .78 C .75 .83 .72 .86 .64 .875 L .36 .875 C .28 .86 .25 .83 .25 .78 L .25 .31 C .25 .24 .28 .19 .335 .17 Z"></path>
+              </clipPath>
+            </defs>
+          </svg>
           <img id="coin-jar-back" class="coin-jar-layer" alt="" />
-          <div id="coin-jar-drops" class="coin-jar-drops"></div>
-          <div class="coin-jar-meter"><span id="coin-jar-fill"></span></div>
+          <div id="coin-jar-drops" class="coin-jar-drops">
+            <div id="coin-jar-contained-drops" class="coin-jar-drop-layer coin-jar-contained-drops"></div>
+            <div id="coin-jar-overflow-drops" class="coin-jar-drop-layer coin-jar-overflow-drops"></div>
+          </div>
           <img id="coin-jar-front" class="coin-jar-layer coin-jar-front" alt="" />
         </div>
       </section>

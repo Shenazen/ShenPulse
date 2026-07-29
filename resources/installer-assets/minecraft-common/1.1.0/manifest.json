@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "gameId": "minecraft-common",
+  "version": "1.1.0",
+  "parentVersion": "1.0.0",
+  "publishedAt": "2026-07-29T10:30:38.877Z",
+  "notes": "Ajoute OP Auto Clicker 4.1, signé numériquement, aux outils Minecraft installés par ShenPulse.",
+  "assets": [
+    {
+      "id": "paper",
+      "sourceName": "paper-1.21-130.jar",
+      "remoteName": "paper-1.21-130.jar",
+      "size": 49049109,
+      "sha256": "ab9bb1afc3cea6978a0c03ce8448aa654fe8a9c4dddf341e7cbda1b0edaa73f5",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/paper-1.21-130.jar",
+      "external": true,
+      "role": "server"
+    },
+    {
+      "id": "java",
+      "sourceName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "remoteName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "size": 48850015,
+      "sha256": "7ee06c8f0636b22c7d4cb1e86799c8a1205a99e054bae1871f55308f4069aca9",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "external": true,
+      "role": "runtime"
+    },
+    {
+      "id": "autoClicker",
+      "sourceName": "AutoClicker.exe",
+      "remoteName": "AutoClicker.exe",
+      "size": 1187192,
+      "sha256": "1ce7da6f2813c2ad1d2e496be6714e08cd618e6d9fe2df26c2bd4d894c9a6ec1",
+      "role": "tool"
+    }
+  ]
+}

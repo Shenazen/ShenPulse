@@ -216,6 +216,54 @@ test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’éd
   );
 });
 
+test("Cult of the Lamb utilise le pack BepInEx versionné publié sur Backblaze", () => {
+  const installer = GAME_INSTALLERS["cult-of-the-lamb"];
+  const publishedManifest = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        root,
+        "resources",
+        "installer-assets",
+        "cult-of-the-lamb",
+        "1.0.2",
+        "manifest.json"
+      ),
+      "utf8"
+    )
+  );
+  assert.equal(installer.version, "1.0.2");
+  assert.equal(installer.autoDetect, true);
+  assert.equal(installer.unattended, true);
+  assert.deepEqual(installer.steamAppIds, ["1313140"]);
+  assert.deepEqual(
+    installer.executables,
+    ["Cult Of The Lamb.exe", "CultOfTheLamb.exe"]
+  );
+  assert.equal(publishedManifest.gameId, "cult-of-the-lamb");
+  assert.equal(publishedManifest.version, installer.version);
+  assert.deepEqual(
+    publishedManifest.assets.map((asset) => asset.id),
+    ["mod"]
+  );
+  const asset = installer.assets[0];
+  assert.equal(asset.size, publishedManifest.assets[0].size);
+  assert.equal(asset.sha256, publishedManifest.assets[0].sha256);
+  assert.equal(
+    asset.sha256,
+    "69a0f5a1fec72904d7acfc256de2b51dd562f7a4d9e628052a52eda69da323ea"
+  );
+  assert.match(
+    safeInstallerAssetUrl(asset.url),
+    /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/cult-of-the-lamb\/1\.0\.2\//
+  );
+  const runtime = fs.readFileSync(
+    path.join(root, "src", "main", "game-runtime.js"),
+    "utf8"
+  );
+  assert.match(runtime, /steamGameInstallCandidates/);
+  assert.match(runtime, /appmanifest_\$\{appId\}\.acf/);
+});
+
 test("la sauvegarde Enhanced choisit un emplacement libre et ne remplace jamais une sauvegarde existante", async () => {
   const temporaryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), "shenpulse-gta-save-")
@@ -387,9 +435,11 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
         "java",
         "plugin",
         "guard",
+        "effectsPatch",
         "config",
         "serverProperties",
-        "world"
+        "world",
+        "autoClicker"
       ]
     },
     {
@@ -401,7 +451,8 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
         "guard",
         "winGuard",
         "config",
-        "serverProperties"
+        "serverProperties",
+        "autoClicker"
       ]
     }
   ];
@@ -415,17 +466,21 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
           "resources",
           "installer-assets",
           expected.id,
-          "1.1.0",
+          "1.1.1",
           "manifest.json"
         ),
         "utf8"
       )
     );
-    assert.equal(installer.version, "1.1.0");
+    assert.equal(installer.version, "1.1.1");
     assert.equal(installer.managedTarget, true);
     assert.equal(installer.requiresMinecraftEula, true);
     assert.equal(installer.minecraftServer.port, 25565);
     assert.equal(installer.minecraftServer.serverJar, "paper-1.21-130.jar");
+    assert.deepEqual(installer.autoClicker, {
+      executable: "tools/AutoClicker.exe",
+      autoStart: true
+    });
     assert.equal(publishedManifest.gameId, expected.id);
     assert.equal(publishedManifest.version, installer.version);
     assert.deepEqual(
@@ -449,7 +504,7 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
       assert.match(
         safeInstallerAssetUrl(asset.url),
         new RegExp(
-          `^https://f003\\.backblazeb2\\.com/file/shenpulse-media/installer-assets/(?:minecraft-common/1\\.0\\.0|${expected.id}/1\\.1\\.0)/`
+          `^https://f003\\.backblazeb2\\.com/file/shenpulse-media/installer-assets/(?:minecraft-common/1\\.[01]\\.0|${expected.id}/1\\.1\\.[01])/`
         )
       );
     }
@@ -463,6 +518,9 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
   assert.match(runtime, /#startMinecraftServer/);
   assert.match(runtime, /async stop\(gameId\)/);
   assert.match(runtime, /await stopMinecraftServerRecord\(record\)/);
+  assert.match(runtime, /#startMinecraftAutoClicker/);
+  assert.match(runtime, /#stopMinecraftAutoClickers/);
+  assert.match(runtime, /AutoClicker Minecraft ShenPulse est introuvable/);
   assert.match(runtime, /127\.0\.0\.1/);
   assert.match(runtime, /"nogui"/);
 });

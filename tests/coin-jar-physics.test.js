@@ -10,312 +10,342 @@ const {
   rightWallAt,
   floorAt,
   constrainToJar,
-  packContainedBodies,
   step
 } = require("../resources/overlays/coin-jar-physics");
+
+function seededRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function spawnGift(bodies, geometry, value, random) {
+  const diameter = giftDiameter(value, geometry.width);
+  const radius = diameter / 2;
+  const body = createBody({
+    x:
+      geometry.centerX +
+      (random() - 0.5) *
+        Math.max(
+          diameter,
+          geometry.mouthRight - geometry.mouthLeft - diameter * 2.4
+        ),
+    y: -radius - random() * geometry.height * 0.035,
+    vx: (random() - 0.5) * geometry.width * 0.13,
+    vy: geometry.height * (0.05 + random() * 0.08),
+    radius,
+    angle: (random() - 0.5) * 120,
+    angularVelocity: (random() - 0.5) * 120
+  });
+  bodies.push(body);
+  return body;
+}
+
+function discardSpilled(bodies, result) {
+  for (let index = bodies.length - 1; index >= 0; index -= 1) {
+    if (bodies[index].state !== "spilled") continue;
+    result.spilled += 1;
+    bodies.splice(index, 1);
+  }
+}
+
+function runBurst(
+  bodies,
+  geometry,
+  { count, value, random, cadence = 0.014, frameTime = 1 / 60 },
+  result
+) {
+  let spawned = 0;
+  let elapsed = 0;
+  let nextSpawn = 0;
+  while (spawned < count) {
+    while (spawned < count && nextSpawn <= elapsed + 1e-9) {
+      spawnGift(bodies, geometry, value, random);
+      spawned += 1;
+      nextSpawn += cadence;
+    }
+    step(bodies, geometry, frameTime);
+    discardSpilled(bodies, result);
+    elapsed += frameTime;
+  }
+}
+
+function settle(
+  bodies,
+  geometry,
+  result,
+  { frameTime = 1 / 60, maximumFrames = 1800 } = {}
+) {
+  for (let frame = 1; frame <= maximumFrames; frame += 1) {
+    step(bodies, geometry, frameTime);
+    discardSpilled(bodies, result);
+    if (
+      bodies.every(
+        (body) => body.state === "contained" && body.sleeping
+      )
+    ) {
+      result.settleFrames.push(frame);
+      return;
+    }
+  }
+  const remaining = bodies.filter((body) => !body.sleeping);
+  assert.fail(
+    `${remaining.length} cadeau(x) encore actif(s) après ${maximumFrames} frames`
+  );
+}
+
+function snapshot(bodies) {
+  return bodies.map((body) => ({
+    body,
+    x: body.x,
+    y: body.y,
+    angle: body.angle
+  }));
+}
+
+function assertSnapshotUnchanged(stable) {
+  for (const position of stable) {
+    assert.equal(position.body.x, position.x);
+    assert.equal(position.body.y, position.y);
+    assert.equal(position.body.angle, position.angle);
+  }
+}
+
+function assertStablePile(bodies, geometry) {
+  assert.ok(bodies.length > 0);
+  assert.ok(
+    bodies.every(
+      (body) => body.state === "contained" && body.sleeping
+    )
+  );
+
+  for (const body of bodies) {
+    const sampleY = Math.max(geometry.wallTop, body.y);
+    assert.ok(
+      body.x - body.radius >= leftWallAt(geometry, sampleY) - 0.001,
+      "le cercle physique doit rester à droite de la paroi gauche"
+    );
+    assert.ok(
+      body.x + body.radius <= rightWallAt(geometry, sampleY) + 0.001,
+      "le cercle physique doit rester à gauche de la paroi droite"
+    );
+    assert.ok(
+      body.y + body.radius <= floorAt(geometry, body.x) + 0.001,
+      "le cercle physique ne doit pas traverser le fond"
+    );
+  }
+
+  for (let left = 0; left < bodies.length; left += 1) {
+    for (let right = left + 1; right < bodies.length; right += 1) {
+      const first = bodies[left];
+      const second = bodies[right];
+      const radiusSum = first.radius + second.radius;
+      const distance = Math.hypot(
+        first.x - second.x,
+        first.y - second.y
+      );
+      const invisibleImageMargin = radiusSum * 0.08 + 0.05;
+      assert.ok(
+        distance + invisibleImageMargin >= radiusSum,
+        "deux images cadeaux visibles ne doivent pas se chevaucher"
+      );
+    }
+  }
+}
 
 test("les cadeaux prennent plus de place selon leur valeur en pièces", () => {
   const rose = giftDiameter(1, 500);
   const medium = giftDiameter(100, 500);
   const premium = giftDiameter(10000, 500);
 
-  assert.ok(rose <= 16, "une Rose à une pièce doit rester petite");
+  assert.ok(rose <= 16);
   assert.ok(medium > rose);
   assert.ok(premium > medium);
-  assert.ok(premium <= 75, "un cadeau premium ne doit pas boucher seul le bocal");
+  assert.ok(premium <= 75);
 });
 
-test("un cadeau contenu repose sur le vrai fond et ne traverse pas le bocal", () => {
+test("la géométrie reste volontairement à l'intérieur du masque fantasy", () => {
   const geometry = createGeometry(500, 500);
+
+  assert.equal(geometry.mouthLeft, 167.5);
+  assert.equal(geometry.mouthRight, 332.5);
+  assert.ok(leftWallAt(geometry, 250) >= 132.5);
+  assert.ok(rightWallAt(geometry, 250) <= 367.5);
+  assert.equal(geometry.floorY, 430);
+});
+
+test("un cadeau n'est contenu qu'une fois entièrement passé sous le col", () => {
+  const geometry = createGeometry(500, 500);
+  const radius = 10;
   const body = createBody({
     x: geometry.centerX,
-    y: geometry.floorY + 100,
-    vy: 500,
-    radius: 12,
-    state: "contained"
+    y: geometry.mouthTop + radius - 0.01,
+    radius
   });
 
   constrainToJar(body, geometry);
+  assert.equal(body.state, "entering");
 
-  assert.equal(body.y, floorAt(geometry, body.x) - body.radius);
+  body.y = geometry.mouthTop + radius + 0.01;
+  constrainToJar(body, geometry);
   assert.equal(body.state, "contained");
 });
 
-test("les parois retiennent les cadeaux tant qu'ils sont dans le bocal", () => {
+test("les parois et le fond retiennent les cadeaux contenus", () => {
   const geometry = createGeometry(500, 500);
-  const y = 280;
   const radius = 12;
   const left = createBody({
     x: 0,
-    y,
+    y: 280,
     vx: -200,
     radius,
     state: "contained"
   });
   const right = createBody({
     x: 500,
-    y,
+    y: 280,
     vx: 200,
+    radius,
+    state: "contained"
+  });
+  const floor = createBody({
+    x: geometry.centerX,
+    y: geometry.floorY + 100,
+    vy: 500,
     radius,
     state: "contained"
   });
 
   constrainToJar(left, geometry);
   constrainToJar(right, geometry);
+  constrainToJar(floor, geometry);
 
-  assert.equal(left.x, leftWallAt(geometry, y) + radius);
-  assert.equal(right.x, rightWallAt(geometry, y) - radius);
-  assert.equal(left.state, "contained");
-  assert.equal(right.state, "contained");
+  assert.equal(left.x, leftWallAt(geometry, 280) + radius);
+  assert.equal(right.x, rightWallAt(geometry, 280) - radius);
+  assert.equal(floor.y, floorAt(geometry, floor.x) - radius);
 });
 
-test("un cadeau ne devient renversé qu'après être ressorti par l'ouverture", () => {
-  const geometry = createGeometry(500, 500);
-  const inside = createBody({
-    x: geometry.mouthLeft - 40,
-    y: geometry.wallTop + 30,
-    radius: 10,
-    state: "contained"
-  });
-  constrainToJar(inside, geometry);
-  assert.equal(inside.state, "contained");
+for (const value of [1, 5]) {
+  test(
+    `200 cadeaux value=${value}, puis +1 et +5, restent naturels et stables`,
+    { timeout: 120000 },
+    () => {
+      const geometry = createGeometry(500, 500);
+      const bodies = [];
+      const random = seededRandom(7300 + value);
+      const result = { spilled: 0, settleFrames: [] };
 
-  const aboveOpening = createBody({
-    x: geometry.mouthLeft - 20,
-    y: geometry.wallTop - 20,
-    radius: 8,
-    state: "contained"
-  });
-  constrainToJar(aboveOpening, geometry);
-  assert.equal(aboveOpening.state, "spilled");
-});
-
-test("la gravité remplit le bocal depuis son fond", () => {
-  const geometry = createGeometry(500, 500);
-  const bodies = Array.from({ length: 8 }, (_value, index) =>
-    createBody({
-      x: geometry.centerX + (index % 2 ? 8 : -8),
-      y: -20 - index * 18,
-      radius: 11
-    })
-  );
-
-  for (let frame = 0; frame < 360; frame += 1) {
-    step(bodies, geometry, 1 / 60);
-  }
-
-  assert.ok(bodies.every((body) => body.state === "contained"));
-  assert.ok(
-    bodies.every(
-      (body) => body.y + body.radius <= floorAt(geometry, body.x) + 0.001
-    )
-  );
-  assert.ok(
-    bodies.some(
-      (body) =>
-        body.y + body.radius >= geometry.floorY - geometry.height * 0.08
-    ),
-    "au moins un cadeau doit être posé au fond"
-  );
-});
-
-test("une rafale de 500 Roses conserve 500 cadeaux visibles sans chevauchement", () => {
-  const geometry = createGeometry(500, 500);
-  const radius = giftDiameter(1, 500) / 2;
-  const bodies = Array.from({ length: 500 }, (_value, index) =>
-    createBody({
-      x: 120 + (index * 73) % 260,
-      y: 430 - (index % 24) * 8,
-      radius,
-      angularVelocity: 90,
-      state: "contained"
-    })
-  );
-
-  const result = packContainedBodies(bodies, geometry);
-
-  assert.deepEqual(result, { packed: 500, spilled: 0 });
-  assert.equal(
-    bodies.filter((body) => body.state === "contained").length,
-    500
-  );
-  assert.ok(bodies.every((body) => body.angularVelocity === 0));
-  assert.ok(
-    bodies
-      .filter((body) => body.state === "contained")
-      .every((body) => {
-        if (body.y + body.radius < geometry.wallTop) {
-          return (
-            body.x - body.radius >= geometry.mouthLeft &&
-            body.x + body.radius <= geometry.mouthRight
-          );
-        }
-        return (
-          body.x - body.radius >= leftWallAt(geometry, body.y) &&
-          body.x + body.radius <= rightWallAt(geometry, body.y)
-        );
-      }),
-    "aucun cadeau ne doit dépasser des parois visibles"
-  );
-  for (let left = 0; left < bodies.length; left += 1) {
-    for (let right = left + 1; right < bodies.length; right += 1) {
-      const distance = Math.hypot(
-        bodies[left].x - bodies[right].x,
-        bodies[left].y - bodies[right].y
+      runBurst(
+        bodies,
+        geometry,
+        { count: 200, value, random },
+        result
       );
-      assert.ok(
-        distance + 0.001 >= bodies[left].radius + bodies[right].radius
+      settle(bodies, geometry, result);
+      assertStablePile(bodies, geometry);
+
+      const firstPile = snapshot(bodies);
+      runBurst(
+        bodies,
+        geometry,
+        { count: 1, value, random, cadence: 0.072 },
+        result
+      );
+      settle(bodies, geometry, result);
+      assertSnapshotUnchanged(firstPile);
+
+      const secondPile = snapshot(bodies);
+      runBurst(
+        bodies,
+        geometry,
+        { count: 5, value, random, cadence: 0.072 },
+        result
+      );
+      settle(bodies, geometry, result);
+      assertSnapshotUnchanged(secondPile);
+      assertStablePile(bodies, geometry);
+
+      const finalPile = snapshot(bodies);
+      for (let frame = 0; frame < 120; frame += 1) {
+        step(bodies, geometry, 1 / 60);
+      }
+      assertSnapshotUnchanged(finalPile);
+      assert.equal(
+        bodies.some((body) => body.state === "entering"),
+        false
       );
     }
-  }
-});
-
-test("ajouter 5 Roses après une rafale de 200 ne déplace aucun cadeau déjà posé", () => {
-  const geometry = createGeometry(500, 500);
-  const radius = giftDiameter(1, 500) / 2;
-  const original = Array.from({ length: 200 }, (_value, index) =>
-    createBody({
-      x: 120 + (index * 73) % 260,
-      y: 420 - (index % 18) * 10,
-      radius,
-      state: "contained"
-    })
   );
+}
 
-  assert.deepEqual(
-    packContainedBodies(original, geometry),
-    { packed: 200, spilled: 0 }
-  );
-  const stablePositions = original.map(({ x, y }) => ({ x, y }));
-  const additions = Array.from({ length: 5 }, (_value, index) =>
-    createBody({
-      x: geometry.centerX + (index - 2) * radius,
-      y: geometry.wallTop + index * radius,
-      radius,
-      state: "contained"
-    })
-  );
-  const bodies = [...original, ...additions];
-
-  const result = packContainedBodies(bodies, geometry);
-
-  assert.deepEqual(result, { packed: 205, spilled: 0 });
-  assert.deepEqual(
-    original.map(({ x, y }) => ({ x, y })),
-    stablePositions
-  );
-  assert.ok(bodies.every((body) => body.sleeping));
-  for (let left = 0; left < bodies.length; left += 1) {
-    for (let right = left + 1; right < bodies.length; right += 1) {
-      assert.ok(
-        Math.hypot(
-          bodies[left].x - bodies[right].x,
-          bodies[left].y - bodies[right].y
-        ) + 0.001 >= bodies[left].radius + bodies[right].radius
+test(
+  "le solveur converge aussi avec des frames de 8, 33 et 50 ms",
+  { timeout: 120000 },
+  () => {
+    for (const frameTime of [0.008, 0.033, 0.05]) {
+      const geometry = createGeometry(500, 500);
+      const bodies = [];
+      const result = { spilled: 0, settleFrames: [] };
+      const random = seededRandom(Math.round(frameTime * 100000));
+      runBurst(
+        bodies,
+        geometry,
+        {
+          count: 40,
+          value: 5,
+          random,
+          cadence: 0.014,
+          frameTime
+        },
+        result
       );
+      settle(bodies, geometry, result, { frameTime });
+      assertStablePile(bodies, geometry);
     }
   }
-});
+);
 
-test("un nouveau cadeau ne réveille pas les Roses déjà rangées", () => {
+test("un cadeau bloqué dans le col est renversé au lieu de trembler", () => {
   const geometry = createGeometry(500, 500);
-  const radius = giftDiameter(1, 500) / 2;
-  const stable = Array.from({ length: 200 }, (_value, index) =>
-    createBody({
-      x: 120 + (index * 73) % 260,
-      y: 420 - (index % 18) * 10,
-      radius,
-      state: "contained"
-    })
-  );
-  packContainedBodies(stable, geometry);
-  const stablePositions = stable.map(({ x, y }) => ({ x, y }));
-  const newcomer = createBody({
+  const radius = giftDiameter(5, 500) / 2;
+  const blocker = createBody({
     x: geometry.centerX,
-    y: geometry.wallTop - radius,
-    vy: 80,
-    radius
+    y: geometry.mouthTop + radius * 2.5,
+    radius,
+    state: "contained",
+    sleeping: true,
+    restX: geometry.centerX,
+    restY: geometry.mouthTop + radius * 2.5
+  });
+  const entering = createBody({
+    x: geometry.centerX,
+    y: geometry.mouthTop - radius,
+    radius,
+    vy: 50
   });
 
   for (let frame = 0; frame < 120; frame += 1) {
-    step([...stable, newcomer], geometry, 1 / 60);
+    step([blocker, entering], geometry, 1 / 60);
+    if (entering.state === "spilled") break;
   }
 
-  assert.deepEqual(
-    stable.map(({ x, y }) => ({ x, y })),
-    stablePositions
-  );
+  assert.equal(entering.state, "spilled");
+  assert.equal(blocker.sleeping, true);
 });
 
-test("la position de repos reste inviolable pendant toute nouvelle chute", () => {
+test("les bords du cadeau, pas seulement son centre, doivent tenir dans le col", () => {
   const geometry = createGeometry(500, 500);
-  const radius = giftDiameter(1, 500) / 2;
-  const stable = Array.from({ length: 200 }, (_value, index) =>
-    createBody({
-      x: 120 + (index * 73) % 260,
-      y: 420 - (index % 18) * 10,
-      radius,
-      state: "contained"
-    })
-  );
-  packContainedBodies(stable, geometry);
-  const stablePositions = stable.map(({ restX, restY }) => ({
-    x: restX,
-    y: restY
-  }));
-  const newcomer = createBody({
-    x: geometry.centerX,
-    y: geometry.mouthTop - radius,
-    vy: 120,
-    radius
-  });
-
-  for (let frame = 0; frame < 180; frame += 1) {
-    step([...stable, newcomer], geometry, 1 / 60);
-    assert.deepEqual(
-      stable.map(({ x, y }) => ({ x, y })),
-      stablePositions
-    );
-  }
-});
-
-test("un cadeau posé dans le col est rangé même si la pile est déjà haute", () => {
-  const geometry = createGeometry(500, 500);
-  const radius = giftDiameter(1, 500) / 2;
-  const body = createBody({
-    x: geometry.centerX,
-    y: geometry.mouthTop,
+  const radius = giftDiameter(5, 500) / 2;
+  const wedged = createBody({
+    x: geometry.mouthLeft + radius - 0.5,
+    y: geometry.wallTop - radius - 0.01,
     radius,
-    state: "entering"
+    state: "contained"
   });
 
-  constrainToJar(body, geometry);
+  constrainToJar(wedged, geometry);
 
-  assert.equal(body.state, "contained");
-});
-
-test("le surplus ressort par le col une fois la capacité physique dépassée", () => {
-  const geometry = createGeometry(500, 500);
-  const radius = giftDiameter(1, 500) / 2;
-  const bodies = Array.from({ length: 650 }, (_value, index) =>
-    createBody({
-      x: 120 + (index * 61) % 260,
-      y: 430 - (index % 30) * 9,
-      radius,
-      state: "contained"
-    })
-  );
-
-  const result = packContainedBodies(bodies, geometry);
-  const spilled = bodies.filter((body) => body.state === "spilled");
-
-  assert.ok(result.spilled > 0);
-  assert.equal(spilled.length, result.spilled);
-  assert.ok(
-    spilled.every(
-      (body) =>
-        body.y + body.radius < geometry.wallTop &&
-        (body.x < geometry.mouthLeft || body.x > geometry.mouthRight)
-    )
-  );
+  assert.equal(wedged.state, "spilled");
 });

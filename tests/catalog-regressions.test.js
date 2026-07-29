@@ -30,6 +30,10 @@ const overlayRuntime = fs.readFileSync(
   path.join(root, "resources", "overlays", "overlay.js"),
   "utf8"
 );
+const coinJarPhysics = fs.readFileSync(
+  path.join(root, "resources", "overlays", "coin-jar-physics.js"),
+  "utf8"
+);
 const overlayHtml = fs.readFileSync(
   path.join(root, "resources", "overlays", "index.html"),
   "utf8"
@@ -275,7 +279,16 @@ test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
   assert.doesNotMatch(overlayRuntime, /setTimeout\(\(\) => node\.remove\(\), 8000\)/);
   assert.match(overlayHtml, /coin-jar-physics\.js[\s\S]*overlay\.js/);
   assert.match(overlayCss, /html\[data-jar-model="fantasy"\] #coin-jar-back[\s\S]*scale\(1\.14\)/);
-  assert.match(overlayCss, /\.coin-jar-meter span[\s\S]*radial-gradient/);
+  assert.match(overlayHtml, /id="coin-jar-glass-clip"/);
+  assert.match(overlayHtml, /id="coin-jar-contained-drops"[\s\S]*id="coin-jar-overflow-drops"/);
+  assert.match(overlayCss, /\.coin-jar-contained-drops\s*\{[\s\S]*clip-path:\s*url\("#coin-jar-glass-clip"\)/);
+  assert.match(overlayRuntime, /gift\.y - gift\.radius >= coinJarGeometry\.mouthTop/);
+  assert.match(overlayRuntime, /jar-test-back-clean-localized\.png/);
+  assert.doesNotMatch(overlayHtml, /coin-jar-meter/);
+  assert.doesNotMatch(overlayCss, /\.coin-jar-meter/);
+  assert.doesNotMatch(overlayRuntime, /packContainedBodies/);
+  assert.doesNotMatch(coinJarPhysics, /packContainedBodies/);
+  assert.doesNotMatch(overlayCss, /rgba\(255,\s*213,\s*82/);
   assert.doesNotMatch(overlayHtml, /class="coin-jar-label"/);
   assert.match(renderer, /giftImageUrl:\s*selectedGift\?\.imageUrl/);
 });

@@ -195,19 +195,28 @@ class GameHub extends EventEmitter {
         Number(parameter.defaultValue || 0)
       ])
     );
+    const parameters = {
+      ...defaultParameters,
+      ...(options.parameters || {})
+    };
+    const configuredDuration =
+      effect.durationParameter &&
+      Object.prototype.hasOwnProperty.call(
+        parameters,
+        effect.durationParameter
+      )
+        ? parameters[effect.durationParameter]
+        : options.duration ?? effect.duration ?? 0;
     const payload = {
       requestId,
       type: 1,
       effect: {
-        code: effect.code || effect.id,
+        code: "",
         viewer: safeString(context.user?.displayName || context.user?.name || "Viewer", 120),
         viewerId: safeString(context.user?.id || "anonymous", 120),
         quantity: Number(options.quantity || effect.quantity || 1),
-        duration: Number(options.duration || effect.duration || 0),
-        parameters: {
-          ...defaultParameters,
-          ...(options.parameters || {})
-        }
+        duration: Number(configuredDuration || 0),
+        parameters
       }
     };
     const commandTemplates = Array.isArray(effect.commands)
@@ -218,7 +227,7 @@ class GameHub extends EventEmitter {
     );
     payload.effect.command = payload.effect.commands[0];
     payload.effect.code = interpolateCommand(
-      effect.code || effect.id,
+      resolveEffectCode(effect, payload.effect),
       payload.effect
     );
     this.emit("effect-start", { pack, effect, payload, context });
@@ -407,7 +416,16 @@ class GameHub extends EventEmitter {
 
   async #sendTcpServer(pack, connector, payload) {
     const bridge = await this.#getServerBridge(pack, connector);
-    return bridge.send(payload.effect.code, payload.effect);
+    const durationMultiplier = Math.max(
+      1,
+      Number(connector.durationMultiplier || 1)
+    );
+    return bridge.send(payload.effect.code, {
+      ...payload.effect,
+      duration: Math.round(
+        Number(payload.effect.duration || 0) * durationMultiplier
+      )
+    });
   }
 
   async #sendWebSocket(pack, connector, payload) {
@@ -567,6 +585,21 @@ function interpolateCommand(template, effect) {
   );
 }
 
+function resolveEffectCode(effect, runtimeEffect) {
+  const variant = effect?.codeByParameter;
+  const parameterId = String(variant?.parameter || "");
+  if (parameterId) {
+    const rawValue = runtimeEffect?.parameters?.[parameterId];
+    const numericValue = Number(rawValue);
+    const key = Number.isFinite(numericValue)
+      ? String(Math.round(numericValue))
+      : String(rawValue || "");
+    const mapped = variant.values?.[key];
+    if (mapped) return String(mapped);
+  }
+  return String(effect?.code || effect?.id || "");
+}
+
 function rconPacket(requestId, type, body) {
   const payload = Buffer.from(`${body}\0\0`, "utf8");
   const packet = Buffer.alloc(12 + Buffer.byteLength(body, "utf8") + 2);
@@ -635,6 +668,7 @@ function rconRequest(connector, password, command) {
 module.exports = {
   GameHub,
   interpolateCommand,
+  resolveEffectCode,
   rconPacket,
   readRconPacket,
   validatePack

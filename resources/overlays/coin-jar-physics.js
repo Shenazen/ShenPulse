@@ -31,11 +31,11 @@
       width: safeWidth,
       height: safeHeight,
       centerX: safeWidth * 0.5,
-      mouthTop: safeHeight * 0.08,
-      mouthLeft: safeWidth * 0.285,
-      mouthRight: safeWidth * 0.715,
-      wallTop: safeHeight * 0.185,
-      floorY: safeHeight * 0.865,
+      mouthTop: safeHeight * 0.075,
+      mouthLeft: safeWidth * 0.335,
+      mouthRight: safeWidth * 0.665,
+      wallTop: safeHeight * 0.17,
+      floorY: safeHeight * 0.86,
       gravity: safeHeight * 4.35
     };
   }
@@ -44,11 +44,11 @@
     const verticalRange = Math.max(1, geometry.floorY - geometry.wallTop);
     const progress = clamp((y - geometry.wallTop) / verticalRange, 0, 1);
     let ratio;
-    if (progress < 0.2) {
-      ratio = 0.285 - 0.052 * (progress / 0.2);
+    if (progress < 0.21) {
+      ratio = 0.335 - 0.07 * (progress / 0.21);
     } else {
       const bottomCurve = clamp((progress - 0.74) / 0.26, 0, 1);
-      ratio = 0.233 + 0.025 * bottomCurve * bottomCurve;
+      ratio = 0.265 + 0.02 * bottomCurve * bottomCurve;
     }
     return geometry.width * ratio;
   }
@@ -58,7 +58,7 @@
   }
 
   function floorAt(geometry, x) {
-    const halfInterior = geometry.width * 0.267;
+    const halfInterior = geometry.width * 0.235;
     const horizontal = Math.abs(x - geometry.centerX) / halfInterior;
     const corner = clamp((horizontal - 0.7) / 0.3, 0, 1);
     return geometry.floorY - geometry.height * 0.052 * Math.pow(corner, 1.8);
@@ -80,6 +80,19 @@
       angularVelocity: finiteNumber(options.angularVelocity),
       state,
       sleeping: state === "contained" && Boolean(options.sleeping),
+      supported: false,
+      supportFrames: Math.max(0, finiteNumber(options.supportFrames)),
+      entrySupportFrames: Math.max(
+        0,
+        finiteNumber(options.entrySupportFrames)
+      ),
+      stationaryFrames: Math.max(
+        0,
+        finiteNumber(options.stationaryFrames)
+      ),
+      contactPenetration: 0,
+      frameStartX: finiteNumber(options.x),
+      frameStartY: finiteNumber(options.y, -radius),
       restX: Number.isFinite(Number(options.restX))
         ? Number(options.restX)
         : null,
@@ -106,7 +119,7 @@
 
     if (
       body.state === "entering" &&
-      body.y + body.radius >= geometry.mouthTop &&
+      body.y - body.radius >= geometry.mouthTop &&
       safelyInsideMouth
     ) {
       body.state = "contained";
@@ -117,7 +130,8 @@
       body.state === "contained" &&
       body.y + body.radius < geometry.wallTop;
     const outsideOpening =
-      body.x < geometry.mouthLeft || body.x > geometry.mouthRight;
+      body.x - body.radius < geometry.mouthLeft ||
+      body.x + body.radius > geometry.mouthRight;
     if (completelyAboveWalls && outsideOpening) body.state = "spilled";
   }
 
@@ -132,11 +146,11 @@
       const openingRight = geometry.mouthRight - body.radius;
       if (body.x < openingLeft) {
         body.x = openingLeft;
-        if (body.vx < 0) body.vx = -body.vx * 0.18;
+        if (body.vx < 0) body.vx = -body.vx * 0.08;
         touched = true;
       } else if (body.x > openingRight) {
         body.x = openingRight;
-        if (body.vx > 0) body.vx = -body.vx * 0.18;
+        if (body.vx > 0) body.vx = -body.vx * 0.08;
         touched = true;
       }
     }
@@ -148,12 +162,12 @@
       const right = rightWallAt(geometry, sampleY) - body.radius;
       if (body.x < left) {
         body.x = left;
-        if (body.vx < 0) body.vx = -body.vx * 0.24;
+        if (body.vx < 0) body.vx = -body.vx * 0.08;
         body.angularVelocity += Math.abs(body.vy) * 0.012;
         touched = true;
       } else if (body.x > right) {
         body.x = right;
-        if (body.vx > 0) body.vx = -body.vx * 0.24;
+        if (body.vx > 0) body.vx = -body.vx * 0.08;
         body.angularVelocity -= Math.abs(body.vy) * 0.012;
         touched = true;
       }
@@ -162,10 +176,11 @@
     const floor = floorAt(geometry, body.x) - body.radius;
     if (body.y > floor) {
       body.y = floor;
-      if (body.vy > 0) body.vy = -body.vy * 0.12;
+      if (body.vy > 0) body.vy = -body.vy * 0.04;
       if (Math.abs(body.vy) < geometry.height * 0.012) body.vy = 0;
-      body.vx *= 0.82;
-      body.angularVelocity *= 0.82;
+      body.vx *= 0.65;
+      body.angularVelocity *= 0.68;
+      body.supported = true;
       touched = true;
     }
 
@@ -186,30 +201,55 @@
     const normalX = distanceSquared ? dx / distance : 1;
     const normalY = distanceSquared ? dy / distance : 0;
     const overlap = minimumDistance - distance;
+    if (!left.sleeping) {
+      left.contactPenetration = Math.max(left.contactPenetration, overlap);
+    }
+    if (!right.sleeping) {
+      right.contactPenetration = Math.max(right.contactPenetration, overlap);
+    }
     const inverseLeftMass = left.sleeping ? 0 : 1 / left.mass;
     const inverseRightMass = right.sleeping ? 0 : 1 / right.mass;
     const inverseMassTotal = inverseLeftMass + inverseRightMass;
-    const correction = Math.max(0, overlap - 0.02) / inverseMassTotal * 0.96;
+    const correction = Math.max(0, overlap - 0.01) / inverseMassTotal * 0.985;
 
     left.x -= normalX * correction * inverseLeftMass;
     left.y -= normalY * correction * inverseLeftMass;
     right.x += normalX * correction * inverseRightMass;
     right.y += normalY * correction * inverseRightMass;
 
+    if (normalY > 0.28 && !left.sleeping) left.supported = true;
+    if (normalY < -0.28 && !right.sleeping) right.supported = true;
+
     const relativeX = right.vx - left.vx;
     const relativeY = right.vy - left.vy;
     const normalSpeed = relativeX * normalX + relativeY * normalY;
+    let normalImpulse = 0;
     if (normalSpeed < 0) {
-      const impulse =
-        -(1.18 * normalSpeed) / inverseMassTotal;
-      left.vx -= impulse * normalX * inverseLeftMass;
-      left.vy -= impulse * normalY * inverseLeftMass;
-      right.vx += impulse * normalX * inverseRightMass;
-      right.vy += impulse * normalY * inverseRightMass;
+      normalImpulse = -(1.035 * normalSpeed) / inverseMassTotal;
+      left.vx -= normalImpulse * normalX * inverseLeftMass;
+      left.vy -= normalImpulse * normalY * inverseLeftMass;
+      right.vx += normalImpulse * normalX * inverseRightMass;
+      right.vy += normalImpulse * normalY * inverseRightMass;
+    }
 
-      const tangentSpeed = relativeX * -normalY + relativeY * normalX;
-      if (!left.sleeping) left.angularVelocity -= tangentSpeed * 0.002;
-      if (!right.sleeping) right.angularVelocity += tangentSpeed * 0.002;
+    const tangentX = -normalY;
+    const tangentY = normalX;
+    const tangentSpeed = relativeX * tangentX + relativeY * tangentY;
+    const desiredFriction = -tangentSpeed / inverseMassTotal;
+    const frictionLimit = Math.abs(normalImpulse) * 0.62 + overlap * 0.18;
+    const frictionImpulse = clamp(
+      desiredFriction,
+      -frictionLimit,
+      frictionLimit
+    );
+    left.vx -= frictionImpulse * tangentX * inverseLeftMass;
+    left.vy -= frictionImpulse * tangentY * inverseLeftMass;
+    right.vx += frictionImpulse * tangentX * inverseRightMass;
+    right.vy += frictionImpulse * tangentY * inverseRightMass;
+
+    if (normalSpeed < 0) {
+      if (!left.sleeping) left.angularVelocity -= tangentSpeed * 0.0012;
+      if (!right.sleeping) right.angularVelocity += tangentSpeed * 0.0012;
     }
     return true;
   }
@@ -252,106 +292,24 @@
     }
   }
 
-  function packedYAtX(body, x, placed, geometry) {
-    let y = floorAt(geometry, x) - body.radius;
-    for (const support of placed) {
-      const horizontal = x - support.x;
-      const minimumDistance = body.radius + support.radius;
-      if (Math.abs(horizontal) >= minimumDistance) continue;
-      const vertical = Math.sqrt(
-        Math.max(0, minimumDistance * minimumDistance - horizontal * horizontal)
-      );
-      y = Math.min(y, support.y - vertical);
-    }
-
-    if (y + body.radius >= geometry.wallTop) {
-      const wallY = Math.max(geometry.wallTop, y);
-      if (
-        x - body.radius < leftWallAt(geometry, wallY) ||
-        x + body.radius > rightWallAt(geometry, wallY)
-      ) {
-        return null;
-      }
-    } else if (
-      x - body.radius < geometry.mouthLeft ||
-      x + body.radius > geometry.mouthRight
-    ) {
-      return null;
-    }
-    return y;
-  }
-
-  function packContainedBodies(bodies, geometry) {
-    const anchored = bodies.filter(
-      (body) => body.state === "contained" && body.sleeping
-    );
-    for (const body of anchored) restoreSleepingBody(body);
-    const contained = bodies
-      .filter((body) => body.state === "contained" && !body.sleeping)
-      .sort((left, right) => right.y - left.y);
-    const placed = [...anchored];
-    let spilled = 0;
-
-    for (let index = 0; index < contained.length; index += 1) {
-      const body = contained[index];
-      const minimumX = geometry.width * 0.215 + body.radius;
-      const maximumX = geometry.width * 0.785 - body.radius;
-      const stepX = Math.max(3.5, body.radius * 0.72);
-      const candidates = [clamp(body.x, minimumX, maximumX)];
-      const offset = (index % 7) / 7 * stepX;
-      for (let x = minimumX + offset; x <= maximumX; x += stepX) {
-        candidates.push(x);
-      }
-
-      let best = null;
-      for (const x of candidates) {
-        const y = packedYAtX(body, x, placed, geometry);
-        if (y === null) continue;
-        if (
-          !best ||
-          y > best.y + 0.01 ||
-          (Math.abs(y - best.y) <= 0.01 &&
-            Math.abs(x - body.x) < Math.abs(best.x - body.x))
-        ) {
-          best = { x, y };
-        }
-      }
-
-      if (!best || best.y - body.radius < geometry.mouthTop) {
-        const spillRight = body.x >= geometry.centerX;
-        body.state = "spilled";
-        body.x = spillRight
-          ? geometry.mouthRight + body.radius * 0.35
-          : geometry.mouthLeft - body.radius * 0.35;
-        body.y = geometry.wallTop - body.radius - 1;
-        body.vx = geometry.width * (spillRight ? 0.24 : -0.24);
-        body.vy = -geometry.height * 0.08;
-        body.angularVelocity = spillRight ? 45 : -45;
-        body.sleeping = false;
-        body.restX = null;
-        body.restY = null;
-        spilled += 1;
-        continue;
-      }
-
-      body.x = best.x;
-      body.y = best.y;
-      body.vx = 0;
-      body.vy = 0;
-      body.angularVelocity = 0;
-      body.sleeping = true;
-      body.restX = body.x;
-      body.restY = body.y;
-      placed.push(body);
-    }
-    return { packed: placed.length, spilled };
-  }
-
   function step(bodies, geometry, elapsedSeconds) {
     const elapsed = clamp(finiteNumber(elapsedSeconds, 1 / 60), 1 / 240, 1 / 30);
     const substeps = Math.max(2, Math.ceil(elapsed / (1 / 120)));
     const delta = elapsed / substeps;
-    const collisionIterations = bodies.length >= 100 ? 4 : 3;
+    const movingBodies = bodies.reduce(
+      (total, body) =>
+        total + (!body.sleeping && body.state !== "spilled" ? 1 : 0),
+      0
+    );
+    const collisionIterations =
+      movingBodies >= 100 ? 24 : movingBodies >= 30 ? 16 : 10;
+
+    for (const body of bodies) {
+      body.supported = false;
+      body.contactPenetration = 0;
+      body.frameStartX = body.x;
+      body.frameStartY = body.y;
+    }
 
     for (let substep = 0; substep < substeps; substep += 1) {
       for (const body of bodies) {
@@ -360,9 +318,11 @@
           continue;
         }
         body.vy += geometry.gravity * delta;
-        body.vx *= Math.pow(0.992, delta * 60);
-        if (body.state === "contained") body.angularVelocity = 0;
-        else body.angularVelocity *= Math.pow(0.985, delta * 60);
+        body.vx *= Math.pow(0.982, delta * 60);
+        body.angularVelocity *= Math.pow(
+          body.state === "contained" ? 0.94 : 0.985,
+          delta * 60
+        );
         body.x += body.vx * delta;
         body.y += body.vy * delta;
         body.angle += body.angularVelocity * delta;
@@ -384,10 +344,70 @@
 
     let activity = 0;
     let falling = false;
+    let active = 0;
     for (const body of bodies) {
       markJarState(body, geometry);
-      if (body.state === "contained") body.angularVelocity = 0;
       if (body.sleeping) continue;
+      if (body.state === "entering") {
+        body.entrySupportFrames = body.supported
+          ? body.entrySupportFrames + 1
+          : 0;
+        if (body.entrySupportFrames >= 18) {
+          const spillRight = body.x >= geometry.centerX;
+          body.state = "spilled";
+          body.x = spillRight
+            ? geometry.mouthRight + body.radius * 0.45
+            : geometry.mouthLeft - body.radius * 0.45;
+          body.y = Math.min(
+            body.y,
+            geometry.wallTop - body.radius - 1
+          );
+          body.vx = geometry.width * (spillRight ? 0.2 : -0.2);
+          body.vy = -geometry.height * 0.12;
+          body.angularVelocity = spillRight ? 55 : -55;
+          body.restX = null;
+          body.restY = null;
+          active += 1;
+          falling = true;
+          continue;
+        }
+      } else {
+        body.entrySupportFrames = 0;
+      }
+      const restingContact =
+        body.supported || body.contactPenetration > 0.01;
+      if (body.state === "contained" && restingContact) {
+        body.vx *= 0.72;
+        body.vy *= 0.72;
+        body.angularVelocity *= 0.64;
+        body.supportFrames += 1;
+        const visibleDrift = Math.hypot(
+          body.x - body.frameStartX,
+          body.y - body.frameStartY
+        );
+        if (visibleDrift <= geometry.width * 0.0001) {
+          body.stationaryFrames += 1;
+        } else {
+          body.stationaryFrames = Math.max(0, body.stationaryFrames - 2);
+        }
+        if (
+          body.supportFrames >= 20 &&
+          body.stationaryFrames >= 20 &&
+          body.contactPenetration <= body.radius * 0.28
+        ) {
+          body.sleeping = true;
+          body.restX = body.x;
+          body.restY = body.y;
+          body.vx = 0;
+          body.vy = 0;
+          body.angularVelocity = 0;
+          continue;
+        }
+      } else {
+        body.supportFrames = 0;
+        body.stationaryFrames = 0;
+      }
+      active += 1;
       activity = Math.max(
         activity,
         Math.abs(body.vx),
@@ -396,7 +416,7 @@
       );
       if (body.state === "entering" || body.state === "spilled") falling = true;
     }
-    return { activity, falling };
+    return { activity, falling, active };
   }
 
   return {
@@ -407,7 +427,6 @@
     rightWallAt,
     floorAt,
     constrainToJar,
-    packContainedBodies,
     step
   };
 });

@@ -8,6 +8,11 @@ const {
   GTAV_MONT_CHILIAD_INTERACTION_CATALOG_VERSION
 } = require("./gtav-mont-chiliad-catalog");
 const {
+  CULT_OF_THE_LAMB_DEFAULT_MAPPINGS,
+  CULT_OF_THE_LAMB_EFFECTS,
+  CULT_OF_THE_LAMB_INTERACTION_CATALOG_VERSION
+} = require("./cult-of-the-lamb-catalog");
+const {
   MINECRAFT_BEDROCK_DEFAULT_MAPPINGS,
   MINECRAFT_BEDROCK_EFFECTS,
   MINECRAFT_BEDROCK_INTERACTION_CATALOG_VERSION,
@@ -32,34 +37,43 @@ const GTA_LOCAL_BRIDGE = Object.freeze({
   expectResponse: true
 });
 
+const CULT_OF_THE_LAMB_BRIDGE = Object.freeze({
+  type: "tcp-server",
+  host: "127.0.0.1",
+  port: 58431,
+  timeoutMs: 12000,
+  durationMultiplier: 1000,
+  expectResponse: true
+});
+
 const INTERNAL_GAMES = [
   game("coin-pusher", "Coin Pusher Live", {
     artwork: "catalog/coin-pusher.webp",
-    included: true,
+    price: 4.99,
     requiresPro: true,
     effects: ["Pluie de pièces", "Pousser le plateau", "Pièce mystère", "Bonus multiplicateur", "Ralentir le poussoir", "Réinitialiser la manche"]
   }),
   game("connect-four", "Puissance 4 Arena", {
     artwork: "catalog/connect-four.png",
-    price: 9.99,
+    price: 4.99,
     requiresPro: true,
     effects: ["Jeton rouge", "Jeton jaune", "Colonne aléatoire", "Bloquer une colonne", "Effacer un jeton", "Nouvelle manche"]
   }),
   game("deal-or-no-deal", "DealOrNoDeal", {
     artwork: "catalog/deal-or-no-deal.png",
-    price: 24.99,
+    price: 4.99,
     requiresPro: true,
     effects: ["Ouvrir une boîte", "Offre du banquier", "Refuser l'offre", "Accepter l'offre", "Boîte premium"]
   }),
   game("diamond-bridge", "Le Pont des Diamants", {
     artwork: "catalog/diamond-bridge.svg",
-    price: 19.99,
+    included: true,
     requiresPro: true,
     effects: ["Avancer", "Reculer", "Ajouter un diamant", "Retirer un diamant", "Piège du pont"]
   }),
   game("diamond-drop", "Diamond Drop Live", {
     artwork: "catalog/diamond-drop.png",
-    price: 19.99,
+    price: 4.99,
     requiresPro: true,
     effects: ["Lâcher un diamant", "Pluie de diamants", "Bombe", "Multiplicateur", "Nettoyer le plateau"]
   }),
@@ -71,7 +85,7 @@ const INTERNAL_GAMES = [
   }),
   game("gtav-montchiliad", "GTA V Mont Chiliad", {
     artwork: "catalog/gtav-montchiliad.png",
-    price: 30,
+    included: true,
     requiresPro: true,
     installerVersion: "1.0.3",
     connector: GTA_LOCAL_BRIDGE,
@@ -84,7 +98,7 @@ const INTERNAL_GAMES = [
     artwork: "catalog/minecraft-bedrock-box.jpg",
     included: true,
     requiresPro: true,
-    installerVersion: "1.1.0",
+    installerVersion: "1.1.1",
     connector: { type: "minecraft-runtime" },
     effects: MINECRAFT_BEDROCK_EFFECTS,
     defaultMappings: MINECRAFT_BEDROCK_DEFAULT_MAPPINGS,
@@ -95,7 +109,7 @@ const INTERNAL_GAMES = [
     artwork: "catalog/minecraft-sandbox-3.jpg",
     included: true,
     requiresPro: true,
-    installerVersion: "1.1.0",
+    installerVersion: "1.1.1",
     connector: { type: "minecraft-runtime" },
     effects: MINECRAFT_SANDBOX_EFFECTS,
     defaultMappings: MINECRAFT_SANDBOX_DEFAULT_MAPPINGS,
@@ -113,8 +127,12 @@ const INTERNAL_GAMES = [
     artwork: "catalog/cult-of-the-lamb.png",
     included: true,
     requiresPro: true,
-    connector: LOCAL_BRIDGE,
-    effects: ["Ajouter un fidèle", "Ressusciter", "Rendre malade", "Donner de la foi", "Retirer de la foi", "Lancer un rituel"]
+    installerVersion: "1.0.2",
+    connector: CULT_OF_THE_LAMB_BRIDGE,
+    effects: CULT_OF_THE_LAMB_EFFECTS,
+    defaultMappings: CULT_OF_THE_LAMB_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      CULT_OF_THE_LAMB_INTERACTION_CATALOG_VERSION
   }),
   game("stardew-valley", "Stardew Valley", {
     artwork: "catalog/stardew-valley.png",
@@ -265,7 +283,7 @@ const GAME_GUIDES = Object.freeze({
     "Installe le plugin Survival dans un serveur compatible et vérifie son port local."
   ),
   "cult-of-the-lamb": modGuide(
-    "Ferme le jeu, sélectionne son dossier et installe le pont Cult of the Lamb."
+    "ShenPulse détecte Cult of the Lamb, installe BepInEx et son pont local, puis charge les interactions historiques du pack."
   ),
   "stardew-valley": modGuide(
     "Installe SMAPI, ajoute le mod d’interactions puis lance Stardew Valley via SMAPI."

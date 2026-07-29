@@ -14,10 +14,16 @@ const GTA_ENHANCED_PLUGIN_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-montchiliad/1.0.3";
 const MINECRAFT_COMMON_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0";
+const MINECRAFT_COMMON_TOOLS_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.1.0";
 const MINECRAFT_BEDROCK_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.0";
+const MINECRAFT_BEDROCK_PATCH_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.1";
 const MINECRAFT_SANDBOX_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-sandbox-3/1.1.0";
+const CULT_OF_THE_LAMB_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/cult-of-the-lamb/1.0.2";
 
 const GAME_INSTALLERS = Object.freeze({
   "gtav-montchiliad": {
@@ -102,15 +108,26 @@ const GAME_INSTALLERS = Object.freeze({
     ]
   },
   "cult-of-the-lamb": {
+    version: "1.0.2",
     title: "Cult of the Lamb",
     targetLabel: "dossier contenant Cult Of The Lamb.exe",
-    executables: ["Cult Of The Lamb.exe"],
-    launchExecutables: ["Cult Of The Lamb.exe"],
+    autoDetect: true,
+    unattended: true,
+    directoryNames: ["Cult of the Lamb", "CultOfTheLamb"],
+    steamAppIds: ["1313140"],
+    executables: ["Cult Of The Lamb.exe", "CultOfTheLamb.exe"],
+    launchExecutables: ["Cult Of The Lamb.exe", "CultOfTheLamb.exe"],
+    warning:
+      "Cult of the Lamb doit être fermé. ShenPulse sauvegarde les fichiers remplacés avant d’installer BepInEx et le pont local.",
     assets: [
       {
         id: "mod",
-        fileName: "CultOfTheLamb-CC.zip",
-        action: "extract"
+        fileName: "cult-of-the-lamb-shenpulse-1.0.2.zip",
+        action: "extract",
+        size: 716315,
+        sha256:
+          "69a0f5a1fec72904d7acfc256de2b51dd562f7a4d9e628052a52eda69da323ea",
+        url: `${CULT_OF_THE_LAMB_ASSET_BASE}/cult-of-the-lamb-shenpulse-1.0.2.zip`
       }
     ]
   },
@@ -153,7 +170,7 @@ const GAME_INSTALLERS = Object.freeze({
     ]
   },
   "minecraft-bedrock-box": {
-    version: "1.1.0",
+    version: "1.1.1",
     title: "Minecraft Bedrock Box",
     managedTarget: true,
     requiresMinecraftEula: true,
@@ -207,6 +224,16 @@ const GAME_INSTALLERS = Object.freeze({
         url: `${MINECRAFT_BEDROCK_ASSET_BASE}/shenpulse-bedrock-guard.jar`
       },
       {
+        id: "effectsPatch",
+        fileName: "shenpulse-bedrock-effects-patch.jar",
+        action: "copy",
+        targetPath: "plugins",
+        size: 13686,
+        sha256:
+          "ba70571d1bdefb8d02f6ca52403f160c3f8e09f1a9b513dad45df557f2e5b757",
+        url: `${MINECRAFT_BEDROCK_PATCH_ASSET_BASE}/shenpulse-bedrock-effects-patch.jar`
+      },
+      {
         id: "config",
         fileName: "config.yml",
         action: "copy",
@@ -233,11 +260,25 @@ const GAME_INSTALLERS = Object.freeze({
         sha256:
           "8720d7c3b394ca822c9e22bb735d8054e46d99a4d136ce027b02dd4cc28774e9",
         url: `${MINECRAFT_BEDROCK_ASSET_BASE}/world.zip`
+      },
+      {
+        id: "autoClicker",
+        fileName: "AutoClicker.exe",
+        action: "copy",
+        targetPath: "tools",
+        size: 1187192,
+        sha256:
+          "1ce7da6f2813c2ad1d2e496be6714e08cd618e6d9fe2df26c2bd4d894c9a6ec1",
+        url: `${MINECRAFT_COMMON_TOOLS_ASSET_BASE}/AutoClicker.exe`
       }
-    ]
+    ],
+    autoClicker: {
+      executable: "tools/AutoClicker.exe",
+      autoStart: true
+    }
   },
   "minecraft-sandbox-3": {
-    version: "1.1.0",
+    version: "1.1.1",
     title: "Minecraft SandBox 3",
     managedTarget: true,
     requiresMinecraftEula: true,
@@ -318,8 +359,22 @@ const GAME_INSTALLERS = Object.freeze({
         sha256:
           "fad3c1fd94b5a7e9cedc249e1344266687e65047e7e3f3343826bcf26005dd2b",
         url: `${MINECRAFT_SANDBOX_ASSET_BASE}/server.properties`
+      },
+      {
+        id: "autoClicker",
+        fileName: "AutoClicker.exe",
+        action: "copy",
+        targetPath: "tools",
+        size: 1187192,
+        sha256:
+          "1ce7da6f2813c2ad1d2e496be6714e08cd618e6d9fe2df26c2bd4d894c9a6ec1",
+        url: `${MINECRAFT_COMMON_TOOLS_ASSET_BASE}/AutoClicker.exe`
       }
-    ]
+    ],
+    autoClicker: {
+      executable: "tools/AutoClicker.exe",
+      autoStart: true
+    }
   },
   "minecraft-survival-plugin": {
     title: "Minecraft Survival Plugin",

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "gameId": "cult-of-the-lamb",
+  "version": "1.0.0",
+  "publishedAt": "2026-07-29T11:00:54.347Z",
+  "notes": "Pack complet Cult of the Lamb pour ShenPulse : BepInEx, mod d'interactions et bridge local 58431.",
+  "assets": [
+    {
+      "id": "mod",
+      "sourceName": "CultOfTheLamb-CC.zip",
+      "remoteName": "cult-of-the-lamb-shenpulse-1.0.0.zip",
+      "size": 723919,
+      "sha256": "2368c6ecfedd58ab19904f4b5a9b08e90ddd196130722d637caf5937c8d859b0",
+      "role": "installation"
+    }
+  ]
+}

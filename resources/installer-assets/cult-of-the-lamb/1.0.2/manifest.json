@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "gameId": "cult-of-the-lamb",
+  "version": "1.0.2",
+  "parentVersion": "1.0.1",
+  "publishedAt": "2026-07-29T11:09:09.024Z",
+  "notes": "Pack final Cult of the Lamb : BepInEx, 32 interactions, bridge 58431, CrowdControl préconfiguré ShenPulse et archive sans doublon.",
+  "assets": [
+    {
+      "id": "mod",
+      "sourceName": "cult-of-the-lamb-shenpulse-1.0.2.zip",
+      "remoteName": "cult-of-the-lamb-shenpulse-1.0.2.zip",
+      "size": 716315,
+      "sha256": "69a0f5a1fec72904d7acfc256de2b51dd562f7a4d9e628052a52eda69da323ea",
+      "role": "installation",
+      "crowdControlSha256": "049848a1f993dd1a3f4070929f86a6c8805d990a6daf39afe77cb048648e5d7c"
+    }
+  ]
+}

@@ -159,7 +159,6 @@ let coinJarAnimationFrame = 0;
 let coinJarAnimationTimestamp = 0;
 let coinJarSettledFrames = 0;
 let coinJarGeometry = null;
-let coinJarNeedsPacking = false;
 let likeGoalCurrent = Math.max(0, Number(parameters.get("current") || 0));
 let likeGoalInitialTarget = Math.max(
   1,
@@ -266,7 +265,7 @@ function setupOverlayDesign() {
     const jarFront = document.getElementById("coin-jar-front");
     if (jarBack && jarFront) {
       const backName = jarModel === "fantasy"
-        ? "jar-test-back-smooth7.png"
+        ? "jar-test-back-clean-localized.png"
         : `jar-${jarModel}-back.png`;
       const frontName = jarModel === "fantasy"
         ? "jar-test-front-smooth8.png"
@@ -1313,14 +1312,8 @@ function renderLeaderboard() {
 function renderCoinJar() {
   const current = document.getElementById("coin-jar-current");
   const target = document.getElementById("coin-jar-target");
-  const fill = document.getElementById("coin-jar-fill");
   if (current) current.textContent = formatNumber(coinJarCurrent);
   if (target) target.textContent = formatNumber(coinJarTarget);
-  if (fill) {
-    const progress = Math.min(1, coinJarCurrent / coinJarTarget);
-    fill.style.opacity = String(progress * 0.14);
-    fill.style.transform = `scale(${0.82 + progress * 0.18})`;
-  }
 }
 
 function updateCoinJar(payload = {}) {
@@ -1368,10 +1361,13 @@ function spawnCoinJarDrop(event) {
 function currentCoinJarGeometry(stage) {
   const width = Math.max(120, stage.clientWidth || 500);
   const height = Math.max(120, stage.clientHeight || 500);
-  if (
+  const geometryChanged =
     coinJarGeometry &&
-    (coinJarGeometry.width !== width || coinJarGeometry.height !== height)
-  ) {
+    (
+      Math.abs(coinJarGeometry.width - width) >= 3 ||
+      Math.abs(coinJarGeometry.height - height) >= 3
+    );
+  if (geometryChanged) {
     const scaleX = width / coinJarGeometry.width;
     const scaleY = height / coinJarGeometry.height;
     const radiusScale = Math.min(scaleX, scaleY);
@@ -1424,7 +1420,7 @@ function spawnCoinJarGift(stage, event) {
     node.textContent = String(event.data?.giftName || "Cadeau").slice(0, 2);
     node.classList.add("coin-jar-gift-fallback");
   }
-  stage.append(node);
+  (document.getElementById("coin-jar-overflow-drops") || stage).append(node);
   const body = globalThis.CoinJarPhysics.createBody({
     x:
       geometry.centerX +
@@ -1439,13 +1435,22 @@ function spawnCoinJarGift(stage, event) {
   });
   body.node = node;
   coinJarDrops.push(body);
-  coinJarNeedsPacking = true;
   renderCoinJarGift(body);
   startCoinJarPhysics();
 }
 
 function renderCoinJarGift(gift) {
   const diameter = gift.radius * 2;
+  const containedLayer = document.getElementById("coin-jar-contained-drops");
+  const overflowLayer = document.getElementById("coin-jar-overflow-drops");
+  const fullyInsideGlass =
+    gift.state === "contained" &&
+    coinJarGeometry &&
+    gift.y - gift.radius >= coinJarGeometry.mouthTop;
+  const targetLayer = fullyInsideGlass ? containedLayer : overflowLayer;
+  if (targetLayer && gift.node.parentElement !== targetLayer) {
+    targetLayer.append(gift.node);
+  }
   gift.node.style.transform =
     `translate3d(${gift.x - gift.radius}px, ${gift.y - gift.radius}px, 0) ` +
     `rotate(${gift.angle}deg)`;
@@ -1456,6 +1461,22 @@ function renderCoinJarGift(gift) {
         Math.abs(gift.vx) + Math.abs(gift.vy) < diameter * 0.3)
   );
   gift.node.classList.toggle("spilled", gift.state === "spilled");
+  gift.renderedX = gift.x;
+  gift.renderedY = gift.y;
+  gift.renderedAngle = gift.angle;
+  gift.renderedState = gift.state;
+  gift.renderedSleeping = gift.sleeping;
+}
+
+function coinJarGiftNeedsRender(gift) {
+  return (
+    !gift.sleeping ||
+    gift.renderedX !== gift.x ||
+    gift.renderedY !== gift.y ||
+    gift.renderedAngle !== gift.angle ||
+    gift.renderedState !== gift.state ||
+    gift.renderedSleeping !== gift.sleeping
+  );
 }
 
 function coinJarGiftOutsideOverlay(gift, stage) {
@@ -1486,40 +1507,21 @@ function animateCoinJar(timestamp) {
     geometry,
     elapsed
   );
-  let packedOverflow = 0;
-  let packedLayout = false;
-  if (
-    coinJarNeedsPacking &&
-    coinJarSpawnTimers.size === 0 &&
-    !coinJarDrops.some((gift) => gift.state === "entering")
-  ) {
-    const packed = globalThis.CoinJarPhysics.packContainedBodies(
-      coinJarDrops,
-      geometry
-    );
-    packedOverflow = packed.spilled;
-    packedLayout = true;
-    coinJarNeedsPacking = false;
-  }
 
   for (let index = coinJarDrops.length - 1; index >= 0; index -= 1) {
     const gift = coinJarDrops[index];
-    renderCoinJarGift(gift);
+    if (coinJarGiftNeedsRender(gift)) renderCoinJarGift(gift);
     if (coinJarGiftOutsideOverlay(gift, stage)) {
       gift.node.remove();
       coinJarDrops.splice(index, 1);
     }
   }
 
-  const stillMoving = packedLayout
-    ? packedOverflow > 0
-    : motion.falling || motion.activity > geometry.width * 0.012;
-  coinJarSettledFrames =
-    packedLayout && !packedOverflow
-      ? 36
-      : stillMoving
-        ? 0
-        : coinJarSettledFrames + 1;
+  const stillMoving =
+    coinJarSpawnTimers.size > 0 ||
+    motion.falling ||
+    motion.active > 0;
+  coinJarSettledFrames = stillMoving ? 0 : coinJarSettledFrames + 1;
   if (coinJarDrops.length && coinJarSettledFrames < 36) {
     coinJarAnimationFrame = requestAnimationFrame(animateCoinJar);
   } else {
@@ -1543,7 +1545,6 @@ function clearCoinJarDrops() {
   coinJarAnimationFrame = 0;
   coinJarAnimationTimestamp = 0;
   coinJarSettledFrames = 0;
-  coinJarNeedsPacking = false;
   for (const gift of coinJarDrops.splice(0)) gift.node.remove();
   coinJarEventIds.clear();
   coinJarGeometry = null;

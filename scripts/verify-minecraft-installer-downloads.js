@@ -121,6 +121,38 @@ async function verifyGame(gameId) {
       "le monde Bedrock Box n'a pas été extrait"
     );
   }
+  if (gameId === "minecraft-bedrock-box") {
+    assert.equal(
+      (
+        await fs.promises.stat(
+          path.join(
+            installationRoot,
+            "plugins",
+            "shenpulse-bedrock-effects-patch.jar"
+          )
+        )
+      ).isFile(),
+      true,
+      "le correctif des interactions Bedrock Box n'a pas Ã©tÃ© installÃ©"
+    );
+  }
+  const autoClickerPath = path.join(
+    installationRoot,
+    "tools",
+    "AutoClicker.exe"
+  );
+  const autoClickerHeader = Buffer.alloc(2);
+  const autoClicker = await fs.promises.open(autoClickerPath, "r");
+  try {
+    await autoClicker.read(autoClickerHeader, 0, 2, 0);
+  } finally {
+    await autoClicker.close();
+  }
+  assert.equal(
+    autoClickerHeader.toString("ascii"),
+    "MZ",
+    `l'AutoClicker installÃ© pour ${gameId} n'est pas un exÃ©cutable Windows`
+  );
   if (startServers) {
     await smokeTestMinecraftServer(gameId, installationRoot, manifest);
   }

@@ -640,6 +640,13 @@ html[data-jar-model="fantasy"] #coin-jar-back {
   z-index: 4;
 }
 
+.coin-jar-clip-definitions {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .coin-jar-drops {
   position: absolute;
   z-index: 2;
@@ -648,7 +655,18 @@ html[data-jar-model="fantasy"] #coin-jar-back {
   pointer-events: none;
 }
 
-.coin-jar-drops > .coin-jar-gift {
+.coin-jar-drop-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.coin-jar-contained-drops {
+  clip-path: url("#coin-jar-glass-clip");
+}
+
+.coin-jar-drops .coin-jar-gift {
   position: absolute;
   top: 0;
   left: 0;
@@ -657,60 +675,30 @@ html[data-jar-model="fantasy"] #coin-jar-back {
   overflow: visible;
   border: 0;
   background: transparent;
-  color: #fff2a6;
+  color: #ffffff;
   font-size: 8px;
   font-weight: 900;
-  filter:
-    drop-shadow(0 4px 4px rgba(0, 0, 0, 0.54))
-    drop-shadow(0 0 7px rgba(255, 213, 82, 0.34));
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.46));
   will-change: transform;
 }
 
-.coin-jar-drops > .coin-jar-gift.settled {
+.coin-jar-drops .coin-jar-gift.settled {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.34));
+  will-change: auto;
 }
 
 .coin-jar-gift > img {
-  width: 84%;
-  height: 84%;
+  width: 92%;
+  height: 92%;
   object-fit: contain;
 }
 
 .coin-jar-gift-fallback {
   overflow: hidden;
-  border: 1px solid rgba(255, 240, 166, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fffbd4, #ffc62a 55%, #6c2b00);
-  color: #702c00;
-}
-
-.coin-jar-meter {
-  position: absolute;
-  z-index: 1;
-  right: 24%;
-  bottom: 16%;
-  left: 24%;
-  height: 22%;
-  overflow: visible;
-}
-
-.coin-jar-meter span {
-  position: absolute;
-  inset: 0;
-  height: 100%;
-  opacity: 0;
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    rgba(255, 170, 16, 0.32) 0%,
-    rgba(255, 211, 76, 0.09) 42%,
-    transparent 72%
-  );
-  filter: blur(12px);
-  transform: scale(0.82);
-  transform-origin: 50% 76%;
-  transition:
-    opacity 500ms ease,
-    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  background: radial-gradient(circle at 35% 30%, #ffffff, #ff4f86 55%, #3b0921);
+  color: #ffffff;
 }
 
 .timer-panel {
@@ -2822,10 +2810,6 @@ html[data-jar-model="fantasy"] #coin-jar-back {
 #timer-view #timer-label,
 #multiplier-timer-view #multiplier-timer-label {
   color: var(--cyan, #22d3ee);
-}
-
-.coin-jar-widget.without-base .coin-jar-meter {
-  display: none;
 }
 
 .wheel-stage .wheel-cap svg {

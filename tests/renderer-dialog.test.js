@@ -357,6 +357,29 @@ test("une session propriétaire resynchronise les accès offerts au démarrage",
   );
 });
 
+test("un tarif de jeu accepte la virgule et est publié en production", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const editorStart = app.indexOf("function openAdminProductEditor");
+  const editorEnd = app.indexOf(
+    "function openAdminPromotionEditor",
+    editorStart
+  );
+  const editor = app.slice(editorStart, editorEnd);
+
+  assert.match(
+    app,
+    /function normalizeAdminMoney[\s\S]*replace\(",", "\."\)/
+  );
+  assert.match(editor, /submitLabel: "Enregistrer et publier"/);
+  assert.match(
+    editor,
+    /saveAdminCommerce\(\s*catalog,\s*"publish-prod"/
+  );
+});
+
 test("les pages de jeu utilisent le parcours commun simplifié en quatre étapes", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),

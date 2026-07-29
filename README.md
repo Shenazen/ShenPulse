@@ -16,6 +16,9 @@ livestream en alertes, overlays, commandes et effets de jeu. Elle est conçue po
 - API locale HTTP, SSE et WebSocket au format `{ "event": "...", "data": {} }` ;
 - connecteurs WebSocket génériques pour des fournisseurs autorisés ;
 - passerelles jeux TCP, WebSocket, HTTP, UDP et Minecraft RCON ;
+- installateurs versionnés Backblaze pour GTA V Mont Chiliad, Cult of the Lamb
+  et les serveurs Minecraft, avec contrôle SHA-256, bridges locaux,
+  Java/PaperMC, plugins et AutoClicker ;
 - client OBS WebSocket 5, webhooks et connexion Spotify OAuth PKCE ;
 - profils importables/exportables et journal d'activité local ;
 - SDK C# optionnel pour écrire des passerelles de jeu.

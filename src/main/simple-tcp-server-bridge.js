@@ -100,6 +100,27 @@ class SimpleTcpServerBridge extends EventEmitter {
       quantity: Math.max(1, Number(options.quantity || 1)),
       duration: Math.max(0, Number(options.duration || 0))
     };
+    const reservedFields = new Set([
+      "id",
+      "type",
+      "code",
+      "quantity",
+      "duration"
+    ]);
+    for (const [key, value] of Object.entries(
+      options.parameters || {}
+    )) {
+      if (
+        reservedFields.has(key) ||
+        !/^[a-z][a-z0-9_]*$/i.test(key)
+      ) {
+        continue;
+      }
+      const numericValue = Number(value);
+      if (Number.isFinite(numericValue)) {
+        payload[key] = numericValue;
+      }
+    }
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(requestId);

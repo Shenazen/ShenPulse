@@ -11,6 +11,10 @@ const {
   GTAV_MONT_CHILIAD_EFFECTS
 } = require("../src/main/gtav-mont-chiliad-catalog");
 const {
+  CULT_OF_THE_LAMB_DEFAULT_MAPPINGS,
+  CULT_OF_THE_LAMB_EFFECTS
+} = require("../src/main/cult-of-the-lamb-catalog");
+const {
   MINECRAFT_BEDROCK_DEFAULT_MAPPINGS,
   MINECRAFT_BEDROCK_EFFECTS,
   MINECRAFT_SANDBOX_DEFAULT_MAPPINGS,
@@ -45,12 +49,16 @@ test("recrée les 37 jeux conservés sans doublon et avec les tarifs réels", ()
         .map((game) => [game.id, game.price])
     ),
     {
-      "connect-four": 9.99,
-      "deal-or-no-deal": 24.99,
-      "diamond-bridge": 19.99,
-      "diamond-drop": 19.99,
-      "gtav-montchiliad": 30
+      "coin-pusher": 4.99,
+      "connect-four": 4.99,
+      "deal-or-no-deal": 4.99,
+      "diamond-drop": 4.99
     }
+  );
+  assert.ok(
+    games
+      .filter((game) => game.accessMode === "included")
+      .every((game) => game.price === 0)
   );
   assert.ok(games.every((game) => game.effects.length > 0));
   assert.ok(games.every((game) => game.guide?.steps?.length >= 3));
@@ -139,6 +147,32 @@ test("restaure les interactions Bedrock Box et SandBox de ShenazenOverlay", () =
     MINECRAFT_BEDROCK_EFFECTS.some(
       (effect) => effect.id === "bedrock-blackhole"
     )
+  );
+});
+
+test("restaure les 32 interactions Cult of the Lamb et leurs visuels", () => {
+  assert.equal(CULT_OF_THE_LAMB_EFFECTS.length, 32);
+  assert.equal(CULT_OF_THE_LAMB_DEFAULT_MAPPINGS.length, 34);
+  const effectIds = new Set(
+    CULT_OF_THE_LAMB_EFFECTS.map((effect) => effect.id)
+  );
+  assert.equal(effectIds.size, CULT_OF_THE_LAMB_EFFECTS.length);
+  assert.ok(
+    CULT_OF_THE_LAMB_DEFAULT_MAPPINGS.every((mapping) =>
+      effectIds.has(mapping.effectId)
+    )
+  );
+  assert.ok(
+    CULT_OF_THE_LAMB_EFFECTS.every((effect) => {
+      const image = path.join(
+        root,
+        "resources",
+        "game-interactions",
+        "cult-of-the-lamb",
+        path.basename(effect.image)
+      );
+      return fs.existsSync(image) && fs.statSync(image).size > 0;
+    })
   );
 });
 

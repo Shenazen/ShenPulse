@@ -5,10 +5,12 @@ const assert = require("node:assert/strict");
 const {
   GameHub,
   interpolateCommand,
+  resolveEffectCode,
   rconPacket,
   readRconPacket,
   validatePack
 } = require("../src/main/game-hub");
+const net = require("node:net");
 const path = require("node:path");
 
 test("construit et relit un paquet RCON", () => {
@@ -43,6 +45,26 @@ test("hydrate aussi les paramètres propres aux interactions Minecraft", () => {
       }
     ),
     "/bedrock supertnt 12 5 Nova_Player"
+  );
+});
+
+test("résout les variantes de code Cult of the Lamb depuis leurs paramètres", () => {
+  assert.equal(
+    resolveEffectCode(
+      {
+        id: "cult-set-weapon",
+        code: "weapon_0",
+        codeByParameter: {
+          parameter: "weapon",
+          values: {
+            1: "weapon_0",
+            5: "weapon_450"
+          }
+        }
+      },
+      { parameters: { weapon: 5 } }
+    ),
+    "weapon_450"
   );
 });
 
@@ -220,6 +242,118 @@ test("initialise les associations TikTok Bedrock Box et SandBox", () => {
         rule.actions[0].config.parameters.rows === 2
     )
   );
+});
+
+test("initialise le catalogue Cult of the Lamb et parle au bridge BepInEx", async () => {
+  const state = {
+    session: { activeGamePackId: "cult-of-the-lamb" },
+    commerce: {
+      subscription: {
+        tier: "pro",
+        source: "subscription",
+        status: "active"
+      },
+      gameEntitlements: []
+    },
+    game: {
+      recentPacks: [],
+      interactionCatalogVersions: {},
+      interactionRulesByPack: {},
+      connectorOverrides: {
+        "cult-of-the-lamb": { port: 0 }
+      }
+    },
+    rules: []
+  };
+  const store = {
+    getState: () => state,
+    mutate: (callback) => callback(state)
+  };
+  const resourcesDirectory = path.join(__dirname, "..", "resources");
+  const hub = new GameHub({
+    store,
+    resourcesDirectory,
+    packsDirectory: path.join(resourcesDirectory, "packs")
+  });
+  hub.loadPacks();
+
+  const pack = hub
+    .listPacks()
+    .find((entry) => entry.id === "cult-of-the-lamb");
+  assert.equal(pack.connector.type, "tcp-server");
+  assert.equal(pack.connector.port, 58431);
+  assert.equal(pack.effects.length, 32);
+  assert.equal(
+    hub.initializeDefaultInteractions("cult-of-the-lamb").added,
+    34
+  );
+  const mappings =
+    state.game.interactionRulesByPack["cult-of-the-lamb"];
+  assert.equal(mappings.length, 34);
+  assert.ok(
+    mappings.some(
+      (rule) =>
+        rule.conditions.some(
+          (condition) => condition.value === "Galaxy"
+        ) &&
+        rule.actions[0].config.effectId === "cult-spell-fireball"
+    )
+  );
+
+  const status = await hub.prepareConnection("cult-of-the-lamb");
+  const frames = [];
+  const client = net.createConnection({
+    host: "127.0.0.1",
+    port: status.port
+  });
+  let input = "";
+  client.on("data", (chunk) => {
+    input += chunk.toString("utf8");
+    let separator = input.indexOf("\0");
+    while (separator >= 0) {
+      const request = JSON.parse(input.slice(0, separator));
+      input = input.slice(separator + 1);
+      frames.push(request);
+      client.write(
+        `${JSON.stringify({
+          id: request.id,
+          status: 0,
+          message: ""
+        })}\0`
+      );
+      separator = input.indexOf("\0");
+    }
+  });
+  await new Promise((resolve, reject) => {
+    client.once("connect", resolve);
+    client.once("error", reject);
+  });
+
+  try {
+    await hub.trigger(
+      "cult-set-weapon",
+      { user: { displayName: "Test" } },
+      {
+        packId: "cult-of-the-lamb",
+        parameters: { weapon: 5, level: 7 }
+      }
+    );
+    await hub.trigger(
+      "cult-invincible",
+      { user: { displayName: "Test" } },
+      {
+        packId: "cult-of-the-lamb",
+        parameters: { seconds: 11 }
+      }
+    );
+    assert.equal(frames[0].code, "weapon_450");
+    assert.equal(frames[0].level, 7);
+    assert.equal(frames[1].code, "invincible");
+    assert.equal(frames[1].duration, 11_000);
+  } finally {
+    client.destroy();
+    await hub.disconnectAll();
+  }
 });
 
 test("envoie les commandes Minecraft au serveur géré par ShenPulse", async () => {
