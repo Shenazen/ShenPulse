@@ -120,11 +120,12 @@ class ActionRunner {
       case "overlay.media": {
         const payload = {
           id: action.id,
-          title: safeString(config.title, 300),
-          message: safeString(config.message, 1000),
+          // "overlay.alert" is the legacy identifier of the Media action.
+          // Both paths render only the selected asset, without the obsolete
+          // alert card, text or progress bar.
+          displayMode: "media-only",
           mediaUrl: this.#localMediaUrl(config.mediaUrl),
           soundUrl: this.#localMediaUrl(config.soundUrl),
-          color: safeString(config.color || "#A855F7", 20),
           durationMs: clamp(config.durationMs || 5000, 500, 60000),
           screen: clamp(Math.round(Number(config.screen) || 1), 1, 8),
           user: context.user

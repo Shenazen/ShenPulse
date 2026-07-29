@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "gameId": "terraria",
+  "version": "1.0.0",
+  "publishedAt": "2026-07-29T11:29:56.322Z",
+  "notes": "Pack Terraria/tModLoader prêt pour ShenPulse : mod local corrigé, port 58433, exécution sans pause forcée et 25 interactions historiques.",
+  "assets": [
+    {
+      "id": "mod",
+      "sourceName": "CrowdControlMod.tmod",
+      "remoteName": "CrowdControlMod.tmod",
+      "size": 935576,
+      "sha256": "053e15396bd232e73655a00b782fbe43dae96f5669e6dea44c60e3b6800c4ab2",
+      "role": "mod"
+    }
+  ]
+}

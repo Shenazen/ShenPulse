@@ -259,6 +259,13 @@ class GameRuntimeService {
         backupRoot,
         tempRoot
       });
+      const additionalDeployments =
+        await deployAdditionalInstallTargets({
+          manifest,
+          targetPath,
+          backupRoot,
+          documentsPath: this.app.getPath("documents")
+        });
       if (preparedSaveDirectory) {
         saveDeployment = await deployGtaEnhancedSave({
           sourceDirectory: preparedSaveDirectory,
@@ -299,6 +306,7 @@ class GameRuntimeService {
           installerVersion: String(manifest.version || ""),
           edition: edition || undefined,
           elevated: deployment.elevated,
+          additionalDeployments,
           saveDeployment,
           server: server
             ? {
@@ -1933,6 +1941,45 @@ async function copyWithBackup(source, destination, installRoot, backupRoot) {
   await fs.promises.copyFile(source, destination);
 }
 
+async function deployAdditionalInstallTargets({
+  manifest,
+  targetPath,
+  backupRoot,
+  documentsPath
+}) {
+  const targets = Array.isArray(manifest?.additionalInstallTargets)
+    ? manifest.additionalInstallTargets
+    : [];
+  const deployed = [];
+  for (const entry of targets) {
+    if (entry?.root !== "documents") {
+      throw new Error(
+        "Destination d’installation supplémentaire non autorisée."
+      );
+    }
+    const source = safeChildPath(targetPath, entry.sourcePath || "");
+    const root = path.resolve(documentsPath);
+    const destination = safeChildPath(root, entry.targetPath || "");
+    const stat = await fs.promises.stat(source).catch(() => null);
+    if (!stat?.isFile()) {
+      throw new Error(
+        `Le fichier préparé ${entry.sourcePath || ""} est introuvable.`
+      );
+    }
+    await copyWithBackup(
+      source,
+      destination,
+      root,
+      path.join(backupRoot, "additional-targets", entry.root)
+    );
+    deployed.push({
+      root: entry.root,
+      path: destination
+    });
+  }
+  return deployed;
+}
+
 async function findNamedFile(directory, name) {
   const entries = await fs.promises.readdir(directory, {
     withFileTypes: true
@@ -2122,6 +2169,7 @@ module.exports = {
   GameRuntimeService,
   commitInstallationDeployment,
   configureMinecraftServerCommandFeedback,
+  deployAdditionalInstallTargets,
   deployGtaEnhancedSave,
   detectGtaEdition,
   extractArchiveSafe,

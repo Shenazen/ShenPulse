@@ -325,7 +325,7 @@ test("la roue exécute l'action liée lorsque le secteur gagnant est affiché", 
       actions: [{
         id: "linked_action",
         type: "overlay.media",
-        config: { title: "Secteur {{user.displayName}}" }
+        config: { mediaUrl: "https://media.test/{{user.displayName}}.png" }
       }]
     }]
   };
@@ -362,8 +362,8 @@ test("la roue exécute l'action liée lorsque le secteur gagnant est affiché", 
     await Promise.resolve();
 
     assert.equal(
-      published.find(({ event }) => event === "alert")?.payload.title,
-      "Secteur Alice"
+      published.find(({ event }) => event === "alert")?.payload.mediaUrl,
+      "https://media.test/Alice.png"
     );
   } finally {
     Math.random = originalRandom;
@@ -518,6 +518,14 @@ test("les actions Media ciblent une file d'ecran et conservent l'ancien alias", 
       ["alert", 8]
     ]
   );
+  assert.deepEqual(
+    published.map(({ payload }) => payload.displayMode),
+    ["media-only", "media-only", "media-only"]
+  );
+  assert.equal(
+    published.some(({ payload }) => payload.title || payload.message || payload.color),
+    false
+  );
 
   const overlayScript = fs.readFileSync(
     path.join(__dirname, "..", "resources", "overlays", "overlay.js"),
@@ -525,4 +533,6 @@ test("les actions Media ciblent une file d'ecran et conservent l'ancien alias", 
   );
   assert.match(overlayScript, /parameters\.has\("screen"\)/);
   assert.match(overlayScript, /payloadScreen !== mediaScreen/);
+  assert.match(overlayScript, /payload\.displayMode === "media-only"/);
+  assert.match(overlayScript, /class="alert-media-only"/);
 });

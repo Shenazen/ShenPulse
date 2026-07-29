@@ -29,7 +29,7 @@
         ]
       },
       {
-        "source": "**/*.@(png|jpg|jpeg|webp|gif|svg|mp3|ogg|wav|webm)",
+        "source": "**/*.@(png|jpg|jpeg|webp|gif|svg|json|mp3|ogg|wav|webm)",
         "headers": [
           {
             "key": "Cache-Control",

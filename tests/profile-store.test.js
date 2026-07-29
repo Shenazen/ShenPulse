@@ -102,7 +102,7 @@ test("un nouveau profil est vierge, indépendant et conserve les droits du compt
         status: "active"
       };
       draft.commerce.gameEntitlements = ["deal-or-no-deal"];
-      draft.commerce.trial.username = "shenazen";
+      draft.commerce.trial.email = "shenazen@example.com";
       draft.game.installations["deal-or-no-deal"] = {
         status: "installed"
       };
@@ -294,6 +294,9 @@ test("la migration répartit les anciennes règles sans perdre les profils", () 
 
     const store = createStore(directory);
     let state = store.load();
+    assert.deepEqual(state.rules, []);
+    store.activateAccount("legacy_owner_uid");
+    state = store.getState();
     assert.deepEqual(
       state.rules.map((rule) => rule.id),
       ["rule_a"]

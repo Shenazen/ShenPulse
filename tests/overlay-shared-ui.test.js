@@ -56,7 +56,7 @@ test("les cartes et fenêtres exposent la taille OBS et la vraie source live", (
 test("les tests s'animent directement dans les cartes et la roue garde ses réglages", () => {
   assert.match(
     renderer,
-    /async function previewOverlay\(key\) \{\s*return dispatchOverlayTest\(key\);\s*\}/
+    /async function previewOverlay\(key\) \{\s*if \(!isAccountAuthenticated\(\)\) return previewGuestOverlay\(key\);\s*return dispatchOverlayTest\(key\);\s*\}/
   );
   assert.match(renderer, /function postOverlayCardEvent\(key, channel, payload\)/);
   assert.doesNotMatch(renderer, /title: `Tester \$\{item\.name\}`/);

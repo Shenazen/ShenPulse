@@ -24,6 +24,10 @@ const MINECRAFT_SANDBOX_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-sandbox-3/1.1.0";
 const CULT_OF_THE_LAMB_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/cult-of-the-lamb/1.0.2";
+const STARDEW_VALLEY_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/stardew-valley/1.0.0";
+const TERRARIA_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/terraria/1.0.0";
 
 const GAME_INSTALLERS = Object.freeze({
   "gtav-montchiliad": {
@@ -132,40 +136,81 @@ const GAME_INSTALLERS = Object.freeze({
     ]
   },
   "stardew-valley": {
+    version: "1.0.0",
     title: "Stardew Valley",
     targetLabel: "dossier contenant Stardew Valley.exe",
-    executables: ["Stardew Valley.exe"],
-    launchExecutables: ["StardewModdingAPI.exe", "Stardew Valley.exe"],
+    autoDetect: true,
+    unattended: true,
+    directoryNames: ["Stardew Valley", "StardewValley"],
+    steamAppIds: ["413150"],
+    executables: ["Stardew Valley.exe", "StardewValley.exe"],
+    launchExecutables: [
+      "StardewModdingAPI.exe",
+      "Stardew Valley.exe",
+      "StardewValley.exe"
+    ],
+    warning:
+      "Stardew Valley doit être fermé. ShenPulse sauvegarde les fichiers remplacés, installe SMAPI puis le mod local préconfiguré sur le port 58432.",
     assets: [
       {
         id: "smapi",
         fileName: "SMAPI-4.5.2-installer.zip",
-        action: "smapi"
+        action: "smapi",
+        size: 41889142,
+        sha256:
+          "dd01ddca7b566bfe0d3b3d2d03833496abc56c53da976241f2ab443f5484acc4",
+        url: `${STARDEW_VALLEY_ASSET_BASE}/SMAPI-4.5.2-installer.zip`
       },
       {
         id: "mod",
-        fileName: "CrowdControl-StardewValley.zip",
+        fileName: "CrowdControl-StardewValley-ShenPulse-1.0.0.zip",
         action: "extract",
-        targetPath: "Mods"
+        targetPath: "Mods",
+        size: 170804,
+        sha256:
+          "90e72ececa5d3b548e34049ab08387e534968aacc9e6c3a8286b4f4509783443",
+        url: `${STARDEW_VALLEY_ASSET_BASE}/CrowdControl-StardewValley-ShenPulse-1.0.0.zip`
       },
       {
         id: "ccver",
         fileName: "ccver",
-        action: "copy"
+        action: "copy",
+        size: 5,
+        sha256:
+          "74b860b3270666137a4d543c3e3d1e4e473d54636f7593d1c17bf693e6540bbe",
+        url: `${STARDEW_VALLEY_ASSET_BASE}/ccver`
       }
     ]
   },
   terraria: {
+    version: "1.0.0",
     title: "Terraria / tModLoader",
-    targetLabel: "dossier tModLoader",
-    executables: ["tModLoader.exe", "Terraria.exe"],
-    launchExecutables: ["tModLoader.exe", "Terraria.exe"],
+    targetLabel: "dossier contenant tModLoader.exe",
+    autoDetect: true,
+    unattended: true,
+    directoryNames: ["tModLoader"],
+    steamAppIds: ["1281930"],
+    executables: ["tModLoader.exe"],
+    launchExecutables: ["tModLoader.exe"],
+    warning:
+      "tModLoader doit être fermé. ShenPulse sauvegarde le mod existant puis installe le pont local préconfiguré sur le port 58433.",
     assets: [
       {
         id: "mod",
         fileName: "CrowdControlMod.tmod",
         action: "copy",
-        targetPath: "Mods"
+        targetPath: "Mods",
+        size: 935576,
+        sha256:
+          "053e15396bd232e73655a00b782fbe43dae96f5669e6dea44c60e3b6800c4ab2",
+        url: `${TERRARIA_ASSET_BASE}/CrowdControlMod.tmod`
+      }
+    ],
+    additionalInstallTargets: [
+      {
+        sourcePath: "Mods/CrowdControlMod.tmod",
+        root: "documents",
+        targetPath: "My Games/Terraria/tModLoader/Mods/CrowdControlMod.tmod"
       }
     ]
   },

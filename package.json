@@ -21,6 +21,7 @@
     "build:dir": "npm run assets && electron-builder --win dir --x64",
     "package:upload": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-appxupload.ps1",
     "build:store": "npm run verify && npm run assets && electron-builder --win appx --x64 && npm run package:upload",
+    "build:exe": "npm run verify && npm run assets && electron-builder --win portable --x64",
     "dist": "npm run build:store"
   },
   "devDependencies": {

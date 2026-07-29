@@ -30,6 +30,27 @@ function state({
   };
 }
 
+test("un palier payant sans statut actif reste verrouillé", () => {
+  for (const status of [
+    "approval_pending",
+    "cancelled",
+    "expired",
+    "free",
+    "revoked",
+    "suspended"
+  ]) {
+    assert.equal(
+      hasGameAccess(state({ tier: "pro", status }), includedGame),
+      false,
+      `le statut ${status} ne doit pas ouvrir les jeux`
+    );
+  }
+  assert.equal(
+    hasGameAccess(state({ tier: "premium", status: "paid" }), includedGame),
+    true
+  );
+});
+
 test("la galerie gratuite ne donne accès à aucun jeu", () => {
   const freeState = state();
   assert.equal(hasGameEntitlement(freeState, includedGame), true);

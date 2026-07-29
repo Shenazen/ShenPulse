@@ -55,6 +55,11 @@ class PublicOverlayRelay extends EventEmitter {
     return this.store.getState().settings.publicOverlayRelay || {};
   }
 
+  prepareConfiguration() {
+    this.#ensureConfiguration();
+    return this.configuration();
+  }
+
   urls({ includeRestricted = false } = {}) {
     const config = this.configuration();
     return publicOverlayUrls({

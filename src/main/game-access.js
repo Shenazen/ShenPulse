@@ -12,14 +12,16 @@ function commerceExpiryMs(entry) {
 function hasActiveGameSubscription(state, nowMs = Date.now()) {
   const subscription = state?.commerce?.subscription || {};
   if (!["pro", "premium"].includes(subscription.tier)) return false;
-  if (["expired", "revoked"].includes(subscription.status)) return false;
   if (
     subscription.source === "trial" ||
     subscription.status === "trial"
   ) {
-    return commerceExpiryMs(subscription) > nowMs;
+    return (
+      ["active", "trial"].includes(subscription.status) &&
+      commerceExpiryMs(subscription) > nowMs
+    );
   }
-  return true;
+  return ["active", "paid"].includes(subscription.status);
 }
 
 function gameEntitlement(state, pack, nowMs = Date.now()) {

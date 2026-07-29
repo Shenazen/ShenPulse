@@ -31,11 +31,59 @@
               <small id="server-detail">Initialisation…</small>
             </div>
           </div>
-          <button class="user-chip" data-navigate="settings">
-            <span class="avatar">SP</span>
-            <span><strong>ShenPulse</strong><small>Configuration locale</small></span>
-            <span class="chevron">›</span>
-          </button>
+          <div class="account-control">
+            <div
+              class="account-menu"
+              id="account-menu"
+              role="menu"
+              aria-label="Compte ShenPulse"
+              hidden
+            >
+              <div class="account-menu-identity">
+                <span class="avatar" id="account-menu-avatar">SP</span>
+                <span>
+                  <strong id="account-menu-name">Compte ShenPulse</strong>
+                  <small id="account-menu-email">Non connecté</small>
+                </span>
+              </div>
+              <div class="account-menu-actions">
+                <button type="button" data-navigate="settings" role="menuitem">
+                  Paramètres du compte
+                </button>
+                <button
+                  type="button"
+                  class="account-login-action"
+                  data-action="account-login"
+                  role="menuitem"
+                >
+                  Se connecter
+                </button>
+                <button
+                  type="button"
+                  class="account-logout-action"
+                  data-action="account-logout"
+                  role="menuitem"
+                  hidden
+                >
+                  Se déconnecter
+                </button>
+              </div>
+            </div>
+            <button
+              class="user-chip"
+              id="account-menu-button"
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded="false"
+            >
+              <span class="avatar" id="account-avatar">SP</span>
+              <span class="user-chip-copy">
+                <strong id="account-name">Aucun compte</strong>
+                <small id="account-email">Se connecter à ShenPulse</small>
+              </span>
+              <span class="chevron" aria-hidden="true">›</span>
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -46,6 +94,18 @@
             <h1 id="page-title">Vue d’ensemble</h1>
           </div>
           <div class="titlebar-actions">
+            <button
+              class="account-auth-cta"
+              id="account-auth-cta"
+              type="button"
+              data-action="account-login"
+            >
+              <span class="account-auth-cta-icon">SP</span>
+              <span>
+                <strong>Se connecter ou s’inscrire</strong>
+                <small>Synchroniser abonnement et jeux</small>
+              </span>
+            </button>
             <div class="game-session-control" id="game-session-control" hidden>
               <button class="game-session-summary" id="game-session-summary" title="Revenir au jeu actif">
                 <span class="game-session-pulse"></span>

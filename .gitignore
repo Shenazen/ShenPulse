@@ -6,6 +6,9 @@ coverage/
 .firebase/
 .tmp/
 *.log
+account-payments-hardening.patch
+private/
+store-screenshots/
 *.pfx
 *.cer
 *.pvk

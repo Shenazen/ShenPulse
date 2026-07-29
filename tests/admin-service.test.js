@@ -32,6 +32,62 @@ test("réserve la connexion admin à l’adresse propriétaire avant tout appel 
   assert.equal(ADMIN_EMAIL, "alexandre.leuridan@gmail.com");
 });
 
+test("refuse le compte propriétaire tant que Firebase ne confirme pas son e-mail", async () => {
+  const idToken = [
+    "eyJhbGciOiJub25lIn0",
+    Buffer.from(
+      JSON.stringify({
+        email: ADMIN_EMAIL,
+        email_verified: false,
+        sub: "owner_uid",
+        user_id: "owner_uid"
+      })
+    ).toString("base64url"),
+    "signature"
+  ].join(".");
+  const service = new AdminService({
+    store: {},
+    fetchImpl: async () => ({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          email: ADMIN_EMAIL,
+          expiresIn: "3600",
+          idToken,
+          localId: "owner_uid",
+          refreshToken: "refresh_token"
+        })
+    })
+  });
+
+  await assert.rejects(
+    service.login({ email: ADMIN_EMAIL, password: "secret" }),
+    /n’a pas confirmé/
+  );
+});
+
+test("le compte ShenPulse propriétaire vérifié ouvre directement l’administration", async () => {
+  const service = new AdminService({
+    store: {
+      getState: () => ({ settings: { admin: {} } })
+    },
+    accountService: {
+      identityForInternalUse: async () => ({
+        email: ADMIN_EMAIL,
+        emailVerified: true,
+        idToken: "firebase_id_token",
+        uid: "owner_uid"
+      })
+    }
+  });
+
+  const status = await service.status();
+  assert.equal(status.authorized, true);
+  assert.equal(status.email, ADMIN_EMAIL);
+  assert.equal(status.uid, "owner_uid");
+  assert.match(status.lastAuthenticatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
 test("normalise strictement les portées de visibilité distantes", () => {
   const settings = normalizeSiteSettings({
     schemaVersion: 999,
@@ -138,7 +194,7 @@ test("valide les tarifs, abonnements et promotions avant publication", () => {
 test("un essai jeux sans sélection explicite laisse le serveur choisir tous les jeux éligibles", () => {
   const request = normalizeTrialRequest(
     {
-      username: "@beneficiaire",
+      email: "Beneficiaire@Example.com",
       days: 14,
       subscription: true,
       games: true,
@@ -146,7 +202,11 @@ test("un essai jeux sans sélection explicite laisse le serveur choisir tous les
     },
     "owner_uid"
   );
-  assert.equal(request.username, "beneficiaire");
+  assert.equal(request.email, "beneficiaire@example.com");
+  assert.equal(
+    request.beneficiaryEmail,
+    "beneficiaire@example.com"
+  );
   assert.equal(request.days, 14);
   assert.equal(Object.hasOwn(request, "gameIds"), false);
 });
@@ -197,7 +257,18 @@ test("le stockage par défaut sépare la session admin des données publiques", 
   const state = createDefaultState();
   assert.deepEqual(state.settings.admin, {
     email: "",
+    emailVerified: false,
     uid: "",
+    refreshTokenSecretId: "",
+    lastAuthenticatedAt: ""
+  });
+  assert.deepEqual(state.settings.account, {
+    email: "",
+    uid: "",
+    displayName: "",
+    photoUrl: "",
+    providerId: "",
+    emailVerified: false,
     refreshTokenSecretId: "",
     lastAuthenticatedAt: ""
   });
@@ -232,11 +303,13 @@ test("embarque la règle d’index Firebase requise par l’historique commercia
   );
   assert.equal(
     rules.rules.site.adminSettings[".write"],
-    "auth != null && auth.token.email == 'alexandre.leuridan@gmail.com'"
+    "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'"
   );
   assert.equal(rules.rules.site.publicVisibility[".read"], true);
   assert.equal(
     rules.rules.site.publicVisibility[".write"],
-    "auth != null && auth.token.email == 'alexandre.leuridan@gmail.com'"
+    "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'"
   );
+  assert.equal(rules.rules.serverOnly[".read"], false);
+  assert.equal(rules.rules.serverOnly[".write"], false);
 });

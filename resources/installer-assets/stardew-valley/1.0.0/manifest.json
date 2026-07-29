@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "gameId": "stardew-valley",
+  "version": "1.0.0",
+  "publishedAt": "2026-07-29T11:29:56.322Z",
+  "notes": "Pack Stardew Valley prêt pour ShenPulse : SMAPI 4.5.2, mod local reconnectable sur le port 58432 et 28 interactions historiques.",
+  "assets": [
+    {
+      "id": "smapi",
+      "sourceName": "SMAPI-4.5.2-installer.zip",
+      "remoteName": "SMAPI-4.5.2-installer.zip",
+      "size": 41889142,
+      "sha256": "dd01ddca7b566bfe0d3b3d2d03833496abc56c53da976241f2ab443f5484acc4",
+      "role": "runtime"
+    },
+    {
+      "id": "mod",
+      "sourceName": "CrowdControl-StardewValley-ShenPulse-1.0.0.zip",
+      "remoteName": "CrowdControl-StardewValley-ShenPulse-1.0.0.zip",
+      "size": 170804,
+      "sha256": "90e72ececa5d3b548e34049ab08387e534968aacc9e6c3a8286b4f4509783443",
+      "role": "mod"
+    },
+    {
+      "id": "ccver",
+      "sourceName": "ccver",
+      "remoteName": "ccver",
+      "size": 5,
+      "sha256": "74b860b3270666137a4d543c3e3d1e4e473d54636f7593d1c17bf693e6540bbe",
+      "role": "version"
+    }
+  ]
+}

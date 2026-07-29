@@ -68,6 +68,28 @@ test("résout les variantes de code Cult of the Lamb depuis leurs paramètres", 
   );
 });
 
+test("résout la variante Stardew la plus proche pour une valeur libre", () => {
+  assert.equal(
+    resolveEffectCode(
+      {
+        id: "stardew-give-money",
+        code: "give_money_1000",
+        codeByParameter: {
+          parameter: "amount",
+          mode: "nearest",
+          values: {
+            100: "give_money_100",
+            1000: "give_money_1000",
+            10000: "give_money_10000"
+          }
+        }
+      },
+      { parameters: { amount: 8700 } }
+    ),
+    "give_money_10000"
+  );
+});
+
 test("un paramètre Minecraft duration prend le pas sur la durée générique", () => {
   assert.equal(
     interpolateCommand("/bedrock comets {{duration}} {{interval}}", {
@@ -355,6 +377,161 @@ test("initialise le catalogue Cult of the Lamb et parle au bridge BepInEx", asyn
     await hub.disconnectAll();
   }
 });
+
+test("initialise et exécute les catalogues Stardew Valley et Terraria", async () => {
+  const state = {
+    session: { activeGamePackId: "stardew-valley" },
+    commerce: {
+      subscription: {
+        tier: "pro",
+        source: "subscription",
+        status: "active"
+      },
+      gameEntitlements: []
+    },
+    game: {
+      recentPacks: [],
+      interactionCatalogVersions: {},
+      interactionRulesByPack: {},
+      connectorOverrides: {
+        "stardew-valley": { port: 0 },
+        terraria: { port: 0 }
+      }
+    },
+    rules: []
+  };
+  const store = {
+    getState: () => state,
+    mutate: (callback) => callback(state)
+  };
+  const resourcesDirectory = path.join(__dirname, "..", "resources");
+  const hub = new GameHub({
+    store,
+    resourcesDirectory,
+    packsDirectory: path.join(resourcesDirectory, "packs")
+  });
+  hub.loadPacks();
+
+  const stardew = hub
+    .listPacks()
+    .find((entry) => entry.id === "stardew-valley");
+  const terraria = hub
+    .listPacks()
+    .find((entry) => entry.id === "terraria");
+  assert.equal(stardew.connector.type, "tcp-server");
+  assert.equal(stardew.connector.port, 58432);
+  assert.equal(stardew.effects.length, 28);
+  assert.equal(terraria.connector.type, "tcp-server");
+  assert.equal(terraria.connector.port, 58433);
+  assert.equal(terraria.effects.length, 25);
+  assert.equal(
+    hub.initializeDefaultInteractions("stardew-valley").added,
+    28
+  );
+  assert.equal(
+    hub.initializeDefaultInteractions("terraria").added,
+    25
+  );
+
+  const stardewStatus = await hub.prepareConnection("stardew-valley");
+  const stardewFrames = [];
+  const stardewClient = mockSimpleTcpGame(
+    stardewStatus.port,
+    stardewFrames
+  );
+  await connected(stardewClient);
+  try {
+    await hub.trigger(
+      "stardew-spawn-mob",
+      { user: { displayName: "Nova" } },
+      {
+        packId: "stardew-valley",
+        parameters: { count: 7 }
+      }
+    );
+    await hub.trigger(
+      "stardew-frozen",
+      { user: { displayName: "Nova" } },
+      {
+        packId: "stardew-valley",
+        parameters: { seconds: 13 }
+      }
+    );
+    assert.equal(stardewFrames[0].code, "spawn_slime");
+    assert.equal(stardewFrames[0].quantity, 7);
+    assert.equal(stardewFrames[0].viewer, "Nova");
+    assert.equal(stardewFrames[1].duration, 13_000);
+  } finally {
+    stardewClient.destroy();
+    await hub.disconnectAll();
+  }
+
+  const terrariaStatus = await hub.prepareConnection("terraria");
+  const terrariaFrames = [];
+  const terrariaClient = mockSimpleTcpGame(
+    terrariaStatus.port,
+    terrariaFrames
+  );
+  await connected(terrariaClient);
+  try {
+    await hub.trigger(
+      "terraria-spawn-entity",
+      { user: { displayName: "Alex" } },
+      {
+        packId: "terraria",
+        parameters: { count: 12 }
+      }
+    );
+    await hub.trigger(
+      "terraria-blind",
+      { user: { displayName: "Alex" } },
+      {
+        packId: "terraria",
+        parameters: { seconds: 21 }
+      }
+    );
+    assert.equal(terrariaFrames[0].code, "spawn_critters");
+    assert.equal(terrariaFrames[0].quantity, 12);
+    assert.equal(terrariaFrames[1].code, "buff_blind");
+    assert.equal(terrariaFrames[1].duration, 21_000);
+  } finally {
+    terrariaClient.destroy();
+    await hub.disconnectAll();
+  }
+});
+
+function mockSimpleTcpGame(port, frames) {
+  const client = net.createConnection({
+    host: "127.0.0.1",
+    port
+  });
+  let input = "";
+  client.on("data", (chunk) => {
+    input += chunk.toString("utf8");
+    let separator = input.indexOf("\0");
+    while (separator >= 0) {
+      const request = JSON.parse(input.slice(0, separator));
+      input = input.slice(separator + 1);
+      frames.push(request);
+      client.write(
+        `${JSON.stringify({
+          id: request.id,
+          status: 0,
+          message: ""
+        })}\0`
+      );
+      separator = input.indexOf("\0");
+    }
+  });
+  return client;
+}
+
+function connected(client) {
+  return new Promise((resolve, reject) => {
+    client.once("connect", resolve);
+    client.once("error", reject);
+  });
+}
 
 test("envoie les commandes Minecraft au serveur géré par ShenPulse", async () => {
   const state = {

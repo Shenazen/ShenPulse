@@ -207,6 +207,14 @@ class GameHub extends EventEmitter {
       )
         ? parameters[effect.durationParameter]
         : options.duration ?? effect.duration ?? 0;
+    const configuredQuantity =
+      effect.quantityParameter &&
+      Object.prototype.hasOwnProperty.call(
+        parameters,
+        effect.quantityParameter
+      )
+        ? parameters[effect.quantityParameter]
+        : options.quantity ?? effect.quantity ?? 1;
     const payload = {
       requestId,
       type: 1,
@@ -214,7 +222,7 @@ class GameHub extends EventEmitter {
         code: "",
         viewer: safeString(context.user?.displayName || context.user?.name || "Viewer", 120),
         viewerId: safeString(context.user?.id || "anonymous", 120),
-        quantity: Number(options.quantity || effect.quantity || 1),
+        quantity: Math.max(1, Number(configuredQuantity || 1)),
         duration: Number(configuredDuration || 0),
         parameters
       }
@@ -596,6 +604,25 @@ function resolveEffectCode(effect, runtimeEffect) {
       : String(rawValue || "");
     const mapped = variant.values?.[key];
     if (mapped) return String(mapped);
+    if (variant.mode === "nearest" && Number.isFinite(numericValue)) {
+      const nearest = Object.entries(variant.values || {})
+        .map(([value, code]) => ({
+          value: Number(value),
+          code: String(code || "")
+        }))
+        .filter(
+          (entry) =>
+            Number.isFinite(entry.value) &&
+            entry.code
+        )
+        .sort(
+          (left, right) =>
+            Math.abs(left.value - numericValue) -
+              Math.abs(right.value - numericValue) ||
+            left.value - right.value
+        )[0];
+      if (nearest) return nearest.code;
+    }
   }
   return String(effect?.code || effect?.id || "");
 }

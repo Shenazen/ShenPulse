@@ -18,11 +18,25 @@ const gameSessionLabel = document.getElementById("game-session-label");
 const gameSessionStop = document.getElementById("game-session-stop");
 const sessionButton = document.getElementById("session-button");
 const sessionLabel = document.getElementById("session-label");
+const accountAuthCta = document.getElementById("account-auth-cta");
 const tiktokAccountButton = document.getElementById("tiktok-account-button");
+const tiktokControl = tiktokAccountButton.closest(".tiktok-control");
 const tiktokConnectionButton = document.getElementById("tiktok-connection-button");
 const tiktokAccountLabel = document.getElementById("tiktok-account-label");
 const tiktokStatusLabel = document.getElementById("tiktok-status-label");
 const tiktokStatusDot = document.getElementById("tiktok-status-dot");
+const accountMenuButton = document.getElementById("account-menu-button");
+const accountMenu = document.getElementById("account-menu");
+const accountAvatar = document.getElementById("account-avatar");
+const accountName = document.getElementById("account-name");
+const accountEmail = document.getElementById("account-email");
+const accountMenuAvatar = document.getElementById(
+  "account-menu-avatar"
+);
+const accountMenuName = document.getElementById("account-menu-name");
+const accountMenuEmail = document.getElementById(
+  "account-menu-email"
+);
 const dialog = document.getElementById("editor-dialog");
 const dialogForm = document.getElementById("editor-form");
 const dialogTitle = document.getElementById("dialog-title");
@@ -55,6 +69,7 @@ let profileChromeSignature = "";
 let renderedContentPage = "";
 let renderedContentMarkup = "";
 let dialogSubmitHandler = null;
+let dialogSessionId = 0;
 let actionsSearch = "";
 let actionsSection = "actions";
 let onlyEnabledActions = false;
@@ -83,11 +98,23 @@ const GTA_INTERACTION_OVERLAY_BACKGROUNDS = [
   ["#064e3b", "Émeraude"],
   ["#1f2937", "Anthracite"]
 ];
+const ADMIN_OWNER_EMAIL = "alexandre.leuridan@gmail.com";
 let adminSession = {
   authorized: false,
   email: "",
   uid: "",
   lastAuthenticatedAt: ""
+};
+let accountSession = {
+  authenticated: false,
+  email: "",
+  uid: "",
+  displayName: "",
+  photoUrl: "",
+  providerId: "",
+  emailVerified: false,
+  lastAuthenticatedAt: "",
+  offline: false
 };
 let adminDashboard = null;
 let adminWorkspace = "overview";
@@ -316,7 +343,7 @@ function navigationIcon(pageId) {
 const pages = [
   { section: "PILOTAGE" },
   { id: "dashboard", label: "Vue d’ensemble", icon: "⌁", title: "Vue d’ensemble", kicker: "CENTRE DE CONTRÔLE" },
-  { id: "live", label: "Session en direct", icon: "◉", title: "Session en direct", kicker: "ÉVÉNEMENTS TEMPS RÉEL", count: () => liveEvents.length },
+  { id: "live", label: "Session en direct", icon: "◉", title: "Session en direct", kicker: "ÉVÉNEMENTS TEMPS RÉEL", count: () => isAccountAuthenticated() ? liveEvents.length : null },
   { section: "CRÉATION" },
   { id: "rules", label: "Automatisations", icon: "⎇", title: "Automatisations", kicker: "MOTEUR DE RÈGLES", count: () => snapshot?.state.rules.length },
   { id: "overlays", label: "Overlays", icon: "▱", title: "Overlays & widgets", kicker: "SOURCES NAVIGATEUR" },
@@ -334,7 +361,7 @@ const pages = [
     icon: "♜",
     title: "Administration ShenPulse",
     kicker: "ACCÈS PROPRIÉTAIRE SÉCURISÉ",
-    hidden: () => !adminSession.authorized
+    hidden: () => !isVerifiedAdminSession()
   }
 ];
 
@@ -1338,7 +1365,7 @@ function visibilityScope(section, id) {
 function canAccessCatalogItem(section, id) {
   return visibilityTools.canAccessScope(
     visibilityScope(section, id),
-    adminSession.authorized
+    isVerifiedAdminSession()
   );
 }
 
@@ -1413,8 +1440,28 @@ function canAccessActionType(type) {
 
 function canAccessPage(page) {
   if (!page?.id || page.hidden?.()) return false;
-  if (page.id === "admin") return adminSession.authorized;
+  if (page.id === "admin") return isVerifiedAdminSession();
+  if (page.id === "activity" && !isAccountAuthenticated()) {
+    return false;
+  }
   return canAccessCatalogItem("navigation", page.id);
+}
+
+function isAccountAuthenticated() {
+  return accountSession.authenticated === true;
+}
+
+function isVerifiedAdminSession() {
+  return (
+    isAccountAuthenticated() &&
+    String(accountSession.email || "").trim().toLowerCase() ===
+      ADMIN_OWNER_EMAIL &&
+    adminSession.authorized === true &&
+    String(adminSession.email || "").trim().toLowerCase() ===
+      ADMIN_OWNER_EMAIL &&
+    Boolean(accountSession.uid) &&
+    accountSession.uid === adminSession.uid
+  );
 }
 
 function visibleNavigationEntries() {
@@ -1625,6 +1672,68 @@ function showActiveGameConflict(pack) {
   return true;
 }
 
+function visibleAccountSession() {
+  return accountSession;
+}
+
+function accountInitials(session = visibleAccountSession()) {
+  const source = String(
+    session.displayName || session.email?.split("@")[0] || "SP"
+  ).trim();
+  const words = source
+    .split(/[\s._-]+/)
+    .map((word) => word.trim())
+    .filter(Boolean);
+  return (
+    (words.length > 1
+      ? `${words[0][0]}${words[1][0]}`
+      : source.slice(0, 2)) || "SP"
+  ).toLocaleUpperCase("fr");
+}
+
+function accountDisplayName(session = visibleAccountSession()) {
+  if (!session.authenticated) return "Aucun compte";
+  return (
+    session.displayName ||
+    String(session.email || "").split("@")[0] ||
+    "Compte ShenPulse"
+  );
+}
+
+function syncAccountChrome() {
+  const visibleSession = visibleAccountSession();
+  const authenticated = visibleSession.authenticated === true;
+  const displayName = accountDisplayName(visibleSession);
+  const email = authenticated
+    ? visibleSession.email
+    : "Se connecter à ShenPulse";
+  const initials = accountInitials(visibleSession);
+  accountAvatar.textContent = initials;
+  accountMenuAvatar.textContent = initials;
+  accountName.textContent = displayName;
+  accountName.title = authenticated
+    ? visibleSession.email
+    : "Aucun compte ShenPulse connecté";
+  accountEmail.textContent = email;
+  accountEmail.title = email;
+  accountMenuName.textContent = displayName;
+  accountMenuEmail.textContent = authenticated
+    ? `${visibleSession.email}${
+        visibleSession.offline ? " · Hors ligne" : ""
+      }`
+    : "Connectez votre compte pour synchroniser vos accès.";
+  accountMenu
+    .querySelector(".account-login-action")
+    ?.toggleAttribute("hidden", authenticated);
+  accountMenu
+    .querySelector(".account-logout-action")
+    ?.toggleAttribute("hidden", !authenticated);
+  accountAuthCta.hidden = authenticated;
+  profileControl.hidden = !authenticated;
+  tiktokControl.hidden = !authenticated;
+  sessionButton.hidden = !authenticated;
+}
+
 function syncChrome() {
   ensureCurrentPageAccess();
   const page =
@@ -1635,6 +1744,7 @@ function syncChrome() {
   pageKicker.textContent = page.kicker;
   const state = snapshot?.state;
   if (!state) return;
+  syncAccountChrome();
   const activeProfile = state.profiles.find(
     (profile) => profile.id === state.session.profileId
   ) || state.profiles[0];
@@ -1730,18 +1840,142 @@ function render() {
     settings: renderSettings,
     admin: renderAdmin
   };
-  const nextContentMarkup = (renderers[currentPage] || renderDashboard)();
+  const pageMarkup = (renderers[currentPage] || renderDashboard)();
+  const nextContentMarkup = isAccountAuthenticated()
+    ? pageMarkup
+    : `${renderGuestAccessNotice()}${pageMarkup}`;
   if (
     renderedContentPage === currentPage &&
     renderedContentMarkup === nextContentMarkup
   ) {
+    applyGuestReadOnlyMode(content);
     return;
   }
   content.innerHTML = nextContentMarkup;
   renderedContentPage = currentPage;
   renderedContentMarkup = nextContentMarkup;
   bindOverlayRuntimeFrames(content);
+  applyGuestReadOnlyMode(content);
   restoreAdminScrollState(adminScrollState);
+}
+
+const GUEST_BROWSING_ACTIONS = new Set([
+  "account-login",
+  "close-game",
+  "dismiss-game-message",
+  "dismiss-game-progress",
+  "filter-enabled-actions",
+  "select-simulator-type",
+  "set-actions-section",
+  "set-game-effect-category",
+  "set-game-filter",
+  "set-overlay-category",
+  "set-sound-category",
+  "preview-overlay"
+]);
+
+function renderGuestAccessNotice() {
+  if (currentPage === "activity") return "";
+  return `<aside class="guest-access-notice">
+    <span aria-hidden="true">SP</span>
+    <div>
+      <strong>Mode consultation</strong>
+      <p>Connectez-vous pour afficher vos données locales, vos sources et vos URL, puis pour modifier ou lancer une configuration.</p>
+    </div>
+    <button class="button primary" type="button" data-action="account-login">Se connecter ou s’inscrire</button>
+  </aside>`;
+}
+
+function applyGuestReadOnlyMode(root) {
+  if (!root) return;
+  if (isAccountAuthenticated()) {
+    root
+      .querySelectorAll('[data-guest-locked="true"]')
+      .forEach((control) => {
+        if ("disabled" in control) {
+          control.disabled = control.dataset.guestWasDisabled === "true";
+        }
+        if (control.dataset.guestHadAriaDisabled === "true") {
+          control.setAttribute(
+            "aria-disabled",
+            control.dataset.guestPreviousAriaDisabled || "false"
+          );
+        } else {
+          control.removeAttribute("aria-disabled");
+        }
+        if (control.dataset.guestHadTitle === "true") {
+          control.title = control.dataset.guestPreviousTitle || "";
+        } else {
+          control.removeAttribute("title");
+        }
+        delete control.dataset.guestLocked;
+        delete control.dataset.guestWasDisabled;
+        delete control.dataset.guestHadAriaDisabled;
+        delete control.dataset.guestPreviousAriaDisabled;
+        delete control.dataset.guestHadTitle;
+        delete control.dataset.guestPreviousTitle;
+      });
+    return;
+  }
+  const lockControl = (control, message) => {
+    if (control.dataset.guestLocked !== "true") {
+      control.dataset.guestWasDisabled = String(
+        "disabled" in control && control.disabled
+      );
+      control.dataset.guestHadAriaDisabled = String(
+        control.hasAttribute("aria-disabled")
+      );
+      control.dataset.guestPreviousAriaDisabled =
+        control.getAttribute("aria-disabled") || "";
+      control.dataset.guestHadTitle = String(control.hasAttribute("title"));
+      control.dataset.guestPreviousTitle = control.getAttribute("title") || "";
+    }
+    control.dataset.guestLocked = "true";
+    control.setAttribute("aria-disabled", "true");
+    control.title = message;
+    if ("disabled" in control) control.disabled = true;
+  };
+  root
+    .querySelectorAll("input, select, textarea")
+    .forEach((control) => {
+      const browsingControl =
+        control.matches("[data-search]") ||
+        control.matches('[data-action="filter-enabled-actions"]') ||
+        control.matches("[data-overlay-design]");
+      if (!browsingControl) {
+        lockControl(
+          control,
+          "Connectez-vous à ShenPulse pour modifier ce réglage."
+        );
+      }
+    });
+  root.querySelectorAll("button, [data-action]").forEach((control) => {
+    const action = control.dataset.action || "";
+    const browsingControl =
+      control.hasAttribute("data-navigate") ||
+      GUEST_BROWSING_ACTIONS.has(action);
+    if (browsingControl) return;
+    lockControl(
+      control,
+      "Connectez-vous à ShenPulse pour utiliser cette fonction."
+    );
+  });
+}
+
+function requireAccountForAction(action) {
+  if (
+    isAccountAuthenticated() ||
+    GUEST_BROWSING_ACTIONS.has(action)
+  ) {
+    return false;
+  }
+  toast(
+    "Connexion requise",
+    "Connectez-vous à votre compte ShenPulse pour utiliser cette fonction.",
+    true
+  );
+  openAccountLogin();
+  return true;
 }
 
 function captureAdminScrollState() {
@@ -1774,6 +2008,28 @@ function restoreAdminScrollState(scrollState) {
 }
 
 function renderDashboard() {
+  if (!isAccountAuthenticated()) {
+    return `
+      <div class="page-grid guest-dashboard">
+        <section class="card accent session-hero">
+          <div class="session-copy">
+            <p class="eyebrow">DÉCOUVRIR SHENPULSE</p>
+            <h2>Parcourez les outils avant de connecter votre compte.</h2>
+            <p>Les données d’activité, les sources, les URL et les réglages enregistrés sur cet appareil restent protégés pendant la consultation.</p>
+            <div class="button-row">
+              <button class="button primary" data-action="account-login">Se connecter ou s’inscrire</button>
+              <button class="button ghost" data-navigate="overlays">Voir les overlays</button>
+              <button class="button ghost" data-navigate="games">Voir les jeux</button>
+            </div>
+          </div>
+          <div class="pulse-visual">
+            <div class="pulse-ring"></div>
+            <div class="pulse-ring"></div>
+            <div class="pulse-core">SP</div>
+          </div>
+        </section>
+      </div>`;
+  }
   const { state } = snapshot;
   const stats = state.statistics;
   const connected = state.connections.filter((item) => item.status === "connected").length;
@@ -1850,6 +2106,12 @@ function emptyInline(message) {
 }
 
 function renderLive() {
+  if (!isAccountAuthenticated()) {
+    return renderPrivateDataPlaceholder(
+      "Session en direct protégée",
+      "Connectez-vous pour voir les événements reçus, les statistiques de session et les sources actives."
+    );
+  }
   const state = snapshot.state;
   return `
     <div class="page-grid">
@@ -1943,10 +2205,26 @@ function soundLibraryEntry(url) {
 
 function actionDescription(action) {
   const config = action.config || {};
+  if (
+    !isAccountAuthenticated() &&
+    Object.entries(config).some(
+      ([key, value]) =>
+        /(?:url|uri)$/i.test(key) &&
+        String(value || "").trim()
+    )
+  ) {
+    return "Détail protégé · connexion requise";
+  }
   switch (action.type) {
     case "overlay.alert":
-    case "overlay.media":
       return config.title || config.message || "Affichage dans l’overlay";
+    case "overlay.media":
+      return (
+        mediaLibraryEntry(config.mediaUrl)?.name ||
+        config.mediaName ||
+        config.mediaUrl ||
+        "Média à choisir"
+      );
     case "tts.speak":
       return config.text || "Texte lu à voix haute";
     case "audio.play":
@@ -1980,6 +2258,18 @@ function findActionRow(ruleId, actionId, actionIndex) {
 }
 
 function renderMediaScreensPanel(rows) {
+  if (!isAccountAuthenticated()) {
+    return `<section class="studio-panel panel-cyan media-screens-panel guest-media-screens">
+      <header class="studio-panel-heading">
+        <div><span class="panel-accent"></span><div><h3>Écrans Media</h3><p>Les URL de vos sources navigateur sont protégées.</p></div></div>
+        <span class="badge">CONNEXION REQUISE</span>
+      </header>
+      <div class="media-screens-intro">
+        <strong>Connectez-vous pour préparer vos écrans Media</strong>
+        <p>Aucune URL locale ou publique n’est affichée et aucune copie n’est possible en mode consultation.</p>
+      </div>
+    </section>`;
+  }
   const urls = Array.isArray(snapshot.overlayUrls?.mediaScreens)
     ? snapshot.overlayUrls.mediaScreens
     : [];
@@ -2619,9 +2909,12 @@ function localOverlayUrl(item, configOverride = null) {
 }
 
 function overlayCatalogPreviewUrl(item) {
-  const localUrl = snapshot?.localOverlayUrls?.[item?.key];
+  const previewUrls = isAccountAuthenticated()
+    ? snapshot?.localOverlayUrls
+    : snapshot?.previewOverlayUrls;
+  const localUrl = previewUrls?.[item?.key];
   if (localUrl) return localUrl;
-  const base = snapshot?.localOverlayUrls?.base;
+  const base = previewUrls?.base;
   const token = snapshot?.state?.settings?.overlayToken;
   if (!base || !token || !item?.previewView) return "";
   try {
@@ -2788,7 +3081,8 @@ function overlayQuickActions(item, allowed = true) {
 }
 
 function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
-  const url = allowed ? overlayUrl(item) : "";
+  const accountReady = isAccountAuthenticated();
+  const url = accountReady && allowed ? overlayUrl(item) : "";
   const size = overlaySourceSize(item);
   const categoryLabel = {
     counters: "Compteurs",
@@ -2824,13 +3118,19 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
         </span>
         <span><small>Configuration liée</small><strong>${escapeHtml(overlayProfileName())}</strong></span>
       </div>
-      ${overlayDesignPicker(item, allowed)}
-      ${overlayQuickActions(item, allowed)}
-      ${allowed
+      ${overlayDesignPicker(item, allowed && accountReady)}
+      ${overlayQuickActions(item, allowed && accountReady)}
+      ${accountReady
+        ? ""
+        : `<div class="overlay-guest-preview-actions">
+            <button class="button small primary" type="button" data-action="preview-overlay" data-id="${escapeHtml(item.key)}">Voir l’animation</button>
+            <span>Essai local et temporaire, sans enregistrer le design.</span>
+          </div>`}
+      ${allowed || !accountReady
         ? ""
         : `<div class="overlay-locked-actions"><span>L’aperçu et tous les réglages restent accessibles. Seule l’URL OBS est protégée.</span><div><button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer l’aperçu</button><button class="button small warning" data-navigate="membership">Voir les abonnements</button></div></div>`}
     </div>
-    ${allowed
+    ${allowed && accountReady
       ? `<div class="overlay-card-footer">
           <div class="url-field"><code>${escapeHtml(url)}</code><button class="button small" data-action="copy" data-value="${escapeHtml(url)}">Copier</button></div>
           <div class="entity-actions">
@@ -4109,7 +4409,7 @@ function renderOverlaysV2() {
         <div><span class="hero-chip">GALERIE OVERLAYS</span><h2>Overlays & widgets</h2><p>Les overlays ShenPulse classés comme dans ShenazenOverlay, avec leurs réglages persistants.</p></div>
         <span class="hero-count">${catalogItems.length}</span>
       </section>
-      <section class="card public-overlay-relay-card">
+      ${isAccountAuthenticated() ? `<section class="card public-overlay-relay-card">
         <header class="card-header">
           <div>
             <p class="eyebrow">RELAIS PUBLIC SHENPULSE</p>
@@ -4121,7 +4421,7 @@ function renderOverlaysV2() {
             <button class="button small ghost" data-action="rotate-public-overlay-urls">Régénérer les URL</button>
           </div>
         </header>
-      </section>
+      </section>` : ""}
       <section class="catalog-toolbar overlay-toolbar">
         <label class="search-control"><span>⌕</span><input data-search="overlays" type="search" value="${escapeHtml(overlaySearch)}" placeholder="Rechercher un overlay, un compteur ou un timer"></label>
         <div class="filter-pills">
@@ -4330,14 +4630,16 @@ function commerceExpiryMs(entry) {
 function hasProAccess() {
   const subscription = currentSubscription();
   if (!["pro", "premium"].includes(subscription.tier)) return false;
-  if (["expired", "revoked"].includes(subscription.status)) return false;
   if (
     subscription.source === "trial" ||
     subscription.status === "trial"
   ) {
-    return commerceExpiryMs(subscription) > Date.now();
+    return (
+      ["active", "trial"].includes(subscription.status) &&
+      commerceExpiryMs(subscription) > Date.now()
+    );
   }
-  return true;
+  return ["active", "paid"].includes(subscription.status);
 }
 
 function hasActivePaidPremium() {
@@ -5005,6 +5307,21 @@ function renderGameLaunch(pack, unlocked) {
 }
 
 function renderGameOverlays(pack, unlocked) {
+  if (pack.id === "cult-of-the-lamb") {
+    return `<div class="game-overlays-page">
+      <section class="game-interaction-toolbar">
+        <div><span>◇ CULT OF THE LAMB</span><h3>Aucun overlay requis</h3><p>Les interactions Cult of the Lamb s’exécutent directement dans le jeu. Aucun timer, compteur de WINS, multiplicateur ou roue ne doit être ajouté à OBS pour ce pack.</p></div>
+        <span class="badge success">JEU DIRECT</span>
+      </section>
+      <section class="empty-state game-overlay-empty-state">
+        <div><span class="empty-icon">✓</span><h2>Configuration visuelle inutile</h2><p>Continuez vers le démarrage : ShenPulse transmettra les interactions au mod Cult of the Lamb sans source navigateur supplémentaire.</p></div>
+      </section>
+      <footer class="game-step-footer">
+        <div><strong>Interactions intégrées au jeu</strong><small>Aucun élément de la capture OBS n’est nécessaire.</small></div>
+        <button class="button primary" data-action="game-step" data-value="launch" ${unlocked ? "" : "disabled"}>Continuer vers le démarrage →</button>
+      </footer>
+    </div>`;
+  }
   const items = gameOverlayItemsFor(pack);
   const cards = items.map((item) =>
     renderOverlayCard(item, {
@@ -5065,7 +5382,9 @@ function gameOverlayItemsFor(pack) {
     ? ["winCounter", "multiplierTimer"]
     : MINECRAFT_MODE_IDS.includes(pack.id)
       ? ["timer", "multiplierTimer", "winCounter"]
-      : ["myActions", "timer", "multiplierTimer", "winCounter", "wheel"];
+      : pack.id === "cult-of-the-lamb"
+        ? []
+        : ["myActions", "timer", "multiplierTimer", "winCounter", "wheel"];
   const definitions = overlayDefinitions();
   return preferredKeys
     .map((key) => definitions.find((item) => item.key === key))
@@ -6055,7 +6374,7 @@ function findGameInteractionRow(
 function renderMembership() {
   const subscription = currentSubscription();
   const premiumBeneficiary =
-    snapshot.state.commerce?.premiumSeat?.beneficiaryUsername || "";
+    snapshot.state.commerce?.premiumSeat?.beneficiaryEmail || "";
   const paidGames = visibleGamePacks().filter(
     (pack) => pack.accessMode === "purchase"
   );
@@ -6082,20 +6401,20 @@ function renderMembership() {
             <div>
               <small>AVANTAGE PREMIUM</small>
               <h3>Offrez un accès Pro</h3>
-              <p>Renseignez le @ TikTok de l’utilisateur qui bénéficiera gratuitement d’un espace ShenPulse Pro complet.</p>
+              <p>Renseignez l’adresse e-mail du compte ShenPulse qui bénéficiera gratuitement d’un espace Pro complet.</p>
               ${premiumBeneficiary
-                ? `<span class="premium-seat-current">Accès Pro actuellement offert à <strong>@${escapeHtml(premiumBeneficiary)}</strong></span>`
+                ? `<span class="premium-seat-current">Accès Pro actuellement offert à <strong>${escapeHtml(premiumBeneficiary)}</strong></span>`
                 : ""}
             </div>
           </div>
           <form id="premium-seat-form" class="premium-seat-form">
-            <label for="premium-beneficiary-username">@ TikTok de l’utilisateur</label>
+            <label for="premium-beneficiary-email">Adresse e-mail du bénéficiaire</label>
             <div>
-              <span aria-hidden="true">@</span>
-              <input id="premium-beneficiary-username" name="username" value="${escapeHtml(premiumBeneficiary)}" type="text" required maxlength="30" placeholder="utilisateur" autocomplete="off" autocapitalize="none" spellcheck="false">
+              <span aria-hidden="true">✉</span>
+              <input id="premium-beneficiary-email" name="beneficiaryEmail" value="${escapeHtml(premiumBeneficiary)}" type="email" required maxlength="254" placeholder="utilisateur@exemple.fr" autocomplete="email" autocapitalize="none" spellcheck="false">
               <button class="button primary" type="submit">Offrir l’accès Pro</button>
             </div>
-            <small>Un seul utilisateur peut bénéficier de cet accès. Vous pourrez remplacer ce @ tant que votre abonnement Premium reste actif.</small>
+            <small>Un seul compte peut bénéficier de cet accès. Le bénéficiaire devra se connecter avec exactement cette adresse e-mail.</small>
           </form>
         </section>
       ` : ""}
@@ -6211,6 +6530,12 @@ function renderCommands() {
 }
 
 function renderConnections() {
+  if (!isAccountAuthenticated()) {
+    return renderPrivateDataPlaceholder(
+      "Sources protégées",
+      "Les comptes TikTok, relais, connexions locales et leur état ne sont jamais affichés sans compte ShenPulse connecté."
+    );
+  }
   const connections = snapshot.state.connections;
   return `
     <div class="section-toolbar"><div><h2>Sources d’événements</h2><p>Utilisez uniquement une API, un relais ou des identifiants que vous êtes autorisé à exploiter.</p></div><button class="button primary" data-action="add-connection">＋ Ajouter une source</button></div>
@@ -6233,6 +6558,12 @@ function renderConnections() {
 }
 
 function renderActivity() {
+  if (!isAccountAuthenticated()) {
+    return renderPrivateDataPlaceholder(
+      "Journal inaccessible",
+      "Connectez-vous pour consulter le journal local de ShenPulse."
+    );
+  }
   const entries = snapshot.state.activity;
   return `
     <div class="section-toolbar"><div><h2>${entries.length} entrées locales</h2><p>Les secrets sont masqués et aucune télémétrie n’est envoyée.</p></div><button class="button" data-action="export-data">Exporter la configuration</button></div>
@@ -6240,7 +6571,36 @@ function renderActivity() {
       ${entries.length ? `<table class="activity-table"><thead><tr><th>HEURE</th><th>NIVEAU</th><th>CATÉGORIE</th><th>ÉVÉNEMENT</th><th>DÉTAIL</th></tr></thead><tbody>${entries.map((entry) => `<tr><td>${formatTime(entry.timestamp)}</td><td><span class="badge ${entry.level === "error" ? "error" : entry.level === "success" ? "success" : ""}">${escapeHtml(entry.level)}</span></td><td>${escapeHtml(entry.category)}</td><td><strong>${escapeHtml(entry.title)}</strong></td><td>${escapeHtml(entry.detail)}</td></tr>`).join("")}</tbody></table>` : emptyInline("Le journal est vide.")}</section>`;
 }
 
+function renderPrivateDataPlaceholder(title, detail) {
+  return `<section class="card guest-private-placeholder">
+    <span aria-hidden="true">◇</span>
+    <h2>${escapeHtml(title)}</h2>
+    <p>${escapeHtml(detail)}</p>
+    <button class="button primary" type="button" data-action="account-login">Se connecter ou s’inscrire</button>
+  </section>`;
+}
+
 function renderSettings() {
+  if (!isAccountAuthenticated()) {
+    return `<div class="settings-layout guest-settings-overview">
+      <section class="card">
+        <header class="card-header"><div><p class="eyebrow">APPLICATION</p><h3>Comportement</h3></div></header>
+        <div class="card-body"><p>Les services locaux, les préférences de fenêtre et les autorisations système se configurent ici après connexion.</p></div>
+      </section>
+      <section class="card">
+        <header class="card-header"><div><p class="eyebrow">AUDIO</p><h3>Synthèse vocale</h3></div></header>
+        <div class="card-body"><p>La langue, la voix, la vitesse et le volume restent consultables et modifiables uniquement par le compte connecté.</p></div>
+      </section>
+      <section class="card">
+        <header class="card-header"><div><p class="eyebrow">INTÉGRATIONS</p><h3>OBS, Spotify et stockage</h3></div></header>
+        <div class="card-body"><p>Les adresses, identifiants, ports, jetons et secrets enregistrés sur cet appareil sont masqués en mode consultation.</p></div>
+      </section>
+      <section class="card">
+        <header class="card-header"><div><p class="eyebrow">DONNÉES LOCALES</p><h3>Import, export et suppression</h3></div></header>
+        <div class="card-body"><p>Aucune opération sur les données locales n’est autorisée sans connexion à ShenPulse.</p></div>
+      </section>
+    </div>`;
+  }
   const settings = snapshot.state.settings;
   const backblaze = settings.backblaze || {};
   const backblazeConfigured = Boolean(
@@ -6310,14 +6670,14 @@ function renderSettings() {
       <section class="card admin-access-card">
         <header class="card-header">
           <div><p class="eyebrow">ADMINISTRATION PRIVÉE</p><h3>Panneau propriétaire</h3></div>
-          <span class="badge ${adminSession.authorized ? "success" : ""}">${adminSession.authorized ? "ACCÈS VÉRIFIÉ" : "VERROUILLÉ"}</span>
+          <span class="badge ${isVerifiedAdminSession() ? "success" : ""}">${isVerifiedAdminSession() ? "ACCÈS VÉRIFIÉ" : "VERROUILLÉ"}</span>
         </header>
         <div class="card-body">
-          <p>${adminSession.authorized
+          <p>${isVerifiedAdminSession()
             ? `Session sécurisée active pour <strong>${escapeHtml(adminSession.email)}</strong>. Les droits sont revérifiés côté serveur pour chaque modification.`
             : "Connexion réservée au compte propriétaire ShenPulse. Un autre compte, même connecté à Firebase, sera refusé par le backend."}</p>
           <div class="button-row">
-            ${adminSession.authorized
+            ${isVerifiedAdminSession()
               ? `<button class="button primary" type="button" data-action="open-admin">Ouvrir l’administration</button><button class="button ghost" type="button" data-action="admin-logout">Déconnecter l’admin</button>`
               : `<button class="button primary" type="button" data-action="admin-login">Connexion propriétaire</button>`}
           </div>
@@ -6415,7 +6775,7 @@ function adminVisibilityStorageKey(id) {
 }
 
 function renderAdmin() {
-  if (!adminSession.authorized) {
+  if (!isVerifiedAdminSession()) {
     return `<section class="admin-locked">
       <span>♜</span>
       <p class="eyebrow">ACCÈS PROPRIÉTAIRE</p>
@@ -6502,7 +6862,7 @@ function renderAdminOverview() {
       <section class="admin-panel">
         <header><div><p class="eyebrow">ESSAIS</p><h3>Dernières offres accordées</h3></div><button class="button small" data-action="admin-workspace" data-value="trials">Gérer</button></header>
         <div class="admin-trial-mini-list">
-          ${trials.length ? trials.slice(0, 5).map((trial) => `<span><b>@${escapeHtml(trial.username || "inconnu")}</b><small>jusqu’au ${formatAdminDate(trial.expiresAt, false)}</small></span>`).join("") : `<p>Aucune offre d’essai active.</p>`}
+          ${trials.length ? trials.slice(0, 5).map((trial) => `<span><b>${escapeHtml(trial.email || trial.beneficiaryEmail || "compte inconnu")}</b><small>jusqu’au ${formatAdminDate(trial.expiresAt, false)}</small></span>`).join("") : `<p>Aucune offre d’essai active.</p>`}
         </div>
       </section>
     </div>
@@ -6600,9 +6960,9 @@ function renderAdminTrials() {
     .sort((left, right) => left.title.localeCompare(right.title, "fr"));
   return `<div class="admin-trials-layout">
     <form id="admin-trial-form" class="admin-panel admin-trial-form" autocomplete="off">
-      <header><div><p class="eyebrow">NOUVELLE OFFRE</p><h3>Accorder un essai</h3><p>Le bénéficiaire est identifié par son @ TikTok. L’offre sera mise en attente s’il n’a pas encore créé son compte.</p></div></header>
+      <header><div><p class="eyebrow">NOUVELLE OFFRE</p><h3>Accorder un essai</h3><p>Le bénéficiaire est identifié exclusivement par l’adresse e-mail de son compte ShenPulse.</p></div></header>
       <div class="form-grid">
-        <label class="field full"><span>@ TikTok du bénéficiaire</span><input name="username" type="text" required maxlength="30" placeholder="@utilisateur" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+        <label class="field full"><span>Adresse e-mail du compte bénéficiaire</span><input name="email" type="email" required maxlength="254" placeholder="utilisateur@exemple.fr" autocomplete="email" autocapitalize="none" spellcheck="false"></label>
         <label class="field"><span>Durée</span><input name="days" type="number" min="1" max="365" value="7" required></label>
         <div class="field"><span>Jeux éligibles</span><strong>${eligibleGames.length} disponibles</strong><small>Laisser la sélection vide accorde tous les jeux éligibles.</small></div>
       </div>
@@ -6618,7 +6978,7 @@ function renderAdminTrials() {
       <div>
         ${trials.length ? trials.map((trial) => `<article>
           <span class="admin-trial-avatar">@</span>
-          <div><strong>@${escapeHtml(trial.username || "inconnu")}</strong><small>${trial.pending ? "En attente de création du compte" : escapeHtml(trial.email || "Compte associé")}</small></div>
+          <div><strong>${escapeHtml(trial.email || trial.beneficiaryEmail || "Compte inconnu")}</strong><small>${trial.pending ? "En attente de création du compte" : "Compte ShenPulse associé"}</small></div>
           <div class="admin-trial-entitlements">
             ${trial.subscriptionTrial ? `<b>PRO</b>` : ""}
             ${(trial.gameTrialIds || []).length ? `<b>${trial.gameTrialIds.length} jeu${trial.gameTrialIds.length > 1 ? "x" : ""}</b>` : ""}
@@ -6771,7 +7131,7 @@ function normalizeAdminMoney(value, minimum = 0) {
 }
 
 async function refreshAdminDashboard() {
-  if (!adminSession.authorized || adminBusy) return;
+  if (!isVerifiedAdminSession() || adminBusy) return;
   adminBusy = true;
   render();
   try {
@@ -6781,6 +7141,128 @@ async function refreshAdminDashboard() {
     adminBusy = false;
     render();
   }
+}
+
+async function syncAdminSessionFromAccount() {
+  adminSession = await api.admin.status().catch(() => ({
+    authorized: false,
+    email: "",
+    uid: "",
+    lastAuthenticatedAt: ""
+  }));
+  if (!isVerifiedAdminSession()) {
+    adminDashboard = null;
+    ensureCurrentPageAccess();
+    return;
+  }
+  try {
+    adminDashboard = await api.admin.dashboard();
+    adminSession = adminDashboard.status || adminSession;
+  } catch (error) {
+    console.warn(
+      "Synchronisation de l’administration différée :",
+      error?.message || error
+    );
+  }
+}
+
+function openAccountLogin(mode = "login", preservedEmail = "") {
+  const registering = mode === "register";
+  accountMenu.hidden = true;
+  accountMenuButton.setAttribute("aria-expanded", "false");
+  openEditor({
+    title: registering
+      ? "Créer votre compte ShenPulse"
+      : "Connexion à ShenPulse",
+    kicker: registering
+      ? "INSCRIPTION SÉCURISÉE · FIREBASE"
+      : "COMPTE & ABONNEMENT",
+    submitLabel: registering
+      ? "Créer mon compte"
+      : "Se connecter",
+    variant: "account-auth",
+    body: `<div class="admin-login-dialog account-login-dialog">
+      <section class="admin-login-shield">
+        <span>SP</span>
+        <div>
+          <strong>${registering ? "Un compte pour tous vos accès" : "Retrouvez votre compte ShenPulse"}</strong>
+          <p>Votre adresse e-mail identifie vos abonnements, vos achats et vos jeux. Le mot de passe est traité par Firebase et n’est jamais enregistré par ShenPulse.</p>
+        </div>
+      </section>
+      <button class="account-google-button" type="button" data-account-command="google">
+        <span aria-hidden="true">G</span>
+        ${registering ? "S’inscrire avec Google" : "Continuer avec Google"}
+      </button>
+      <div class="account-auth-divider"><span>ou avec votre e-mail</span></div>
+      <div class="form-grid">
+        <label class="field full">
+          <span>Adresse email</span>
+          <input name="email" type="email" autocomplete="email" value="${escapeHtml(preservedEmail)}" required autofocus>
+        </label>
+        <label class="field full">
+          <span>Mot de passe</span>
+          <input name="password" type="password" minlength="${registering ? 8 : 1}" autocomplete="${registering ? "new-password" : "current-password"}" required>
+          ${registering ? "<small>8 caractères minimum.</small>" : ""}
+        </label>
+        ${registering
+          ? `<label class="field full">
+              <span>Confirmer le mot de passe</span>
+              <input name="passwordConfirmation" type="password" minlength="8" autocomplete="new-password" required>
+            </label>
+            <label class="account-auth-consent full">
+              <input name="acceptedTerms" type="checkbox" required>
+              <span>J’accepte les conditions d’utilisation et la politique de confidentialité ShenPulse.</span>
+            </label>`
+          : ""}
+      </div>
+      ${registering
+        ? `<p class="account-auth-switch">Déjà inscrit ? <button type="button" data-account-command="login">Se connecter</button></p>`
+        : `<div class="account-auth-links">
+            <button type="button" data-account-command="forgot">Mot de passe oublié ?</button>
+            <p>Pas encore de compte ? <button type="button" data-account-command="register">Inscrivez-vous</button></p>
+          </div>`}
+    </div>`,
+    onSubmit: async (data) => {
+      const email = data.get("email");
+      accountSession = registering
+        ? await api.account.register({
+            email,
+            password: data.get("password"),
+            passwordConfirmation: data.get("passwordConfirmation"),
+            displayName: String(email || "").split("@")[0]
+          })
+        : await api.account.login({
+            email,
+            password: data.get("password")
+          });
+      acceptSnapshot(await api.getSnapshot());
+      await syncAdminSessionFromAccount();
+      syncAccountChrome();
+      toast(
+        registering ? "Compte créé" : "Compte connecté",
+        accountSession.emailVerified
+          ? accountSession.email
+          : `${accountSession.email} · vérifiez l’e-mail reçu avant tout paiement`
+      );
+    }
+  });
+  resetAccountAuthDialog();
+}
+
+function resetAccountAuthDialog() {
+  if (dialog.dataset.variant !== "account-auth") return;
+  dialog.removeAttribute("inert");
+  dialogForm.removeAttribute("inert");
+  dialogForm.setAttribute("aria-busy", "false");
+  dialogBody
+    .querySelectorAll("input, select, textarea, button")
+    .forEach((control) => {
+      control.disabled = false;
+      control.removeAttribute("aria-disabled");
+      delete control.dataset.guestLocked;
+      delete control.dataset.guestWasDisabled;
+    });
+  dialogSubmitButton.disabled = false;
 }
 
 function openAdminLogin() {
@@ -7001,10 +7483,10 @@ function openAdminTrialEditor(trial) {
     throw new Error("Le service des offres d’essai est temporairement indisponible.");
   }
   openEditor({
-    title: `Essai de @${trial.username}`,
+    title: `Essai de ${trial.email || trial.beneficiaryEmail}`,
     kicker: "MODIFIER L’OFFRE D’ESSAI",
     body: `<div class="form-grid">
-      ${field("username", "@ TikTok", trial.username, "text", "full required")}
+      ${field("email", "Adresse e-mail du compte", trial.email || trial.beneficiaryEmail, "email", "full required maxlength=\"254\"")}
       ${field("days", "Nouvelle durée (jours)", trial.durationDays || 7, "number", 'min="1" max="365" required')}
       <label class="field"><span>Accès Pro</span><select name="subscription"><option value="true" ${trial.subscriptionTrial ? "selected" : ""}>Oui</option><option value="false" ${!trial.subscriptionTrial ? "selected" : ""}>Non</option></select></label>
       <label class="field"><span>Jeux</span><select name="games"><option value="true" ${(trial.gameTrialIds || []).length ? "selected" : ""}>Oui</option><option value="false" ${!(trial.gameTrialIds || []).length ? "selected" : ""}>Non</option></select></label>
@@ -7015,7 +7497,7 @@ function openAdminTrialEditor(trial) {
       try {
         await api.admin.updateTrial({
           trialId: trial.id,
-          username: data.get("username"),
+          email: data.get("email"),
           days: Number(data.get("days")),
           subscription: data.get("subscription") === "true",
           games: data.get("games") === "true",
@@ -7054,7 +7536,11 @@ function openEditor({
   onSubmit,
   variant = "standard"
 }) {
+  dialogSessionId += 1;
   dialog.dataset.variant = variant;
+  dialog.removeAttribute("inert");
+  dialogForm.removeAttribute("inert");
+  dialogForm.setAttribute("aria-busy", "false");
   dialogTitle.textContent = title;
   dialogKicker.textContent = kicker;
   dialogBody.innerHTML = body;
@@ -7546,9 +8032,6 @@ function openActionEditor(row) {
     id: "",
     type: "overlay.media",
     config: {
-      title: "{{user.displayName}} déclenche une action",
-      message: "Merci pour ton soutien !",
-      color: "#A855F7",
       durationMs: 5000
     }
   };
@@ -7601,16 +8084,13 @@ function openActionEditor(row) {
             return `<option value="${screen}" ${Number(config.screen || 1) === screen ? "selected" : ""}>Écran ${screen}</option>`;
           }).join("")}
         </select><small>Utilisez l’URL du même écran affichée en bas de la page Actions.</small></label>
-        ${field("title", "Titre affiché", config.title || "{{user.displayName}} déclenche une action", "text", "full")}
-        ${field("message", "Message", config.message || "Merci pour ton soutien !", "text", "full")}
-        ${field("overlayColor", "Couleur", config.color || "#A855F7", "color")}
         ${field("durationMs", "Durée à l’écran (ms)", config.durationMs || 5000, "number", 'min="500" max="60000"')}
         ${mediaPickerField(
           "url",
-          "Image, GIF, vidéo ou animation (optionnel)",
+          "Média affiché",
           config.mediaUrl || "",
           config.mediaName || "",
-          { optional: true }
+          { optional: false }
         )}
         ${soundPickerField("soundUrl", config.soundUrl || "", {
           label: "Son optionnel",
@@ -7769,20 +8249,24 @@ function openActionEditor(row) {
       const rawUrl = String(libraryUrl || "").trim();
       const nextConfig = { ...config };
       if (type === "overlay.media") {
+        const mediaUrl = String(data.get("url") || "").trim();
+        if (!mediaUrl) {
+          throw new Error("Choisissez le média à afficher.");
+        }
         Object.assign(nextConfig, {
           screen: Math.min(
             8,
             Math.max(1, Math.round(Number(data.get("mediaScreen")) || 1))
           ),
-          title: data.get("title"),
-          message: data.get("message"),
-          mediaUrl: data.get("url"),
+          mediaUrl,
           mediaName: data.get("urlName"),
           soundUrl: data.get("soundUrl"),
           soundName: data.get("soundUrlName"),
-          color: data.get("overlayColor"),
           durationMs: Number(data.get("durationMs"))
         });
+        delete nextConfig.title;
+        delete nextConfig.message;
+        delete nextConfig.color;
       } else if (type === "audio.play") {
         if (!rawUrl) {
           throw new Error("Choisissez un son à jouer.");
@@ -8650,7 +9134,102 @@ async function dispatchOverlayTest(key) {
   throw new Error("Overlay inconnu.");
 }
 
+function previewGuestOverlay(key) {
+  const timestamp = Date.now();
+  const viewer = {
+    id: `guest-preview-${timestamp}`,
+    username: "spectateur_test",
+    displayName: "Spectateur test",
+    avatarUrl: ""
+  };
+  const event = (type, data) => ({
+    id: `guest-preview-${type}-${timestamp}`,
+    type,
+    timestamp,
+    user: viewer,
+    data
+  });
+
+  if (key === "likeGoal") {
+    return postOverlayCardEvent(key, "like-goal", {
+      operation: "adjust",
+      amount: Math.max(100, Math.round(likeGoalTestAmount() * 0.25))
+    });
+  }
+  if (key === "topDonors" || key === "coinJar") {
+    return postOverlayCardEvent(key, "event", event("gift", {
+      giftName: "Rose",
+      count: 5,
+      repeatCount: 5,
+      value: 1
+    }));
+  }
+  if (key === "topTappers") {
+    return postOverlayCardEvent(key, "event", event("like", {
+      count: 250,
+      likeCount: 250
+    }));
+  }
+  if (key === "timer") {
+    return postOverlayCardEvent(key, "timer", {
+      operation: "set",
+      seconds: 30,
+      label: "TEMPS RESTANT"
+    });
+  }
+  if (key === "multiplierTimer") {
+    return postOverlayCardEvent(key, "multiplier-timer", {
+      operation: "set",
+      seconds: 30,
+      multiplier: 2,
+      label: "BONUS ACTIF"
+    });
+  }
+  if (key === "winCounter") {
+    return postOverlayCardEvent(key, "win-counter", {
+      operation: "adjust",
+      amount: 1
+    });
+  }
+  if (key === "wheel") {
+    const config = normalizeWheelConfig(overlayConfig("wheel"));
+    const wheel = config.wheels.find(
+      (entry) => entry.id === config.selectedWheelId
+    ) || config.wheels[0];
+    const choices = wheel.segments.map((segment) => segment.label);
+    return postOverlayCardEvent(key, "wheel", {
+      choices,
+      colors: wheel.segments.map((segment) => segment.color),
+      winnerIndex: 0,
+      winner: choices[0] || "Surprise !",
+      settings: wheel,
+      design: wheel.design
+    });
+  }
+  if (key.startsWith("match")) {
+    return postOverlayCardEvent(key, "event", event("gift", {
+      giftName: "Rose",
+      count: 1,
+      repeatCount: 1,
+      value: 1
+    }));
+  }
+  if (key === "myActions") {
+    return postOverlayCardEvent(key, "event", event("gift", {
+      giftName: "Rose",
+      count: 1,
+      repeatCount: 1,
+      value: 1
+    }));
+  }
+  return postOverlayCardEvent(key, "game", {
+    effectName: "Effet de démonstration",
+    viewer: "Spectateur test"
+  });
+}
+
 async function previewOverlay(key) {
+  if (!isAccountAuthenticated()) return previewGuestOverlay(key);
   return dispatchOverlayTest(key);
 }
 
@@ -8783,6 +9362,36 @@ async function handleAction(target) {
   const action = target.dataset.action;
   const id = target.dataset.id;
   if (!action) return;
+  if (action === "account-login") {
+    return openAccountLogin();
+  }
+  if (action === "account-logout") {
+    const visibleSession = visibleAccountSession();
+    if (
+      !confirm(
+        `Se déconnecter du compte ${visibleSession.email || "ShenPulse"} sur cet appareil ?`
+      )
+    ) {
+      return;
+    }
+    accountSession = await api.account.logout();
+    liveEvents = [];
+    adminSession = {
+      authorized: false,
+      email: "",
+      uid: "",
+      lastAuthenticatedAt: ""
+    };
+    adminDashboard = null;
+    siteVisibility = await api.admin.visibility();
+    ensureCurrentPageAccess();
+    accountMenu.hidden = true;
+    accountMenuButton.setAttribute("aria-expanded", "false");
+    acceptSnapshot(await api.getSnapshot());
+    render();
+    return toast("Compte ShenPulse déconnecté");
+  }
+  if (requireAccountForAction(action)) return;
   const requiredFeature = {
     "upload-sound": "backblaze.sounds",
     "add-tts": "tts.voices",
@@ -8871,7 +9480,7 @@ async function handleAction(target) {
       throw new Error("Le service des offres d’essai est temporairement indisponible.");
     }
     const trial = adminTrialRows().find((item) => item.id === id);
-    if (!trial || !confirm(`Retirer immédiatement l’essai de @${trial.username} ?`)) return;
+    if (!trial || !confirm(`Retirer immédiatement l’essai de ${trial.email || trial.beneficiaryEmail} ?`)) return;
     return perform(async () => {
       adminBusy = true;
       try {
@@ -9619,6 +10228,10 @@ content.addEventListener("change", (event) => {
     (entry) => entry.key === picker.dataset.overlayDesign
   );
   if (!item) return;
+  if (!isAccountAuthenticated()) {
+    previewOverlayDesignSelection(item, picker.value);
+    return;
+  }
   perform(
     () => persistOverlayDesignSelection(item, picker.value),
     overlayUnlocked(item)
@@ -9726,7 +10339,9 @@ content.addEventListener("click", (event) => {
     currentPage = navigate.dataset.navigate;
     render();
     content.scrollTop = 0;
-    if (currentPage === "sounds") refreshSpotifyStatus();
+    if (currentPage === "sounds" && isAccountAuthenticated()) {
+      refreshSpotifyStatus();
+    }
     if (currentPage === "admin" && !adminDashboard) {
       refreshAdminDashboard().catch((error) =>
         toast("Administration indisponible", error.message || String(error), true)
@@ -9745,6 +10360,10 @@ content.addEventListener("change", (event) => {
 });
 
 document.body.addEventListener("click", (event) => {
+  if (!event.target.closest(".account-control")) {
+    accountMenu.hidden = true;
+    accountMenuButton.setAttribute("aria-expanded", "false");
+  }
   if (!event.target.closest("[data-gift-picker-root]")) {
     document.querySelectorAll("[data-gift-results]").forEach((results) => {
       results.hidden = true;
@@ -9785,24 +10404,43 @@ document.body.addEventListener("click", (event) => {
     currentPage = navigate.dataset.navigate;
     render();
     content.scrollTop = 0;
-    if (currentPage === "sounds") refreshSpotifyStatus();
+    if (currentPage === "sounds" && isAccountAuthenticated()) {
+      refreshSpotifyStatus();
+    }
     if (currentPage === "admin" && !adminDashboard) {
       refreshAdminDashboard().catch((error) =>
         toast("Administration indisponible", error.message || String(error), true)
       );
     }
+    accountMenu.hidden = true;
+    accountMenuButton.setAttribute("aria-expanded", "false");
+  }
+  const globalAction = event.target.closest("[data-action]");
+  if (globalAction && !content.contains(globalAction)) {
+    handleAction(globalAction).catch(() => {});
   }
   const windowButton = event.target.closest("[data-window]");
   if (windowButton) api.window[windowButton.dataset.window]?.();
 });
 
-sessionButton.addEventListener("click", () => toggleSession().catch(() => {}));
+sessionButton.addEventListener("click", () =>
+  isAccountAuthenticated()
+    ? toggleSession().catch(() => {})
+    : openAccountLogin()
+);
+accountMenuButton.addEventListener("click", () => {
+  const opening = accountMenu.hidden;
+  accountMenu.hidden = !opening;
+  accountMenuButton.setAttribute("aria-expanded", String(opening));
+});
 profilePickerButton.addEventListener("click", () => {
+  if (!isAccountAuthenticated()) return openAccountLogin();
   const opening = profileMenu.hidden;
   profileMenu.hidden = !opening;
   profilePickerButton.setAttribute("aria-expanded", String(opening));
 });
 profileMenu.addEventListener("click", async (event) => {
+  if (!isAccountAuthenticated()) return openAccountLogin();
   const choice = event.target.closest("[data-profile-select]");
   if (!choice) return;
   profileMenu.hidden = true;
@@ -9820,11 +10458,13 @@ document.addEventListener("click", (event) => {
   profilePickerButton.setAttribute("aria-expanded", "false");
 });
 profileManageButton.addEventListener("click", () => {
+  if (!isAccountAuthenticated()) return openAccountLogin();
   profileMenu.hidden = true;
   profilePickerButton.setAttribute("aria-expanded", "false");
   openProfileManager();
 });
 gameSessionSummary.addEventListener("click", () => {
+  if (!isAccountAuthenticated()) return openAccountLogin();
   const gameSession = activeGameSession();
   if (!gameSession) return;
   if (!requireGameAccess(gameSession.pack)) return;
@@ -9836,6 +10476,7 @@ gameSessionSummary.addEventListener("click", () => {
   content.scrollTop = 0;
 });
 gameSessionStop.addEventListener("click", async () => {
+  if (!isAccountAuthenticated()) return openAccountLogin();
   if (gameSessionStop.disabled) return;
   gameSessionStop.disabled = true;
   gameSessionStop.textContent = "…";
@@ -9851,11 +10492,16 @@ gameSessionStop.addEventListener("click", async () => {
     gameSessionStop.title = "Arrêter la session de jeu";
   }
 });
-tiktokAccountButton.addEventListener("click", () => openTikTokEditor());
+tiktokAccountButton.addEventListener("click", () =>
+  isAccountAuthenticated() ? openTikTokEditor() : openAccountLogin()
+);
 tiktokConnectionButton.addEventListener("click", () =>
-  toggleTikTok().catch(() => {})
+  isAccountAuthenticated()
+    ? toggleTikTok().catch(() => {})
+    : openAccountLogin()
 );
 profileSelect.addEventListener("change", async () => {
+  if (!isAccountAuthenticated()) return openAccountLogin();
   await perform(() => api.selectProfile(profileSelect.value), "Profil actif modifié");
   snapshot = await api.getSnapshot();
   render();
@@ -9888,6 +10534,8 @@ dialogForm.addEventListener("input", () => {
 dialogForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!dialogSubmitHandler) return dialog.close();
+  const activeDialogSessionId = dialogSessionId;
+  const activeSubmitHandler = dialogSubmitHandler;
   clearDialogError();
   const defaultLabel =
     dialogSubmitButton.dataset.defaultLabel ||
@@ -9895,17 +10543,36 @@ dialogForm.addEventListener("submit", async (event) => {
     "Enregistrer";
   dialogSubmitButton.disabled = true;
   dialogSubmitButton.textContent = "Enregistrement…";
+  dialogForm.setAttribute("aria-busy", "true");
   try {
-    await dialogSubmitHandler(new FormData(dialogForm));
+    await activeSubmitHandler(new FormData(dialogForm));
+    if (
+      activeDialogSessionId !== dialogSessionId ||
+      activeSubmitHandler !== dialogSubmitHandler
+    ) {
+      return;
+    }
     dialog.close();
     render();
     toast("Configuration enregistrée");
   } catch (error) {
+    if (
+      activeDialogSessionId !== dialogSessionId ||
+      activeSubmitHandler !== dialogSubmitHandler
+    ) {
+      return;
+    }
     showDialogError(error.message || String(error));
     toast("Configuration invalide", error.message || String(error), true);
   } finally {
-    dialogSubmitButton.disabled = false;
-    dialogSubmitButton.textContent = defaultLabel;
+    if (
+      activeDialogSessionId === dialogSessionId &&
+      activeSubmitHandler === dialogSubmitHandler
+    ) {
+      dialogForm.setAttribute("aria-busy", "false");
+      dialogSubmitButton.disabled = false;
+      dialogSubmitButton.textContent = defaultLabel;
+    }
   }
 });
 
@@ -9919,7 +10586,80 @@ dialog.addEventListener("cancel", () => {
   dialogSubmitHandler = null;
 });
 
+dialog.addEventListener("close", () => {
+  dialogSessionId += 1;
+  dialogSubmitHandler = null;
+  dialogForm.setAttribute("aria-busy", "false");
+  dialogSubmitButton.disabled = false;
+});
+
 dialog.addEventListener("click", (event) => {
+  const accountCommand = event.target.closest("[data-account-command]");
+  if (accountCommand) {
+    event.preventDefault();
+    const command = accountCommand.dataset.accountCommand;
+    const currentEmail =
+      dialogBody.querySelector('[name="email"]')?.value || "";
+    if (command === "login" || command === "register") {
+      openAccountLogin(command, currentEmail);
+      return;
+    }
+    if (command === "forgot") {
+      if (!currentEmail) {
+        return showDialogError(
+          "Renseignez d’abord votre adresse e-mail."
+        );
+      }
+      const activeDialogSessionId = dialogSessionId;
+      accountCommand.disabled = true;
+      accountCommand.textContent = "Envoi en cours…";
+      api.account
+        .requestPasswordReset({ email: currentEmail })
+        .then((result) =>
+          activeDialogSessionId === dialogSessionId
+            ? toast("E-mail de réinitialisation", result.message)
+            : undefined
+        )
+        .catch((error) => {
+          if (activeDialogSessionId === dialogSessionId) {
+            showDialogError(error.message || String(error));
+          }
+        })
+        .finally(() => {
+          if (activeDialogSessionId !== dialogSessionId) return;
+          accountCommand.disabled = false;
+          accountCommand.textContent = "Mot de passe oublié ?";
+        });
+      return;
+    }
+    if (command === "google") {
+      const activeDialogSessionId = dialogSessionId;
+      accountCommand.disabled = true;
+      accountCommand.innerHTML =
+        '<span aria-hidden="true">G</span> Connexion dans le navigateur…';
+      api.account
+        .loginWithBrowser()
+        .then(async (status) => {
+          if (activeDialogSessionId !== dialogSessionId) return;
+          accountSession = status;
+          acceptSnapshot(await api.getSnapshot());
+          if (activeDialogSessionId !== dialogSessionId) return;
+          await syncAdminSessionFromAccount();
+          if (activeDialogSessionId !== dialogSessionId) return;
+          dialog.close();
+          render();
+          toast("Compte Google connecté", status.email);
+        })
+        .catch((error) => {
+          if (activeDialogSessionId !== dialogSessionId) return;
+          showDialogError(error.message || String(error));
+          accountCommand.disabled = false;
+          accountCommand.innerHTML =
+            '<span aria-hidden="true">G</span> Continuer avec Google';
+        });
+      return;
+    }
+  }
   const previewTest = event.target.closest("[data-overlay-preview-test]");
   if (previewTest) {
     event.preventDefault();
@@ -10294,15 +11034,24 @@ dialog.addEventListener("click", async (event) => {
 });
 
 content.addEventListener("submit", async (event) => {
+  if (!isAccountAuthenticated()) {
+    event.preventDefault();
+    toast(
+      "Connexion requise",
+      "Aucune modification n’est autorisée en mode consultation.",
+      true
+    );
+    openAccountLogin();
+    return;
+  }
   if (event.target.id === "premium-seat-form") {
     event.preventDefault();
     const data = new FormData(event.target);
     await perform(async () => {
-      acceptSnapshot(
-        await api.assignPremiumSeat({
-          username: data.get("username")
-        })
-      );
+      const response = await api.assignPremiumSeat({
+        beneficiaryEmail: data.get("beneficiaryEmail")
+      });
+      if (response?.snapshot) acceptSnapshot(response.snapshot);
       render();
     }, "Accès Pro offert");
     return;
@@ -10347,7 +11096,7 @@ content.addEventListener("submit", async (event) => {
       render();
       try {
         await api.admin.grantTrial({
-          username: data.get("username"),
+          email: data.get("email"),
           days: Number(data.get("days") || 7),
           subscription: data.has("subscription"),
           games: data.has("games"),
@@ -10623,6 +11372,7 @@ function keyboardShortcutMatches(event, shortcuts = "") {
 
 function handleOverlayKeyboardShortcut(event) {
   if (
+    !isAccountAuthenticated() ||
     event.repeat ||
     dialog.open ||
     event.target.closest?.("input, select, textarea, [contenteditable='true']")
@@ -10652,7 +11402,7 @@ function handleOverlayKeyboardShortcut(event) {
 document.addEventListener("keydown", (event) => {
   if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "a") {
     event.preventDefault();
-    if (adminSession.authorized) {
+    if (isVerifiedAdminSession()) {
       currentPage = "admin";
       render();
       if (!adminDashboard) {
@@ -10660,17 +11410,21 @@ document.addEventListener("keydown", (event) => {
           toast("Administration indisponible", error.message || String(error), true)
         );
       }
-    } else {
+    } else if (isAccountAuthenticated()) {
       openAdminLogin();
+    } else {
+      openAccountLogin();
     }
   }
   if (event.ctrlKey && event.key.toLowerCase() === "l") {
     event.preventDefault();
-    toggleSession().catch(() => {});
+    if (isAccountAuthenticated()) toggleSession().catch(() => {});
+    else openAccountLogin();
   }
   if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "t") {
     event.preventDefault();
-    api.testEvent("gift").catch(() => {});
+    if (isAccountAuthenticated()) api.testEvent("gift").catch(() => {});
+    else openAccountLogin();
   }
   handleOverlayKeyboardShortcut(event);
 });
@@ -10694,38 +11448,66 @@ setInterval(() => {
 }, 1000);
 
 api.getSnapshot()
-  .then(async (value) => {
-    acceptSnapshot(value);
+  .then(async (initialSnapshot) => {
+    acceptSnapshot(initialSnapshot);
+    const localAccount =
+      initialSnapshot?.state?.settings?.account || {};
+    accountSession = {
+      authenticated: Boolean(localAccount.email && localAccount.uid),
+      email: localAccount.email || "",
+      uid: localAccount.uid || "",
+      displayName: localAccount.displayName || "",
+      photoUrl: localAccount.photoUrl || "",
+      providerId: localAccount.providerId || "",
+      emailVerified: localAccount.emailVerified === true,
+      lastAuthenticatedAt: localAccount.lastAuthenticatedAt || "",
+      offline: false
+    };
     await hydrateGiftCatalog();
+    ensureCurrentPageAccess();
     render();
-    Promise.all([
-      api.admin
+
+    const [accountStatus, visibility] = await Promise.all([
+      api.account
         .status()
         .catch(() => ({
-          authorized: false,
+          authenticated: false,
           email: "",
           uid: "",
-          lastAuthenticatedAt: ""
+          displayName: "",
+          photoUrl: "",
+          providerId: "",
+          emailVerified: false,
+          lastAuthenticatedAt: "",
+          offline: false
         })),
       api.admin.visibility().catch(() => siteVisibility)
-    ]).then(async ([status, visibility]) => {
-      adminSession = status;
-      siteVisibility = visibility;
-      ensureCurrentPageAccess();
-      render();
-      if (adminSession.authorized) {
-        try {
-          adminDashboard = await api.admin.dashboard();
-          adminSession = adminDashboard.status || adminSession;
-          render();
-        } catch (error) {
-          console.warn(
-            "Synchronisation automatique des accès différée :",
-            error?.message || error
-          );
-        }
+    ]);
+    accountSession = accountStatus;
+    siteVisibility = visibility;
+    adminSession = await api.admin
+      .status()
+      .catch(() => ({
+        authorized: false,
+        email: "",
+        uid: "",
+        lastAuthenticatedAt: ""
+      }));
+    acceptSnapshot(await api.getSnapshot());
+    ensureCurrentPageAccess();
+    render();
+    if (isVerifiedAdminSession()) {
+      try {
+        adminDashboard = await api.admin.dashboard();
+        adminSession = adminDashboard.status || adminSession;
+        render();
+      } catch (error) {
+        console.warn(
+          "Synchronisation automatique des accès différée :",
+          error?.message || error
+        );
       }
-    });
+    }
   })
   .catch((error) => {
     content.innerHTML = `<div class="empty-state"><div><span class="empty-icon">!</span><h2>ShenPulse n’a pas pu démarrer</h2><p>${escapeHtml(error.message)}</p></div></div>`;

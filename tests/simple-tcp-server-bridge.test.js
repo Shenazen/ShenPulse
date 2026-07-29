@@ -33,6 +33,9 @@ test("la passerelle SimpleTCP reçoit le mod puis exécute une interaction", asy
     const request = JSON.parse(buffer.slice(0, separator));
     assert.equal(request.type, 1);
     assert.equal(request.code, "chaos_heal");
+    assert.equal(request.viewer, "Nova");
+    assert.equal(request.parameters.amount, 25);
+    assert.equal(request.amount, 25);
     client.write(
       `${JSON.stringify({
         id: request.id,
@@ -43,8 +46,10 @@ test("la passerelle SimpleTCP reçoit le mod puis exécute une interaction", asy
   });
 
   const result = await bridge.send("chaos_heal", {
+    viewer: "Nova",
     quantity: 1,
-    duration: 0
+    duration: 0,
+    parameters: { amount: 25 }
   });
   assert.equal(result.ok, true);
   assert.equal(result.message, "Interaction exécutée.");

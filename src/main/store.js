@@ -12,6 +12,27 @@ const {
   normalizeOverlaySession
 } = require("./overlay-session-state");
 
+const ACCOUNT_WORKSPACE_SCHEMA_VERSION = 1;
+const ACCOUNT_SETTING_KEYS = [
+  "locale",
+  "theme",
+  "overlayPort",
+  "apiPort",
+  "overlayToken",
+  "apiToken",
+  "historyLimit",
+  "startOverlayServer",
+  "publicOverlayRelay",
+  "minimizeToTray",
+  "launchAtStartup",
+  "allowKeystrokes",
+  "telemetry",
+  "tts",
+  "obs",
+  "spotify",
+  "tiktok"
+];
+
 class StateStore {
   constructor(userDataDirectory, safeStorage) {
     this.directory = userDataDirectory;
@@ -69,6 +90,10 @@ class StateStore {
     this.state.settings.admin = {
       ...defaults.settings.admin,
       ...(this.state.settings.admin || {})
+    };
+    this.state.settings.account = {
+      ...defaults.settings.account,
+      ...(this.state.settings.account || {})
     };
     this.state.settings.publicOverlayRelay = {
       ...defaults.settings.publicOverlayRelay,
@@ -260,7 +285,131 @@ class StateStore {
           : []
       }
     };
+    this.state.commerce.premiumSeat.beneficiaryEmail = String(
+      this.state.commerce.premiumSeat.beneficiaryEmail || ""
+    )
+      .trim()
+      .toLowerCase();
+    this.state.commerce.premiumSeat.beneficiaryEmails = Array.isArray(
+      this.state.commerce.premiumSeat.beneficiaryEmails
+    )
+      ? this.state.commerce.premiumSeat.beneficiaryEmails
+          .map((value) => String(value || "").trim().toLowerCase())
+          .filter(Boolean)
+      : this.state.commerce.premiumSeat.beneficiaryEmail
+        ? [this.state.commerce.premiumSeat.beneficiaryEmail]
+        : [];
+    delete this.state.commerce.premiumSeat.beneficiaryUsername;
+    delete this.state.commerce.premiumSeat.beneficiaryUsernames;
     this.#migrateProfileWorkspaces();
+    this.#migrateAccountWorkspaces();
+  }
+
+  #migrateAccountWorkspaces() {
+    const storedAccountUid = cleanAccountUid(
+      this.state.settings?.account?.uid
+    );
+    const hasLocalSession = Boolean(
+      storedAccountUid &&
+      this.state.settings?.account?.refreshTokenSecretId &&
+      this.getSecret(
+        this.state.settings.account.refreshTokenSecretId
+      )
+    );
+    const existingWorkspaces =
+      this.state.accountWorkspaces &&
+      typeof this.state.accountWorkspaces === "object" &&
+      !Array.isArray(this.state.accountWorkspaces)
+        ? this.state.accountWorkspaces
+        : {};
+    this.state.accountWorkspaces = Object.fromEntries(
+      Object.entries(existingWorkspaces)
+        .filter(([, workspace]) => workspace && typeof workspace === "object")
+        .map(([key, workspace]) => {
+          const ownerUid = cleanAccountUid(workspace.ownerUid);
+          return [
+            key,
+            normalizeAccountWorkspace(workspace, ownerUid)
+          ];
+        })
+    );
+
+    if (
+      Number(this.state.accountWorkspaceSchemaVersion || 0) <
+      ACCOUNT_WORKSPACE_SCHEMA_VERSION
+    ) {
+      const legacyWorkspace = createAccountWorkspaceFromState(
+        this.state,
+        storedAccountUid
+      );
+      if (storedAccountUid) {
+        this.state.accountWorkspaces[
+          accountWorkspaceKey(storedAccountUid)
+        ] = legacyWorkspace;
+      } else {
+        this.state.unclaimedAccountWorkspace = legacyWorkspace;
+      }
+      this.state.accountWorkspaceSchemaVersion =
+        ACCOUNT_WORKSPACE_SCHEMA_VERSION;
+    }
+
+    if (storedAccountUid && hasLocalSession) {
+      const key = accountWorkspaceKey(storedAccountUid);
+      if (!this.state.accountWorkspaces[key]) {
+        this.state.accountWorkspaces[key] =
+          this.#claimUnclaimedWorkspace(storedAccountUid);
+      }
+      this.state.activeAccountUid = storedAccountUid;
+      this.#loadAccountWorkspace(storedAccountUid);
+      return;
+    }
+
+    this.state.activeAccountUid = "";
+    this.#loadAnonymousWorkspace();
+  }
+
+  #claimUnclaimedWorkspace(uid) {
+    const unclaimed =
+      this.state.unclaimedAccountWorkspace &&
+      typeof this.state.unclaimedAccountWorkspace === "object"
+        ? this.state.unclaimedAccountWorkspace
+        : null;
+    delete this.state.unclaimedAccountWorkspace;
+    return unclaimed
+      ? normalizeAccountWorkspace(unclaimed, uid)
+      : createEmptyAccountWorkspace(uid);
+  }
+
+  #syncActiveAccountWorkspace() {
+    const uid = cleanAccountUid(this.state.activeAccountUid);
+    if (!uid) return;
+    this.#syncActiveProfileWorkspace();
+    this.state.accountWorkspaces ||= {};
+    this.state.accountWorkspaces[accountWorkspaceKey(uid)] =
+      createAccountWorkspaceFromState(this.state, uid);
+  }
+
+  #loadAccountWorkspace(uid) {
+    const targetUid = cleanAccountUid(uid);
+    if (!targetUid) return false;
+    const workspace = this.state.accountWorkspaces?.[
+      accountWorkspaceKey(targetUid)
+    ];
+    if (!workspace) return false;
+    applyAccountWorkspace(
+      this.state,
+      normalizeAccountWorkspace(workspace, targetUid)
+    );
+    this.#loadProfileWorkspace(this.state.session.profileId);
+    return true;
+  }
+
+  #loadAnonymousWorkspace() {
+    applyAccountWorkspace(
+      this.state,
+      createEmptyAccountWorkspace("")
+    );
+    this.#loadProfileWorkspace(this.state.session.profileId);
   }
 
   #migrateProfileWorkspaces() {
@@ -393,11 +542,48 @@ class StateStore {
 
   getState() {
     const result = clone(this.state);
+    delete result.accountWorkspaces;
+    delete result.accountWorkspaceSchemaVersion;
+    delete result.activeAccountUid;
+    delete result.unclaimedAccountWorkspace;
     for (const connection of result.connections) {
       connection.hasSecret = Boolean(connection.secretId && this.secrets[connection.secretId]);
       delete connection.secret;
     }
     return result;
+  }
+
+  getActiveAccountUid() {
+    return cleanAccountUid(this.state.activeAccountUid);
+  }
+
+  activateAccount(uid) {
+    const targetUid = cleanAccountUid(uid);
+    if (!targetUid) {
+      throw new Error("Le compte ShenPulse ne possède pas d’identifiant valide.");
+    }
+    const currentUid = this.getActiveAccountUid();
+    if (currentUid === targetUid) return this.getState();
+
+    this.#syncActiveAccountWorkspace();
+    this.state.accountWorkspaces ||= {};
+    const key = accountWorkspaceKey(targetUid);
+    if (!this.state.accountWorkspaces[key]) {
+      this.state.accountWorkspaces[key] =
+        this.#claimUnclaimedWorkspace(targetUid);
+    }
+    this.state.activeAccountUid = targetUid;
+    this.#loadAccountWorkspace(targetUid);
+    this.touch(true);
+    return this.getState();
+  }
+
+  deactivateAccount() {
+    this.#syncActiveAccountWorkspace();
+    this.state.activeAccountUid = "";
+    this.#loadAnonymousWorkspace();
+    this.touch(true);
+    return this.getState();
   }
 
   set(pathParts, value) {
@@ -583,22 +769,34 @@ class StateStore {
     if (!imported || typeof imported !== "object" || !Array.isArray(imported.rules)) {
       throw new Error("Le fichier importé n'est pas un profil ShenPulse valide.");
     }
-    const preservedSettings = this.state.settings;
-    this.state = clone(imported);
-    this.state.settings = {
-      ...createDefaultState().settings,
-      ...preservedSettings,
-      ...(imported.settings || {}),
-      apiToken: preservedSettings.apiToken,
-      overlayToken: preservedSettings.overlayToken
+    const uid = this.getActiveAccountUid();
+    if (!uid) {
+      throw new Error(
+        "Connectez-vous au compte qui doit posséder cette configuration."
+      );
+    }
+    const importedState = {
+      ...createDefaultState(),
+      ...clone(imported),
+      settings: {
+        ...createDefaultState().settings,
+        ...(imported.settings || {})
+      }
     };
-    this.#migrate();
+    this.#syncActiveAccountWorkspace();
+    this.state.accountWorkspaces[accountWorkspaceKey(uid)] =
+      normalizeAccountWorkspace(
+        createAccountWorkspaceFromState(importedState, uid),
+        uid
+      );
+    this.#loadAccountWorkspace(uid);
     this.touch(true);
     return this.getState();
   }
 
   touch(immediate = false, syncWorkspace = true) {
     if (syncWorkspace) this.#syncActiveProfileWorkspace();
+    if (syncWorkspace) this.#syncActiveAccountWorkspace();
     this.state.updatedAt = new Date().toISOString();
     if (this.writeTimer) clearTimeout(this.writeTimer);
     if (immediate) this.#writeState();
@@ -613,6 +811,7 @@ class StateStore {
 
   #writeState() {
     this.writeTimer = null;
+    this.#syncActiveAccountWorkspace();
     this.#atomicWrite(this.filePath, JSON.stringify(this.state, null, 2));
   }
 
@@ -626,6 +825,300 @@ class StateStore {
     fs.writeFileSync(temporaryPath, content, { encoding: "utf8", mode: 0o600 });
     fs.renameSync(temporaryPath, filePath);
   }
+}
+
+function cleanAccountUid(value) {
+  const uid = String(value || "").trim();
+  if (
+    !uid ||
+    uid.length > 200 ||
+    /[\u0000-\u001f\u007f]/.test(uid)
+  ) {
+    return "";
+  }
+  return uid;
+}
+
+function accountWorkspaceKey(uid) {
+  const clean = cleanAccountUid(uid);
+  return clean
+    ? `uid_${Buffer.from(clean, "utf8").toString("base64url")}`
+    : "";
+}
+
+function accountSettingsFromState(settings = {}) {
+  return Object.fromEntries(
+    ACCOUNT_SETTING_KEYS.map((key) => [key, clone(settings[key])])
+  );
+}
+
+function createAccountWorkspaceFromState(state, ownerUid = "") {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: ACCOUNT_WORKSPACE_SCHEMA_VERSION,
+    ownerUid: cleanAccountUid(ownerUid),
+    settings: accountSettingsFromState(state.settings || {}),
+    connections: clone(state.connections || []),
+    profiles: clone(state.profiles || []),
+    session: {
+      profileId: String(state.session?.profileId || ""),
+      activeGamePackId: String(
+        state.session?.activeGamePackId || "coin-pusher"
+      )
+    },
+    game: clone(state.game || {}),
+    commerce: clone(state.commerce || {}),
+    customSounds: clone(state.customSounds || []),
+    customMedia: clone(state.customMedia || []),
+    activity: clone(state.activity || []),
+    overlaySession: clone(state.overlaySession || {}),
+    statistics: clone(state.statistics || {}),
+    createdAt: String(state.createdAt || now),
+    updatedAt: now
+  };
+}
+
+function createEmptyAccountWorkspace(ownerUid = "") {
+  return createAccountWorkspaceFromState(
+    createDefaultState(),
+    ownerUid
+  );
+}
+
+function normalizeAccountWorkspace(workspace, ownerUid = "") {
+  const defaults = createEmptyAccountWorkspace(ownerUid);
+  const saved =
+    workspace && typeof workspace === "object" ? clone(workspace) : {};
+  const settings =
+    saved.settings && typeof saved.settings === "object"
+      ? saved.settings
+      : {};
+  const game =
+    saved.game && typeof saved.game === "object" ? saved.game : {};
+  const commerce =
+    saved.commerce && typeof saved.commerce === "object"
+      ? saved.commerce
+      : {};
+  const savedTrial =
+    commerce.trial && typeof commerce.trial === "object"
+      ? commerce.trial
+      : {};
+  const savedPremiumSeat =
+    commerce.premiumSeat &&
+    typeof commerce.premiumSeat === "object"
+      ? commerce.premiumSeat
+      : {};
+  const profiles = Array.isArray(saved.profiles) && saved.profiles.length
+    ? saved.profiles
+    : defaults.profiles;
+  const normalizedTrial = {
+    ...clone(defaults.commerce.trial),
+    ...clone(savedTrial),
+    email: String(savedTrial.email || "").trim().toLowerCase(),
+    gameIds: Array.isArray(savedTrial.gameIds)
+      ? clone(savedTrial.gameIds)
+      : [],
+    grants: Array.isArray(savedTrial.grants)
+      ? clone(savedTrial.grants)
+      : [],
+    cachedGrants: Array.isArray(savedTrial.cachedGrants)
+      ? clone(savedTrial.cachedGrants)
+      : []
+  };
+  delete normalizedTrial.username;
+
+  return {
+    ...defaults,
+    ...saved,
+    schemaVersion: ACCOUNT_WORKSPACE_SCHEMA_VERSION,
+    ownerUid:
+      cleanAccountUid(ownerUid) ||
+      cleanAccountUid(saved.ownerUid),
+    settings: Object.fromEntries(
+      ACCOUNT_SETTING_KEYS.map((key) => {
+        const defaultValue = defaults.settings[key];
+        const savedValue = settings[key];
+        if (
+          defaultValue &&
+          typeof defaultValue === "object" &&
+          !Array.isArray(defaultValue)
+        ) {
+          return [
+            key,
+            {
+              ...clone(defaultValue),
+              ...(savedValue &&
+              typeof savedValue === "object" &&
+              !Array.isArray(savedValue)
+                ? clone(savedValue)
+                : {})
+            }
+          ];
+        }
+        return [
+          key,
+          savedValue === undefined
+            ? clone(defaultValue)
+            : clone(savedValue)
+        ];
+      })
+    ),
+    connections: Array.isArray(saved.connections)
+      ? clone(saved.connections)
+      : clone(defaults.connections),
+    profiles: profiles.map((profile, index) => {
+      const profileWorkspace = normalizeProfileWorkspace(
+        profile?.workspace
+      );
+      return {
+        ...clone(profile),
+        id:
+          String(profile?.id || "").trim() ||
+          `profile_${index + 1}`,
+        name:
+          String(profile?.name || "").trim() ||
+          `Profil ${index + 1}`,
+        workspace: profileWorkspace,
+        enabledRuleIds: profileWorkspace.rules.map(
+          (rule) => rule.id
+        )
+      };
+    }),
+    session: {
+      profileId: String(
+        saved.session?.profileId ||
+        profiles[0]?.id ||
+        "profile_starter"
+      ),
+      activeGamePackId:
+        String(
+          saved.session?.activeGamePackId ||
+          game.activeGamePackId ||
+          "coin-pusher"
+        ).trim() || "coin-pusher"
+    },
+    game: {
+      ...clone(defaults.game),
+      ...clone(game),
+      connectorOverrides: normalizeObjectMap(
+        game.connectorOverrides
+      ),
+      interactionCatalogVersions: normalizeObjectMap(
+        game.interactionCatalogVersions
+      ),
+      interactionRulesByPack: normalizeGameInteractionRules(
+        game.interactionRulesByPack
+      ),
+      roundSettingsByPack: normalizeObjectMap(
+        game.roundSettingsByPack
+      ),
+      installations: normalizeObjectMap(game.installations),
+      activeEffects: [],
+      recentPacks: Array.isArray(game.recentPacks)
+        ? clone(game.recentPacks)
+        : clone(defaults.game.recentPacks)
+    },
+    commerce: {
+      ...clone(defaults.commerce),
+      ...clone(commerce),
+      subscription: {
+        ...clone(defaults.commerce.subscription),
+        ...(commerce.subscription || {})
+      },
+      premiumSeat: {
+        ...clone(defaults.commerce.premiumSeat),
+        ...clone(savedPremiumSeat)
+      },
+      gameEntitlements: Array.isArray(commerce.gameEntitlements)
+        ? clone(commerce.gameEntitlements)
+        : [],
+      trial: normalizedTrial
+    },
+    customSounds: Array.isArray(saved.customSounds)
+      ? clone(saved.customSounds)
+      : [],
+    customMedia: Array.isArray(saved.customMedia)
+      ? clone(saved.customMedia)
+      : [],
+    activity: Array.isArray(saved.activity)
+      ? clone(saved.activity)
+      : [],
+    overlaySession: normalizeOverlaySession(saved.overlaySession),
+    statistics: {
+      ...clone(defaults.statistics),
+      ...(saved.statistics || {})
+    },
+    createdAt: String(saved.createdAt || defaults.createdAt),
+    updatedAt: String(saved.updatedAt || new Date().toISOString())
+  };
+}
+
+function normalizeObjectMap(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? clone(value)
+    : {};
+}
+
+function applyAccountWorkspace(state, workspace) {
+  const normalized = normalizeAccountWorkspace(
+    workspace,
+    workspace?.ownerUid
+  );
+  for (const key of ACCOUNT_SETTING_KEYS) {
+    state.settings[key] = clone(normalized.settings[key]);
+  }
+
+  state.connections = normalized.connections.map((connection) => ({
+    ...clone(connection),
+    status: "disconnected",
+    liveStatus:
+      connection.type === "tiktok-direct"
+        ? "disconnected"
+        : connection.liveStatus,
+    roomId: "",
+    error: ""
+  }));
+  state.profiles = clone(normalized.profiles);
+  state.session = {
+    ...createDefaultState().session,
+    profileId: state.profiles.some(
+      (profile) =>
+        profile.id === normalized.session.profileId
+    )
+      ? normalized.session.profileId
+      : state.profiles[0].id,
+    activeGamePackId:
+      normalized.session.activeGamePackId || "coin-pusher"
+  };
+  state.game = {
+    ...clone(normalized.game),
+    activeEffects: []
+  };
+  state.commerce = clone(normalized.commerce);
+  state.customSounds = clone(normalized.customSounds);
+  state.customMedia = clone(normalized.customMedia);
+  state.activity = clone(normalized.activity);
+  state.overlaySession = normalizeOverlaySession(
+    normalized.overlaySession
+  );
+  state.overlaySession.active = false;
+  if (
+    state.overlaySession.hasData &&
+    !state.overlaySession.endedAt
+  ) {
+    state.overlaySession.endedAt = new Date().toISOString();
+  }
+  state.statistics = {
+    ...clone(normalized.statistics),
+    sessionEvents: 0,
+    sessionActions: 0,
+    sessionLikes: 0,
+    sessionUniqueViewers: []
+  };
+  state.settings.tiktok.status = state.settings.tiktok.username
+    ? "disconnected"
+    : "unconfigured";
+  state.settings.tiktok.roomId = "";
 }
 
 function normalizeWheelSegmentActions(wheels = []) {

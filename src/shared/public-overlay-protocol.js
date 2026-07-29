@@ -8,8 +8,6 @@ const DEFAULT_FIREBASE_DATABASE_URL =
   "https://shenazenoverlay-default-rtdb.firebaseio.com";
 const DEFAULT_FIREBASE_API_KEY =
   "AIzaSyDHcC8ngIhy2Av8N7J-XdCQq9G8KimGGJk";
-const TIKFINITY_LOTTIE_BASE_URL =
-  "https://tikfinity.zerody.one/assets/lotties";
 
 const PRO_PUBLIC_OVERLAY_KEYS = new Set([
   "game",
@@ -120,11 +118,6 @@ function publicMediaUrl(value, baseUrl = DEFAULT_PUBLIC_OVERLAY_BASE_URL) {
       }
     })
     .join("/");
-  if (/^lottie\/[^/]+\.json$/i.test(decodedPath)) {
-    return `${TIKFINITY_LOTTIE_BASE_URL}/${encodeURIComponent(
-      decodedPath.slice("lottie/".length)
-    )}`;
-  }
   const encodedPath = decodedPath
     .split("/")
     .map((part) => encodeURIComponent(part))

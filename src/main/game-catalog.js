@@ -13,6 +13,16 @@ const {
   CULT_OF_THE_LAMB_INTERACTION_CATALOG_VERSION
 } = require("./cult-of-the-lamb-catalog");
 const {
+  STARDEW_VALLEY_DEFAULT_MAPPINGS,
+  STARDEW_VALLEY_EFFECTS,
+  STARDEW_VALLEY_INTERACTION_CATALOG_VERSION
+} = require("./stardew-valley-catalog");
+const {
+  TERRARIA_DEFAULT_MAPPINGS,
+  TERRARIA_EFFECTS,
+  TERRARIA_INTERACTION_CATALOG_VERSION
+} = require("./terraria-catalog");
+const {
   MINECRAFT_BEDROCK_DEFAULT_MAPPINGS,
   MINECRAFT_BEDROCK_EFFECTS,
   MINECRAFT_BEDROCK_INTERACTION_CATALOG_VERSION,
@@ -41,6 +51,24 @@ const CULT_OF_THE_LAMB_BRIDGE = Object.freeze({
   type: "tcp-server",
   host: "127.0.0.1",
   port: 58431,
+  timeoutMs: 12000,
+  durationMultiplier: 1000,
+  expectResponse: true
+});
+
+const STARDEW_VALLEY_BRIDGE = Object.freeze({
+  type: "tcp-server",
+  host: "127.0.0.1",
+  port: 58432,
+  timeoutMs: 12000,
+  durationMultiplier: 1000,
+  expectResponse: true
+});
+
+const TERRARIA_BRIDGE = Object.freeze({
+  type: "tcp-server",
+  host: "127.0.0.1",
+  port: 58433,
   timeoutMs: 12000,
   durationMultiplier: 1000,
   expectResponse: true
@@ -138,15 +166,23 @@ const INTERNAL_GAMES = [
     artwork: "catalog/stardew-valley.png",
     included: true,
     requiresPro: true,
-    connector: LOCAL_BRIDGE,
-    effects: ["Donner de l'or", "Changer la météo", "Ajouter de l'énergie", "Retirer de l'énergie", "Donner un objet", "Passer une heure"]
+    installerVersion: "1.0.0",
+    connector: STARDEW_VALLEY_BRIDGE,
+    effects: STARDEW_VALLEY_EFFECTS,
+    defaultMappings: STARDEW_VALLEY_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      STARDEW_VALLEY_INTERACTION_CATALOG_VERSION
   }),
   game("terraria", "Terraria", {
     artwork: "catalog/terraria.png",
     included: true,
     requiresPro: true,
-    connector: LOCAL_BRIDGE,
-    effects: ["Soigner", "Faire apparaître un ennemi", "Invoquer un boss", "Donner un objet", "Changer l'heure", "Changer la météo"]
+    installerVersion: "1.0.0",
+    connector: TERRARIA_BRIDGE,
+    effects: TERRARIA_EFFECTS,
+    defaultMappings: TERRARIA_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      TERRARIA_INTERACTION_CATALOG_VERSION
   })
 ];
 

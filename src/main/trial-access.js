@@ -1,12 +1,10 @@
 "use strict";
 
-function cleanTikTokUsername(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^@+/, "")
-    .replace(/\s+/g, "")
-    .toLowerCase()
-    .slice(0, 80);
+function normalizeTrialEmail(value) {
+  const email = String(value || "").trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ? email.slice(0, 254)
+    : "";
 }
 
 function trialExpiryMs(trial) {
@@ -16,9 +14,15 @@ function trialExpiryMs(trial) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function activeTrial(trial, username, nowMs = Date.now()) {
+function activeTrial(trial, email, nowMs = Date.now()) {
   if (!trial || typeof trial !== "object") return false;
-  if (cleanTikTokUsername(trial.username || trial.grantedToUsername) !== username) {
+  if (
+    normalizeTrialEmail(
+      trial.email ||
+      trial.beneficiaryEmail ||
+      trial.grantedToEmail
+    ) !== email
+  ) {
     return false;
   }
   if (trial.revoked === true || trial.status === "revoked") return false;
@@ -39,8 +43,10 @@ function normalizeTrialGrant(trial) {
   ).slice(0, 500);
   return {
     id: String(source?.id || source?.trialId || "").slice(0, 240),
-    username: cleanTikTokUsername(
-      source?.username || source?.grantedToUsername
+    email: normalizeTrialEmail(
+      source?.email ||
+      source?.beneficiaryEmail ||
+      source?.grantedToEmail
     ),
     subscriptionTrial: Boolean(source?.subscriptionTrial),
     gameTrialIds,
@@ -56,19 +62,19 @@ function normalizeTrialGrant(trial) {
 }
 
 function reconcileTrialAccess(state, incomingTrials, nowMs = Date.now()) {
-  const username = cleanTikTokUsername(state?.settings?.tiktok?.username);
+  const email = normalizeTrialEmail(state?.settings?.account?.email);
   if (!state?.commerce) return false;
   const cachedGrants = (Array.isArray(incomingTrials) ? incomingTrials : [])
     .map(normalizeTrialGrant)
     .filter(
       (trial) =>
-        trial.username &&
+        trial.email &&
         trial.revoked !== true &&
         trial.status !== "revoked" &&
         trial.expiresAtMs > nowMs
     );
   const trials = cachedGrants
-    .filter((trial) => activeTrial(trial, username, nowMs))
+    .filter((trial) => activeTrial(trial, email, nowMs))
     .map(normalizeTrialGrant);
   const gameExpires = new Map();
   let subscriptionExpiresAtMs = 0;
@@ -136,7 +142,7 @@ function reconcileTrialAccess(state, incomingTrials, nowMs = Date.now()) {
   }
 
   state.commerce.trial = {
-    username,
+    email,
     active: trials.length > 0,
     subscription: subscriptionExpiresAtMs > nowMs,
     subscriptionExpiresAtMs,
@@ -220,7 +226,7 @@ module.exports = {
   applyTrialDashboard,
   applyTrialGrant,
   applyTrialRevocation,
-  cleanTikTokUsername,
+  normalizeTrialEmail,
   normalizeTrialGrant,
   reconcileTrialAccess
 };

@@ -18,8 +18,8 @@ const RAW_EFFECTS = [
       parameter: "weapon",
       values: {
         1: "weapon_0",
-        2: "weapon_100",
-        3: "weapon_300",
+        2: "weapon_300",
+        3: "weapon_100",
         4: "weapon_200",
         5: "weapon_450"
       }

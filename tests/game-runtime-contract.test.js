@@ -12,6 +12,7 @@ const {
 const {
   commitInstallationDeployment,
   configureMinecraftServerCommandFeedback,
+  deployAdditionalInstallTargets,
   deployGtaEnhancedSave,
   safeInstallerAssetUrl,
   stageGtaEnhancedSave
@@ -262,6 +263,107 @@ test("Cult of the Lamb utilise le pack BepInEx versionné publié sur Backblaze"
   );
   assert.match(runtime, /steamGameInstallCandidates/);
   assert.match(runtime, /appmanifest_\$\{appId\}\.acf/);
+});
+
+test("Stardew Valley et Terraria utilisent leurs packs versionnés Backblaze", () => {
+  const expected = {
+    "stardew-valley": {
+      effects: 28,
+      assets: 3,
+      appIds: ["413150"]
+    },
+    terraria: {
+      effects: 25,
+      assets: 1,
+      appIds: ["1281930"]
+    }
+  };
+  for (const [gameId, contract] of Object.entries(expected)) {
+    const installer = GAME_INSTALLERS[gameId];
+    const publishedManifest = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          root,
+          "resources",
+          "installer-assets",
+          gameId,
+          "1.0.0",
+          "manifest.json"
+        ),
+        "utf8"
+      )
+    );
+    assert.equal(installer.version, "1.0.0");
+    assert.equal(installer.autoDetect, true);
+    assert.equal(installer.unattended, true);
+    assert.deepEqual(installer.steamAppIds, contract.appIds);
+    assert.equal(installer.assets.length, contract.assets);
+    assert.equal(publishedManifest.assets.length, contract.assets);
+    for (const asset of installer.assets) {
+      const published = publishedManifest.assets.find(
+        (entry) => entry.id === asset.id
+      );
+      assert.equal(asset.size, published.size);
+      assert.equal(asset.sha256, published.sha256);
+      assert.match(
+        safeInstallerAssetUrl(asset.url),
+        new RegExp(
+          `^https://f003\\.backblazeb2\\.com/file/shenpulse-media/installer-assets/${gameId}/1\\.0\\.0/`
+        )
+      );
+    }
+    const catalog = require(
+      path.join(
+        root,
+        "src",
+        "main",
+        gameId === "terraria"
+          ? "terraria-catalog.js"
+          : "stardew-valley-catalog.js"
+      )
+    );
+    const effects =
+      catalog.TERRARIA_EFFECTS ||
+      catalog.STARDEW_VALLEY_EFFECTS;
+    assert.equal(effects.length, contract.effects);
+  }
+});
+
+test("déploie le mod Terraria dans le dossier tModLoader des documents", async () => {
+  const temporaryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-terraria-target-")
+  );
+  try {
+    const gameRoot = path.join(temporaryRoot, "game");
+    const documentsRoot = path.join(temporaryRoot, "documents");
+    const backupRoot = path.join(temporaryRoot, "backups");
+    const source = path.join(
+      gameRoot,
+      "Mods",
+      "CrowdControlMod.tmod"
+    );
+    fs.mkdirSync(path.dirname(source), { recursive: true });
+    fs.writeFileSync(source, "mod-terraria");
+    const result = await deployAdditionalInstallTargets({
+      manifest: GAME_INSTALLERS.terraria,
+      targetPath: gameRoot,
+      backupRoot,
+      documentsPath: documentsRoot
+    });
+    const destination = path.join(
+      documentsRoot,
+      "My Games",
+      "Terraria",
+      "tModLoader",
+      "Mods",
+      "CrowdControlMod.tmod"
+    );
+    assert.equal(result.length, 1);
+    assert.equal(result[0].path, destination);
+    assert.equal(fs.readFileSync(destination, "utf8"), "mod-terraria");
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test("la sauvegarde Enhanced choisit un emplacement libre et ne remplace jamais une sauvegarde existante", async () => {

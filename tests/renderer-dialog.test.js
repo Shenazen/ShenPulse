@@ -43,10 +43,10 @@ test("Minecraft utilise une seule jaquette puis propose Bedrock Box et SandBox",
   assert.match(app, /data-action="open-minecraft-mode"/);
   const dialogActionHandler = app.slice(
     app.indexOf(
-      'dialog.addEventListener("click", (event) => {\n  const previewTest'
+      'dialog.addEventListener("click", (event) => {\n  const accountCommand'
     ),
     app.indexOf('dialog.addEventListener("input"', app.indexOf(
-      'dialog.addEventListener("click", (event) => {\n  const previewTest'
+      'dialog.addEventListener("click", (event) => {\n  const accountCommand'
     ))
   );
   assert.match(dialogActionHandler, /"open-minecraft-mode"/);
@@ -81,6 +81,53 @@ test("Minecraft affiche les réglages de manche et bloque un second jeu actif", 
   assert.match(styles, /\.minecraft-round-settings/);
   assert.match(preload, /game:round-settings:save/);
   assert.match(preload, /game-round-timeout/);
+});
+
+test("Cult of the Lamb ne propose aucun overlay OBS inutile", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const renderStart = app.indexOf("function renderGameOverlays(pack, unlocked)");
+  const renderEnd = app.indexOf(
+    "function renderGameOverlaysLegacy",
+    renderStart
+  );
+  const itemStart = app.indexOf("function gameOverlayItemsFor(pack)");
+  const itemEnd = app.indexOf(
+    "function gameInteractionOverlayBackground",
+    itemStart
+  );
+
+  assert.match(app.slice(renderStart, renderEnd), /pack\.id === "cult-of-the-lamb"/);
+  assert.match(app.slice(renderStart, renderEnd), /Aucun overlay requis/);
+  assert.match(app.slice(itemStart, itemEnd), /pack\.id === "cult-of-the-lamb"\s*\?\s*\[\]/);
+});
+
+test("le compte ShenPulse remplace les commandes LIVE avant authentification", () => {
+  const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
+  const html = fs.readFileSync(
+    path.join(rendererDirectory, "index.html"),
+    "utf8"
+  );
+  const app = fs.readFileSync(
+    path.join(rendererDirectory, "app.js"),
+    "utf8"
+  );
+  const styles = fs.readFileSync(
+    path.join(rendererDirectory, "styles.css"),
+    "utf8"
+  );
+
+  assert.match(html, /id="account-auth-cta"/);
+  assert.match(app, /Créer votre compte ShenPulse/);
+  assert.match(app, /S’inscrire avec Google/);
+  assert.match(app, /name="passwordConfirmation"/);
+  assert.match(app, /Mot de passe oublié/);
+  assert.match(app, /profileControl\.hidden = !authenticated/);
+  assert.match(app, /tiktokControl\.hidden = !authenticated/);
+  assert.match(app, /sessionButton\.hidden = !authenticated/);
+  assert.match(styles, /\.profile-control\[hidden\],[\s\S]*\.live-button\[hidden\]/);
 });
 
 test("la reconnexion admin place réellement le focus dans le mot de passe", () => {
@@ -314,7 +361,7 @@ test("le mini-onglet Timers planifie une ou plusieurs actions à intervalle rég
   assert.doesNotMatch(app, /data-action="timer-control"/);
 });
 
-test("le formulaire d'essai garde le champ TikTok saisissable après un envoi", () => {
+test("le formulaire d'essai garde l'adresse e-mail saisissable après un envoi", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
     "utf8"
@@ -335,11 +382,11 @@ test("le formulaire d'essai garde le champ TikTok saisissable après un envoi", 
   );
   const submit = app.slice(submitStart, submitEnd);
 
-  assert.match(form, /name="username" type="text"/);
+  assert.match(form, /name="email" type="email"/);
   assert.match(form, /type="submit" \$\{adminBusy \? "disabled" : ""\}/);
   assert.doesNotMatch(submit, /if \(adminModuleError\("trials"\)\)/);
   assert.match(submit, /finally \{\s*adminBusy = false;\s*render\(\);/);
-  assert.match(styles, /\.admin-trial-form input\[name="username"\]/);
+  assert.match(styles, /\.admin-trial-form input\[name="email"\]/);
 });
 
 test("une session propriétaire resynchronise les accès offerts au démarrage", () => {
@@ -349,7 +396,7 @@ test("une session propriétaire resynchronise les accès offerts au démarrage",
   );
   const startup = app.slice(app.indexOf("api.getSnapshot()"));
 
-  assert.match(startup, /if \(adminSession\.authorized\)/);
+  assert.match(startup, /if \(isVerifiedAdminSession\(\)\)/);
   assert.match(startup, /adminDashboard = await api\.admin\.dashboard\(\)/);
   assert.match(
     startup,

@@ -47,7 +47,7 @@ test("publicMediaUrl remplace seulement les médias du serveur local", () => {
       "/overlay/media/lottie/12345-test.json",
       "https://cdn.example.test"
     ),
-    "https://tikfinity.zerody.one/assets/lotties/12345-test.json"
+    "https://cdn.example.test/media/lottie/12345-test.json"
   );
   assert.equal(
     publicMediaUrl("https://cdn.other.test/video.webm"),

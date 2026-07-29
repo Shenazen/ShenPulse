@@ -56,6 +56,12 @@ test("centralise les images, GIF, vidéos et animations réutilisables", () => {
       item.url
     );
   }
+  for (const item of catalog.filter((entry) => entry.source === "tikfinity")) {
+    const relative = item.url.replace(/^\/overlay\//, "overlays/");
+    const filePath = path.join(resourcesDirectory, relative);
+    assert.equal(fs.existsSync(filePath), true, item.url);
+    assert.doesNotThrow(() => JSON.parse(fs.readFileSync(filePath, "utf8")));
+  }
 });
 
 test("importe les résultats sonores du catalogue web MyInstants", () => {

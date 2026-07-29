@@ -83,6 +83,12 @@ test("protège l'état local et accepte un événement authentifié", async () =
     );
     assert.equal(liveScript.status, 200);
     assert.equal(liveScript.headers.get("cache-control"), "no-store");
+    const lottieAnimation = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/media/lottie/10849-halloween-pumpkin.json?token=overlay-secret`
+    );
+    assert.equal(lottieAnimation.status, 200);
+    assert.match(lottieAnimation.headers.get("content-type"), /application\/json/);
+    assert.equal(typeof (await lottieAnimation.json()).layers, "object");
     const proDocumentWhileFree = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/?view=win-counter&token=overlay-secret`
     );
@@ -168,6 +174,18 @@ test("calcule les droits Pro des sources locales et leurs vues protégées", () 
           source: "trial",
           status: "trial",
           expiresAtMs: Date.now() - 1
+        }
+      }
+    }),
+    false
+  );
+  assert.equal(
+    hasProOverlayAccess({
+      commerce: {
+        subscription: {
+          tier: "pro",
+          source: "paypal",
+          status: "suspended"
         }
       }
     }),

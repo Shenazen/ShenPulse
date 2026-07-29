@@ -4,20 +4,31 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createDefaultState } = require("../src/main/defaults");
 const {
-  assignPremiumSeat,
-  cleanTikTokUsername,
+  applyVerifiedPremiumSeat,
   hasActivePaidPremium
 } = require("../src/main/premium-seat");
 
-test("nettoie le @ TikTok du bénéficiaire Premium", () => {
-  assert.equal(cleanTikTokUsername("  @@Utilisateur.Test !  "), "utilisateur.test");
+test("normalise l’adresse e-mail du bénéficiaire Premium", () => {
+  const state = createDefaultState();
+  state.settings.account.email = "owner@example.com";
+  state.commerce.subscription = {
+    tier: "premium",
+    source: "own",
+    status: "active"
+  };
+  const seat = applyVerifiedPremiumSeat(
+    state,
+    { beneficiaryEmail: "  Beneficiaire@Example.COM " },
+    new Date("2026-07-29T08:00:00.000Z")
+  );
+  assert.equal(seat.beneficiaryEmail, "beneficiaire@example.com");
 });
 
 test("réserve l’accès offert aux achats Premium actifs", () => {
   assert.equal(
     hasActivePaidPremium({
       tier: "premium",
-      source: "account",
+      source: "own",
       status: "active"
     }),
     true
@@ -33,7 +44,7 @@ test("réserve l’accès offert aux achats Premium actifs", () => {
   assert.equal(
     hasActivePaidPremium({
       tier: "pro",
-      source: "account",
+      source: "own",
       status: "active"
     }),
     false
@@ -42,22 +53,23 @@ test("réserve l’accès offert aux achats Premium actifs", () => {
 
 test("enregistre le bénéficiaire comme un espace Pro offert", () => {
   const state = createDefaultState();
-  state.settings.tiktok.username = "proprietaire";
+  state.settings.account.email = "proprietaire@example.com";
   state.commerce.subscription = {
     tier: "premium",
-    source: "account",
+    source: "own",
     status: "active",
     priceMonthly: 13.99
   };
 
-  const seat = assignPremiumSeat(
+  const seat = applyVerifiedPremiumSeat(
     state,
-    { username: "@Beneficiaire" },
+    { beneficiaryEmail: "beneficiaire@example.com" },
     new Date("2026-07-29T08:00:00.000Z")
   );
 
   assert.deepEqual(seat, {
-    beneficiaryUsername: "beneficiaire",
+    beneficiaryEmail: "beneficiaire@example.com",
+    beneficiaryEmails: ["beneficiaire@example.com"],
     grantedAt: "2026-07-29T08:00:00.000Z",
     source: "premium",
     status: "active",
@@ -69,7 +81,10 @@ test("enregistre le bénéficiaire comme un espace Pro offert", () => {
 test("refuse un bénéficiaire sans achat Premium validé", () => {
   const state = createDefaultState();
   assert.throws(
-    () => assignPremiumSeat(state, { username: "@beneficiaire" }),
+    () =>
+      applyVerifiedPremiumSeat(state, {
+        beneficiaryEmail: "beneficiaire@example.com"
+      }),
     /Premium payé et actif/
   );
 });

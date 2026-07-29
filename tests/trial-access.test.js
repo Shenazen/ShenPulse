@@ -10,9 +10,9 @@ const {
   reconcileTrialAccess
 } = require("../src/main/trial-access");
 
-function createStore(username) {
+function createStore(email) {
   const state = createDefaultState();
-  state.settings.tiktok.username = username;
+  state.settings.account.email = email;
   return {
     getState: () => structuredClone(state),
     mutate: (callback) => callback(state),
@@ -22,10 +22,10 @@ function createStore(username) {
 
 test("un essai Pro avec jeux déverrouille les jeux sans achat séparé", () => {
   const now = Date.parse("2026-07-27T10:00:00.000Z");
-  const store = createStore("viewer");
+  const store = createStore("viewer@example.com");
   const changed = applyTrialGrant(store, {
     id: "trial_games",
-    username: "@Viewer",
+    email: "Viewer@Example.com",
     subscriptionTrial: true,
     gameTrialIds: ["gta-v-mont-chiliad", "connect-four"],
     expiresAtMs: now + 86_400_000
@@ -51,12 +51,12 @@ test("un essai Pro avec jeux déverrouille les jeux sans achat séparé", () => 
   );
 });
 
-test("les droits offerts sont réappliqués quand le compte TikTok change", () => {
+test("les droits offerts sont appliqués uniquement à l’adresse e-mail bénéficiaire", () => {
   const now = Date.parse("2026-07-27T10:00:00.000Z");
-  const store = createStore("owner");
+  const store = createStore("owner@example.com");
   applyTrialGrant(store, {
     id: "trial_recipient",
-    username: "recipient",
+    email: "recipient@example.com",
     subscriptionTrial: true,
     gameTrialIds: ["coin-pusher"],
     expiresAtMs: now + 86_400_000
@@ -65,7 +65,7 @@ test("les droits offerts sont réappliqués quand le compte TikTok change", () =
   assert.equal(store.state.commerce.subscription.tier, "free");
   assert.equal(store.state.commerce.trial.cachedGrants.length, 1);
 
-  store.state.settings.tiktok.username = "@recipient";
+  store.state.settings.account.email = "recipient@example.com";
   reconcileTrialAccess(
     store.state,
     store.state.commerce.trial.cachedGrants,
@@ -78,11 +78,11 @@ test("les droits offerts sont réappliqués quand le compte TikTok change", () =
 
 test("la révocation retire seulement les droits temporaires", () => {
   const now = Date.parse("2026-07-27T10:00:00.000Z");
-  const store = createStore("viewer");
+  const store = createStore("viewer@example.com");
   store.state.commerce.gameEntitlements = ["permanent-game"];
   applyTrialGrant(store, {
     id: "trial_remove",
-    username: "viewer",
+    email: "viewer@example.com",
     subscriptionTrial: true,
     gameTrialIds: ["temporary-game"],
     expiresAtMs: now + 86_400_000

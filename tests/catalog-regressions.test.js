@@ -199,7 +199,11 @@ test("les cartes montrent les aperçus Pro mais masquent leurs sources verrouill
     rendererCss,
     /\.overlay-source-dimensions\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/
   );
-  assert.match(renderer, /const url = allowed \? overlayUrl\(item\) : ""/);
+  assert.match(
+    renderer,
+    /const url = accountReady && allowed \? overlayUrl\(item\) : ""/
+  );
+  assert.match(renderer, /\$\{allowed && accountReady[\s\S]*?overlay-card-footer/);
   assert.match(renderer, /<div class="overlay-preview">\$\{overlayPreview\(item\)\}<\/div>/);
   assert.match(renderer, /function overlayCatalogPreviewUrl\(item\)/);
   assert.match(

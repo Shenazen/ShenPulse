@@ -19,7 +19,8 @@
           ".write": "auth != null && auth.uid == $uid"
         },
         "profile": {
-          ".write": "auth != null && auth.uid == $uid"
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "!newData.exists() || newData.child('email').val() == auth.token.email"
         },
         "profiles": {
           ".write": "auth != null && auth.uid == $uid"
@@ -33,8 +34,8 @@
       }
     },
     "premiumSeats": {
-      "$username": {
-        ".read": "auth != null",
+      "$email": {
+        ".read": false,
         ".write": false
       }
     },
@@ -46,18 +47,22 @@
     },
     "site": {
       "adminSettings": {
-        ".read": "auth != null",
-        ".write": "auth != null && auth.token.email == 'alexandre.leuridan@gmail.com'"
+        ".read": "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'",
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'"
       },
       "publicVisibility": {
         ".read": true,
-        ".write": "auth != null && auth.token.email == 'alexandre.leuridan@gmail.com'"
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'"
       },
       "adminCommerce": {
         "history": {
           ".indexOn": "savedAt"
         }
       }
+    },
+    "serverOnly": {
+      ".read": false,
+      ".write": false
     },
     "publicOverlays": {
       "$uid": {

@@ -1,14 +1,6 @@
 "use strict";
 
-function cleanTikTokUsername(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^@+/, "")
-    .replace(/\s+/g, "")
-    .replace(/[^a-zA-Z0-9._]/g, "")
-    .toLowerCase()
-    .slice(0, 30);
-}
+const { normalizeEmail, requireEmail } = require("./account-service");
 
 function hasActivePaidPremium(subscription = {}) {
   return (
@@ -18,35 +10,38 @@ function hasActivePaidPremium(subscription = {}) {
   );
 }
 
-function assignPremiumSeat(state, incoming = {}, now = new Date()) {
+/**
+ * Applique uniquement une réponse déjà vérifiée par le serveur.
+ * L’attribution réelle est effectuée par /api/payments/premium-seat avec le
+ * jeton Firebase du propriétaire Premium.
+ */
+function applyVerifiedPremiumSeat(
+  state,
+  incoming = {},
+  now = new Date()
+) {
   if (!state?.commerce || !hasActivePaidPremium(state.commerce.subscription)) {
     throw new Error(
       "Un abonnement Premium payé et actif est requis pour offrir cet accès Pro."
     );
   }
-
-  const username = cleanTikTokUsername(
-    incoming.username || incoming.beneficiaryUsername
+  const beneficiaryEmail = requireEmail(
+    incoming.beneficiaryEmail || incoming.email
   );
-  if (!username) {
-    throw new Error("Renseignez le @ TikTok de l’utilisateur.");
-  }
-
-  const ownerUsername = cleanTikTokUsername(
-    state.settings?.tiktok?.username
-  );
-  if (ownerUsername && username === ownerUsername) {
+  const ownerEmail = normalizeEmail(state.settings?.account?.email);
+  if (ownerEmail && beneficiaryEmail === ownerEmail) {
     throw new Error(
-      "Choisissez un autre utilisateur : votre compte possède déjà Premium."
+      "Choisissez un autre compte : le propriétaire possède déjà Premium."
     );
   }
-
   const timestamp = now.toISOString();
   const previous = state.commerce.premiumSeat || {};
   state.commerce.premiumSeat = {
-    beneficiaryUsername: username,
+    beneficiaryEmail,
+    beneficiaryEmails: [beneficiaryEmail],
     grantedAt:
-      previous.beneficiaryUsername === username && previous.grantedAt
+      previous.beneficiaryEmail === beneficiaryEmail &&
+      previous.grantedAt
         ? previous.grantedAt
         : timestamp,
     source: "premium",
@@ -58,7 +53,6 @@ function assignPremiumSeat(state, incoming = {}, now = new Date()) {
 }
 
 module.exports = {
-  assignPremiumSeat,
-  cleanTikTokUsername,
+  applyVerifiedPremiumSeat,
   hasActivePaidPremium
 };

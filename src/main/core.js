@@ -167,9 +167,12 @@ class ShenPulseCore extends EventEmitter {
         this.#activity("error", "server", "Serveur local indisponible", error.message);
       }
     }
-    this.publicOverlayRelay.start().catch(() => {
-      // Le serveur local et l'interface restent disponibles hors connexion.
-    });
+    this.publicOverlayRelay.prepareConfiguration();
+    if (this.store.getState().settings.account?.uid) {
+      this.publicOverlayRelay.start().catch(() => {
+        // Le serveur local et l'interface restent disponibles hors connexion.
+      });
+    }
     this.publicOverlayRelay.publishState(this.store.getState());
     await this.overlayCompletionController.initialize();
     const tiktokConnection = this.store
@@ -185,6 +188,57 @@ class ShenPulseCore extends EventEmitter {
         );
       });
     }
+    return this.snapshot();
+  }
+
+  async suspendAccountWorkspace() {
+    this.overlayCompletionController.stop();
+    this.timerScheduler.stop();
+    await this.minecraftRoundTimer.dispose();
+    await this.sourceHub.stopAll();
+    await this.gameHub.disconnectAll();
+    await this.obsClient.disconnect();
+    await this.publicOverlayRelay.stop();
+    await this.overlayServer.stop();
+    this.ruleEngine.resetProfileState();
+    this.commandCooldowns.clear();
+    this.gameCounterCursors.clear();
+  }
+
+  async resumeAccountWorkspace() {
+    this.store.mutate((state) => {
+      clearSessionState(state);
+    }, true);
+    this.publicOverlayRelay.prepareConfiguration();
+    this.timerScheduler.start();
+    if (this.store.getState().settings.startOverlayServer) {
+      await this.overlayServer.start();
+    }
+    if (this.store.getState().settings.account?.uid) {
+      this.publicOverlayRelay.start().catch(() => {
+        // Le compte reste utilisable si le relais distant est indisponible.
+      });
+    }
+    this.publicOverlayRelay.publishState(this.store.getState());
+    await this.overlayCompletionController.initialize();
+    const tiktokConnection = this.store
+      .getState()
+      .connections.find((item) => item.id === "source_tiktok");
+    if (
+      this.store.getState().settings.account?.uid &&
+      tiktokConnection?.enabled &&
+      tiktokConnection.config?.username
+    ) {
+      this.sourceHub.start(tiktokConnection.id).catch((error) => {
+        this.#activity(
+          "warning",
+          "tiktok",
+          "Surveillance TikTok différée",
+          error.message
+        );
+      });
+    }
+    this.#changed(true);
     return this.snapshot();
   }
 

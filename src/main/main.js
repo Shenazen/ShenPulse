@@ -8,19 +8,30 @@ const {
   Menu,
   nativeImage,
   safeStorage,
-  session
+  session,
+  shell,
+  screen
 } = require("electron");
 const { ShenPulseCore } = require("./core");
 const { BackblazeMediaService } = require("./backblaze-media");
+const { AccountService } = require("./account-service");
 const { AdminService } = require("./admin-service");
 const { GameRuntimeService } = require("./game-runtime");
+const {
+  orderInteractionAuditEffects
+} = require("./interaction-audit-plan");
 const { registerIpc } = require("./ipc");
 const { StateStore } = require("./store");
+const {
+  shouldSuppressRendererChannel,
+  snapshotForRenderer
+} = require("./account-access");
 
 let mainWindow = null;
 let core = null;
 let gameRuntime = null;
 let store = null;
+let accountService = null;
 let ipcController = null;
 let activeInteractionAudit = null;
 let quitting = false;
@@ -34,11 +45,20 @@ app.setAppUserModelId("ShenPulse.ShenPulse");
 function createWindow() {
   const iconPath = path.join(__dirname, "..", "..", "build", "shenpulse.ico");
   const icon = nativeImage.createFromPath(iconPath);
+  const workArea = screen.getPrimaryDisplay().workAreaSize;
+  const initialWidth = Math.min(
+    1440,
+    Math.max(1, Number(workArea.width) || 1440)
+  );
+  const initialHeight = Math.min(
+    900,
+    Math.max(1, Number(workArea.height) || 900)
+  );
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 1080,
-    minHeight: 700,
+    width: initialWidth,
+    height: initialHeight,
+    minWidth: Math.min(1080, initialWidth),
+    minHeight: Math.min(700, initialHeight),
     backgroundColor: "#090B14",
     show: false,
     frame: false,
@@ -78,9 +98,18 @@ function createWindow() {
 }
 
 function notifyRenderer(channel, value) {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send(channel, value);
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (
+    accountService &&
+    shouldSuppressRendererChannel(channel, store)
+  ) {
+    return;
   }
+  const rendererValue =
+    channel === "state-changed" && accountService
+      ? snapshotForRenderer(value, store)
+      : value;
+  mainWindow.webContents.send(channel, rendererValue);
 }
 
 async function bootstrap() {
@@ -108,7 +137,11 @@ async function bootstrap() {
     ].filter(Boolean)
   });
   backblazeMedia.importEnvironmentConfiguration();
-  const adminService = new AdminService({ store });
+  accountService = new AccountService({
+    store,
+    openExternal: (url) => shell.openExternal(url)
+  });
+  const adminService = new AdminService({ store, accountService });
   createWindow();
   core = new ShenPulseCore({
     store,
@@ -128,6 +161,7 @@ async function bootstrap() {
     core,
     store,
     backblazeMedia,
+    accountService,
     adminService,
     gameRuntime,
     getWindow: () => mainWindow
@@ -238,8 +272,9 @@ async function runInteractionAudit(
       .listPacks()
       .find((entry) => entry.id === gameId);
     if (!pack) throw new Error(`Jeu introuvable : ${gameId}`);
-    const allEffects = pack.effects.filter(
-      (effect) => effect.available !== false
+    const allEffects = orderInteractionAuditEffects(
+      gameId,
+      pack.effects.filter((effect) => effect.available !== false)
     );
     const previousStatus = readInteractionAuditStatus();
     let failures = rememberedInteractionAuditFailures(
@@ -250,7 +285,7 @@ async function runInteractionAudit(
       failures.map((failure) => failure.effectId)
     );
     const effects = allEffects
-      .map((effect, originalIndex) => ({ effect, originalIndex }))
+      .map((step, originalIndex) => ({ ...step, originalIndex }))
       .filter(({ effect, originalIndex }) =>
         failedOnly
           ? failedIds.has(effect.id)
@@ -263,13 +298,15 @@ async function runInteractionAudit(
           : "Aucune interaction n’est disponible pour cette campagne."
       );
     }
+    await core.gameHub.prepareConnection(gameId);
+    await core.startGameSession(gameId);
     const runtimeStatus = gameRuntime.status(gameId);
     if (runtimeStatus.automated && !runtimeStatus.serverRunning) {
       await gameRuntime.launch(gameId);
     }
-    await core.gameHub.testConnection(gameId);
+    await waitForInteractionAuditConnection(gameId);
     for (let index = 0; index < effects.length; index += 1) {
-      const { effect, originalIndex } = effects[index];
+      const { effect, preparation, originalIndex } = effects[index];
       const current = failedOnly ? index + 1 : originalIndex + 1;
       const total = failedOnly ? effects.length : allEffects.length;
       writeInteractionAuditStatus({
@@ -282,19 +319,64 @@ async function runInteractionAudit(
         effectId: effect.id,
         effectName: effect.name,
         expectation: effect.description || "",
+        preparation,
         failures,
         updatedAt: new Date().toISOString()
       });
-      const result = await ipcController.auditGameInteraction(
-        gameId,
-        effect.id,
-        {
-          current,
-          total,
-          expectation: effect.description || "",
-          observationDelayMs: interactionAuditDelay(effect)
+      let result;
+      try {
+        result = await ipcController.auditGameInteraction(
+          gameId,
+          effect.id,
+          {
+            current,
+            total,
+            expectation: effect.description || "",
+            preparation,
+            observationDelayMs: interactionAuditDelay(effect)
+          }
+        );
+      } catch (error) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
         }
-      );
+        const executionError = String(error?.message || error);
+        const decision = await require("electron").dialog.showMessageBox(
+          mainWindow,
+          {
+            type: "error",
+            title: `Interaction en échec — ${current}/${total}`,
+            message: `${effect.name} n’a pas pu être exécutée.`,
+            detail: [
+              "Erreur renvoyée par le jeu :",
+              executionError,
+              "",
+              "L’échec est mémorisé. Continuez pour tester automatiquement l’interaction suivante."
+            ].join("\n"),
+            buttons: [
+              "Mémoriser et continuer",
+              "Arrêter la campagne"
+            ],
+            defaultId: 0,
+            cancelId: 1,
+            noLink: true
+          }
+        );
+        result = {
+          answer: decision.response === 0 ? "no" : "cancel",
+          packId: gameId,
+          packName: pack.name,
+          effectId: effect.id,
+          effectName: effect.name,
+          description: effect.description || "",
+          expectation: effect.description || "",
+          executionError,
+          current,
+          total
+        };
+      }
       if (result.answer === "no") {
         failures = [
           ...failures.filter(
@@ -382,6 +464,28 @@ async function runInteractionAudit(
   } finally {
     activeInteractionAudit = null;
   }
+}
+
+async function waitForInteractionAuditConnection(
+  gameId,
+  timeoutMs = 10 * 60 * 1000
+) {
+  const deadline = Date.now() + Math.max(10_000, Number(timeoutMs || 0));
+  let lastError = null;
+  while (Date.now() < deadline) {
+    try {
+      return await core.gameHub.testConnection(gameId);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw (
+    lastError ||
+    new Error(
+      "Le jeu ne sâ€™est pas connectÃ© Ã  ShenPulse dans le dÃ©lai prÃ©vu."
+    )
+  );
 }
 
 function interactionAuditDelay(effect) {

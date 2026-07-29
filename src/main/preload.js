@@ -7,6 +7,18 @@ const listeners = new Map();
 
 contextBridge.exposeInMainWorld("shenPulse", {
   getSnapshot: () => invoke("snapshot:get"),
+  account: {
+    status: () => invoke("account:status"),
+    login: (credentials) => invoke("account:login", credentials),
+    register: (credentials) =>
+      invoke("account:register", credentials),
+    loginWithBrowser: () => invoke("account:login-browser"),
+    requestPasswordReset: (payload) =>
+      invoke("account:password-reset", payload),
+    syncEntitlements: () =>
+      invoke("account:sync-entitlements"),
+    logout: () => invoke("account:logout")
+  },
   admin: {
     status: () => invoke("admin:status"),
     login: (credentials) => invoke("admin:login", credentials),

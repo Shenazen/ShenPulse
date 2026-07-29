@@ -4,16 +4,19 @@ const fs = require("node:fs");
 const { clipboard, dialog, ipcMain, shell } = require("electron");
 const { id, safeString } = require("./utils");
 const {
+  assertAdminAccount,
+  assertAuthenticatedAccount,
+  snapshotForRenderer
+} = require("./account-access");
+const {
   searchMyInstantsSounds,
   searchWikimediaMedia
 } = require("./catalogs");
 const {
   applyTrialDashboard,
   applyTrialGrant,
-  applyTrialRevocation,
-  reconcileTrialAccess
+  applyTrialRevocation
 } = require("./trial-access");
-const { assignPremiumSeat } = require("./premium-seat");
 
 function localServerSettingsSignature(settings = {}) {
   return JSON.stringify([
@@ -29,13 +32,41 @@ function registerIpc({
   core,
   store,
   backblazeMedia,
+  accountService,
   adminService,
   gameRuntime,
   getWindow
 }) {
+  const guestAllowedChannels = new Set([
+    "account:login",
+    "account:login-browser",
+    "account:logout",
+    "account:password-reset",
+    "account:register",
+    "account:status",
+    "admin:status",
+    "admin:visibility-public",
+    "catalog:gifts",
+    "catalog:media",
+    "catalog:sounds",
+    "external:open",
+    "snapshot:get",
+    "window:close",
+    "window:maximize",
+    "window:minimize"
+  ]);
   const handle = (channel, listener) => {
     ipcMain.removeHandler(channel);
-    ipcMain.handle(channel, listener);
+    ipcMain.handle(channel, (...args) => {
+      if (!guestAllowedChannels.has(channel)) {
+        if (channel.startsWith("admin:")) {
+          assertAdminAccount(store);
+        } else {
+          assertAuthenticatedAccount(store);
+        }
+      }
+      return listener(...args);
+    });
   };
   const requireGameAccess = (packId) =>
     core.gameHub.assertAccess(safeString(packId, 160));
@@ -56,8 +87,81 @@ function registerIpc({
     }
     return targetId;
   };
+  const switchAccountWorkspace = async (operation) => {
+    await core.suspendAccountWorkspace();
+    try {
+      const result = await operation();
+      await core.resumeAccountWorkspace();
+      notify(core, "state-changed", core.snapshot());
+      return result;
+    } catch (error) {
+      await core.resumeAccountWorkspace().catch(() => {});
+      throw error;
+    }
+  };
 
-  handle("snapshot:get", () => core.snapshot());
+  handle("snapshot:get", () =>
+    snapshotForRenderer(core.snapshot(), store)
+  );
+  handle("account:status", async () => {
+    const previousUid = store.getActiveAccountUid?.() || "";
+    const result = await accountService.status();
+    const nextUid = store.getActiveAccountUid?.() || "";
+    if (previousUid !== nextUid) {
+      await core.suspendAccountWorkspace();
+      await core.resumeAccountWorkspace();
+      notify(core, "state-changed", core.snapshot());
+    }
+    return result;
+  });
+  handle("account:login", (_event, incoming) =>
+    switchAccountWorkspace(() =>
+      accountService.login({
+        email: safeString(incoming?.email, 254),
+        password: safeString(incoming?.password, 500)
+      })
+    )
+  );
+  handle("account:register", (_event, incoming) =>
+    switchAccountWorkspace(() =>
+      accountService.register({
+        email: safeString(incoming?.email, 254),
+        password: safeString(incoming?.password, 500),
+        passwordConfirmation: safeString(
+          incoming?.passwordConfirmation,
+          500
+        ),
+        displayName: safeString(incoming?.displayName, 120)
+      })
+    )
+  );
+  handle("account:login-browser", () =>
+    switchAccountWorkspace(() =>
+      accountService.loginWithBrowser()
+    )
+  );
+  handle("account:password-reset", (_event, incoming) =>
+    accountService.requestPasswordReset({
+      email: safeString(incoming?.email, 254)
+    })
+  );
+  handle("account:sync-entitlements", async () => {
+    const result = await accountService.syncEntitlements();
+    notify(core, "state-changed", core.snapshot());
+    return result;
+  });
+  handle("account:logout", async () => {
+    await Promise.allSettled([
+      core.stopSession(),
+      core.stopGameSession({ notify: false })
+    ]);
+    await core.suspendAccountWorkspace();
+    adminService.logout();
+    const result = accountService.logout();
+    await core.resumeAccountWorkspace();
+    notify(core, "state-changed", core.snapshot());
+    return result;
+  });
   handle("admin:status", () => adminService.status());
   handle("admin:login", (_event, incoming) =>
     adminService.login({
@@ -114,12 +218,15 @@ function registerIpc({
     }
     return result;
   });
-  handle("premium-seat:assign", (_event, incoming) => {
-    store.mutate((state) => {
-      assignPremiumSeat(state, sanitizeEntity(incoming || {}));
-    }, true);
+  handle("premium-seat:assign", async (_event, incoming) => {
+    const result = await accountService.assignPremiumSeat({
+      beneficiaryEmail: safeString(
+        incoming?.beneficiaryEmail || incoming?.email,
+        254
+      )
+    });
     notify(core, "state-changed", core.snapshot());
-    return core.snapshot();
+    return { result, snapshot: core.snapshot() };
   });
   handle("catalog:gifts", (_event, query, limit) =>
     core.giftCatalog.search(safeString(query, 200), Number(limit))
@@ -351,10 +458,6 @@ function registerIpc({
         username
       }
     });
-    const trialCache = store.getState().commerce?.trial?.cachedGrants || [];
-    store.mutate((state) => {
-      reconcileTrialAccess(state, trialCache);
-    }, true);
     notify(core, "state-changed", core.snapshot());
     return core.snapshot();
   });
@@ -560,37 +663,57 @@ function registerIpc({
         safeString(progress.expectation, 1200) ||
         effect.description ||
         "L’interaction doit être visible dans le jeu.";
+      const preparation = safeString(progress.preparation, 1600);
       const owner = getWindow();
       const showMessage = (options) =>
         owner && !owner.isDestroyed()
           ? dialog.showMessageBox(owner, options)
           : dialog.showMessageBox(options);
-      const introduction = await showMessage({
-        type: "info",
-        title: `Validation des interactions — ${current}/${total}`,
-        message: `${current}/${total} · ${effect.name}`,
-        detail: [
-          "Effet attendu :",
-          expectation,
-          "",
-          "Placez le personnage dans une situation permettant de constater l’effet, puis cliquez sur « Déclencher maintenant »."
-        ].join("\n"),
-        buttons: ["Déclencher maintenant", "Arrêter la campagne"],
-        defaultId: 0,
-        cancelId: 1,
-        noLink: true
-      });
-      if (introduction.response !== 0) {
-        return {
-          answer: "cancel",
-          packId: targetId,
-          effectId: effect.id,
-          current,
-          total
-        };
+      if (preparation) {
+        const introduction = await showMessage({
+          type: "info",
+          title: `Préparation requise — ${current}/${total}`,
+          message: `${current}/${total} · ${effect.name}`,
+          detail: [
+            preparation,
+            "",
+            "Effet attendu :",
+            expectation,
+            "",
+            "Quand la situation est prête, cliquez sur « Déclencher maintenant »."
+          ].join("\n"),
+          buttons: ["Déclencher maintenant", "Arrêter la campagne"],
+          defaultId: 0,
+          cancelId: 1,
+          noLink: true
+        });
+        if (introduction.response !== 0) {
+          return {
+            answer: "cancel",
+            packId: targetId,
+            effectId: effect.id,
+            current,
+            total
+          };
+        }
       }
 
       owner?.minimize();
+      const parameters = Object.fromEntries(
+        (effect.parameters || []).map((parameter) => [
+          parameter.id,
+          parameter.defaultValue
+        ])
+      );
+      if (
+        targetId === "cult-of-the-lamb" &&
+        effect.id === "cult-set-weapon"
+      ) {
+        // Une hache rend le changement visuellement incontestable, y
+        // compris lorsque la sauvegarde démarre déjà avec une épée.
+        parameters.weapon = 3;
+        parameters.level = 3;
+      }
       const context = {
         source: "manual-audit",
         user: {
@@ -609,6 +732,7 @@ function registerIpc({
               effectId: effect.id,
               quantity: Number(effect.quantity || 1),
               duration: Number(effect.duration || 0),
+              parameters,
               amount: Number(effect.winCounter?.amount || 0),
               operation: effect.winCounter?.operation || "adjust"
             }
@@ -619,7 +743,8 @@ function registerIpc({
         await core.gameHub.trigger(effect.id, context, {
           packId: targetId,
           quantity: Number(effect.quantity || 1),
-          duration: Number(effect.duration || 0)
+          duration: Number(effect.duration || 0),
+          parameters
         });
       }
 

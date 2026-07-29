@@ -252,6 +252,7 @@ function createDefaultState() {
       },
       minimizeToTray: true,
       launchAtStartup: false,
+      allowKeystrokes: false,
       telemetry: false,
       tts: {
         enabled: true,
@@ -287,7 +288,18 @@ function createDefaultState() {
       },
       admin: {
         email: "",
+        emailVerified: false,
         uid: "",
+        refreshTokenSecretId: "",
+        lastAuthenticatedAt: ""
+      },
+      account: {
+        email: "",
+        uid: "",
+        displayName: "",
+        photoUrl: "",
+        providerId: "",
+        emailVerified: false,
         refreshTokenSecretId: "",
         lastAuthenticatedAt: ""
       },
@@ -375,7 +387,8 @@ function createDefaultState() {
         renewalDate: ""
       },
       premiumSeat: {
-        beneficiaryUsername: "",
+        beneficiaryEmail: "",
+        beneficiaryEmails: [],
         grantedAt: "",
         source: "premium",
         status: "inactive",
@@ -384,7 +397,7 @@ function createDefaultState() {
       },
       gameEntitlements: [],
       trial: {
-        username: "",
+        email: "",
         active: false,
         subscription: false,
         subscriptionExpiresAtMs: 0,

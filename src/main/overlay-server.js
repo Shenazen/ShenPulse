@@ -7,9 +7,6 @@ const { URL } = require("node:url");
 const { LocalWebSocketServer } = require("./local-websocket");
 const { safeString, timingSafeToken } = require("./utils");
 
-const TIKFINITY_LOTTIE_BASE_URL =
-  "https://tikfinity.zerody.one/assets/lotties";
-const lottieCache = new Map();
 const PRO_OVERLAY_VIEWS = new Set([
   "game",
   "match",
@@ -29,14 +26,16 @@ function commerceExpiryMs(entry) {
 function hasProOverlayAccess(state, nowMs = Date.now()) {
   const subscription = state?.commerce?.subscription || {};
   if (!["pro", "premium"].includes(subscription.tier)) return false;
-  if (["expired", "revoked"].includes(subscription.status)) return false;
   if (
     subscription.source === "trial" ||
     subscription.status === "trial"
   ) {
-    return commerceExpiryMs(subscription) > nowMs;
+    return (
+      ["active", "trial"].includes(subscription.status) &&
+      commerceExpiryMs(subscription) > nowMs
+    );
   }
-  return true;
+  return ["active", "paid"].includes(subscription.status);
 }
 
 function overlayViewRequiresPro(view) {
@@ -262,7 +261,7 @@ class OverlayServer {
       if (!this.#authorized(request, settings.overlayToken)) {
         return this.#json(response, 401, { error: "Jeton local invalide." });
       }
-      return this.#serveTikfinityLottie(url.pathname, response);
+      return this.#serveStatic(url.pathname, response);
     }
     if (url.pathname.startsWith("/overlay/media/")) {
       if (!this.#authorized(request, settings.overlayToken)) {
@@ -412,44 +411,6 @@ class OverlayServer {
       "Cache-Control": isLiveOverlayCode ? "no-store" : "public, max-age=3600"
     });
     fs.createReadStream(target).pipe(response);
-  }
-
-  async #serveTikfinityLottie(requestPath, response) {
-    const fileName = decodeURIComponent(
-      String(requestPath || "").split("/").pop() || ""
-    );
-    if (!/^\d{3,6}-[a-z0-9-]+\.json$/i.test(fileName)) {
-      return this.#json(response, 404, { error: "Animation introuvable." });
-    }
-    try {
-      let payload = lottieCache.get(fileName);
-      if (!payload) {
-        const remote = await fetch(
-          `${TIKFINITY_LOTTIE_BASE_URL}/${encodeURIComponent(fileName)}`,
-          {
-            headers: {
-              Accept: "application/json",
-              "User-Agent": "Mozilla/5.0 ShenPulse/1.0"
-            }
-          }
-        );
-        if (!remote.ok) {
-          throw new Error(`Animation indisponible (${remote.status}).`);
-        }
-        payload = await remote.text();
-        JSON.parse(payload);
-        lottieCache.set(fileName, payload);
-      }
-      response.writeHead(200, {
-        "Content-Type": CONTENT_TYPES[".json"],
-        "Cache-Control": "public, max-age=86400"
-      });
-      response.end(payload);
-    } catch (error) {
-      this.#json(response, 502, {
-        error: safeString(error.message, 300)
-      });
-    }
   }
 
   #securityHeaders(response) {

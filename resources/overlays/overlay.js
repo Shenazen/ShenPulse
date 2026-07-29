@@ -1022,6 +1022,12 @@ async function drainAlerts() {
   alertRunning = true;
   const payload = alertQueue.shift();
   const stage = document.getElementById("alert-stage");
+  const mediaOnly = payload.displayMode === "media-only";
+  if (mediaOnly && !payload.mediaUrl) {
+    alertRunning = false;
+    drainAlerts();
+    return;
+  }
   const duration = Math.max(
     700,
     parameters.has("displayTime")
@@ -1029,14 +1035,19 @@ async function drainAlerts() {
       : Number(payload.durationMs || 5000)
   );
   const node = document.createElement("article");
-  node.className = `alert${payload.mediaUrl ? " has-media" : ""}`;
+  node.className = mediaOnly
+    ? "alert media-only"
+    : `alert${payload.mediaUrl ? " has-media" : ""}`;
   node.dataset.animation = overlayAnimation;
   node.style.setProperty("--alert-color", payload.color || "#A855F7");
   node.style.setProperty("--alert-duration", `${duration}ms`);
-  node.innerHTML = `
-    <div class="alert-icon">${actionMediaMarkup(payload.mediaUrl)}</div>
-    <div><strong>${escapeHtml(payload.title || "Nouvelle interaction")}</strong><span>${escapeHtml(payload.message || "")}</span></div>
-    <div class="alert-progress"></div>`;
+  node.innerHTML = mediaOnly
+    ? `<div class="alert-media-only">${actionMediaMarkup(payload.mediaUrl)}</div>`
+    : `
+      <div class="alert-icon">${actionMediaMarkup(payload.mediaUrl)}</div>
+      <div><strong>${escapeHtml(payload.title || "Nouvelle interaction")}</strong><span>${escapeHtml(payload.message || "")}</span></div>
+      <div class="alert-progress"></div>`;
+  stage.classList.toggle("media-only-stage", mediaOnly);
   stage.replaceChildren(node);
   if (
     overlaySoundEnabled &&
@@ -1051,6 +1062,7 @@ async function drainAlerts() {
   node.classList.add("leaving");
   await new Promise((resolve) => setTimeout(resolve, 430));
   node.remove();
+  stage.classList.remove("media-only-stage");
   if (overlayPauseTime) {
     await new Promise((resolve) => setTimeout(resolve, overlayPauseTime * 1000));
   }
@@ -1066,7 +1078,7 @@ function actionMediaMarkup(value = "") {
     return `<lottie-player src="${safeUrl}" background="transparent" speed="1" loop autoplay></lottie-player>`;
   }
   if (/\.(?:mp4|webm)(?:[?#]|$)/i.test(url)) {
-    return `<video src="${safeUrl}" autoplay loop playsinline></video>`;
+    return `<video src="${safeUrl}" autoplay loop muted playsinline></video>`;
   }
   return `<img src="${safeUrl}" alt="">`;
 }

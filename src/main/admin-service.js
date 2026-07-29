@@ -23,15 +23,23 @@ const VISIBILITY_SECTIONS = Object.freeze([
 ]);
 
 class AdminService {
-  constructor({ store, fetchImpl = globalThis.fetch }) {
+  constructor({
+    store,
+    accountService = null,
+    fetchImpl = globalThis.fetch
+  }) {
     this.store = store;
+    this.accountService = accountService;
     this.fetch = fetchImpl;
     this.idToken = "";
     this.expiresAt = 0;
     this.refreshPromise = null;
+    this.accountAdminSession = null;
   }
 
   async status() {
+    const accountIdentity = await this.#accountAdminIdentity();
+    if (accountIdentity) return this.#publicStatus(true);
     const session = this.#session();
     if (!session.refreshTokenSecretId) return this.#publicStatus(false);
     try {
@@ -65,7 +73,16 @@ class AdminService {
 
     const verifiedEmail = normalizeEmail(payload.email);
     const uid = cleanUid(payload.localId);
-    if (verifiedEmail !== ADMIN_EMAIL || !uid || !payload.idToken || !payload.refreshToken) {
+    const tokenClaims = firebaseTokenClaims(payload.idToken);
+    if (
+      verifiedEmail !== ADMIN_EMAIL ||
+      !uid ||
+      tokenClaims.email_verified !== true ||
+      normalizeEmail(tokenClaims.email) !== ADMIN_EMAIL ||
+      cleanUid(tokenClaims.user_id || tokenClaims.sub) !== uid ||
+      !payload.idToken ||
+      !payload.refreshToken
+    ) {
       throw new Error("Firebase n’a pas confirmé le compte administrateur ShenPulse.");
     }
 
@@ -79,6 +96,7 @@ class AdminService {
       Date.now() + Math.max(60, Number(payload.expiresIn) || 3600) * 1000;
     this.store.set("settings.admin", {
       email: verifiedEmail,
+      emailVerified: true,
       uid,
       refreshTokenSecretId,
       lastAuthenticatedAt: new Date().toISOString()
@@ -87,7 +105,12 @@ class AdminService {
     // Confirm that the Firebase session can read the shared admin configuration.
     // Commerce and trial services are loaded separately so one optional module
     // can never invalidate an otherwise valid owner session.
-    await this.getSiteSettings();
+    try {
+      await this.getSiteSettings();
+    } catch (error) {
+      this.#clearSession();
+      throw error;
+    }
     return this.#publicStatus(true);
   }
 
@@ -307,10 +330,18 @@ class AdminService {
   }
 
   async #token() {
+    const accountIdentity = await this.#accountAdminIdentity();
+    if (accountIdentity) return accountIdentity.idToken;
+    if (this.accountAdminSession) {
+      this.accountAdminSession = null;
+      this.idToken = "";
+      this.expiresAt = 0;
+    }
     if (
       this.idToken &&
       this.expiresAt - Date.now() > 2 * 60 * 1000 &&
-      this.#session().email === ADMIN_EMAIL
+      this.#session().email === ADMIN_EMAIL &&
+      this.#session().emailVerified === true
     ) {
       return this.idToken;
     }
@@ -344,7 +375,14 @@ class AdminService {
     const payload = await readPayload(response);
     if (!response.ok) throw new Error(firebaseErrorMessage(payload));
     const uid = cleanUid(payload.user_id);
-    if (uid !== cleanUid(session.uid) || !payload.id_token) {
+    const tokenClaims = firebaseTokenClaims(payload.id_token);
+    if (
+      uid !== cleanUid(session.uid) ||
+      tokenClaims.email_verified !== true ||
+      normalizeEmail(tokenClaims.email) !== ADMIN_EMAIL ||
+      cleanUid(tokenClaims.user_id || tokenClaims.sub) !== uid ||
+      !payload.id_token
+    ) {
       throw new Error("La session Firebase ne correspond plus à l’administrateur.");
     }
     if (payload.refresh_token && payload.refresh_token !== refreshToken) {
@@ -363,7 +401,46 @@ class AdminService {
   }
 
   #session() {
-    return this.store.getState().settings.admin || {};
+    return (
+      this.accountAdminSession ||
+      this.store.getState().settings.admin ||
+      {}
+    );
+  }
+
+  async #accountAdminIdentity() {
+    if (
+      !this.accountService ||
+      typeof this.accountService.identityForInternalUse !== "function"
+    ) {
+      return null;
+    }
+    try {
+      const identity =
+        await this.accountService.identityForInternalUse();
+      if (
+        normalizeEmail(identity.email) !== ADMIN_EMAIL ||
+        identity.emailVerified !== true ||
+        !cleanUid(identity.uid) ||
+        !identity.idToken
+      ) {
+        return null;
+      }
+      this.accountAdminSession = {
+        email: ADMIN_EMAIL,
+        emailVerified: true,
+        uid: cleanUid(identity.uid),
+        lastAuthenticatedAt: new Date().toISOString(),
+        source: "account"
+      };
+      this.idToken = String(identity.idToken);
+      return {
+        ...this.accountAdminSession,
+        idToken: this.idToken
+      };
+    } catch {
+      return null;
+    }
   }
 
   #publicStatus(authorized) {
@@ -372,6 +449,7 @@ class AdminService {
       authorized: Boolean(
         authorized &&
           normalizeEmail(session.email) === ADMIN_EMAIL &&
+          session.emailVerified === true &&
           cleanUid(session.uid)
       ),
       email: authorized ? ADMIN_EMAIL : "",
@@ -387,8 +465,10 @@ class AdminService {
     }
     this.idToken = "";
     this.expiresAt = 0;
+    this.accountAdminSession = null;
     this.store.set("settings.admin", {
       email: "",
+      emailVerified: false,
       uid: "",
       refreshTokenSecretId: "",
       lastAuthenticatedAt: ""
@@ -537,10 +617,16 @@ function normalizeCommerceCatalog(value) {
 }
 
 function normalizeTrialRequest(value, ownerId) {
-  const username = cleanUsername(value.username);
+  const email = normalizeEmail(
+    value.email || value.beneficiaryEmail || value.recipientEmail
+  );
   const games = Boolean(value.games);
   const subscription = Boolean(value.subscription);
-  if (!username) throw new Error("Renseignez le @ TikTok du bénéficiaire.");
+  if (!email) {
+    throw new Error(
+      "Renseignez l’adresse e-mail du compte ShenPulse bénéficiaire."
+    );
+  }
   if (!games && !subscription) {
     throw new Error("Choisissez au moins l’abonnement Pro ou des jeux.");
   }
@@ -556,7 +642,8 @@ function normalizeTrialRequest(value, ownerId) {
     games,
     ownerId,
     subscription,
-    username
+    email,
+    beneficiaryEmail: email
   };
   if (games && gameIds.length) result.gameIds = gameIds;
   return result;
@@ -716,6 +803,21 @@ function cleanUsername(value) {
 
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function firebaseTokenClaims(token) {
+  try {
+    const payload = String(token || "").split(".")[1] || "";
+    if (!payload) return {};
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "="
+    );
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+  } catch {
+    return {};
+  }
 }
 
 async function readPayload(response) {
