@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "gta-v-community-bridge",
+  "name": "GTA V — passerelle locale",
+  "publisher": "ShenPulse",
+  "version": "1.0.0",
+  "description": "Pack déclaratif pour un mod GTA V compatible ShenPulse SimpleTCP. Aucun fichier du jeu n'est modifié par l'application.",
+  "platform": "Windows",
+  "tags": ["gta-v", "mod", "tcp"],
+  "connector": {
+    "type": "tcp",
+    "host": "127.0.0.1",
+    "port": 28380,
+    "timeoutMs": 5000,
+    "expectResponse": true
+  },
+  "effects": [
+    {
+      "id": "spawn_enemy",
+      "code": "spawn_hostile_npc",
+      "name": "PNJ hostile",
+      "description": "Demande au mod local de faire apparaître un adversaire.",
+      "category": "PNJ",
+      "icon": "🥊"
+    },
+    {
+      "id": "spawn_vehicle",
+      "code": "spawn_vehicle",
+      "name": "Véhicule aléatoire",
+      "description": "Fait apparaître un véhicule près du joueur.",
+      "category": "Véhicules",
+      "icon": "🚗"
+    },
+    {
+      "id": "wanted_up",
+      "code": "wanted_up",
+      "name": "Ajouter une étoile",
+      "description": "Augmente l'indice de recherche.",
+      "category": "Police",
+      "icon": "⭐",
+      "quantity": 1
+    },
+    {
+      "id": "heal_player",
+      "code": "heal_player",
+      "name": "Vie et armure",
+      "description": "Restaure le joueur.",
+      "category": "Aide",
+      "icon": "🛡️"
+    },
+    {
+      "id": "launch_player",
+      "code": "launch_player",
+      "name": "Propulser",
+      "description": "Applique une impulsion verticale.",
+      "category": "Chaos",
+      "icon": "🚀"
+    },
+    {
+      "id": "change_weather",
+      "code": "change_weather",
+      "name": "Météo aléatoire",
+      "description": "Change la météo du monde.",
+      "category": "Monde",
+      "icon": "⛈️"
+    }
+  ]
+}
+

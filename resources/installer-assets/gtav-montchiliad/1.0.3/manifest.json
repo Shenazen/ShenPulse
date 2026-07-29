@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "gameId": "gtav-montchiliad",
+  "version": "1.0.3",
+  "parentVersion": "1.0.2",
+  "publishedAt": "2026-07-28T21:10:00.000Z",
+  "notes": "Module GTA V Enhanced : l'entrée naturelle dans le cercle du Mont Chiliad lance désormais le même défi de 10 secondes que la téléportation, avec victoire, retour à l'aéroport et pertes à la mort synchronisés.",
+  "assets": [
+    {
+      "id": "enhancedplugin",
+      "sourceName": "ShenPulseMontChiliadEnhanced.asi",
+      "remoteName": "shenpulse-mont-chiliad-enhanced.asi",
+      "size": 394752,
+      "sha256": "9163c6e21a66fbb737b550405229d14d6ea29d4960e12be0b1cdeee7d88ad632",
+      "edition": "enhanced",
+      "role": "installation"
+    }
+  ]
+}

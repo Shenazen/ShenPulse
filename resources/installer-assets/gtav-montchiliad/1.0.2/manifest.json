@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "gameId": "gtav-montchiliad",
+  "version": "1.0.2",
+  "parentVersion": "1.0.1",
+  "publishedAt": "2026-07-28T20:44:50.475Z",
+  "notes": "Module GTA V Enhanced : défi Mont Chiliad de 10 secondes continues, compteur WINS synchronisé, décès globaux et train accéléré.",
+  "assets": [
+    {
+      "id": "enhancedplugin",
+      "sourceName": "ShenPulseMontChiliadEnhanced.asi",
+      "remoteName": "shenpulse-mont-chiliad-enhanced.asi",
+      "size": 393728,
+      "sha256": "8d53189e8cc680593507cfbf25bacde6f8c88bf3bc8a9b60a4435657ca11abd4",
+      "edition": "enhanced",
+      "role": "installation"
+    }
+  ]
+}

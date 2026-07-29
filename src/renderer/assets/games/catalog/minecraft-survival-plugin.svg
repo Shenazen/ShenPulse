@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 350" role="img" aria-label="Minecraft Survival Plugin">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe7ff"/>
+      <stop offset="1" stop-color="#f4d7b2"/>
+    </linearGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#61a83f"/>
+      <stop offset="1" stop-color="#1f5b34"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#071018" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect width="350" height="350" fill="url(#sky)"/>
+  <path d="M0 228 62 190l62 30 56-42 71 44 99-43v171H0z" fill="#8fb573"/>
+  <path d="M0 246h350v104H0z" fill="url(#grass)"/>
+  <g opacity=".24">
+    <path d="M18 257h314M0 282h350M16 309h318" stroke="#122016" stroke-width="3"/>
+    <path d="M36 242v108M83 235v115M137 234v116M192 232v118M247 229v121M305 228v122" stroke="#122016" stroke-width="3"/>
+  </g>
+  <g filter="url(#shadow)">
+    <g transform="translate(120 88)">
+      <rect x="38" y="0" width="70" height="78" rx="4" fill="#3d7b38"/>
+      <rect x="46" y="18" width="16" height="16" fill="#101820"/>
+      <rect x="84" y="18" width="16" height="16" fill="#101820"/>
+      <rect x="62" y="42" width="24" height="12" fill="#1f4f2a"/>
+      <rect x="0" y="82" width="146" height="98" rx="5" fill="#58a64b"/>
+      <rect x="17" y="98" width="30" height="32" fill="#3f8a3d"/>
+      <rect x="99" y="98" width="30" height="32" fill="#3f8a3d"/>
+      <rect x="43" y="180" width="25" height="58" fill="#315c2d"/>
+      <rect x="82" y="180" width="25" height="58" fill="#315c2d"/>
+    </g>
+    <g transform="translate(34 178)">
+      <rect width="65" height="65" rx="4" fill="#2f7f37"/>
+      <rect x="10" y="14" width="13" height="13" fill="#101820"/>
+      <rect x="42" y="14" width="13" height="13" fill="#101820"/>
+      <rect x="23" y="39" width="20" height="10" fill="#12391d"/>
+      <rect x="13" y="65" width="16" height="40" fill="#245d2c"/>
+      <rect x="38" y="65" width="16" height="40" fill="#245d2c"/>
+    </g>
+    <g transform="translate(258 188)">
+      <rect width="58" height="58" rx="4" fill="#d7d2c3"/>
+      <rect x="8" y="12" width="13" height="13" fill="#101820"/>
+      <rect x="38" y="12" width="13" height="13" fill="#101820"/>
+      <rect x="24" y="30" width="10" height="24" fill="#101820"/>
+      <rect x="12" y="58" width="13" height="36" fill="#b9b3a4"/>
+      <rect x="35" y="58" width="13" height="36" fill="#b9b3a4"/>
+    </g>
+    <g transform="translate(74 72)">
+      <rect x="0" y="0" width="46" height="46" rx="5" fill="#a32626"/>
+      <rect x="13" y="6" width="20" height="34" fill="#f5f5f5"/>
+      <rect x="6" y="13" width="34" height="20" fill="#f5f5f5"/>
+      <rect x="15" y="15" width="16" height="16" fill="#a32626"/>
+    </g>
+    <g transform="translate(234 66)">
+      <rect x="12" y="0" width="22" height="80" rx="4" fill="#5a3925"/>
+      <path d="M0 14h46v32H0z" fill="#bfc7d3"/>
+      <path d="M6 20h34v20H6z" fill="#e7eef7"/>
+      <path d="M0 14h46v6H0z" fill="#7a8594"/>
+    </g>
+  </g>
+  <rect x="0" y="280" width="350" height="70" fill="rgba(3,7,18,.54)"/>
+  <text x="25" y="322" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="35" font-weight="900">Survival</text>
+</svg>

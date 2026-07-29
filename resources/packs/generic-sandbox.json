@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "id": "generic-sandbox",
+  "name": "Bac à sable ShenPulse",
+  "publisher": "ShenPulse",
+  "version": "1.0.0",
+  "description": "Pack de démonstration : prévisualisez le pipeline sans lancer de jeu.",
+  "platform": "Windows",
+  "tags": ["demo", "test"],
+  "connector": {
+    "type": "demo"
+  },
+  "effects": [
+    {
+      "id": "spawn_enemy",
+      "code": "spawn_enemy",
+      "name": "Invoquer un ennemi",
+      "description": "Simule l'apparition d'un ennemi.",
+      "category": "Chaos",
+      "icon": "👾",
+      "quantity": 1
+    },
+    {
+      "id": "heal_player",
+      "code": "heal_player",
+      "name": "Soigner le joueur",
+      "description": "Simule un soin du joueur.",
+      "category": "Aide",
+      "icon": "💚",
+      "quantity": 25
+    },
+    {
+      "id": "flip_controls",
+      "code": "flip_controls",
+      "name": "Inverser les contrôles",
+      "description": "Simule un effet temporaire.",
+      "category": "Chaos",
+      "icon": "🔀",
+      "duration": 15
+    },
+    {
+      "id": "change_weather",
+      "code": "change_weather",
+      "name": "Changer la météo",
+      "description": "Simule une modification du monde.",
+      "category": "Monde",
+      "icon": "⛈️"
+    }
+  ]
+}
+

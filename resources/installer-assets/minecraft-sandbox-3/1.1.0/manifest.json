@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "gameId": "minecraft-sandbox-3",
+  "version": "1.1.0",
+  "publishedAt": "2026-07-29T00:00:00.000Z",
+  "assets": [
+    {
+      "id": "paper",
+      "sourceName": "paper-1.21-130.jar",
+      "remoteName": "paper-1.21-130.jar",
+      "size": 49049109,
+      "sha256": "ab9bb1afc3cea6978a0c03ce8448aa654fe8a9c4dddf341e7cbda1b0edaa73f5",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/paper-1.21-130.jar",
+      "external": true,
+      "role": "server"
+    },
+    {
+      "id": "java",
+      "sourceName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "remoteName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "size": 48850015,
+      "sha256": "7ee06c8f0636b22c7d4cb1e86799c8a1205a99e054bae1871f55308f4069aca9",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "external": true,
+      "role": "runtime"
+    },
+    {
+      "id": "plugin",
+      "sourceName": "s2e-sand-box.jar",
+      "remoteName": "s2e-sand-box.jar",
+      "size": 126213,
+      "sha256": "654cba8f5ee856efef0aa2237a079e1f612d8d82645dad85787080d1b4434a63",
+      "role": "installation"
+    },
+    {
+      "id": "guard",
+      "sourceName": "shenpulse-sandbox-bridge.jar",
+      "remoteName": "shenpulse-sandbox-bridge.jar",
+      "size": 7281,
+      "sha256": "8de5fd43c162f58e3851d162a2ce012f22c95c83a2c595bb7d0263b182ec2fad",
+      "role": "installation"
+    },
+    {
+      "id": "winGuard",
+      "sourceName": "shenpulse-bedrock-guard.jar",
+      "remoteName": "shenpulse-bedrock-guard.jar",
+      "size": 34587,
+      "sha256": "6e4b3520396cae669e2dc1c57c4bc34b2b93bb088f5c879142b109f25c91d57e",
+      "role": "installation"
+    },
+    {
+      "id": "config",
+      "sourceName": "config.yml",
+      "remoteName": "config.yml",
+      "size": 1313,
+      "sha256": "73fef20a311729248bc48f8263fe24f6a68277bd5c6af485ad1d933f70aebbdc",
+      "role": "installation"
+    },
+    {
+      "id": "serverProperties",
+      "sourceName": "server.properties",
+      "remoteName": "server.properties",
+      "size": 1090,
+      "sha256": "fad3c1fd94b5a7e9cedc249e1344266687e65047e7e3f3343826bcf26005dd2b",
+      "role": "installation"
+    }
+  ]
+}

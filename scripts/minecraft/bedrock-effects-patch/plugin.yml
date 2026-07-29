@@ -1,0 +1,10 @@
+name: ShenPulseBedrockEffectsPatch
+version: 1.0.0
+main: fr.shenpulse.minecraft.ShenPulseBedrockEffectsPatch
+api-version: '1.21'
+authors:
+  - ShenPulse
+description: Makes the Bedrock Box interactions visible, testable and reliable.
+softdepend:
+  - s2e-bedrock-box
+  - ShenPulseBedrockGuard

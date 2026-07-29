@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "gameId": "minecraft-common",
+  "version": "1.0.0",
+  "publishedAt": "2026-07-29T00:00:00.000Z",
+  "assets": [
+    {
+      "id": "paper",
+      "sourceName": "paper-1.21-130.jar",
+      "remoteName": "paper-1.21-130.jar",
+      "size": 49049109,
+      "sha256": "ab9bb1afc3cea6978a0c03ce8448aa654fe8a9c4dddf341e7cbda1b0edaa73f5",
+      "role": "server"
+    },
+    {
+      "id": "java",
+      "sourceName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "remoteName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "size": 48850015,
+      "sha256": "7ee06c8f0636b22c7d4cb1e86799c8a1205a99e054bae1871f55308f4069aca9",
+      "role": "runtime"
+    }
+  ]
+}

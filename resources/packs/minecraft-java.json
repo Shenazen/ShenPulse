@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "id": "minecraft-java",
+  "name": "Minecraft Java — RCON",
+  "publisher": "ShenPulse",
+  "version": "1.0.0",
+  "description": "Commandes serveur officielles via RCON. Activez enable-rcon dans server.properties.",
+  "platform": "Windows",
+  "tags": ["minecraft", "rcon", "server"],
+  "setupUrl": "https://minecraft.wiki/w/RCON",
+  "connector": {
+    "type": "rcon",
+    "host": "127.0.0.1",
+    "port": 25575,
+    "timeoutMs": 5000
+  },
+  "effects": [
+    {
+      "id": "spawn_enemy",
+      "code": "spawn_zombie",
+      "name": "Invoquer un zombie",
+      "description": "Invoque un zombie près du joueur le plus proche.",
+      "category": "Créatures",
+      "icon": "🧟",
+      "command": "execute at @p run summon minecraft:zombie ~2 ~ ~2"
+    },
+    {
+      "id": "spawn_creeper",
+      "code": "spawn_creeper",
+      "name": "Invoquer un Creeper",
+      "description": "Invoque un Creeper chargé à proximité.",
+      "category": "Créatures",
+      "icon": "💥",
+      "command": "execute at @p run summon minecraft:creeper ~3 ~ ~3 {powered:1b}"
+    },
+    {
+      "id": "heal_player",
+      "code": "heal_player",
+      "name": "Soigner",
+      "description": "Rend instantanément de la vie au joueur le plus proche.",
+      "category": "Aide",
+      "icon": "💚",
+      "command": "effect give @p minecraft:instant_health 1 1 true"
+    },
+    {
+      "id": "give_diamond",
+      "code": "give_diamond",
+      "name": "Donner des diamants",
+      "description": "Donne la quantité configurée de diamants.",
+      "category": "Aide",
+      "icon": "💎",
+      "quantity": 1,
+      "command": "give @p minecraft:diamond {{quantity}}"
+    },
+    {
+      "id": "launch_player",
+      "code": "launch_player",
+      "name": "Lévitation",
+      "description": "Fait léviter le joueur pendant quelques secondes.",
+      "category": "Chaos",
+      "icon": "🚀",
+      "duration": 5,
+      "command": "effect give @p minecraft:levitation {{duration}} 2 true"
+    },
+    {
+      "id": "blindness",
+      "code": "blindness",
+      "name": "Aveuglement",
+      "description": "Aveugle temporairement le joueur.",
+      "category": "Chaos",
+      "icon": "🙈",
+      "duration": 15,
+      "command": "effect give @p minecraft:blindness {{duration}} 0 true"
+    },
+    {
+      "id": "thunder",
+      "code": "thunder",
+      "name": "Orage",
+      "description": "Déclenche un orage.",
+      "category": "Monde",
+      "icon": "⛈️",
+      "command": "weather thunder 60"
+    },
+    {
+      "id": "day",
+      "code": "day",
+      "name": "Passer au jour",
+      "description": "Règle l'heure sur le jour.",
+      "category": "Monde",
+      "icon": "☀️",
+      "command": "time set day"
+    },
+    {
+      "id": "night",
+      "code": "night",
+      "name": "Passer à la nuit",
+      "description": "Règle l'heure sur la nuit.",
+      "category": "Monde",
+      "icon": "🌙",
+      "command": "time set night"
+    },
+    {
+      "id": "clear_inventory",
+      "code": "clear_inventory",
+      "name": "Vider l'inventaire",
+      "description": "Effet destructif à activer uniquement en connaissance de cause.",
+      "category": "Extrême",
+      "icon": "🗑️",
+      "command": "clear @p"
+    }
+  ]
+}
+

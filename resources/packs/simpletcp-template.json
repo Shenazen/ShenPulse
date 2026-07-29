@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "id": "simpletcp-template",
+  "name": "Jeu personnalisé — SimpleTCP",
+  "publisher": "ShenPulse",
+  "version": "1.0.0",
+  "description": "Protocole JSON terminé par NUL, adapté aux mods C#, Unity et émulateurs.",
+  "platform": "Windows",
+  "tags": ["sdk", "tcp", "custom"],
+  "connector": {
+    "type": "tcp",
+    "host": "127.0.0.1",
+    "port": 28379,
+    "timeoutMs": 5000,
+    "expectResponse": true
+  },
+  "effects": [
+    {
+      "id": "spawn_enemy",
+      "code": "spawn_enemy",
+      "name": "Invoquer un ennemi",
+      "description": "Demande au mod de créer un ennemi.",
+      "category": "Chaos",
+      "icon": "👾",
+      "quantity": 1
+    },
+    {
+      "id": "damage_player",
+      "code": "damage_player",
+      "name": "Dégâts",
+      "description": "Inflige la quantité configurée.",
+      "category": "Chaos",
+      "icon": "💔",
+      "quantity": 10
+    },
+    {
+      "id": "heal_player",
+      "code": "heal_player",
+      "name": "Soin",
+      "description": "Soigne le joueur.",
+      "category": "Aide",
+      "icon": "💚",
+      "quantity": 20
+    },
+    {
+      "id": "give_item",
+      "code": "give_item",
+      "name": "Donner un objet",
+      "description": "Le mod détermine l'objet avec les paramètres.",
+      "category": "Aide",
+      "icon": "🎁",
+      "quantity": 1
+    },
+    {
+      "id": "flip_controls",
+      "code": "flip_controls",
+      "name": "Inverser les contrôles",
+      "description": "Effet temporaire avec cycle de vie.",
+      "category": "Contrôles",
+      "icon": "🔀",
+      "duration": 30
+    },
+    {
+      "id": "slow_motion",
+      "code": "slow_motion",
+      "name": "Ralenti",
+      "description": "Passe le jeu au ralenti.",
+      "category": "Temps",
+      "icon": "🐌",
+      "duration": 20
+    }
+  ]
+}
+

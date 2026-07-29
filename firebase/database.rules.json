@@ -1,0 +1,78 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        "configs": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "entitlements": {
+          ".write": false
+        },
+        "games": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "liveSessions": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "overlays": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "profile": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "profiles": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "subscription": {
+          ".write": false
+        },
+        "workspaceProfiles": {
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    },
+    "premiumSeats": {
+      "$username": {
+        ".read": "auth != null",
+        ".write": false
+      }
+    },
+    "usernames": {
+      "$username": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('uid').val() == auth.uid) || (data.exists() && data.child('uid').val() == auth.uid && (!newData.exists() || newData.child('uid').val() == auth.uid)))"
+      }
+    },
+    "site": {
+      "adminSettings": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email == 'alexandre.leuridan@gmail.com'"
+      },
+      "publicVisibility": {
+        ".read": true,
+        ".write": "auth != null && auth.token.email == 'alexandre.leuridan@gmail.com'"
+      },
+      "adminCommerce": {
+        "history": {
+          ".indexOn": "savedAt"
+        }
+      }
+    },
+    "publicOverlays": {
+      "$uid": {
+        "$overlayId": {
+          ".read": true,
+          ".write": "auth != null && auth.uid == $uid"
+        }
+      }
+    },
+    "publicOverlayRelay": {
+      "$channel": {
+        ".read": true,
+        ".write": "auth != null && ((!data.exists() && newData.child('ownerUid').val() == auth.uid) || (data.exists() && data.child('ownerUid').val() == auth.uid && (!newData.exists() || newData.child('ownerUid').val() == auth.uid)))",
+        ".validate": "!newData.exists() || (newData.child('ownerUid').isString() && newData.child('ownerUid').val().length <= 128 && newData.child('protocolVersion').val() == 1)"
+      }
+    }
+  }
+}

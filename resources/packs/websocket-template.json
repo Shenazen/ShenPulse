@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "websocket-template",
+  "name": "Jeu personnalisé — WebSocket",
+  "publisher": "ShenPulse",
+  "version": "1.0.0",
+  "description": "Passerelle universelle pour Unity, Unreal, Godot et moteurs personnalisés.",
+  "platform": "Cross-platform",
+  "tags": ["sdk", "websocket", "custom"],
+  "connector": {
+    "type": "websocket",
+    "url": "ws://127.0.0.1:28381"
+  },
+  "effects": [
+    {
+      "id": "spawn_enemy",
+      "code": "spawn_enemy",
+      "name": "Invoquer un ennemi",
+      "description": "Événement WebSocket générique.",
+      "category": "Gameplay",
+      "icon": "👾"
+    },
+    {
+      "id": "heal_player",
+      "code": "heal_player",
+      "name": "Soigner",
+      "description": "Événement WebSocket générique.",
+      "category": "Gameplay",
+      "icon": "💚"
+    },
+    {
+      "id": "screen_fx",
+      "code": "screen_fx",
+      "name": "Effet visuel",
+      "description": "Déclenche un effet temporaire.",
+      "category": "Visuel",
+      "icon": "🌈",
+      "duration": 15
+    }
+  ]
+}
+

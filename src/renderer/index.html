@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: https: http://127.0.0.1:*; media-src 'self' data: blob: https: http://127.0.0.1:*; frame-src http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: http://127.0.0.1:*"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShenPulse</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img
+            class="brand-logo"
+            src="assets/brand/shenpulse-banner-transparent.png"
+            alt="ShenPulse"
+          />
+        </div>
+
+        <nav id="navigation" aria-label="Navigation principale"></nav>
+
+        <div class="sidebar-footer">
+          <div class="system-health">
+            <span class="status-dot" id="server-dot"></span>
+            <div>
+              <strong id="server-label">Services locaux</strong>
+              <small id="server-detail">Initialisation…</small>
+            </div>
+          </div>
+          <button class="user-chip" data-navigate="settings">
+            <span class="avatar">SP</span>
+            <span><strong>ShenPulse</strong><small>Configuration locale</small></span>
+            <span class="chevron">›</span>
+          </button>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="titlebar">
+          <div class="page-heading">
+            <p id="page-kicker">CENTRE DE CONTRÔLE</p>
+            <h1 id="page-title">Vue d’ensemble</h1>
+          </div>
+          <div class="titlebar-actions">
+            <div class="game-session-control" id="game-session-control" hidden>
+              <button class="game-session-summary" id="game-session-summary" title="Revenir au jeu actif">
+                <span class="game-session-pulse"></span>
+                <span>
+                  <small>JEU ACTIF</small>
+                  <strong id="game-session-label">Session de jeu</strong>
+                </span>
+              </button>
+              <button class="game-session-stop" id="game-session-stop" title="Arrêter la session de jeu" aria-label="Arrêter la session de jeu">■</button>
+            </div>
+            <div class="profile-control" id="profile-control">
+              <button class="profile-picker" id="profile-picker-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span>PROFIL</span>
+                <strong id="profile-current-name">Profil actif</strong>
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5"></path></svg>
+              </button>
+              <select id="profile-select" class="profile-select-native" aria-label="Profil actif" tabindex="-1"></select>
+              <div class="profile-menu" id="profile-menu" role="listbox" aria-label="Choisir un profil" hidden></div>
+              <button class="profile-manage-button" id="profile-manage-button" title="Gérer les profils" aria-label="Gérer les profils">•••</button>
+            </div>
+            <div class="tiktok-control">
+              <button class="tiktok-account" id="tiktok-account-button" title="Configurer le compte TikTok">
+                <span class="tiktok-status-dot" id="tiktok-status-dot"></span>
+                <span>
+                  <strong id="tiktok-account-label">@ TikTok</strong>
+                  <small id="tiktok-status-label">À configurer</small>
+                </span>
+              </button>
+              <button class="tiktok-power" id="tiktok-connection-button" title="Activer ou arrêter la détection TikTok LIVE" aria-label="Activer ou arrêter la détection TikTok LIVE">↻</button>
+            </div>
+            <button class="live-button" id="session-button">
+              <span class="live-dot"></span>
+              <span id="session-label">Démarrer le live</span>
+            </button>
+            <div class="window-buttons">
+              <button title="Réduire" aria-label="Réduire" data-window="minimize">—</button>
+              <button title="Agrandir" aria-label="Agrandir" data-window="maximize">□</button>
+              <button class="close" title="Fermer" aria-label="Fermer" data-window="close">×</button>
+            </div>
+          </div>
+        </header>
+
+        <main id="content" tabindex="-1">
+          <div class="loading-state">
+            <div class="pulse-loader"></div>
+            <p>Préparation de ShenPulse…</p>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="editor-dialog">
+      <form method="dialog" id="editor-form">
+        <header>
+          <div>
+            <p id="dialog-kicker">CONFIGURATION</p>
+            <h2 id="dialog-title">Modifier</h2>
+          </div>
+          <button class="icon-button" type="button" data-dialog-close aria-label="Fermer">×</button>
+        </header>
+        <div id="dialog-body" class="dialog-body"></div>
+        <footer>
+          <div id="dialog-error" class="dialog-error" role="alert" hidden></div>
+          <div class="dialog-actions">
+            <button class="button ghost" type="button" data-dialog-close>Annuler</button>
+            <button class="button primary" id="dialog-submit" type="submit">Enregistrer</button>
+          </div>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="media-library-dialog" class="media-library-dialog">
+      <section class="media-library-shell">
+        <header>
+          <div>
+            <p>BIBLIOTHÈQUE GLOBALE</p>
+            <h2 id="media-library-title">Choisir un média</h2>
+          </div>
+          <button class="icon-button" id="media-library-close" type="button" aria-label="Fermer">×</button>
+        </header>
+        <div class="media-library-toolbar">
+          <div id="media-library-sources" class="media-library-sources"></div>
+          <label class="media-library-search">
+            <span>⌕</span>
+            <input id="media-library-search" type="search" placeholder="Rechercher dans la bibliothèque">
+          </label>
+          <div id="media-library-filters" class="media-library-filters"></div>
+        </div>
+        <div id="media-library-status" class="media-library-status"></div>
+        <div id="media-library-results" class="media-library-results"></div>
+        <footer>
+          <button class="button primary media-library-upload" id="media-library-upload" type="button">
+            <span class="media-import-icon">＋</span>
+            <span><strong>Importer mon propre média</strong><small>Depuis votre PC · stockage personnel Backblaze</small></span>
+          </button>
+          <div>
+            <button class="button ghost" id="media-library-cancel" type="button">Annuler</button>
+            <button class="button primary" id="media-library-confirm" type="button" disabled>Utiliser ce média</button>
+          </div>
+        </footer>
+      </section>
+    </dialog>
+
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+    <div id="audio-stage" aria-hidden="true"></div>
+    <datalist id="gift-catalog-options"></datalist>
+    <script src="../shared/visibility-catalog.js"></script>
+    <script src="vendor/lottie-player.js"></script>
+    <script src="game-overlay-generator.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

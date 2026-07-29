@@ -1,0 +1,94 @@
+{
+  "name": "shenpulse",
+  "productName": "ShenPulse",
+  "version": "1.0.3",
+  "description": "Plateforme locale d'interactions pour livestreams et jeux",
+  "main": "src/main/main.js",
+  "author": "ShenPulse",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prestart": "npm run assets && npm run brand:dev",
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-packaged-dev.ps1",
+    "brand:dev": "node scripts/brand-dev-executable.js",
+    "test": "node --test --test-isolation=none tests/*.test.js",
+    "lint": "node scripts/lint.js",
+    "verify": "npm run lint && npm test",
+    "assets": "node scripts/generate-assets.js",
+    "build:dir": "npm run assets && electron-builder --win dir --x64",
+    "package:upload": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-appxupload.ps1",
+    "build:store": "npm run verify && npm run assets && electron-builder --win appx --x64 && npm run package:upload",
+    "dist": "npm run build:store"
+  },
+  "devDependencies": {
+    "electron": "43.2.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "ShenPulse.ShenPulse",
+    "productName": "ShenPulse",
+    "copyright": "Copyright © 2026 ShenPulse",
+    "asar": true,
+    "asarUnpack": [
+      "resources/packs/**"
+    ],
+    "files": [
+      "src/**/*",
+      "resources/**/*",
+      "build/icon.png",
+      "build/shenpulse.ico",
+      "package.json",
+      "README.md",
+      "PRIVACY.md",
+      "LICENSE"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "artifactName": "ShenPulse-${version}-${arch}.${ext}",
+    "win": {
+      "target": [
+        "appx"
+      ],
+      "icon": "build/shenpulse.ico",
+      "electronLanguages": [
+        "fr",
+        "en-US"
+      ],
+      "verifyUpdateCodeSignature": false
+    },
+    "appx": {
+      "applicationId": "ShenPulse",
+      "identityName": "ShenPulse.ShenPulse",
+      "publisher": "CN=F6F04997-3A7F-4EC3-8492-5BB9FCC0FE46",
+      "publisherDisplayName": "ShenPulse",
+      "displayName": "ShenPulse",
+      "backgroundColor": "#090B14",
+      "minVersion": "10.0.19041.0",
+      "maxVersionTested": "10.0.26100.0",
+      "capabilities": [
+        "runFullTrust",
+        "internetClient",
+        "privateNetworkClientServer"
+      ],
+      "languages": [
+        "fr-FR",
+        "en-US"
+      ],
+      "showNameOnTiles": true,
+      "setBuildNumber": false
+    }
+  },
+  "dependencies": {
+    "tiktok-live-connector": "2.1.1-beta1"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.4",
+    "axios": "^1.17.0",
+    "protobufjs": "^7.5.5"
+  }
+}

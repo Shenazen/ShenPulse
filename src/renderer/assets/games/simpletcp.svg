@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800" role="img" aria-label="Diamond bridge game thumbnail">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08111f"/>
+      <stop offset="0.48" stop-color="#141225"/>
+      <stop offset="1" stop-color="#03050c"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0fbff" stop-opacity="0.92"/>
+      <stop offset="0.48" stop-color="#67e8f9" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#2563eb" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="danger" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#e11d48"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="600" height="800" fill="url(#bg)"/>
+  <circle cx="300" cy="140" r="160" fill="#67e8f9" opacity="0.18"/>
+  <circle cx="96" cy="264" r="170" fill="#e11d48" opacity="0.18"/>
+  <circle cx="520" cy="336" r="170" fill="#ffd166" opacity="0.14"/>
+  <path d="M92 0l86 800M508 0L422 800" stroke="#67e8f9" stroke-opacity="0.16" stroke-width="3"/>
+  <path d="M300 144l166 540H134z" fill="#020611" opacity="0.44"/>
+  <g opacity="0.96">
+    <g transform="translate(0 0)">
+      <rect x="171" y="172" width="105" height="42" rx="9" fill="url(#glass)" stroke="#d9fbff" stroke-opacity="0.55"/>
+      <rect x="324" y="172" width="105" height="42" rx="9" fill="url(#danger)" stroke="#fff0a8" stroke-opacity="0.55"/>
+      <rect x="161" y="230" width="114" height="46" rx="10" fill="url(#danger)" stroke="#fff0a8" stroke-opacity="0.5"/>
+      <rect x="325" y="230" width="114" height="46" rx="10" fill="url(#glass)" stroke="#d9fbff" stroke-opacity="0.55"/>
+      <rect x="148" y="294" width="124" height="50" rx="10" fill="url(#glass)" stroke="#d9fbff" stroke-opacity="0.55"/>
+      <rect x="328" y="294" width="124" height="50" rx="10" fill="#111827" stroke="#ff6b7e" stroke-opacity="0.55"/>
+      <path d="M342 308l86 24M392 306l-38 32" stroke="#fecdd3" stroke-width="4" opacity="0.72"/>
+      <rect x="134" y="364" width="135" height="55" rx="11" fill="url(#danger)" stroke="#fff0a8" stroke-opacity="0.5"/>
+      <rect x="331" y="364" width="135" height="55" rx="11" fill="url(#glass)" stroke="#d9fbff" stroke-opacity="0.55"/>
+      <rect x="118" y="442" width="149" height="61" rx="12" fill="url(#glass)" stroke="#d9fbff" stroke-opacity="0.55"/>
+      <rect x="333" y="442" width="149" height="61" rx="12" fill="url(#danger)" stroke="#fff0a8" stroke-opacity="0.5"/>
+      <rect x="99" y="530" width="166" height="69" rx="13" fill="url(#danger)" stroke="#fff0a8" stroke-opacity="0.5"/>
+      <rect x="335" y="530" width="166" height="69" rx="13" fill="url(#glass)" stroke="#d9fbff" stroke-opacity="0.6"/>
+    </g>
+  </g>
+  <g filter="url(#glow)">
+    <circle cx="300" cy="636" r="48" fill="#67e8f9" opacity="0.36"/>
+    <circle cx="300" cy="636" r="36" fill="#f8fafc"/>
+    <circle cx="300" cy="636" r="30" fill="#111827"/>
+    <text x="300" y="647" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="#67e8f9">VIP</text>
+  </g>
+  <g transform="translate(106 678)">
+    <path d="M45 0l45 28v52l-45 28L0 80V28z" fill="#67e8f9"/>
+    <path d="M45 0l18 38H27zM0 28l27 10 18 70L12 80zM90 28L63 38l-18 70 33-28z" fill="#e0fbff" opacity="0.76"/>
+  </g>
+  <text x="300" y="88" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="46" font-weight="900" fill="#ffffff">PONT</text>
+  <text x="300" y="132" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="38" font-weight="900" fill="#ffd166">DES DIAMANTS</text>
+</svg>

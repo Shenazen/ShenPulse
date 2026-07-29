@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "gameId": "minecraft-bedrock-box",
+  "version": "1.1.0",
+  "publishedAt": "2026-07-29T00:00:00.000Z",
+  "assets": [
+    {
+      "id": "paper",
+      "sourceName": "paper-1.21-130.jar",
+      "remoteName": "paper-1.21-130.jar",
+      "size": 49049109,
+      "sha256": "ab9bb1afc3cea6978a0c03ce8448aa654fe8a9c4dddf341e7cbda1b0edaa73f5",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/paper-1.21-130.jar",
+      "external": true,
+      "role": "server"
+    },
+    {
+      "id": "java",
+      "sourceName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "remoteName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "size": 48850015,
+      "sha256": "7ee06c8f0636b22c7d4cb1e86799c8a1205a99e054bae1871f55308f4069aca9",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "external": true,
+      "role": "runtime"
+    },
+    {
+      "id": "plugin",
+      "sourceName": "s2e-bedrock-box.jar",
+      "remoteName": "s2e-bedrock-box.jar",
+      "size": 163682,
+      "sha256": "ba1086ffcd93a22052877ce34112ff35a56b8e39955791239e1d04ec02764ebf",
+      "role": "installation"
+    },
+    {
+      "id": "guard",
+      "sourceName": "shenpulse-bedrock-guard.jar",
+      "remoteName": "shenpulse-bedrock-guard.jar",
+      "size": 34587,
+      "sha256": "6e4b3520396cae669e2dc1c57c4bc34b2b93bb088f5c879142b109f25c91d57e",
+      "role": "installation"
+    },
+    {
+      "id": "config",
+      "sourceName": "config.yml",
+      "remoteName": "config.yml",
+      "size": 668,
+      "sha256": "c7b3d6a1866d02b70e9d652896fdbbfa59801b394c5e08a27f87eb12b4481ad4",
+      "role": "installation"
+    },
+    {
+      "id": "serverProperties",
+      "sourceName": "server.properties",
+      "remoteName": "server.properties",
+      "size": 1452,
+      "sha256": "15fbbe32588d281cc85a5beb826a75d24d2b036ec8dea2808931d471cf4f54eb",
+      "role": "installation"
+    },
+    {
+      "id": "world",
+      "sourceName": "world.zip",
+      "remoteName": "world.zip",
+      "size": 13700404,
+      "sha256": "8720d7c3b394ca822c9e22bb735d8054e46d99a4d136ce027b02dd4cc28774e9",
+      "role": "installation"
+    }
+  ]
+}

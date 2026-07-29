@@ -1,0 +1,86 @@
+"use strict";
+
+function commerceExpiryMs(entry) {
+  const numeric = Number(entry?.expiresAtMs || 0);
+  if (numeric > 0) return numeric;
+  const parsed = Date.parse(
+    String(entry?.expiresAt || entry?.renewalDate || "")
+  );
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function hasActiveGameSubscription(state, nowMs = Date.now()) {
+  const subscription = state?.commerce?.subscription || {};
+  if (!["pro", "premium"].includes(subscription.tier)) return false;
+  if (["expired", "revoked"].includes(subscription.status)) return false;
+  if (
+    subscription.source === "trial" ||
+    subscription.status === "trial"
+  ) {
+    return commerceExpiryMs(subscription) > nowMs;
+  }
+  return true;
+}
+
+function gameEntitlement(state, pack, nowMs = Date.now()) {
+  if (!pack) return null;
+  if (pack.accessMode === "included") {
+    return {
+      gameId: pack.id,
+      source: "included",
+      status: "active"
+    };
+  }
+  return (
+    state?.commerce?.gameEntitlements || []
+  ).find((entry) => {
+    if (typeof entry === "string") return entry === pack.id;
+    if (!entry || entry.gameId !== pack.id) return false;
+    if (["expired", "revoked"].includes(entry.status)) return false;
+    if (entry.source === "trial" || entry.status === "trial") {
+      return commerceExpiryMs(entry) > nowMs;
+    }
+    return true;
+  }) || null;
+}
+
+function hasGameEntitlement(state, pack, nowMs = Date.now()) {
+  return Boolean(gameEntitlement(state, pack, nowMs));
+}
+
+function hasGameAccess(state, pack, nowMs = Date.now()) {
+  return (
+    hasActiveGameSubscription(state, nowMs) &&
+    hasGameEntitlement(state, pack, nowMs)
+  );
+}
+
+function gameAccessReason(state, pack, nowMs = Date.now()) {
+  const missingSubscription = !hasActiveGameSubscription(state, nowMs);
+  const missingGame = !hasGameEntitlement(state, pack, nowMs);
+  if (missingSubscription && missingGame) {
+    return "Un abonnement ShenPulse Pro ou Premium actif et le droit d’accès à ce jeu (achat ou essai) sont requis.";
+  }
+  if (missingSubscription) {
+    return "Un abonnement ShenPulse Pro ou Premium actif est requis pour accéder aux jeux.";
+  }
+  return "Ce jeu demande aussi un achat ou un essai de jeu actif.";
+}
+
+function assertGameAccess(state, pack, nowMs = Date.now()) {
+  if (!pack) throw new Error("Ce jeu n’existe plus dans ShenPulse.");
+  if (!hasGameAccess(state, pack, nowMs)) {
+    throw new Error(gameAccessReason(state, pack, nowMs));
+  }
+  return pack;
+}
+
+module.exports = {
+  assertGameAccess,
+  commerceExpiryMs,
+  gameAccessReason,
+  gameEntitlement,
+  hasActiveGameSubscription,
+  hasGameAccess,
+  hasGameEntitlement
+};

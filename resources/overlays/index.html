@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShenPulse Overlay</title>
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <main id="overlay-root" aria-live="polite">
+      <section id="alerts-view" class="view">
+        <div id="alert-stage" class="alert-stage"></div>
+      </section>
+
+      <section id="my-actions-view" class="view">
+        <div class="my-actions-shell">
+          <header><span></span><strong id="my-actions-title">MY ACTIONS</strong></header>
+          <div id="my-actions-stage" class="my-actions-stage"></div>
+        </div>
+      </section>
+
+      <section id="goals-view" class="view">
+        <div id="goals-stage" class="goals-stage"></div>
+      </section>
+
+      <section id="like-goal-view" class="view themed-view">
+        <div class="themed-widget like-goal-widget">
+          <img id="like-goal-frame" class="theme-frame" alt="" />
+          <div class="like-goal-content">
+            <strong id="like-goal-title">LIKE GOAL</strong>
+            <div class="like-goal-bar"><span id="like-goal-progress"></span></div>
+            <small><span id="like-goal-current">0</span> / <span id="like-goal-target">50 000</span> <span id="like-goal-progress-label">likes</span> <b id="like-goal-percent">0%</b></small>
+          </div>
+          <div class="like-goal-frame-foreground" aria-hidden="true">
+            <img class="like-goal-frame-slice slice-top" alt="" />
+            <img class="like-goal-frame-slice slice-right" alt="" />
+            <img class="like-goal-frame-slice slice-bottom" alt="" />
+            <img class="like-goal-frame-slice slice-left" alt="" />
+          </div>
+        </div>
+      </section>
+
+      <section id="feed-view" class="view">
+        <div class="overlay-panel feed-panel">
+          <header><span class="pulse-dot"></span><strong>LIVE PULSE</strong></header>
+          <div id="feed-stage" class="feed-stage"></div>
+        </div>
+      </section>
+
+      <section id="game-view" class="view">
+        <div id="game-stage" class="game-stage"></div>
+      </section>
+
+      <section id="leaderboard-view" class="view themed-view">
+        <div class="themed-widget leaderboard-widget">
+          <img id="leaderboard-frame" class="theme-frame" alt="" />
+          <div class="leaderboard-content">
+            <header><span id="leaderboard-icon">♛</span><strong id="leaderboard-title">CLASSEMENT DONATEURS</strong></header>
+            <div id="leaderboard-rows"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="coin-jar-view" class="view">
+        <div class="coin-jar-widget">
+          <img id="coin-jar-back" class="coin-jar-layer" alt="" />
+          <div id="coin-jar-drops" class="coin-jar-drops"></div>
+          <div class="coin-jar-meter"><span id="coin-jar-fill"></span></div>
+          <img id="coin-jar-front" class="coin-jar-layer coin-jar-front" alt="" />
+        </div>
+      </section>
+
+      <section id="timer-view" class="view">
+        <div class="overlay-panel timer-panel themed-widget">
+          <img id="timer-frame" class="theme-frame" alt="" />
+          <p id="timer-label">TEMPS RESTANT</p>
+          <strong id="timer-value">00:00</strong>
+        </div>
+      </section>
+
+      <section id="multiplier-timer-view" class="view">
+        <div class="overlay-panel timer-panel multiplier-timer-panel themed-widget">
+          <img id="multiplier-timer-frame" class="theme-frame" alt="" />
+          <p id="multiplier-timer-label">BONUS ACTIF</p>
+          <strong id="multiplier-timer-value">00:00</strong>
+          <b id="multiplier-value">X2</b>
+        </div>
+      </section>
+
+      <section id="win-counter-view" class="view themed-view">
+        <div class="themed-widget win-counter-widget">
+          <img id="win-counter-frame" class="theme-frame" alt="" />
+          <div class="win-counter-content">
+            <span>WIN</span>
+            <strong id="win-counter-value">0</strong>
+            <small>OBJECTIF <b id="win-counter-target">20</b></small>
+          </div>
+        </div>
+      </section>
+
+      <section id="wheel-view" class="view">
+        <div id="wheel-stage" class="wheel-stage wheel-overlay wheel-overlay--source">
+          <div class="wheel-presence">
+            <div id="wheel-machine" class="wheel-machine">
+              <div id="wheel-pointer" class="wheel-pointer wheel-pointer--top"><span></span></div>
+              <div id="wheel-frame" class="wheel-frame">
+                <span class="royal-ornament royal-ornament--top"><i></i></span>
+                <span class="royal-ornament royal-ornament--right"><i></i></span>
+                <span class="royal-ornament royal-ornament--bottom"><i></i></span>
+                <span class="royal-ornament royal-ornament--left"><i></i></span>
+                <div class="wheel-disc" id="wheel"></div>
+                <div class="wheel-cap" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="8" width="18" height="13" rx="2"></rect>
+                    <path d="M12 8v13M3 12h18M7.5 8C5 8 4.5 4.5 7 4.5c3 0 5 3.5 5 3.5s2-3.5 5-3.5c2.5 0 2 3.5-.5 3.5"></path>
+                  </svg>
+                </div>
+              </div>
+              <div id="wheel-stand" class="wheel-stand"><span></span></div>
+            </div>
+            <strong id="wheel-caption">ROUE DES ACTIONS</strong>
+            <strong id="wheel-winner"></strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="match-view" class="view">
+        <div class="match-stage">
+          <video id="match-video" muted playsinline preload="auto"></video>
+          <div class="match-fallback"><span>VS</span><strong id="match-title">MATCH</strong></div>
+        </div>
+      </section>
+    </main>
+    <script src="vendor/lottie-player.js"></script>
+    <script src="like-goal-policy.js"></script>
+    <script src="coin-jar-physics.js"></script>
+    <script src="overlay.js"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "gameId": "gtav-montchiliad",
+  "version": "1.0.1",
+  "parentVersion": "1.0.0",
+  "publishedAt": "2026-07-27T20:30:00.000Z",
+  "notes": "Module GTA V Enhanced : passerelle ShenPulse et sélection aléatoire pondérée de 178 véhicules.",
+  "assets": [
+    {
+      "id": "enhancedplugin",
+      "sourceName": "ShenPulseMontChiliadEnhanced.asi",
+      "remoteName": "shenpulse-mont-chiliad-enhanced.asi",
+      "size": 373760,
+      "sha256": "d048899ebd9c531943017fc1590d766e5d1db80f456d4cd1813bdaec378071ef",
+      "edition": "enhanced",
+      "role": "installation"
+    }
+  ]
+}

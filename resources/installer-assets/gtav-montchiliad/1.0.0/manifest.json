@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "gameId": "gtav-montchiliad",
+  "version": "1.0.0",
+  "publishedAt": "2026-07-27T00:00:00.000Z",
+  "assets": [
+    {
+      "id": "desolidarisation",
+      "sourceName": "Desolidarisation Grand Theft Auto V.rar",
+      "remoteName": "desolidarisation-gta-v.rar",
+      "size": 1825174210,
+      "sha256": "61e9ad26a4bddd0ea89bf77e96ac8a9fd0490f26143e3c1348c03c1940bc45d0",
+      "edition": "legacy",
+      "role": "installation"
+    },
+    {
+      "id": "scripthook-legacy",
+      "sourceName": "ScriptHookV_3788.0_1013.34.zip",
+      "remoteName": "script-hook-v-legacy-3788.0-1013.34.zip",
+      "size": 1722020,
+      "sha256": "263fe9463894ed960089534619115eca54493c521532688e259f2a1008d14f28",
+      "edition": "legacy",
+      "role": "installation"
+    },
+    {
+      "id": "scripthookvdotnet",
+      "sourceName": "ScriptHookVDotNet-3.7.0.zip",
+      "remoteName": "script-hook-v-dot-net-3.7.0.zip",
+      "size": 1406528,
+      "sha256": "419c1b3f52d24cdeae4a61d07bb0a06ae56aa99292b161d6a841374d0481516c",
+      "edition": "legacy",
+      "role": "installation"
+    },
+    {
+      "id": "scripthook-enhanced",
+      "sourceName": "ScriptHookV_3889.0_1158.13.zip",
+      "remoteName": "script-hook-v-enhanced-3889.0-1158.13.zip",
+      "size": 1722210,
+      "sha256": "b64c97c3353906f14621e7e9511e4aec2a7d436ecc21ed124d3816585e2e6188",
+      "edition": "enhanced",
+      "role": "installation"
+    },
+    {
+      "id": "enhancedplugin",
+      "sourceName": "ShenPulseMontChiliadEnhanced.asi",
+      "remoteName": "shenpulse-mont-chiliad-enhanced.asi",
+      "size": 375104,
+      "sha256": "71b90a9f66efe0f78c4fa80f3bbede7923f6f1ed223a70877688c3a451543cf8",
+      "edition": "enhanced",
+      "role": "installation"
+    },
+    {
+      "id": "enhancedsave",
+      "sourceName": "GTA V Enhanced Mont Chiliad Save.zip",
+      "remoteName": "gta-v-enhanced-mont-chiliad-save.zip",
+      "size": 789698,
+      "sha256": "13f06f99c75c913b2ce6c953e7bd1d545f14f47c369520cab3e6b681e448111e",
+      "edition": "enhanced",
+      "role": "save"
+    },
+    {
+      "id": "chaosmod-archive",
+      "sourceName": "ChaosMod.rar",
+      "remoteName": "chaos-mod-legacy-archive.rar",
+      "size": 5769253,
+      "sha256": "4f583ef05d7dd71d3dcd4eff5056bfb3b7c93992e2a4eb52391a62dd6c25b783",
+      "edition": "archive",
+      "role": "compatibility-archive"
+    }
+  ]
+}
