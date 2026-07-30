@@ -1,0 +1,11 @@
+{
+  "name": "shenpulse-public-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "validate": "node scripts/validate.mjs",
+    "check": "npm run build && npm run validate"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "ShenPulse",
+  "short_name": "ShenPulse",
+  "lang": "fr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070815",
+  "theme_color": "#070815",
+  "icons": [
+    {
+      "src": "/brand/shenpulse-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
