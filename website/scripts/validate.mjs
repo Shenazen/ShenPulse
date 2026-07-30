@@ -9,10 +9,6 @@ const errors = []
 const requiredFiles = [
   'index.html',
   '404.html',
-  'server/index.js',
-  'client/index.html',
-  'client/styles.css',
-  'client/app.js',
   'styles.css',
   'app.js',
   'content.js',
