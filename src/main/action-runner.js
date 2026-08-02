@@ -227,7 +227,6 @@ class ActionRunner {
           ...config,
           text
         };
-        this.overlayServer.publish("tts", payload);
         this.notifyRenderer("playback", { type: "tts", ...payload });
         return { queued: true };
       }
@@ -237,7 +236,6 @@ class ActionRunner {
           volume: clamp(config.volume ?? 1, 0, 1),
           previewScope: safeString(config.previewScope || "", 40)
         };
-        this.overlayServer.publish("audio", payload);
         this.notifyRenderer("playback", { type: "audio", ...payload });
         return { queued: true };
       }

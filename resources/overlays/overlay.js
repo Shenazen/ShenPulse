@@ -1349,9 +1349,7 @@ function updateInteractiveWidgets(event) {
     if (leaderboardKind === "donors") updateLeaderboardScore(event, coins);
     coinJarCurrent += coins;
     spawnCoinJarDrop(event);
-    winCounter += 1;
     renderCoinJar();
-    renderWinCounter();
     restartMatchVideo();
   }
 
@@ -1682,7 +1680,7 @@ function clearCoinJarDrops() {
   coinJarGeometry = null;
 }
 
-function renderWinCounter() {
+function renderWinCounter({ animate = false } = {}) {
   const current = document.getElementById("win-counter-value");
   const target = document.getElementById("win-counter-target");
   if (current) {
@@ -1692,9 +1690,11 @@ function renderWinCounter() {
       : winCounter > 0
         ? winCounterPositiveColor
         : winCounterNeutralColor;
-    current.classList.remove("pulse");
-    void current.offsetWidth;
-    current.classList.add("pulse");
+    if (animate) {
+      current.classList.remove("pulse");
+      void current.offsetWidth;
+      current.classList.add("pulse");
+    }
   }
   if (target) target.textContent = formatNumber(winCounterTarget);
   const content = document.querySelector(".win-counter-content");
@@ -1708,11 +1708,11 @@ function updateWinCounter(payload = {}) {
   const operation = String(payload.operation || "adjust");
   const amount = Number(payload.amount || 0);
   const synchronizedCurrent = Number(payload.current);
+  const previousCounter = winCounter;
   if (Number.isFinite(synchronizedCurrent)) {
     winCounter = allowNegative
       ? synchronizedCurrent
       : Math.max(0, synchronizedCurrent);
-    renderWinCounter();
   } else if (operation === "multiplier") {
     winCounterMultiplier = Math.max(1, Math.abs(amount) || 2);
     if (winCounterMultiplierTimer) clearTimeout(winCounterMultiplierTimer);
@@ -1722,10 +1722,8 @@ function updateWinCounter(payload = {}) {
     }, Math.max(1, Number(payload.durationSeconds || 60)) * 1000);
   } else if (operation === "reset") {
     winCounter = 0;
-    renderWinCounter();
   } else if (operation === "set") {
     winCounter = allowNegative ? amount : Math.max(0, amount);
-    renderWinCounter();
   } else {
     const signedAmount =
       operation === "random" && Math.random() < 0.5
@@ -1733,8 +1731,8 @@ function updateWinCounter(payload = {}) {
         : amount;
     const nextValue = winCounter + signedAmount * winCounterMultiplier;
     winCounter = allowNegative ? nextValue : Math.max(0, nextValue);
-    renderWinCounter();
   }
+  renderWinCounter({ animate: winCounter !== previousCounter });
   addMyAction({
     icon: "★",
     title:
@@ -2013,28 +2011,6 @@ function spinWheel(payload) {
   ) * 1000 + 700);
 }
 
-function speak(payload) {
-  if (!("speechSynthesis" in window) || !payload.text) return;
-  const utterance = new SpeechSynthesisUtterance(payload.text);
-  utterance.lang = payload.language || "fr-FR";
-  utterance.rate = Number(payload.rate || 1);
-  utterance.pitch = Number(payload.pitch || 1);
-  utterance.volume = Number(payload.volume ?? 1);
-  speechSynthesis.speak(utterance);
-  addMyAction({ icon: "◖", title: "Synthèse vocale", detail: payload.text });
-}
-
-function playAudio(payload) {
-  if (
-    !overlaySoundEnabled ||
-    !/^https?:|^data:|^blob:/i.test(payload.url || "")
-  ) return;
-  const audio = new Audio(payload.url);
-  audio.volume = Math.min(1, Number(payload.volume ?? 1) * overlaySoundVolume);
-  audio.play().catch(() => {});
-  addMyAction({ icon: "♫", title: "Son joué", detail: "Alerte audio" });
-}
-
 const overlayChannels = {
   alert: showAlert,
   event: addFeedEvent,
@@ -2050,13 +2026,53 @@ const overlayChannels = {
   "like-goal": updateLikeGoal,
   "coin-jar": updateCoinJar,
   "win-counter": updateWinCounter,
-  wheel: spinWheel,
-  tts: speak,
-  audio: playAudio
+  wheel: spinWheel
 };
 overlayChannels["session-state"] = hydrateOverlaySession;
 overlayChannels.design = updatePreviewDesign;
 overlayChannels.configuration = updateOverlayConfiguration;
+
+const statefulOverlayViews = new Set([
+  "my-actions",
+  "feed",
+  "leaderboard",
+  "like-goal",
+  "coin-jar",
+  "timer",
+  "multiplier-timer",
+  "win-counter"
+]);
+
+const channelOverlayViews = {
+  alert: new Set(["alerts"]),
+  game: new Set(["game"]),
+  goal: new Set(["goals"]),
+  timer: new Set(["timer"]),
+  "multiplier-timer": new Set(["multiplier-timer"]),
+  "like-goal": new Set(["like-goal"]),
+  "coin-jar": new Set(["coin-jar"]),
+  "win-counter": new Set(["win-counter"]),
+  wheel: new Set(["wheel"]),
+  "session-state": statefulOverlayViews
+};
+
+function currentViewAcceptsChannel(channel, payload = {}) {
+  const normalizedChannel = String(channel || "").trim().toLowerCase();
+  if (["audio", "tts"].includes(normalizedChannel)) return false;
+  if (["configuration", "design"].includes(normalizedChannel)) return true;
+  if (normalizedChannel === "event") {
+    if (["feed", "my-actions"].includes(viewName)) return true;
+    const eventType = String(payload?.type || "").trim().toLowerCase();
+    if (eventType === "gift") {
+      return ["coin-jar", "leaderboard", "match"].includes(viewName);
+    }
+    if (eventType === "like") {
+      return ["like-goal", "leaderboard"].includes(viewName);
+    }
+    return false;
+  }
+  return channelOverlayViews[normalizedChannel]?.has(viewName) === true;
+}
 
 window.addEventListener("resize", () => {
   if (viewName === "coin-jar" && coinJarDrops.length) startCoinJarPhysics();
@@ -2070,6 +2086,7 @@ window.addEventListener("message", (event) => {
   ) {
     return;
   }
+  if (!currentViewAcceptsChannel(event.data.channel, event.data.payload)) return;
   const handler = overlayChannels[event.data.channel];
   if (typeof handler !== "function") return;
   handler(event.data.payload || {});
@@ -2118,6 +2135,7 @@ async function initialize() {
     source.addEventListener(channel, (event) => {
       try {
         const message = JSON.parse(event.data);
+        if (!currentViewAcceptsChannel(channel, message.payload)) return;
         handler(message.payload);
       } catch {
         // Ignore malformed local payloads.
@@ -2159,12 +2177,17 @@ function connectPublicRelay() {
         relayInitialized = true;
       } else if (batch?.id && batch.id !== lastRelayBatchId) {
         lastRelayBatchId = batch.id;
+        if (relayDocument?.state) applyRelayState(relayDocument.state);
         for (const message of Array.isArray(batch.messages)
           ? batch.messages
           : Object.values(batch.messages || {})) {
+          if (!currentViewAcceptsChannel(message?.channel, message?.payload)) {
+            continue;
+          }
           const handler = overlayChannels[message?.channel];
           if (typeof handler === "function") handler(message.payload || {});
         }
+        return;
       }
       if (relayDocument?.state) applyRelayState(relayDocument.state);
     } catch {

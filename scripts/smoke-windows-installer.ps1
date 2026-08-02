@@ -17,6 +17,7 @@ if (-not $smokeRoot.StartsWith($temporaryBase, [System.StringComparison]::Ordina
 }
 
 $installRoot = Join-Path $smokeRoot 'installation'
+$userDataRoot = Join-Path $smokeRoot 'user-data'
 $backupRoot = Join-Path $smokeRoot 'shortcuts'
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'ShenPulse.lnk'
 $startMenuShortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\ShenPulse.lnk'
@@ -69,6 +70,7 @@ try {
     Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
     Start-Process `
         -FilePath $installedExecutable `
+        -ArgumentList @("--user-data-dir=$userDataRoot") `
         -WorkingDirectory $installRoot `
         -WindowStyle Hidden | Out-Null
     Start-Sleep -Seconds 5

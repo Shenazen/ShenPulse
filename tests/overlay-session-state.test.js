@@ -50,7 +50,7 @@ test("un nouveau LIVE vide les overlays puis conserve son dernier état", () => 
 
   assert.equal(state.overlaySession.coinJarCurrent, 10);
   assert.equal(state.overlaySession.likeGoalCurrent, 240);
-  assert.equal(state.overlaySession.winCounterCurrent, 1);
+  assert.equal(state.overlaySession.winCounterCurrent, 0);
   assert.deepEqual(state.overlaySession.leaderboards.donors[0], {
     id: "alice",
     name: "Alice",
@@ -75,6 +75,23 @@ test("un nouveau LIVE vide les overlays puis conserve son dernier état", () => 
     donors: [],
     tappers: []
   });
+});
+
+test("les cadeaux seuls ne modifient jamais le compteur WINS", () => {
+  const state = runtimeState();
+  resetOverlaySession(state);
+  state.overlaySession.winCounterCurrent = 7;
+
+  recordOverlayEvent(state, {
+    id: "gift-without-win-action",
+    type: "gift",
+    source: "tiktok-direct",
+    user: { id: "alice", name: "alice", displayName: "Alice" },
+    data: { count: 25, value: 10, giftName: "Rose" }
+  });
+
+  assert.equal(state.overlaySession.coinJarCurrent, 250);
+  assert.equal(state.overlaySession.winCounterCurrent, 7);
 });
 
 test("les remises à zéro manuelles modifient aussi l'état hydraté", () => {

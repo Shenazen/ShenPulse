@@ -10,7 +10,7 @@ const packageJson = JSON.parse(
 );
 
 test("embarque l'identité Microsoft Store réservée", () => {
-  assert.equal(packageJson.version, "1.0.6");
+  assert.equal(packageJson.version, "1.0.7");
   assert.equal(packageJson.productName, "ShenPulse");
   assert.equal(packageJson.build.appx.identityName, "ShenPulse.ShenPulse");
   assert.equal(

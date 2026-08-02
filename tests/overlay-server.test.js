@@ -7,6 +7,7 @@ const path = require("node:path");
 const {
   OverlayServer,
   hasProOverlayAccess,
+  overlayViewAcceptsChannel,
   overlayViewRequiresPro
 } = require("../src/main/overlay-server");
 
@@ -199,5 +200,31 @@ test("calcule les droits Pro des sources locales et leurs vues protégées", () 
       }
     }),
     false
+  );
+});
+
+test("chaque source OBS ne reçoit que les canaux qui lui appartiennent", () => {
+  assert.equal(overlayViewAcceptsChannel("win-counter", "win-counter"), true);
+  assert.equal(
+    overlayViewAcceptsChannel("win-counter", "session-state"),
+    true
+  );
+  assert.equal(
+    overlayViewAcceptsChannel("win-counter", "event", { type: "gift" }),
+    false
+  );
+  assert.equal(overlayViewAcceptsChannel("win-counter", "audio"), false);
+  assert.equal(overlayViewAcceptsChannel("like-goal", "tts"), false);
+  assert.equal(
+    overlayViewAcceptsChannel("coin-jar", "event", { type: "gift" }),
+    true
+  );
+  assert.equal(
+    overlayViewAcceptsChannel("coin-jar", "event", { type: "like" }),
+    false
+  );
+  assert.equal(
+    overlayViewAcceptsChannel("like-goal", "event", { type: "like" }),
+    true
   );
 });

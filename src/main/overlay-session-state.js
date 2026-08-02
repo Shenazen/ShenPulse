@@ -116,7 +116,6 @@ function recordOverlayEvent(state, event, now = new Date().toISOString()) {
     const count = Math.max(1, finiteNumber(event.data?.count, 1));
     const coins = Math.max(1, finiteNumber(event.data?.value, 1)) * count;
     runtime.coinJarCurrent = Math.max(0, runtime.coinJarCurrent + coins);
-    runtime.winCounterCurrent += 1;
     updateLeaderboard(runtime.leaderboards.donors, event.user, coins);
   }
   return runtime;

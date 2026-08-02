@@ -14,6 +14,52 @@ const PRO_OVERLAY_VIEWS = new Set([
   "win-counter"
 ]);
 
+const STATEFUL_OVERLAY_VIEWS = new Set([
+  "my-actions",
+  "feed",
+  "leaderboard",
+  "like-goal",
+  "coin-jar",
+  "timer",
+  "multiplier-timer",
+  "win-counter"
+]);
+
+const CHANNEL_OVERLAY_VIEWS = Object.freeze({
+  alert: new Set(["alerts"]),
+  game: new Set(["game"]),
+  goal: new Set(["goals"]),
+  timer: new Set(["timer"]),
+  "multiplier-timer": new Set(["multiplier-timer"]),
+  "like-goal": new Set(["like-goal"]),
+  "coin-jar": new Set(["coin-jar"]),
+  "win-counter": new Set(["win-counter"]),
+  wheel: new Set(["wheel"]),
+  "session-state": STATEFUL_OVERLAY_VIEWS
+});
+
+function overlayViewAcceptsChannel(view, channel, payload = {}) {
+  const normalizedView = String(view || "alerts").trim().toLowerCase();
+  const normalizedChannel = String(channel || "").trim().toLowerCase();
+
+  // Standalone sound and TTS actions are played by the ShenPulse renderer.
+  // They must never be duplicated by every browser source loaded in OBS.
+  if (["audio", "tts"].includes(normalizedChannel)) return false;
+  if (["configuration", "design"].includes(normalizedChannel)) return true;
+  if (normalizedChannel === "event") {
+    if (["feed", "my-actions"].includes(normalizedView)) return true;
+    const eventType = String(payload?.type || "").trim().toLowerCase();
+    if (eventType === "gift") {
+      return ["coin-jar", "leaderboard", "match"].includes(normalizedView);
+    }
+    if (eventType === "like") {
+      return ["like-goal", "leaderboard"].includes(normalizedView);
+    }
+    return false;
+  }
+  return CHANNEL_OVERLAY_VIEWS[normalizedChannel]?.has(normalizedView) === true;
+}
+
 function commerceExpiryMs(entry) {
   const numeric = Number(entry?.expiresAtMs || 0);
   if (numeric > 0) return numeric;
@@ -208,6 +254,7 @@ class OverlayServer {
     };
     const encoded = `event: ${channel}\ndata: ${JSON.stringify(message)}\n\n`;
     for (const client of this.sseClients) {
+      if (!overlayViewAcceptsChannel(client.view, channel, payload)) continue;
       try {
         client.response.write(encoded);
       } catch {
@@ -462,5 +509,6 @@ class OverlayServer {
 module.exports = {
   OverlayServer,
   hasProOverlayAccess,
+  overlayViewAcceptsChannel,
   overlayViewRequiresPro
 };

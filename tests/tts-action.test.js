@@ -22,13 +22,15 @@ function createRunner(published, options = {}) {
   return new ActionRunner({
     store: { getState: () => state },
     overlayServer: {
-      publish: (event, payload) => published.push({ event, payload })
+      publish: (event, payload) =>
+        published.push({ transport: "overlay", event, payload })
     },
     gameHub: {},
     obsClient: {},
     sourceHub: {},
     spotifyService: {},
-    notifyRenderer: () => {},
+    notifyRenderer: (event, payload) =>
+      published.push({ transport: "renderer", event, payload }),
     ...options
   });
 }
@@ -58,10 +60,30 @@ test("un TTS déclenché par le chat lit uniquement le commentaire", async () =>
   );
 
   assert.equal(published.length, 1);
-  assert.equal(published[0].event, "tts");
+  assert.equal(published[0].transport, "renderer");
+  assert.equal(published[0].event, "playback");
+  assert.equal(published[0].payload.type, "tts");
   assert.equal(published[0].payload.text, "Bonjour le chat !");
   assert.equal(published[0].payload.voice, "Voix choisie");
   assert.doesNotMatch(published[0].payload.text, /Alice|Rose|Cadeau/);
+});
+
+test("les sons autonomes restent dans le lecteur ShenPulse et pas dans les overlays", async () => {
+  const published = [];
+  const runner = createRunner(published);
+
+  await runner.run(
+    {
+      type: "audio.play",
+      config: { url: "https://cdn.example.test/alert.mp3", volume: 0.5 }
+    },
+    { event: { type: "gift", data: {} } }
+  );
+
+  assert.equal(published.length, 1);
+  assert.equal(published[0].transport, "renderer");
+  assert.equal(published[0].event, "playback");
+  assert.equal(published[0].payload.type, "audio");
 });
 
 test("un événement chat sans commentaire ne lance aucune lecture", async () => {
