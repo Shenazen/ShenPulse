@@ -21,7 +21,6 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -33,10 +32,7 @@ import org.bukkit.entity.TextDisplay;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.plugin.Plugin;
@@ -51,13 +47,20 @@ import org.joml.Vector3f;
 public final class ShenPulseBedrockEffectsPatch extends JavaPlugin
     implements Listener {
   private boolean topLockEnabled;
-  private boolean autoReplaceEnabled;
   private final Map<UUID, double[]> longHandsRanges = new HashMap<>();
 
   @Override
   public void onEnable() {
     topLockEnabled = getConfig().getBoolean("top-lock", false);
-    autoReplaceEnabled = getConfig().getBoolean("auto-replace", false);
+    // Older patch versions persisted an "auto-replace" switch and restored
+    // TNT damage after 12 ticks. Auto Replace already belongs to the native
+    // Bedrock Box plugin, where it normalizes placed blocks. Keeping a second
+    // implementation here made explosions appear client-side and then roll
+    // back on the server. Remove the obsolete setting during migration.
+    if (getConfig().contains("auto-replace")) {
+      getConfig().set("auto-replace", null);
+      saveConfig();
+    }
     Bukkit.getPluginManager().registerEvents(this, this);
     getLogger().info("Bedrock Box effects patch enabled.");
   }
@@ -99,7 +102,6 @@ public final class ShenPulseBedrockEffectsPatch extends JavaPlugin
           runLongHands(intArg(args, 2, 10, 1, 300));
       case "tp" -> teleportToBox();
       case "toplock" -> toggleTopLock();
-      case "autoreplace" -> toggleAutoReplace();
       default -> {
         // This plugin augments only interactions rejected during validation.
       }
@@ -453,12 +455,6 @@ public final class ShenPulseBedrockEffectsPatch extends JavaPlugin
           true,
           true
       ));
-      player.sendMessage(
-          ChatColor.LIGHT_PURPLE
-              + "Long Hands actif : portée de 12 blocs pendant "
-              + seconds
-              + "s."
-      );
       UUID playerId = player.getUniqueId();
       Bukkit.getScheduler().runTaskLater(
           this,
@@ -532,69 +528,11 @@ public final class ShenPulseBedrockEffectsPatch extends JavaPlugin
     );
   }
 
-  private void toggleAutoReplace() {
-    autoReplaceEnabled = !autoReplaceEnabled;
-    getConfig().set("auto-replace", autoReplaceEnabled);
-    saveConfig();
-    announce(
-        "AUTO REPLACE : " + (autoReplaceEnabled ? "ACTIF" : "INACTIF"),
-        autoReplaceEnabled
-            ? "Les blocs détruits dans la box réapparaissent"
-            : "Les blocs détruits restent supprimés"
-    );
-  }
-
   @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
   public void onBlockPlace(BlockPlaceEvent event) {
     if (!topLockEnabled || !isInsideBox(event.getBlockPlaced())) return;
     if (event.getBlockPlaced().getY() <= arena().topY()) return;
     event.setCancelled(true);
-    event.getPlayer().sendMessage(
-        ChatColor.RED + "Top Lock actif : hauteur maximale atteinte."
-    );
-  }
-
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  public void onBlockBreak(BlockBreakEvent event) {
-    if (!autoReplaceEnabled || !isInsideBox(event.getBlock())) return;
-    scheduleReplacement(event.getBlock(), event.getBlock().getBlockData());
-  }
-
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  public void onEntityExplode(EntityExplodeEvent event) {
-    if (!autoReplaceEnabled) return;
-    for (Block block : new ArrayList<>(event.blockList())) {
-      if (isInsideBox(block)) {
-        scheduleReplacement(block, block.getBlockData());
-      }
-    }
-  }
-
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-  public void onBlockExplode(BlockExplodeEvent event) {
-    if (!autoReplaceEnabled) return;
-    for (Block block : new ArrayList<>(event.blockList())) {
-      if (isInsideBox(block)) {
-        scheduleReplacement(block, block.getBlockData());
-      }
-    }
-  }
-
-  private void scheduleReplacement(Block block, BlockData data) {
-    Location location = block.getLocation();
-    Bukkit.getScheduler().runTaskLater(this, () -> {
-      Block target = location.getBlock();
-      if (target.isEmpty()) target.setBlockData(data, false);
-      target.getWorld().spawnParticle(
-          Particle.HAPPY_VILLAGER,
-          target.getLocation().add(0.5D, 0.5D, 0.5D),
-          14,
-          0.35D,
-          0.35D,
-          0.35D,
-          0.0D
-      );
-    }, 12L);
   }
 
   private boolean isInsideBox(Block block) {

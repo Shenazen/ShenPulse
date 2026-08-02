@@ -17,6 +17,7 @@ const { BackblazeMediaService } = require("./backblaze-media");
 const { AccountService } = require("./account-service");
 const { AdminService } = require("./admin-service");
 const { GameRuntimeService } = require("./game-runtime");
+const { runOriginalGamesSmoke } = require("./original-games-smoke");
 const {
   orderInteractionAuditEffects
 } = require("./interaction-audit-plan");
@@ -102,7 +103,6 @@ function createWindow() {
 }
 
 function notifyRenderer(channel, value) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
   if (
     accountService &&
     shouldSuppressRendererChannel(channel, store)
@@ -113,7 +113,10 @@ function notifyRenderer(channel, value) {
     channel === "state-changed" && accountService
       ? snapshotForRenderer(value, store)
       : value;
-  mainWindow.webContents.send(channel, rendererValue);
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (window.isDestroyed() || window.webContents.isDestroyed()) continue;
+    window.webContents.send(channel, rendererValue);
+  }
 }
 
 async function bootstrap() {
@@ -126,11 +129,31 @@ async function bootstrap() {
           "default-src 'self'; img-src 'self' data: https: http://127.0.0.1:*; " +
             "media-src 'self' data: blob: https: http://127.0.0.1:*; " +
             "frame-src http://127.0.0.1:*; " +
-            "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: http://127.0.0.1:*"
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            "font-src 'self' data: https://fonts.gstatic.com; " +
+            "script-src 'self'; connect-src 'self' https: http://127.0.0.1:*"
         ]
       }
     });
   });
+  if (
+    process.argv.includes("--original-games-smoke") ||
+    app.commandLine.hasSwitch("original-games-smoke")
+  ) {
+    const outputArgument = process.argv.find((argument) =>
+      argument.startsWith("--original-games-smoke-output=")
+    );
+    const outputDirectory = outputArgument
+      ? path.resolve(outputArgument.slice(outputArgument.indexOf("=") + 1))
+      : path.join(app.getPath("temp"), "shenpulse-original-games");
+    await runOriginalGamesSmoke({
+      BrowserWindow,
+      outputDirectory
+    });
+    quitting = true;
+    app.exit(0);
+    return;
+  }
   store = new StateStore(app.getPath("userData"), safeStorage);
   store.load();
   const backblazeMedia = new BackblazeMediaService({
@@ -158,7 +181,9 @@ async function bootstrap() {
     store,
     getWindow: () => mainWindow,
     notifyRenderer,
-    assertAccess: (gameId) => core.gameHub.assertAccess(gameId)
+    assertAccess: (gameId) => core.gameHub.assertAccess(gameId),
+    onMinecraftWinCounter: (event) =>
+      core.handleMinecraftWinCounter(event)
   });
   core.gameHub.setMinecraftRuntime(gameRuntime);
   ipcController = registerIpc({
@@ -215,7 +240,25 @@ app.on("second-instance", (_event, commandLine) => {
 
 app.whenReady().then(bootstrap).catch((error) => {
   console.error(error);
-  app.quit();
+  const outputArgument = process.argv.find((argument) =>
+    argument.startsWith("--original-games-smoke-output=")
+  );
+  if (outputArgument) {
+    try {
+      const outputDirectory = path.resolve(
+        outputArgument.slice(outputArgument.indexOf("=") + 1)
+      );
+      fs.mkdirSync(outputDirectory, { recursive: true });
+      fs.writeFileSync(
+        path.join(outputDirectory, "failure.txt"),
+        error?.stack || String(error),
+        "utf8"
+      );
+    } catch {
+      // Le code de sortie non nul reste la source de vérité.
+    }
+  }
+  app.exit(1);
 });
 
 app.on("before-quit", (event) => {
@@ -231,6 +274,12 @@ app.on("before-quit", (event) => {
 });
 
 app.on("window-all-closed", () => {
+  if (
+    process.argv.includes("--original-games-smoke") ||
+    app.commandLine.hasSwitch("original-games-smoke")
+  ) {
+    return;
+  }
   app.quit();
 });
 

@@ -4,6 +4,37 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { safeString } = require("./utils");
 
+const FALLBACK_LOCALIZED_GIFT_IDS = new Set([
+  "boxing-gloves",
+  "cap",
+  "corgi",
+  "doughnut",
+  "ellie-the-elephant",
+  "family-9575",
+  "finger-heart",
+  "fireworks",
+  "gg",
+  "go-popular",
+  "hand-hearts",
+  "heart-me",
+  "ice-cream-cone",
+  "leon-the-kitten",
+  "little-crown",
+  "love-you",
+  "money-gun",
+  "perfume",
+  "private-jet",
+  "rose",
+  "sports-car",
+  "swan",
+  "tiktok",
+  "tiktok-shuttle",
+  "tiktok-universe",
+  "train",
+  "you-re-amazing"
+]);
+const LOCALIZED_GIFT_REFRESH_MS = 6 * 60 * 60 * 1000;
+
 const KENNEY_GROUPS = {
   back: range(1, 4),
   bong: [1],
@@ -274,10 +305,16 @@ async function searchWikimediaMedia({
 }
 
 class GiftCatalog {
-  constructor(resourcesDirectory) {
+  constructor(resourcesDirectory, {
+    fetchLocalizedGifts = fetchFrenchTikTokGifts
+  } = {}) {
     this.filePath = path.join(resourcesDirectory, "catalogs", "tiktok-gifts.json");
+    this.fetchLocalizedGifts = fetchLocalizedGifts;
     this.gifts = [];
     this.generatedAt = "";
+    this.localizedAtMs = 0;
+    this.localizedUsername = "";
+    this.refreshPromise = null;
     this.load();
   }
 
@@ -286,6 +323,9 @@ class GiftCatalog {
       const payload = JSON.parse(fs.readFileSync(this.filePath, "utf8"));
       this.generatedAt = safeString(payload.generatedAt, 100);
       this.gifts = (Array.isArray(payload.gifts) ? payload.gifts : [])
+        .filter((gift) =>
+          FALLBACK_LOCALIZED_GIFT_IDS.has(String(gift?.id || ""))
+        )
         .map(normalizeGift)
         .filter((gift) => gift.name)
         .sort(
@@ -303,6 +343,38 @@ class GiftCatalog {
     return this.gifts;
   }
 
+  async refreshLocalized(username = "", { force = false } = {}) {
+    const targetUsername = String(username || "tiktok")
+      .trim()
+      .replace(/^@+/, "") || "tiktok";
+    if (
+      !force &&
+      this.localizedUsername === targetUsername &&
+      Date.now() - this.localizedAtMs < LOCALIZED_GIFT_REFRESH_MS
+    ) {
+      return this.gifts;
+    }
+    if (this.refreshPromise && !force) return this.refreshPromise;
+    const refresh = Promise.resolve(
+      this.fetchLocalizedGifts(targetUsername)
+    ).then((values) => {
+      const gifts = dedupeLocalizedGifts(values);
+      if (!gifts.length) {
+        throw new Error("Le catalogue TikTok français est vide.");
+      }
+      this.gifts = gifts;
+      this.generatedAt = new Date().toISOString();
+      this.localizedAtMs = Date.now();
+      this.localizedUsername = targetUsername;
+      return this.gifts;
+    });
+    const pending = refresh.finally(() => {
+      if (this.refreshPromise === pending) this.refreshPromise = null;
+    });
+    this.refreshPromise = pending;
+    return pending;
+  }
+
   search(query = "", limit = 80) {
     const needle = normalizeSearch(query);
     const max = Math.min(1000, Math.max(1, Number(limit) || 80));
@@ -317,6 +389,60 @@ class GiftCatalog {
       gifts: source.slice(0, max)
     };
   }
+}
+
+async function fetchFrenchTikTokGifts(username = "tiktok") {
+  const { TikTokLiveConnection } = require("tiktok-live-connector");
+  const connection = new TikTokLiveConnection(username, {
+    processInitialData: false,
+    webClientParams: {
+      app_language: "fr-FR",
+      browser_language: "fr-FR",
+      priority_region: "FR",
+      region: "FR"
+    },
+    webClientOptions: {
+      timeout: 10000
+    }
+  });
+  return connection.fetchAvailableGifts();
+}
+
+function dedupeLocalizedGifts(values = []) {
+  const gifts = new Map();
+  for (const value of Array.isArray(values) ? values : []) {
+    const gift = normalizeGift({
+      cost: value?.cost ?? value?.diamondCount ?? value?.diamond_count,
+      id: value?.id ?? value?.giftId ?? value?.gift_id,
+      imageUrl:
+        value?.imageUrl ||
+        value?.giftPictureUrl ||
+        value?.image?.url_list?.[0] ||
+        value?.image?.urlList?.[0] ||
+        value?.icon?.url_list?.[0] ||
+        value?.icon?.urlList?.[0],
+      name: value?.name ?? value?.giftName,
+      source: "tiktok-fr"
+    });
+    if (!gift.id || !gift.name || containsUnsupportedGiftScript(gift.name)) {
+      continue;
+    }
+    gifts.set(gift.id, gift);
+  }
+  return [...gifts.values()].sort(
+    (left, right) =>
+      left.cost - right.cost ||
+      left.name.localeCompare(right.name, "fr", {
+        sensitivity: "base",
+        numeric: true
+      })
+  );
+}
+
+function containsUnsupportedGiftScript(value = "") {
+  return /[\u0370-\u052f\u0590-\u08ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u.test(
+    String(value)
+  );
 }
 
 function normalizeGift(value = {}) {
@@ -546,5 +672,7 @@ module.exports = {
   normalizeWikimediaMediaPayload,
   searchMyInstantsSounds,
   searchWikimediaMedia,
+  dedupeLocalizedGifts,
+  fetchFrenchTikTokGifts,
   normalizeGift
 };

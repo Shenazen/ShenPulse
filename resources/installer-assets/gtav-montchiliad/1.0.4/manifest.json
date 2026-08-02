@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "gameId": "gtav-montchiliad",
+  "version": "1.0.4",
+  "parentVersion": "1.0.3",
+  "publishedAt": "2026-08-02T08:15:22.089Z",
+  "notes": "Module GTA V Enhanced : l'interaction Retourner le véhicule conserve désormais l'élan et anime un tonneau complet de 360 degrés sur 0,9 seconde.",
+  "assets": [
+    {
+      "id": "enhancedplugin",
+      "sourceName": "ShenPulseMontChiliadEnhanced.asi",
+      "remoteName": "shenpulse-mont-chiliad-enhanced.asi",
+      "size": 396800,
+      "sha256": "e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1",
+      "edition": "enhanced",
+      "role": "installation"
+    }
+  ]
+}

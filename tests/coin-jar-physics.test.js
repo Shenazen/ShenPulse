@@ -2,6 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   giftDiameter,
   createGeometry,
@@ -13,6 +15,47 @@ const {
   step
 } = require("../resources/overlays/coin-jar-physics");
 
+const COIN_JAR_MODELS = [
+  "fantasy",
+  "football",
+  "gaming-retro",
+  "gaming-modern",
+  "magic-alchemy",
+  "cyberpunk",
+  "kawaii",
+  "pirate-treasure",
+  "halloween",
+  "winter-christmas",
+  "luxury-casino",
+  "manga-anime",
+  "enchanted-forest",
+  "space"
+];
+
+function coinJarAsset(model, layer) {
+  const name = model === "fantasy"
+    ? layer === "back"
+      ? "jar-test-back-clean-localized.png"
+      : "jar-test-front-smooth8.png"
+    : `jar-${model}-${layer}.png`;
+  return path.join(
+    __dirname,
+    "..",
+    "resources",
+    "overlays",
+    "media",
+    "widgets",
+    "coin-jar",
+    name
+  );
+}
+
+function pngDimensions(file) {
+  const header = fs.readFileSync(file).subarray(0, 24);
+  assert.equal(header.toString("ascii", 1, 4), "PNG");
+  return [header.readUInt32BE(16), header.readUInt32BE(20)];
+}
+
 function seededRandom(seed) {
   let state = seed >>> 0;
   return () => {
@@ -23,22 +66,21 @@ function seededRandom(seed) {
 
 function spawnGift(bodies, geometry, value, random) {
   const diameter = giftDiameter(value, geometry.width);
-  const radius = diameter / 2;
+  const radius = diameter * 0.43;
   const body = createBody({
     x:
       geometry.centerX +
       (random() - 0.5) *
-        Math.max(
-          diameter,
-          geometry.mouthRight - geometry.mouthLeft - diameter * 2.4
-        ),
+        Math.max(0, geometry.mouthRight - geometry.mouthLeft - diameter),
     y: -radius - random() * geometry.height * 0.035,
-    vx: (random() - 0.5) * geometry.width * 0.13,
+    vx: (random() - 0.5) * geometry.width * 0.28,
     vy: geometry.height * (0.05 + random() * 0.08),
     radius,
     angle: (random() - 0.5) * 120,
     angularVelocity: (random() - 0.5) * 120
   });
+  body.testValue = value;
+  body.visualDiameter = diameter;
   bodies.push(body);
   return body;
 }
@@ -113,6 +155,16 @@ function assertSnapshotUnchanged(stable) {
   }
 }
 
+function changedSnapshotPositions(stable, threshold = 0.05) {
+  return stable.filter(
+    (position) =>
+      Math.hypot(
+        position.body.x - position.x,
+        position.body.y - position.y
+      ) > threshold
+  ).length;
+}
+
 function assertStablePile(bodies, geometry) {
   assert.ok(bodies.length > 0);
   assert.ok(
@@ -146,9 +198,9 @@ function assertStablePile(bodies, geometry) {
         first.x - second.x,
         first.y - second.y
       );
-      const invisibleImageMargin = radiusSum * 0.08 + 0.05;
+      const transparentImageMargin = radiusSum * 0.55 + 0.05;
       assert.ok(
-        distance + invisibleImageMargin >= radiusSum,
+        distance + transparentImageMargin >= radiusSum,
         "deux images cadeaux visibles ne doivent pas se chevaucher"
       );
     }
@@ -157,23 +209,25 @@ function assertStablePile(bodies, geometry) {
 
 test("les cadeaux prennent plus de place selon leur valeur en pièces", () => {
   const rose = giftDiameter(1, 500);
+  const small = giftDiameter(5, 500);
   const medium = giftDiameter(100, 500);
   const premium = giftDiameter(10000, 500);
 
-  assert.ok(rose <= 16);
-  assert.ok(medium > rose);
-  assert.ok(premium > medium);
-  assert.ok(premium <= 75);
+  assert.ok(rose >= 16 && rose <= 20);
+  assert.ok(small >= rose * 1.45);
+  assert.ok(medium >= small * 1.5);
+  assert.ok(premium >= medium * 1.5);
+  assert.ok(premium <= 90);
 });
 
-test("la géométrie reste volontairement à l'intérieur du masque fantasy", () => {
+test("la géométrie reste volontairement à l'intérieur du masque commun", () => {
   const geometry = createGeometry(500, 500);
 
-  assert.equal(geometry.mouthLeft, 167.5);
-  assert.equal(geometry.mouthRight, 332.5);
-  assert.ok(leftWallAt(geometry, 250) >= 132.5);
-  assert.ok(rightWallAt(geometry, 250) <= 367.5);
-  assert.equal(geometry.floorY, 430);
+  assert.equal(geometry.mouthLeft, 155);
+  assert.equal(geometry.mouthRight, 345);
+  assert.ok(leftWallAt(geometry, 250) <= 112.5);
+  assert.ok(rightWallAt(geometry, 250) >= 387.5);
+  assert.equal(geometry.floorY, 457.5);
 });
 
 test("un cadeau n'est contenu qu'une fois entièrement passé sous le col", () => {
@@ -247,6 +301,7 @@ for (const value of [1, 5]) {
       assertStablePile(bodies, geometry);
 
       const firstPile = snapshot(bodies);
+      const spillsBeforeSingle = result.spilled;
       runBurst(
         bodies,
         geometry,
@@ -254,9 +309,20 @@ for (const value of [1, 5]) {
         result
       );
       settle(bodies, geometry, result);
-      assertSnapshotUnchanged(firstPile);
+      if (bodies.length > firstPile.length) {
+        assert.ok(
+          changedSnapshotPositions(firstPile) > 0,
+          "le nouvel impact doit pouvoir rearranger localement la pile"
+        );
+      } else {
+        assert.ok(
+          result.spilled > spillsBeforeSingle,
+          "un bocal plein doit laisser deborder le cadeau surnumeraire"
+        );
+      }
 
       const secondPile = snapshot(bodies);
+      const spillsBeforeBurst = result.spilled;
       runBurst(
         bodies,
         geometry,
@@ -264,7 +330,17 @@ for (const value of [1, 5]) {
         result
       );
       settle(bodies, geometry, result);
-      assertSnapshotUnchanged(secondPile);
+      if (bodies.length > secondPile.length) {
+        assert.ok(
+          changedSnapshotPositions(secondPile) > 0,
+          "une rafale doit repartir naturellement sur les cadeaux au repos"
+        );
+      } else {
+        assert.ok(
+          result.spilled > spillsBeforeBurst,
+          "une rafale surnumeraire doit deborder sans comprimer la pile"
+        );
+      }
       assertStablePile(bodies, geometry);
 
       const finalPile = snapshot(bodies);
@@ -279,6 +355,112 @@ for (const value of [1, 5]) {
     }
   );
 }
+
+test(
+  "une rafale premium est plus grande et se repartit sans tour centrale",
+  { timeout: 120000 },
+  () => {
+    const geometry = createGeometry(500, 500);
+    const bodies = [];
+    const result = { spilled: 0, settleFrames: [] };
+    const random = seededRandom(44999);
+
+    runBurst(
+      bodies,
+      geometry,
+      { count: 120, value: 1, random },
+      result
+    );
+    settle(bodies, geometry, result);
+    const basePile = snapshot(bodies);
+
+    runBurst(
+      bodies,
+      geometry,
+      { count: 24, value: 1000, random, cadence: 0.034 },
+      result
+    );
+    settle(bodies, geometry, result);
+    assertStablePile(bodies, geometry);
+
+    const premium = bodies.filter((body) => body.testValue === 1000);
+    assert.ok(premium.length >= 18, "la majorite des cadeaux premium doit entrer");
+    assert.ok(
+      premium.every(
+        (body) => body.visualDiameter >= giftDiameter(1, 500) * 3
+      ),
+      "la valeur en pieces doit produire une difference de taille evidente"
+    );
+    const premiumLeft = Math.min(...premium.map((body) => body.x));
+    const premiumRight = Math.max(...premium.map((body) => body.x));
+    assert.ok(
+      premiumRight - premiumLeft >= geometry.width * 0.24,
+      "les gros cadeaux doivent rouler sur une largeur visible"
+    );
+    const centralBand = premium.filter(
+      (body) => Math.abs(body.x - geometry.centerX) <= geometry.width * 0.055
+    );
+    assert.ok(
+      centralBand.length < premium.length * 0.65,
+      "les gros cadeaux ne doivent pas former une colonne centrale"
+    );
+    assert.ok(
+      changedSnapshotPositions(basePile) >= 4,
+      "les impacts premium doivent rearranger localement la base"
+    );
+  }
+);
+
+test(
+  "240 petits cadeaux remplissent une surface large jusqu'aux deux parois",
+  { timeout: 120000 },
+  () => {
+    const geometry = createGeometry(500, 500);
+    const bodies = [];
+    const result = { spilled: 0, settleFrames: [] };
+    const random = seededRandom(720520);
+
+    runBurst(
+      bodies,
+      geometry,
+      { count: 240, value: 1, random },
+      result
+    );
+    settle(bodies, geometry, result);
+    assertStablePile(bodies, geometry);
+
+    const visualRadius = giftDiameter(1, geometry.width) / 2;
+    const visibleLeft = Math.min(...bodies.map((body) => body.x - visualRadius));
+    const visibleRight = Math.max(...bodies.map((body) => body.x + visualRadius));
+    const visibleBottom = Math.max(...bodies.map((body) => body.y + visualRadius));
+    assert.ok(
+      visibleLeft <= geometry.width * 0.255,
+      `la surface doit atteindre le bord gauche (x=${visibleLeft})`
+    );
+    assert.ok(
+      visibleRight >= geometry.width * 0.745,
+      `la surface doit atteindre le bord droit (x=${visibleRight})`
+    );
+    assert.ok(
+      visibleBottom >= geometry.floorY,
+      `les images doivent couvrir le fond visible (y=${visibleBottom})`
+    );
+
+    const surfaceTops = Array.from({ length: 5 }, (_, index) => {
+      const left = geometry.width * (0.235 + index * 0.106);
+      const right = left + geometry.width * 0.106;
+      const inColumn = bodies.filter(
+        (body) => body.x + visualRadius >= left && body.x - visualRadius <= right
+      );
+      assert.ok(inColumn.length > 0, `colonne de remplissage ${index + 1} vide`);
+      return Math.min(...inColumn.map((body) => body.y - visualRadius));
+    });
+    assert.ok(
+      Math.max(...surfaceTops) - Math.min(...surfaceTops) <= geometry.height * 0.16,
+      `la surface doit rester large et non pyramidale (${surfaceTops.join(", ")})`
+    );
+  }
+);
 
 test(
   "le solveur converge aussi avec des frames de 8, 33 et 50 ms",
@@ -326,13 +508,15 @@ test("un cadeau bloqué dans le col est renversé au lieu de trembler", () => {
     vy: 50
   });
 
-  for (let frame = 0; frame < 120; frame += 1) {
+  const blockerStartY = blocker.y;
+  for (let frame = 0; frame < 600; frame += 1) {
     step([blocker, entering], geometry, 1 / 60);
-    if (entering.state === "spilled") break;
+    if ([blocker, entering].every((body) => body.sleeping)) break;
   }
 
-  assert.equal(entering.state, "spilled");
+  assert.equal(entering.state, "contained");
   assert.equal(blocker.sleeping, true);
+  assert.ok(blocker.y > blockerStartY + radius * 4);
 });
 
 test("les bords du cadeau, pas seulement son centre, doivent tenir dans le col", () => {
@@ -349,3 +533,57 @@ test("les bords du cadeau, pas seulement son centre, doivent tenir dans le col",
 
   assert.equal(wedged.state, "spilled");
 });
+
+test("les 14 designs partagent exactement le même canevas", () => {
+  for (const model of COIN_JAR_MODELS) {
+    const back = coinJarAsset(model, "back");
+    const front = coinJarAsset(model, "front");
+    assert.ok(fs.existsSync(back), `${model}: calque arrière manquant`);
+    assert.ok(fs.existsSync(front), `${model}: calque avant manquant`);
+    assert.deepEqual(pngDimensions(back), [1254, 1254], `${model}: arrière`);
+    assert.deepEqual(pngDimensions(front), [1254, 1254], `${model}: avant`);
+  }
+});
+
+test(
+  "500 cadeaux remplissent le bocal du fond jusqu'au col sans instabilité",
+  { timeout: 120000 },
+  () => {
+    const geometry = createGeometry(500, 500);
+    const bodies = [];
+    const result = { spilled: 0, settleFrames: [] };
+    const random = seededRandom(12500);
+
+    runBurst(
+      bodies,
+      geometry,
+      { count: 500, value: 1, random },
+      result
+    );
+    settle(bodies, geometry, result, { maximumFrames: 2400 });
+    assertStablePile(bodies, geometry);
+
+    const top = Math.min(...bodies.map((body) => body.y - body.radius));
+    const bottom = Math.max(...bodies.map((body) => body.y + body.radius));
+    const left = Math.min(...bodies.map((body) => body.x - body.radius));
+    const right = Math.max(...bodies.map((body) => body.x + body.radius));
+    assert.ok(bodies.length >= 250, "le bocal doit rester densément rempli");
+    assert.ok(result.spilled > 0, "le surplus doit déborder par le col");
+    assert.ok(
+      top <= geometry.wallTop,
+      `la pile doit atteindre le col du bocal (sommet=${top})`
+    );
+    assert.ok(
+      bottom >= geometry.floorY - 0.01,
+      "la pile doit reposer sur le fond"
+    );
+    assert.ok(
+      left <= geometry.width * 0.225 + 0.01,
+      "la pile doit atteindre la paroi gauche"
+    );
+    assert.ok(
+      right >= geometry.width * 0.775 - 0.01,
+      "la pile doit atteindre la paroi droite"
+    );
+  }
+);

@@ -27,15 +27,18 @@ class GameRuntimeService {
     store,
     getWindow,
     notifyRenderer,
-    assertAccess = () => {}
+    assertAccess = () => {},
+    onMinecraftWinCounter = () => {}
   }) {
     this.app = app;
     this.store = store;
     this.getWindow = getWindow;
     this.notifyRenderer = notifyRenderer;
     this.assertAccess = assertAccess;
+    this.onMinecraftWinCounter = onMinecraftWinCounter;
     this.gameWindows = new Map();
     this.activeInstalls = new Set();
+    this.installProgress = new Map();
     this.minecraftServers = new Map();
     this.minecraftAutoClickers = new Map();
     this.saveDeploymentJobs = new Map();
@@ -50,6 +53,7 @@ class GameRuntimeService {
       integrated: isIntegratedGame(gameId),
       automated: Boolean(installerForGame(gameId)),
       installing: this.activeInstalls.has(gameId),
+      installProgress: this.installProgress.get(gameId) || null,
       serverRunning: this.#minecraftServerRunning(gameId),
       autoClickerRunning: this.#minecraftAutoClickerRunning(gameId),
       installation
@@ -120,6 +124,8 @@ class GameRuntimeService {
       throw new Error("Une installation est déjà en cours pour ce jeu.");
     }
 
+    this.activeInstalls.add(gameId);
+    try {
     this.#progress(gameId, {
       phase: "prepare",
       current: 0,
@@ -176,7 +182,6 @@ class GameRuntimeService {
       if (confirmation.response !== 0) return { canceled: true };
     }
 
-    this.activeInstalls.add(gameId);
     const runId = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
     const downloadsRoot = path.join(
       this.app.getPath("temp"),
@@ -194,6 +199,7 @@ class GameRuntimeService {
     try {
       if (manifest.minecraftServer) {
         await this.#stopMinecraftServers();
+        await stopOrphanedManagedProcesses(targetPath);
       }
       await cleanupStaleInstallerRuns(downloadsRoot, gameId);
       await fs.promises.mkdir(tempRoot, { recursive: true });
@@ -336,13 +342,34 @@ class GameRuntimeService {
         server
       };
     } finally {
-      this.activeInstalls.delete(gameId);
       await fs.promises.rm(tempRoot, {
         recursive: true,
         force: true,
         maxRetries: 3,
         retryDelay: 200
       });
+    }
+    } catch (error) {
+      this.#progress(gameId, {
+        phase: "error",
+        indeterminate: false,
+        message:
+          error?.message || "L’installation n’a pas pu se terminer."
+      });
+      throw error;
+    } finally {
+      if (
+        !["complete", "error"].includes(
+          this.installProgress.get(gameId)?.phase
+        )
+      ) {
+        this.#progress(gameId, {
+          phase: "canceled",
+          indeterminate: false
+        });
+      }
+      this.activeInstalls.delete(gameId);
+      this.installProgress.delete(gameId);
     }
   }
 
@@ -490,7 +517,9 @@ class GameRuntimeService {
     }
 
     await writeMinecraftEula(installationPath);
-    await configureMinecraftServerCommandFeedback(installationPath);
+    await configureMinecraftServerCommandFeedback(installationPath, {
+      creativeMode: serverConfig.creativeMode !== false
+    });
     const child = spawn(
       javaPath,
       [
@@ -514,7 +543,12 @@ class GameRuntimeService {
       installationPath,
       javaPath,
       serverPath,
-      port: Number(serverConfig.port || 25565)
+      port: Number(serverConfig.port || 25565),
+      onWinCounter: (event) =>
+        this.onMinecraftWinCounter({
+          ...event,
+          gameId
+        })
     });
     this.minecraftServers.set(gameId, record);
     child.once("exit", () => {
@@ -527,6 +561,9 @@ class GameRuntimeService {
     try {
       await record.ready;
       await silenceMinecraftCommandFeedback(record);
+      if (serverConfig.creativeMode !== false) {
+        await enforceMinecraftCreativeMode(record);
+      }
       const autoClicker = await this.#startMinecraftAutoClicker(
         gameId,
         installationPath,
@@ -1101,19 +1138,39 @@ class GameRuntimeService {
     });
     this.gameWindows.set(gameId, gameWindow);
     gameWindow.on("closed", () => this.gameWindows.delete(gameId));
+    const originalGameHost = new Set([
+      "coin-pusher",
+      "connect-four",
+      "deal-or-no-deal"
+    ]).has(gameId);
     gameWindow.loadFile(
-      path.join(__dirname, "..", "renderer", "games", "host.html"),
+      originalGameHost
+        ? path.join(
+            __dirname,
+            "..",
+            "renderer",
+            "games",
+            "original",
+            "index.html"
+          )
+        : path.join(__dirname, "..", "renderer", "games", "host.html"),
       { query: { gameId } }
     );
     return { ok: true, opened: true, gameId };
   }
 
   #progress(gameId, progress) {
-    this.notifyRenderer("game-install-progress", {
+    const occurredAt = new Date().toISOString();
+    const previous = this.installProgress.get(gameId) || {};
+    const next = {
+      ...previous,
       gameId,
-      occurredAt: new Date().toISOString(),
+      startedAt: previous.startedAt || occurredAt,
+      occurredAt,
       ...progress
-    });
+    };
+    this.installProgress.set(gameId, next);
+    this.notifyRenderer("game-install-progress", next);
   }
 }
 
@@ -1132,7 +1189,10 @@ async function writeMinecraftEula(installationPath) {
   );
 }
 
-async function configureMinecraftServerCommandFeedback(installationPath) {
+async function configureMinecraftServerCommandFeedback(
+  installationPath,
+  { creativeMode = true } = {}
+) {
   const propertiesPath = safeChildPath(
     installationPath,
     "server.properties"
@@ -1151,6 +1211,23 @@ async function configureMinecraftServerCommandFeedback(installationPath) {
     "broadcast-rcon-to-ops",
     "false"
   );
+  if (creativeMode) {
+    updated = upsertMinecraftServerProperty(
+      updated,
+      "gamemode",
+      "creative"
+    );
+    updated = upsertMinecraftServerProperty(
+      updated,
+      "force-gamemode",
+      "true"
+    );
+    updated = upsertMinecraftServerProperty(
+      updated,
+      "allow-flight",
+      "true"
+    );
+  }
   if (updated !== original) {
     await fs.promises.writeFile(propertiesPath, updated, "utf8");
   }
@@ -1183,7 +1260,18 @@ async function silenceMinecraftCommandFeedback(record) {
   for (const command of [
     "gamerule sendCommandFeedback false",
     "gamerule commandBlockOutput false",
-    "gamerule logAdminCommands false"
+    "gamerule logAdminCommands false",
+    "gamerule announceAdvancements false",
+    "gamerule showDeathMessages false"
+  ]) {
+    await writeMinecraftServerCommand(record, command);
+  }
+}
+
+async function enforceMinecraftCreativeMode(record) {
+  for (const command of [
+    "defaultgamemode creative",
+    "gamemode creative @a"
   ]) {
     await writeMinecraftServerCommand(record, command);
   }
@@ -1195,7 +1283,8 @@ function createMinecraftServerRecord({
   installationPath,
   javaPath,
   serverPath,
-  port
+  port,
+  onWinCounter = () => {}
 }) {
   const record = {
     process: child,
@@ -1245,6 +1334,10 @@ function createMinecraftServerRecord({
       const line = rawLine.trim();
       if (!line) continue;
       record.logTail = line.slice(-800);
+      const winCounterEvent = parseMinecraftWinCounterLine(line);
+      if (winCounterEvent) {
+        Promise.resolve(onWinCounter(winCounterEvent)).catch(() => {});
+      }
       if (
         /\bDone \(.+\)! For help, type/i.test(line) ||
         /For help, type "help"/i.test(line)
@@ -1283,6 +1376,22 @@ function createMinecraftServerRecord({
     }
   });
   return record;
+}
+
+function parseMinecraftWinCounterLine(line) {
+  const match = String(line || "").match(
+    /SHENPULSE_WIN_COUNTER\s+current=(-?\d+)\b[\s\S]*?\bsource=([a-z0-9-]+)/i
+  );
+  if (!match) return null;
+  const source = String(match[2] || "").toLowerCase();
+  if (!["auto-win", "bedrock-win", "timer-penalty"].includes(source)) {
+    return null;
+  }
+  return {
+    current: Number(match[1]),
+    outcome: source === "timer-penalty" ? "loss" : "win",
+    source
+  };
 }
 
 function minecraftServerResult(record) {
@@ -1439,6 +1548,96 @@ async function cleanupStaleInstallerRuns(downloadsRoot, gameId) {
       retryDelay: 200
     });
   }
+}
+
+async function stopOrphanedManagedProcesses(installationPath) {
+  if (process.platform !== "win32") return [];
+  const target = path.resolve(installationPath);
+  const parsed = path.parse(target);
+  if (target === parsed.root) {
+    throw new Error("Dossier Minecraft géré non sûr.");
+  }
+  const encodedTarget = Buffer.from(target, "utf8").toString("base64");
+  const script = [
+    '$ErrorActionPreference = "Stop"',
+    `$target = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodedTarget}'))`,
+    "$prefix = [IO.Path]::GetFullPath($target).TrimEnd([char[]]'\\/') + [IO.Path]::DirectorySeparatorChar",
+    "$stopped = @()",
+    "Get-Process -ErrorAction Stop | Where-Object { @('java','javaw','AutoClicker') -contains $_.ProcessName } | ForEach-Object {",
+    "  $candidate = ''",
+    "  try { $candidate = $_.Path } catch { $candidate = '' }",
+    "  if (-not [string]::IsNullOrWhiteSpace($candidate)) {",
+    "    $full = [IO.Path]::GetFullPath($candidate)",
+    "    if ($full.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) {",
+    "      $stopped += [string]$_.Id",
+    "      Stop-Process -Id $_.Id -Force -PassThru -ErrorAction Stop | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue",
+    "    }",
+    "  }",
+    "}",
+    "if ($stopped.Count -gt 0) { $stopped -join ',' }"
+  ].join("\r\n");
+  const output = await runProcess("powershell.exe", [
+    "-NoProfile",
+    "-NonInteractive",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-Command",
+    script
+  ]);
+  const processIds = String(output || "")
+    .trim()
+    .split(",")
+    .map((entry) => Number(entry))
+    .filter((entry) => Number.isSafeInteger(entry) && entry > 0);
+  if (processIds.length) {
+    await waitForProcessIdsToExit(processIds);
+    await waitForUnlockedMinecraftFiles(target);
+  }
+  return processIds;
+}
+
+async function waitForProcessIdsToExit(processIds) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const remaining = processIds.filter((processId) => {
+      try {
+        process.kill(processId, 0);
+        return true;
+      } catch (error) {
+        if (error?.code === "ESRCH") return false;
+        throw error;
+      }
+    });
+    if (!remaining.length) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(
+    "Le serveur Minecraft ne s’est pas arrêté à temps. Réessayez dans quelques secondes."
+  );
+}
+
+async function waitForUnlockedMinecraftFiles(installationPath) {
+  const serverJar = path.join(
+    installationPath,
+    "paper-1.21-130.jar"
+  );
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const stat = await fs.promises.stat(serverJar).catch(() => null);
+    if (!stat?.isFile()) return;
+    let locked = false;
+    const handle = await fs.promises.open(serverJar, "r+").catch((error) => {
+      if (["EBUSY", "EACCES", "EPERM"].includes(error?.code)) {
+        locked = true;
+        return null;
+      }
+      throw error;
+    });
+    await handle?.close();
+    if (!locked) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(
+    "Le serveur Minecraft a été arrêté, mais Windows verrouille encore ses fichiers. Réessayez dans quelques secondes."
+  );
 }
 
 function safeChildPath(root, relativePath) {
@@ -1933,6 +2132,13 @@ async function copyWithBackup(source, destination, installRoot, backupRoot) {
   safeChildPath(installRoot, path.relative(installRoot, destination));
   const existing = await fs.promises.stat(destination).catch(() => null);
   if (existing?.isFile()) {
+    const sourceStat = await fs.promises.stat(source);
+    if (
+      existing.size === sourceStat.size &&
+      (await sha256File(destination)) === (await sha256File(source))
+    ) {
+      return { unchanged: true };
+    }
     const relative = path.relative(installRoot, destination);
     const backup = safeChildPath(backupRoot, relative);
     await fs.promises.mkdir(path.dirname(backup), { recursive: true });
@@ -1942,6 +2148,7 @@ async function copyWithBackup(source, destination, installRoot, backupRoot) {
   }
   await fs.promises.mkdir(path.dirname(destination), { recursive: true });
   await fs.promises.copyFile(source, destination);
+  return { unchanged: false };
 }
 
 async function deployAdditionalInstallTargets({
@@ -2177,8 +2384,10 @@ module.exports = {
   detectGtaEdition,
   extractArchiveSafe,
   findGtaEnhancedProfile,
+  parseMinecraftWinCounterLine,
   safeChildPath,
   safeInstallerAssetUrl,
   sha256File,
+  stopOrphanedManagedProcesses,
   stageGtaEnhancedSave
 };

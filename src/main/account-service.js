@@ -2,8 +2,13 @@
 
 const crypto = require("node:crypto");
 const http = require("node:http");
+const {
+  gameCheatEmailHash
+} = require("../shared/game-cheat-access");
 
 const FIREBASE_API_KEY = "AIzaSyDHcC8ngIhy2Av8N7J-XdCQq9G8KimGGJk";
+const FIREBASE_DATABASE_URL =
+  "https://shenazenoverlay-default-rtdb.firebaseio.com";
 const IDENTITY_BASE_URL = "https://identitytoolkit.googleapis.com/v1";
 const TOKEN_BASE_URL = "https://securetoken.googleapis.com/v1";
 const DEFAULT_WEB_ORIGIN = "https://shenpulse.leuridan.fr";
@@ -25,6 +30,10 @@ class AccountService {
     this.expiresAt = 0;
     this.refreshPromise = null;
     this.browserAuthPromise = null;
+    this.subscriptionCheckoutPromise = null;
+    this.gameCheckoutPromise = null;
+    this.subscriptionCheckoutCancel = null;
+    this.gameCheckoutCancel = null;
   }
 
   async status() {
@@ -176,6 +185,385 @@ class AccountService {
     return payload;
   }
 
+  async startSubscriptionCheckout(incoming = {}) {
+    if (this.subscriptionCheckoutPromise) {
+      return this.subscriptionCheckoutPromise;
+    }
+    this.subscriptionCheckoutPromise = this.#runSubscriptionCheckout(
+      incoming
+    ).finally(() => {
+      this.subscriptionCheckoutPromise = null;
+    });
+    return this.subscriptionCheckoutPromise;
+  }
+
+  async startGameCheckout(incoming = {}) {
+    if (this.gameCheckoutPromise) {
+      return this.gameCheckoutPromise;
+    }
+    this.gameCheckoutPromise = this.#runGameCheckout(incoming).finally(() => {
+      this.gameCheckoutPromise = null;
+    });
+    return this.gameCheckoutPromise;
+  }
+
+  cancelCheckout(incoming = {}) {
+    const type = String(incoming.type || "all").trim().toLowerCase();
+    let cancelled = false;
+    if (
+      ["all", "subscription"].includes(type) &&
+      typeof this.subscriptionCheckoutCancel === "function"
+    ) {
+      cancelled = this.subscriptionCheckoutCancel() || cancelled;
+    }
+    if (
+      ["all", "game"].includes(type) &&
+      typeof this.gameCheckoutCancel === "function"
+    ) {
+      cancelled = this.gameCheckoutCancel() || cancelled;
+    }
+    return {
+      cancelled,
+      pending: cancelled,
+      type
+    };
+  }
+
+  async #runGameCheckout(incoming = {}) {
+    const productId = requireGameProductId(incoming.productId);
+    const token = await this.#token();
+    await this.#synchronizeIdentity(token);
+    const session = this.#session();
+    const uid = cleanUid(session.uid);
+    if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
+    if (session.emailVerified !== true) {
+      throw new Error(
+        "Vérifiez votre adresse e-mail avant de lancer l’achat."
+      );
+    }
+    if (typeof this.openExternal !== "function") {
+      throw new Error(
+        "L’ouverture de PayPal n’est pas disponible dans cette version de ShenPulse."
+      );
+    }
+
+    const state = crypto.randomBytes(32).toString("base64url");
+    const callback = await createPaymentLoopbackCallback({
+      state,
+      timeoutMs: BROWSER_AUTH_TIMEOUT_MS
+    });
+    this.gameCheckoutCancel = callback.cancel;
+
+    try {
+      const createResponse = await this.fetch(
+        `${this.webOrigin}/api/payments/orders/create`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            desktopCallbackPort: callback.port,
+            desktopCallbackState: state,
+            ownerId: uid,
+            productId,
+            requestId: crypto.randomUUID()
+          }),
+          signal: AbortSignal.timeout(25000)
+        }
+      );
+      const createPayload = await readPayload(createResponse);
+      if (!createResponse.ok) {
+        throw apiError(createPayload, createResponse.status);
+      }
+      if (createPayload.alreadyPurchased) {
+        await this.syncEntitlements({ silent: true });
+        this.#ensureGameEntitlement(productId);
+        return {
+          ...withoutApprovalUrl(createPayload),
+          alreadyPurchased: true,
+          checkoutOpened: false,
+          productId
+        };
+      }
+
+      const approvalUrl = paypalApprovalUrl(createPayload.approvalUrl);
+      if (!approvalUrl) {
+        throw new Error("PayPal n’a pas renvoyé de lien d’achat.");
+      }
+
+      await this.openExternal(approvalUrl);
+      const browserResult = await callback.result;
+      if (browserResult.cancelled) {
+        return {
+          ...withoutApprovalUrl(createPayload),
+          cancelled: true,
+          checkoutOpened: true,
+          productId
+        };
+      }
+
+      const returnedOrderId = String(browserResult.token || "").trim();
+      const createdOrderId = String(createPayload.id || "").trim();
+      if (
+        returnedOrderId &&
+        createdOrderId &&
+        returnedOrderId !== createdOrderId
+      ) {
+        throw new Error(
+          "Le retour PayPal ne correspond pas à l’achat lancé."
+        );
+      }
+      const orderId = returnedOrderId || createdOrderId;
+      if (!orderId) {
+        throw new Error(
+          "PayPal n’a pas renvoyé l’identifiant de la commande."
+        );
+      }
+
+      const captureResponse = await this.fetch(
+        `${this.webOrigin}/api/payments/orders/capture`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            orderId,
+            ownerId: uid,
+            productId,
+            token: orderId
+          }),
+          signal: AbortSignal.timeout(25000)
+        }
+      );
+      const capturePayload = await readPayload(captureResponse);
+      if (!captureResponse.ok) {
+        throw apiError(capturePayload, captureResponse.status);
+      }
+      const purchasedProductId = requireGameProductId(
+        capturePayload.productId || productId
+      );
+      await this.syncEntitlements({ silent: true });
+      this.#ensureGameEntitlement(purchasedProductId);
+
+      return {
+        ...withoutApprovalUrl(createPayload),
+        ...withoutApprovalUrl(capturePayload),
+        checkoutCompleted: true,
+        checkoutOpened: true,
+        orderId,
+        productId: purchasedProductId
+      };
+    } finally {
+      if (this.gameCheckoutCancel === callback.cancel) {
+        this.gameCheckoutCancel = null;
+      }
+      callback.close();
+    }
+  }
+
+  async #runSubscriptionCheckout(incoming = {}) {
+    const tier = requireSubscriptionTier(incoming.tier);
+    const token = await this.#token();
+    await this.#synchronizeIdentity(token);
+    const session = this.#session();
+    const uid = cleanUid(session.uid);
+    if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
+    if (session.emailVerified !== true) {
+      throw new Error(
+        "Vérifiez votre adresse e-mail avant de lancer l’abonnement."
+      );
+    }
+    if (typeof this.openExternal !== "function") {
+      throw new Error(
+        "L’ouverture de PayPal n’est pas disponible dans cette version de ShenPulse."
+      );
+    }
+
+    const state = crypto.randomBytes(32).toString("base64url");
+    const callback = await createPaymentLoopbackCallback({
+      state,
+      timeoutMs: BROWSER_AUTH_TIMEOUT_MS
+    });
+    this.subscriptionCheckoutCancel = callback.cancel;
+
+    try {
+      const response = await this.fetch(
+        `${this.webOrigin}/api/payments/subscriptions/create`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            desktopCallbackPort: callback.port,
+            desktopCallbackState: state,
+            ownerId: uid,
+            requestId: crypto.randomUUID(),
+            tier
+          }),
+          signal: AbortSignal.timeout(25000)
+        }
+      );
+      const payload = await readPayload(response);
+      if (!response.ok) throw apiError(payload, response.status);
+
+      const approvalUrl = paypalApprovalUrl(payload.approvalUrl);
+      if (!approvalUrl) {
+        if (
+          !payload.alreadyActive &&
+          !payload.scheduled &&
+          !payload.ok
+        ) {
+          throw new Error("PayPal n’a pas renvoyé de lien d’abonnement.");
+        }
+        return {
+          ...withoutApprovalUrl(payload),
+          checkoutOpened: false,
+          tier: String(payload.tier || payload.targetTier || tier)
+        };
+      }
+
+      await this.openExternal(approvalUrl);
+      const browserResult = await callback.result;
+      if (browserResult.cancelled) {
+        return {
+          ...withoutApprovalUrl(payload),
+          cancelled: true,
+          checkoutOpened: true,
+          tier: String(payload.tier || payload.targetTier || tier)
+        };
+      }
+
+      const subscriptionId = String(
+        browserResult.subscriptionId || payload.id || ""
+      ).trim();
+      if (!subscriptionId) {
+        throw new Error(
+          "PayPal n’a pas renvoyé l’identifiant de l’abonnement."
+        );
+      }
+
+      const prorationState = crypto
+        .randomBytes(32)
+        .toString("base64url");
+      const prorationCallback = await createPaymentLoopbackCallback({
+        state: prorationState,
+        timeoutMs: BROWSER_AUTH_TIMEOUT_MS
+      });
+      this.subscriptionCheckoutCancel = prorationCallback.cancel;
+      let syncPayload;
+      try {
+        const syncResponse = await this.fetch(
+          `${this.webOrigin}/api/payments/subscriptions/sync`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              desktopCallbackPort: prorationCallback.port,
+              desktopCallbackState: prorationState,
+              ownerId: uid,
+              subscriptionId,
+              tier,
+              token: browserResult.token || ""
+            }),
+            signal: AbortSignal.timeout(25000)
+          }
+        );
+        syncPayload = await readPayload(syncResponse);
+        if (!syncResponse.ok) {
+          throw apiError(syncPayload, syncResponse.status);
+        }
+
+        const prorationApprovalUrl = paypalApprovalUrl(
+          syncPayload.approvalUrl
+        );
+        if (prorationApprovalUrl) {
+          await this.openExternal(prorationApprovalUrl);
+          const prorationResult = await prorationCallback.result;
+          if (prorationResult.cancelled) {
+            return {
+              ...withoutApprovalUrl(payload),
+              ...withoutApprovalUrl(syncPayload),
+              cancelled: true,
+              checkoutOpened: true,
+              prorationCancelled: true,
+              subscriptionId,
+              tier
+            };
+          }
+          const orderId = String(prorationResult.token || "").trim();
+          if (!orderId) {
+            throw new Error(
+              "PayPal n’a pas renvoyé l’identifiant du paiement complémentaire."
+            );
+          }
+          const captureResponse = await this.fetch(
+            `${this.webOrigin}/api/payments/subscriptions/proration/capture`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                orderId,
+                ownerId: uid,
+                subscriptionId,
+                tier,
+                token: orderId
+              }),
+              signal: AbortSignal.timeout(25000)
+            }
+          );
+          const capturePayload = await readPayload(captureResponse);
+          if (!captureResponse.ok) {
+            throw apiError(capturePayload, captureResponse.status);
+          }
+          syncPayload = {
+            ...syncPayload,
+            ...capturePayload,
+            approvalUrl: undefined,
+            requiresProrationPayment: false
+          };
+        }
+      } finally {
+        if (this.subscriptionCheckoutCancel === prorationCallback.cancel) {
+          this.subscriptionCheckoutCancel = null;
+        }
+        prorationCallback.close();
+      }
+      await this.syncEntitlements();
+
+      return {
+        ...withoutApprovalUrl(payload),
+        ...withoutApprovalUrl(syncPayload),
+        checkoutCompleted: true,
+        checkoutOpened: true,
+        subscriptionId,
+        tier: String(
+          syncPayload.tier ||
+          syncPayload.targetTier ||
+          payload.tier ||
+          payload.targetTier ||
+          tier
+        )
+      };
+    } finally {
+      if (this.subscriptionCheckoutCancel === callback.cancel) {
+        this.subscriptionCheckoutCancel = null;
+      }
+      callback.close();
+    }
+  }
+
   async syncEntitlements({ silent = false } = {}) {
     try {
       const token = await this.#token();
@@ -229,6 +617,11 @@ class AccountService {
     );
     const payload = await readPayload(response);
     if (!response.ok) throw apiError(payload, response.status);
+    if (!validEntitlementPayload(payload)) {
+      throw new Error(
+        "Le serveur n’a pas renvoyé les droits privés ShenPulse attendus."
+      );
+    }
     return payload;
   }
 
@@ -244,10 +637,16 @@ class AccountService {
     );
     const payload = await readPayload(response);
     if (!response.ok) throw apiError(payload, response.status);
+    if (!validEntitlementPayload(payload)) {
+      throw new Error(
+        "Le serveur n’a pas renvoyé les droits publics ShenPulse attendus."
+      );
+    }
     return payload;
   }
 
   logout() {
+    this.cancelCheckout();
     this.#clearSession();
     return this.#publicStatus(false);
   }
@@ -261,6 +660,38 @@ class AccountService {
       emailVerified: session.emailVerified === true,
       idToken,
       uid: cleanUid(session.uid)
+    };
+  }
+
+  async gameCheatAccess() {
+    const session = this.#session();
+    if (
+      session.emailVerified !== true ||
+      !normalizeEmail(session.email) ||
+      !cleanUid(session.uid)
+    ) {
+      return { allowed: false, checkedAt: "" };
+    }
+    const token = await this.#token();
+    await this.#synchronizeIdentity(token);
+    const current = this.#session();
+    if (current.emailVerified !== true) {
+      return { allowed: false, checkedAt: "" };
+    }
+    const emailHash = gameCheatEmailHash(current.email);
+    if (!emailHash) return { allowed: false, checkedAt: "" };
+    const response = await this.fetch(
+      `${FIREBASE_DATABASE_URL}/site/gameCheatAccess/${emailHash}.json?auth=${encodeURIComponent(token)}`,
+      {
+        headers: { "Cache-Control": "no-store" },
+        signal: AbortSignal.timeout(10000)
+      }
+    );
+    const payload = await readPayload(response);
+    if (!response.ok) throw apiError(payload, response.status);
+    return {
+      allowed: payload === true,
+      checkedAt: new Date().toISOString()
     };
   }
 
@@ -515,18 +946,34 @@ class AccountService {
       : "";
     const gameEntitlements = Array.isArray(payload.gameEntitlements)
       ? payload.gameEntitlements
+          .filter((entry) => activeGameEntitlement(entry))
           .map((entry) => ({
-            id: String(entry?.id || entry?.productId || "").trim(),
+            id: entitlementGameId(entry),
             gameId: String(
-              entry?.gameId || entry?.productId || entry?.id || ""
+              typeof entry === "string"
+                ? entry
+                : entry?.gameId || entry?.productId || entry?.id || ""
             ).trim(),
             productId: String(
-              entry?.productId || entry?.id || ""
+              typeof entry === "string"
+                ? entry
+                : entry?.productId || entry?.id || ""
             ).trim(),
-            source: String(entry?.source || "purchase").trim(),
-            status: "active",
-            expiresAt: String(entry?.expiresAt || ""),
-            expiresAtMs: Math.max(0, Number(entry?.expiresAtMs) || 0)
+            source: String(
+              typeof entry === "string"
+                ? "purchase"
+                : entry?.source || "purchase"
+            ).trim(),
+            status: normalizedGameEntitlementStatus(entry),
+            expiresAt: String(
+              typeof entry === "string" ? "" : entry?.expiresAt || ""
+            ),
+            expiresAtMs: Math.max(
+              0,
+              Number(
+                typeof entry === "string" ? 0 : entry?.expiresAtMs
+              ) || 0
+            )
           }))
           .filter((entry) => /^[a-z0-9][a-z0-9-]{1,159}$/.test(entry.id))
       : [];
@@ -569,6 +1016,28 @@ class AccountService {
         updatedAt: String(payload.checkedAt || new Date().toISOString())
       };
       state.commerce.gameEntitlements = gameEntitlements;
+    }, true);
+  }
+
+  #ensureGameEntitlement(productId) {
+    const id = requireGameProductId(productId);
+    this.store.mutate((state) => {
+      const current = Array.isArray(state.commerce.gameEntitlements)
+        ? state.commerce.gameEntitlements
+        : [];
+      if (current.some((entry) => entitlementGameId(entry) === id)) return;
+      state.commerce.gameEntitlements = [
+        ...current,
+        {
+          expiresAt: "",
+          expiresAtMs: 0,
+          gameId: id,
+          id,
+          productId: id,
+          source: "purchase",
+          status: "active"
+        }
+      ];
     }, true);
   }
 
@@ -700,9 +1169,7 @@ function mergeEntitlementPayloads(
       ? verifiedPublic.gameEntitlements
       : [])
   ]) {
-    const gameId = String(
-      entry?.gameId || entry?.productId || entry?.id || ""
-    ).trim();
+    const gameId = entitlementGameId(entry);
     if (!gameId || seenGameIds.has(gameId)) continue;
     seenGameIds.add(gameId);
     gameEntitlements.push(entry);
@@ -719,6 +1186,47 @@ function mergeEntitlementPayloads(
     ),
     gameEntitlements
   };
+}
+
+function entitlementGameId(entry) {
+  return String(
+    typeof entry === "string"
+      ? entry
+      : entry?.gameId || entry?.productId || entry?.id || ""
+  ).trim();
+}
+
+function activeGameEntitlement(entry, nowMs = Date.now()) {
+  if (typeof entry === "string") return Boolean(entitlementGameId(entry));
+  if (!entry || typeof entry !== "object") return false;
+  const status = String(entry.status || "").trim().toLowerCase();
+  const source = String(entry.source || "").trim().toLowerCase();
+  if (source === "trial" || status === "trial") {
+    return entitlementExpiryMs(entry) > nowMs;
+  }
+  return (
+    !status ||
+    ["active", "captured", "completed", "paid", "purchased"].includes(
+      status
+    )
+  );
+}
+
+function normalizedGameEntitlementStatus(entry) {
+  if (typeof entry === "string") return "active";
+  const status = String(entry?.status || "").trim().toLowerCase();
+  if (entry?.source === "trial" || status === "trial") return "trial";
+  return status || "active";
+}
+
+function validEntitlementPayload(payload) {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      !Array.isArray(payload) &&
+      ["free", "pro", "premium"].includes(String(payload.tier || "")) &&
+      Array.isArray(payload.gameEntitlements)
+  );
 }
 
 async function createLoopbackCallback({
@@ -807,12 +1315,153 @@ async function createLoopbackCallback({
   });
 }
 
+async function createPaymentLoopbackCallback({ state, timeoutMs }) {
+  return new Promise((resolve, reject) => {
+    let ready = false;
+    let settled = false;
+    let timeout = null;
+    let resolveResult;
+    let rejectResult;
+    const result = new Promise((resolveCallback, rejectCallback) => {
+      resolveResult = resolveCallback;
+      rejectResult = rejectCallback;
+    });
+    // Le résultat peut être fermé avant que l'appelant commence à l'attendre.
+    result.catch(() => {});
+
+    const finish = (error, value) => {
+      if (settled) return false;
+      settled = true;
+      if (timeout) clearTimeout(timeout);
+      server.close(() => {});
+      if (error) rejectResult(error);
+      else resolveResult(value);
+      return true;
+    };
+    const server = http.createServer((request, response) => {
+      let target;
+      try {
+        target = new URL(request.url || "/", "http://127.0.0.1");
+      } catch {
+        response.writeHead(400).end();
+        return;
+      }
+      if (target.pathname !== "/payment-callback") {
+        response.writeHead(404).end();
+        return;
+      }
+
+      const receivedState = target.searchParams.get("state") || "";
+      const status = target.searchParams.get("status") || "";
+      const stateMatches =
+        receivedState.length === state.length &&
+        crypto.timingSafeEqual(
+          Buffer.from(receivedState),
+          Buffer.from(state)
+        );
+      if (
+        !stateMatches ||
+        !["success", "cancelled"].includes(status)
+      ) {
+        response.writeHead(400, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Security-Policy":
+            "default-src 'none'; style-src 'unsafe-inline'"
+        });
+        response.end(paymentResponseHtml("error"));
+        finish(
+          new Error(
+            "Le retour PayPal n’a pas pu être vérifié par ShenPulse."
+          )
+        );
+        return;
+      }
+
+      response.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Security-Policy":
+          "default-src 'none'; style-src 'unsafe-inline'",
+        "Cache-Control": "no-store"
+      });
+      response.end(paymentResponseHtml(status));
+      finish(null, {
+        cancelled: status === "cancelled",
+        subscriptionId: String(
+          target.searchParams.get("subscription_id") ||
+          target.searchParams.get("subscriptionId") ||
+          ""
+        ).trim(),
+        token: String(target.searchParams.get("token") || "").trim()
+      });
+    });
+
+    server.once("error", (error) => {
+      if (!ready) reject(error);
+      else finish(error);
+    });
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        const error = new Error(
+          "Le retour local de paiement est indisponible."
+        );
+        server.close(() => {});
+        reject(error);
+        return;
+      }
+      ready = true;
+      timeout = setTimeout(
+        () =>
+          finish(
+            new Error(
+              "Le paiement a expiré. Relancez-le depuis ShenPulse."
+            )
+          ),
+        timeoutMs
+      );
+      resolve({
+        cancel: () =>
+          finish(null, {
+            cancelled: true,
+            subscriptionId: "",
+            token: ""
+          }),
+        close: () => finish(null, { closed: true }),
+        port: address.port,
+        result
+      });
+    });
+  });
+}
+
 function browserResponseHtml(success) {
   const title = success ? "Connexion terminée" : "Connexion refusée";
   const detail = success
     ? "Vous pouvez fermer cette page et revenir dans ShenPulse."
     : "Revenez dans ShenPulse puis relancez la connexion.";
   return `<!doctype html><html lang="fr"><meta charset="utf-8"><title>${title}</title><body style="margin:0;background:#090b14;color:#f7f7ff;font-family:system-ui;display:grid;place-items:center;min-height:100vh"><main style="max-width:560px;padding:40px;text-align:center;border:1px solid #563080;border-radius:20px;background:#111426"><h1>${title}</h1><p style="color:#aeb6cf">${detail}</p></main></body></html>`;
+}
+
+function paymentResponseHtml(status) {
+  const cancelled = status === "cancelled";
+  const error = status === "error";
+  const title = error
+    ? "Retour PayPal refusé"
+    : cancelled
+      ? "Paiement annulé"
+      : "Paiement validé";
+  const detail = error
+    ? "Ce retour ne correspond pas au paiement lancé depuis ShenPulse."
+    : cancelled
+      ? "ShenPulse a bien reçu l’annulation. Vous pouvez fermer cette page."
+      : "ShenPulse finalise votre achat et synchronise vos accès. Vous pouvez fermer cette page.";
+  return `<!doctype html><html lang="fr"><meta charset="utf-8"><title>${title}</title><body style="margin:0;background:#090b14;color:#f7f7ff;font-family:system-ui;display:grid;place-items:center;min-height:100vh"><main style="max-width:560px;padding:40px;text-align:center;border:1px solid #563080;border-radius:20px;background:#111426"><h1>${title}</h1><p style="color:#aeb6cf">${detail}</p></main></body></html>`;
+}
+
+function withoutApprovalUrl(payload = {}) {
+  const result = { ...(payload || {}) };
+  delete result.approvalUrl;
+  return result;
 }
 
 function normalizeEmail(value) {
@@ -859,6 +1508,40 @@ function cleanDisplayName(value) {
 function cleanUrl(value) {
   const url = String(value || "").trim();
   return /^https:\/\//i.test(url) ? url.slice(0, 2048) : "";
+}
+
+function requireSubscriptionTier(value) {
+  const tier = String(value || "").trim().toLowerCase();
+  if (!["pro", "premium"].includes(tier)) {
+    throw new Error("Choisissez un abonnement Pro ou Premium.");
+  }
+  return tier;
+}
+
+function requireGameProductId(value) {
+  const productId = String(value || "").trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{1,159}$/.test(productId)) {
+    throw new Error("Choisissez un jeu disponible à l’achat.");
+  }
+  return productId;
+}
+
+function paypalApprovalUrl(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate) return "";
+  try {
+    const url = new URL(candidate);
+    if (
+      url.protocol !== "https:" ||
+      (url.hostname !== "paypal.com" &&
+        !url.hostname.endsWith(".paypal.com"))
+    ) {
+      throw new Error();
+    }
+    return url.toString();
+  } catch {
+    throw new Error("Le lien d’abonnement reçu ne pointe pas vers PayPal.");
+  }
 }
 
 function normalizeWebOrigin(value) {
@@ -958,6 +1641,7 @@ module.exports = {
   cleanDisplayName,
   cleanUid,
   createLoopbackCallback,
+  createPaymentLoopbackCallback,
   normalizeEmail,
   requireEmail
 };

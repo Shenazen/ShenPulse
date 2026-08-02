@@ -21,6 +21,67 @@ function createStore(directory) {
   });
 }
 
+test("le mode démo reste manuel et ses anciens viewers fictifs sont nettoyés", () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-demo-migration-")
+  );
+  try {
+    const legacy = createDefaultState();
+    legacy.connections[0].enabled = true;
+    legacy.overlaySession = {
+      ...legacy.overlaySession,
+      hasData: true,
+      likeGoalCurrent: 25,
+      coinJarCurrent: 2501,
+      winCounterCurrent: 2,
+      recentEvents: [
+        {
+          id: "demo-like",
+          type: "like",
+          source: "source_demo",
+          user: { id: "luna_live", name: "luna_live", displayName: "Luna" },
+          data: { count: 25 }
+        },
+        {
+          id: "demo-gift",
+          type: "gift",
+          source: "source_demo",
+          user: { id: "nox_player", name: "nox_player", displayName: "Nox" },
+          data: { count: 1, value: 1 }
+        }
+      ],
+      leaderboards: {
+        donors: [
+          { id: "nox_player", name: "Nox", avatarUrl: "", score: 1 },
+          { id: "orbit_tv", name: "Orbit", avatarUrl: "", score: 2500 }
+        ],
+        tappers: [
+          { id: "luna_live", name: "Luna", avatarUrl: "", score: 25 }
+        ]
+      }
+    };
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-state.json"),
+      JSON.stringify(legacy),
+      "utf8"
+    );
+
+    const state = createStore(directory).load();
+
+    assert.equal(state.connections[0].enabled, false);
+    assert.deepEqual(state.overlaySession.recentEvents, []);
+    assert.deepEqual(state.overlaySession.leaderboards, {
+      donors: [],
+      tappers: []
+    });
+    assert.equal(state.overlaySession.likeGoalCurrent, 0);
+    assert.equal(state.overlaySession.coinJarCurrent, 0);
+    assert.equal(state.overlaySession.winCounterCurrent, 0);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("une règle exclusivement TTS est toujours normalisée sur les commentaires", () => {
   const [rule] = normalizeRules([
     {

@@ -123,7 +123,9 @@ class RuleEngine extends EventEmitter {
   #thresholdExecutionCount(rule, event) {
     const threshold = Math.max(1, Number(rule.trigger?.threshold || 1));
     if (threshold <= 1) {
-      return event.type === "gift" ? giftEventCount(event) : 1;
+      return event.type === "gift" || event.type === "like"
+        ? interactionEventCount(event)
+        : 1;
     }
     const key = this.#thresholdKey(rule, event);
     const increment =
@@ -132,7 +134,7 @@ class RuleEngine extends EventEmitter {
         : 1;
     const accumulated = (this.thresholds.get(key) || 0) + increment;
     this.thresholds.set(key, accumulated);
-    if (event.type === "gift") {
+    if (event.type === "gift" || event.type === "like") {
       return Math.floor(accumulated / threshold);
     }
     return accumulated >= threshold ? 1 : 0;
@@ -159,7 +161,7 @@ class RuleEngine extends EventEmitter {
   }
 
   #onCooldown(rule, event) {
-    if (event.type === "gift") return false;
+    if (event.type === "gift" || event.type === "like") return false;
     const now = Date.now();
     const globalUntil = this.cooldowns.get(`${rule.id}:global`) || 0;
     const userUntil =
@@ -168,7 +170,7 @@ class RuleEngine extends EventEmitter {
   }
 
   #startCooldown(rule, event) {
-    if (event.type === "gift") return;
+    if (event.type === "gift" || event.type === "like") return;
     const now = Date.now();
     const globalMs = Math.max(0, Number(rule.cooldown?.globalMs || 0));
     const perUserMs = Math.max(0, Number(rule.cooldown?.perUserMs || 0));
@@ -229,7 +231,7 @@ class RuleEngine extends EventEmitter {
 
   async #runJob(job) {
     for (let index = 0; index < job.executionCount; index += 1) {
-      const executionEvent = giftExecutionEvent(
+      const executionEvent = interactionExecutionEvent(
         job.event,
         index,
         job.executionCount,
@@ -285,6 +287,52 @@ function giftEventCount(event = {}) {
     : 1;
 }
 
+function likeEventCount(event = {}) {
+  if (event.type !== "like") return 1;
+  const count = Number(event.data?.count || 1);
+  return Number.isFinite(count)
+    ? Math.max(1, Math.floor(count))
+    : 1;
+}
+
+function interactionEventCount(event = {}) {
+  if (event.type === "gift") return giftEventCount(event);
+  if (event.type === "like") return likeEventCount(event);
+  return 1;
+}
+
+function interactionExecutionEvent(
+  event,
+  index,
+  executionCount,
+  unitCount = 1
+) {
+  if (event.type !== "gift" && event.type !== "like") return event;
+  const batchCount = interactionEventCount(event);
+  const normalizedUnitCount = Math.max(
+    1,
+    Math.floor(Number(unitCount) || 1)
+  );
+  if (
+    batchCount === 1 &&
+    executionCount === 1 &&
+    normalizedUnitCount === 1
+  ) {
+    return event;
+  }
+  return {
+    ...event,
+    id: `${event.id || event.type}_unit_${index + 1}`,
+    data: {
+      ...(event.data || {}),
+      count: normalizedUnitCount,
+      batchCount,
+      batchIndex: index + 1,
+      batchSize: executionCount
+    }
+  };
+}
+
 function giftExecutionEvent(
   event,
   index,
@@ -292,22 +340,12 @@ function giftExecutionEvent(
   giftUnitCount = 1
 ) {
   if (event.type !== "gift") return event;
-  const batchCount = giftEventCount(event);
-  const unitCount = Math.max(1, Math.floor(Number(giftUnitCount) || 1));
-  if (batchCount === 1 && executionCount === 1 && unitCount === 1) {
-    return event;
-  }
-  return {
-    ...event,
-    id: `${event.id || "gift"}_unit_${index + 1}`,
-    data: {
-      ...(event.data || {}),
-      count: unitCount,
-      batchCount,
-      batchIndex: index + 1,
-      batchSize: executionCount
-    }
-  };
+  return interactionExecutionEvent(
+    event,
+    index,
+    executionCount,
+    giftUnitCount
+  );
 }
 
 function activeGameInteractionRules(state) {
@@ -328,5 +366,8 @@ module.exports = {
   RuleEngine,
   activeGameInteractionRules,
   giftEventCount,
-  giftExecutionEvent
+  giftExecutionEvent,
+  interactionEventCount,
+  interactionExecutionEvent,
+  likeEventCount
 };

@@ -1,5 +1,11 @@
 "use strict";
 
+const {
+  GAME_CHEAT_ACCESS_ID,
+  gameCheatAccessGrantMap,
+  isValidGameCheatEmail
+} = require("../shared/game-cheat-access");
+
 const ADMIN_EMAIL = "alexandre.leuridan@gmail.com";
 const FIREBASE_API_KEY = "AIzaSyDHcC8ngIhy2Av8N7J-XdCQq9G8KimGGJk";
 const FIREBASE_DATABASE_URL =
@@ -214,6 +220,7 @@ class AdminService {
     if (!response.ok) throw new Error(remoteErrorMessage(payload, response));
     const savedSettings = normalizeSiteSettings(payload);
     await this.#publishPublicVisibility(savedSettings, token);
+    await this.#publishGameCheatAccess(savedSettings, token);
     this.#cachePublicVisibility(savedSettings);
     return savedSettings;
   }
@@ -295,6 +302,24 @@ class AdminService {
     if (!response.ok) {
       throw new Error(
         `Les réglages administrateur sont enregistrés, mais leur visibilité publique n’a pas pu être publiée : ${remoteErrorMessage(payload, response)}`
+      );
+    }
+  }
+
+  async #publishGameCheatAccess(settings, token) {
+    const response = await this.fetch(
+      `${FIREBASE_DATABASE_URL}/site/gameCheatAccess.json?auth=${encodeURIComponent(token)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(15000),
+        body: JSON.stringify(gameCheatAccessGrantMap(settings))
+      }
+    );
+    const payload = await readPayload(response);
+    if (!response.ok) {
+      throw new Error(
+        `La liste privée est enregistrée, mais les droits de triche n’ont pas pu être publiés : ${remoteErrorMessage(payload, response)}`
       );
     }
   }
@@ -515,7 +540,23 @@ function normalizeSiteSettings(value) {
           email: normalizeEmail(entry?.email).slice(0, 254),
           username: cleanUsername(entry?.username)
         }))
-        .filter((entry) => entry.email && entry.username)
+        .filter(
+          (entry) =>
+            isValidGameCheatEmail(entry.email) &&
+            (id === GAME_CHEAT_ACCESS_ID || entry.username) &&
+            (id !== GAME_CHEAT_ACCESS_ID || entry.email !== ADMIN_EMAIL)
+        )
+        .filter(
+          (entry, index, allEntries) =>
+            allEntries.findIndex(
+              (candidateEntry) => candidateEntry.email === entry.email
+            ) === index
+        )
+        .map((entry) =>
+          id === GAME_CHEAT_ACCESS_ID
+            ? { email: entry.email }
+            : entry
+        )
     };
   }
   return result;

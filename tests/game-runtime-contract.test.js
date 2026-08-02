@@ -14,9 +14,13 @@ const {
   configureMinecraftServerCommandFeedback,
   deployAdditionalInstallTargets,
   deployGtaEnhancedSave,
+  parseMinecraftWinCounterLine,
   safeInstallerAssetUrl,
   stageGtaEnhancedSave
 } = require("../src/main/game-runtime");
+const {
+  sanitizeDealOrNoDealHostState
+} = require("../src/main/ipc");
 
 const root = path.join(__dirname, "..");
 
@@ -113,9 +117,97 @@ test("le déploiement préparé remplace les fichiers seulement après leur sauv
   }
 });
 
+test("une réparation ne recopie pas les fichiers déjà identiques", async () => {
+  const temporaryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-unchanged-deployment-")
+  );
+  try {
+    const deploymentRoot = path.join(temporaryRoot, "deployment");
+    const targetPath = path.join(temporaryRoot, "game");
+    const backupRoot = path.join(temporaryRoot, "backups");
+    fs.mkdirSync(deploymentRoot, { recursive: true });
+    fs.mkdirSync(targetPath, { recursive: true });
+    fs.writeFileSync(path.join(deploymentRoot, "paper.jar"), "identique");
+    fs.writeFileSync(path.join(targetPath, "paper.jar"), "identique");
+
+    await commitInstallationDeployment({
+      deploymentRoot,
+      targetPath,
+      backupRoot,
+      tempRoot: temporaryRoot
+    });
+
+    assert.equal(fs.existsSync(path.join(backupRoot, "paper.jar")), false);
+    assert.equal(
+      fs.readFileSync(path.join(targetPath, "paper.jar"), "utf8"),
+      "identique"
+    );
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("Minecraft force le mode créatif dans les propriétés du serveur", async () => {
+  const temporaryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-minecraft-properties-")
+  );
+  try {
+    fs.writeFileSync(
+      path.join(temporaryRoot, "server.properties"),
+      [
+        "gamemode=survival",
+        "force-gamemode=false",
+        "allow-flight=false",
+        "broadcast-console-to-ops=true",
+        ""
+      ].join("\n")
+    );
+    await configureMinecraftServerCommandFeedback(temporaryRoot);
+    const properties = fs.readFileSync(
+      path.join(temporaryRoot, "server.properties"),
+      "utf8"
+    );
+    assert.match(properties, /^gamemode=creative$/m);
+    assert.match(properties, /^force-gamemode=true$/m);
+    assert.match(properties, /^allow-flight=true$/m);
+    assert.match(properties, /^broadcast-console-to-ops=false$/m);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("les résultats natifs Minecraft sont reconnus sans boucler sur les synchronisations", () => {
+  assert.deepEqual(
+    parseMinecraftWinCounterLine(
+      "SHENPULSE_WIN_COUNTER current=8 target=20 source=auto-win"
+    ),
+    {
+      current: 8,
+      outcome: "win",
+      source: "auto-win"
+    }
+  );
+  assert.deepEqual(
+    parseMinecraftWinCounterLine(
+      "SHENPULSE_WIN_COUNTER current=7 target=20 source=timer-penalty"
+    ),
+    {
+      current: 7,
+      outcome: "loss",
+      source: "timer-penalty"
+    }
+  );
+  assert.equal(
+    parseMinecraftWinCounterLine(
+      "SHENPULSE_WIN_COUNTER current=7 target=20 source=set"
+    ),
+    null
+  );
+});
+
 test("GTA est détecté et installé automatiquement avec une progression novice", () => {
   const gta = GAME_INSTALLERS["gtav-montchiliad"];
-  assert.equal(gta.version, "1.0.3");
+  assert.equal(gta.version, "1.0.4");
   const runtime = fs.readFileSync(
     path.join(root, "src", "main", "game-runtime.js"),
     "utf8"
@@ -179,6 +271,43 @@ test("le chemin du jeu est confirmé puis revérifié avant tout téléchargemen
   assert.ok(targetSelection >= 0 && targetSelection < downloadStart);
 });
 
+test("le suivi d'installation reste recuperable pendant toute l'operation", () => {
+  const runtime = fs.readFileSync(
+    path.join(root, "src", "main", "game-runtime.js"),
+    "utf8"
+  );
+  const renderer = fs.readFileSync(
+    path.join(root, "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const installStart = runtime.indexOf("async install(gameId)");
+  const pickerStart = runtime.indexOf("await this.#pickTarget", installStart);
+  const trackingStart = runtime.indexOf(
+    "this.activeInstalls.add(gameId)",
+    installStart
+  );
+  const progressListener = renderer.slice(
+    renderer.indexOf('api.on("game-install-progress"'),
+    renderer.indexOf('api.on("deal-host-state"')
+  );
+
+  assert.match(runtime, /this\.installProgress = new Map\(\)/);
+  assert.match(
+    runtime,
+    /installProgress: this\.installProgress\.get\(gameId\) \|\| null/
+  );
+  assert.match(runtime, /phase: "error"/);
+  assert.match(runtime, /phase: "canceled"/);
+  assert.ok(trackingStart > installStart && trackingStart < pickerStart);
+  assert.match(renderer, /function restoreActiveGameInstallProgress/);
+  assert.match(renderer, /api\.getGameRuntimeStatus\(gameId\)/);
+  assert.doesNotMatch(
+    progressListener,
+    /progress\.gameId !== gameInstallBusyId/
+  );
+  assert.match(renderer, /\$\{pageMarkup\}\$\{installProgressMarkup\}/);
+});
+
 test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’édition", () => {
   const gta = GAME_INSTALLERS["gtav-montchiliad"];
   const enhanced = gta.assets.filter((asset) =>
@@ -200,16 +329,16 @@ test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’éd
     assert.ok(asset.size > 0);
     assert.match(
       safeInstallerAssetUrl(asset.url),
-      /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/gtav-montchiliad\/1\.0\.[0123]\//
+      /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/gtav-montchiliad\/1\.0\.[0-4]\//
     );
   }
   const enhancedPlugin = enhanced.find(
     (asset) => asset.id === "enhancedplugin"
   );
-  assert.match(enhancedPlugin.url, /\/1\.0\.3\//);
+  assert.match(enhancedPlugin.url, /\/1\.0\.4\//);
   assert.equal(
     enhancedPlugin.sha256,
-    "9163c6e21a66fbb737b550405229d14d6ea29d4960e12be0b1cdeee7d88ad632"
+    "e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1"
   );
   assert.throws(
     () => safeInstallerAssetUrl("https://example.com/asset.zip"),
@@ -478,6 +607,84 @@ test("la sauvegarde Enhanced archive l’emplacement 15 avant remplacement si le
 
 test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () => {
   assert.ok(INTEGRATED_GAME_IDS.includes("deal-or-no-deal"));
+  const runtime = fs.readFileSync(
+    path.join(root, "src", "main", "game-runtime.js"),
+    "utf8"
+  );
+  assert.match(
+    runtime,
+    /"coin-pusher",[\s\S]*"connect-four",[\s\S]*"deal-or-no-deal"/
+  );
+  assert.match(runtime, /"original",[\s\S]*"index\.html"/);
+  assert.match(runtime, /"host\.html"/);
+  const originalGamesDirectory = path.join(
+    root,
+    "src",
+    "renderer",
+    "games",
+    "original-src",
+    "components",
+    "games"
+  );
+  const coinPusher = fs.readFileSync(
+    path.join(originalGamesDirectory, "CoinPusherGame.vue"),
+    "utf8"
+  );
+  const connectFour = fs.readFileSync(
+    path.join(originalGamesDirectory, "ConnectFourGame.vue"),
+    "utf8"
+  );
+  const dealOrNoDeal = fs.readFileSync(
+    path.join(originalGamesDirectory, "DealOrNoDealGame.vue"),
+    "utf8"
+  );
+  assert.match(coinPusher, /createCoinPusher3dRenderer/);
+  assert.match(coinPusher, /coin-pusher-webgl/);
+  assert.match(connectFour, /arena-stage\.png/);
+  assert.match(connectFour, /class="connect-shell"/);
+  assert.match(dealOrNoDeal, /live-stage\.png/);
+  assert.match(dealOrNoDeal, /class="case-box"/);
+  assert.match(dealOrNoDeal, /ref="premiumBasePriceRef"/);
+  assert.match(dealOrNoDeal, /ref="premiumEntryPriceRef"/);
+  assert.match(
+    dealOrNoDeal,
+    /font-size:\s*calc\(3\.14rem \* var\(--premium-entry-amount-scale,\s*1\)\)/
+  );
+  assert.match(
+    dealOrNoDeal,
+    /targets\.forEach\(\(target\) => \{[\s\S]*refineEntryAmountFit\(target\)/
+  );
+  const originalHost = fs.readFileSync(
+    path.join(root, "src", "renderer", "games", "original-src", "main.ts"),
+    "utf8"
+  );
+  assert.match(
+    originalHost,
+    /saveCoinPusherSettings\(\{[\s\S]*\.\.\.stored[\s\S]*platformImageUrl:/
+  );
+  assert.match(
+    originalHost,
+    /saveDealOrNoDealSettings\(\{[\s\S]*\.\.\.stored[\s\S]*boxValues:/
+  );
+  assert.match(
+    originalHost,
+    /api\.on\('state-changed',[\s\S]*migrateDesktopSettings\(gameId, updatedSettings\)/
+  );
+  assert.match(
+    originalHost,
+    /subscribeDealOrNoDealHostState\(publishPrivateState\)/
+  );
+  const preload = fs.readFileSync(
+    path.join(root, "src", "main", "preload.js"),
+    "utf8"
+  );
+  const ipc = fs.readFileSync(
+    path.join(root, "src", "main", "ipc.js"),
+    "utf8"
+  );
+  assert.match(preload, /publishDealHostState:[\s\S]*game:deal-host-state/);
+  assert.match(preload, /"deal-host-state"/);
+  assert.match(ipc, /handle\("game:deal-host-state"/);
   const host = fs.readFileSync(
     path.join(root, "src", "renderer", "games", "host.js"),
     "utf8"
@@ -501,6 +708,34 @@ test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () =
       .length,
     7
   );
+});
+
+test("le suivi privé DealOrNoDeal conserve seulement les boîtes valides", () => {
+  const state = sanitizeDealOrNoDealHostState({
+    phase: "opening",
+    playerName: "Joueuse test",
+    payoutMultiplier: 2.5,
+    entryOptionId: "premium",
+    boxes: [
+      { id: 2, value: 9999999, opened: true },
+      { id: 1, value: -9999999, own: true },
+      { id: 2, value: 10 },
+      { id: 25, value: 20 },
+      { id: "invalide", value: 30 }
+    ],
+    bankerRequestText: "Offre test",
+    bonusValue: 123
+  });
+  assert.equal(state.phase, "opening");
+  assert.equal(state.playerName, "Joueuse test");
+  assert.equal(state.payoutMultiplier, 2.5);
+  assert.equal(state.entryOptionId, "premium");
+  assert.deepEqual(state.boxes, [
+    { id: 1, value: -999999, opened: false, own: true },
+    { id: 2, value: 999999, opened: true, own: false }
+  ]);
+  assert.equal(state.bankerRequestText, "Offre test");
+  assert.equal(state.bonusValue, 123);
 });
 
 test("l’identité visuelle Windows utilise les assets ShenPulse transparents", () => {
@@ -532,11 +767,13 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
   const games = [
     {
       id: "minecraft-bedrock-box",
+      version: "1.1.5",
       assetIds: [
         "paper",
         "java",
         "plugin",
         "guard",
+        "nativeWinBridge",
         "effectsPatch",
         "config",
         "serverProperties",
@@ -546,6 +783,7 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
     },
     {
       id: "minecraft-sandbox-3",
+      version: "1.1.3",
       assetIds: [
         "paper",
         "java",
@@ -568,17 +806,18 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
           "resources",
           "installer-assets",
           expected.id,
-          "1.1.1",
+          expected.version,
           "manifest.json"
         ),
         "utf8"
       )
     );
-    assert.equal(installer.version, "1.1.1");
+    assert.equal(installer.version, expected.version);
     assert.equal(installer.managedTarget, true);
     assert.equal(installer.requiresMinecraftEula, true);
     assert.equal(installer.minecraftServer.port, 25565);
     assert.equal(installer.minecraftServer.serverJar, "paper-1.21-130.jar");
+    assert.equal(installer.minecraftServer.creativeMode, true);
     assert.deepEqual(installer.autoClicker, {
       executable: "tools/AutoClicker.exe",
       autoStart: true
@@ -606,7 +845,7 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
       assert.match(
         safeInstallerAssetUrl(asset.url),
         new RegExp(
-          `^https://f003\\.backblazeb2\\.com/file/shenpulse-media/installer-assets/(?:minecraft-common/1\\.[01]\\.0|${expected.id}/1\\.1\\.[01])/`
+          `^https://f003\\.backblazeb2\\.com/file/shenpulse-media/installer-assets/(?:minecraft-common/1\\.[01]\\.0|${expected.id}/1\\.1\\.[0-5])/`
         )
       );
     }
@@ -657,8 +896,35 @@ test("Minecraft masque les retours de commandes pour les anciens et nouveaux ser
     assert.match(runtime, /gamerule sendCommandFeedback false/);
     assert.match(runtime, /gamerule commandBlockOutput false/);
     assert.match(runtime, /gamerule logAdminCommands false/);
+    assert.match(runtime, /gamerule announceAdvancements false/);
+    assert.match(runtime, /gamerule showDeathMessages false/);
     assert.match(runtime, /await existing\.ready/);
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
+});
+
+test("le patch Bedrock Box laisse les explosions détruire les blocs", () => {
+  const effectsPatch = fs.readFileSync(
+    path.join(
+      root,
+      "scripts",
+      "minecraft",
+      "bedrock-effects-patch",
+      "src",
+      "fr",
+      "shenpulse",
+      "minecraft",
+      "ShenPulseBedrockEffectsPatch.java"
+    ),
+    "utf8"
+  );
+
+  assert.match(effectsPatch, /getConfig\(\)\.set\("auto-replace", null\)/);
+  assert.doesNotMatch(effectsPatch, /scheduleReplacement/);
+  assert.doesNotMatch(effectsPatch, /onEntityExplode|onBlockExplode/);
+  assert.doesNotMatch(
+    effectsPatch,
+    /player\.sendMessage|event\.getPlayer\(\)\.sendMessage/
+  );
 });

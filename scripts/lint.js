@@ -6,9 +6,13 @@ const vm = require("node:vm");
 
 const roots = ["src", "scripts", "tests"];
 const files = [];
+const generatedDirectories = new Set([
+  path.resolve("src", "renderer", "games", "original")
+]);
 
 function walk(directory) {
   if (!fs.existsSync(directory)) return;
+  if (generatedDirectories.has(path.resolve(directory))) return;
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) walk(fullPath);

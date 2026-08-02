@@ -158,7 +158,17 @@ function createDefaultOverlayConfigs() {
       target: 50000,
       whenReached: "increase",
       completionActionId: "",
+      showGoal: true,
       showPercent: true,
+      likeGoalTitleOffsetX: 0,
+      likeGoalTitleOffsetY: 0,
+      likeGoalTitleScale: 100,
+      likeGoalTitleColor: "#ffffff",
+      likeGoalContentOffsetX: 0,
+      likeGoalContentOffsetY: 0,
+      likeGoalContentScale: 100,
+      likeGoalContentColor: "#ffffff",
+      likeGoalPercentColor: "#ff4f86",
       scale: 100
     },
     coinJar: {
@@ -177,7 +187,9 @@ function createDefaultOverlayConfigs() {
       seconds: 300,
       completionActionId: "",
       showHours: true,
-      showGoal: true
+      showGoal: true,
+      timerTitleScale: 100,
+      timerValueScale: 100
     },
     multiplierTimer: {
       ...themed,
@@ -186,7 +198,9 @@ function createDefaultOverlayConfigs() {
       seconds: 120,
       multiplier: 2,
       showHours: false,
-      showGoal: true
+      showGoal: true,
+      timerTitleScale: 100,
+      timerValueScale: 100
     },
     winCounter: {
       ...themed,
@@ -347,9 +361,9 @@ function createDefaultState() {
     connections: [
       {
         id: "source_demo",
-        name: "Mode Démo",
+        name: "Mode Démo (manuel)",
         type: "demo",
-        enabled: true,
+        enabled: false,
         status: "disconnected",
         config: { intervalMs: 5000 }
       }

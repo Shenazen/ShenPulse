@@ -11,7 +11,7 @@ const INTEGRATED_GAME_IDS = Object.freeze([
 const GTA_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-montchiliad/1.0.0";
 const GTA_ENHANCED_PLUGIN_BASE =
-  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-montchiliad/1.0.3";
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-montchiliad/1.0.4";
 const MINECRAFT_COMMON_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0";
 const MINECRAFT_COMMON_TOOLS_ASSET_BASE =
@@ -19,9 +19,19 @@ const MINECRAFT_COMMON_TOOLS_ASSET_BASE =
 const MINECRAFT_BEDROCK_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.0";
 const MINECRAFT_BEDROCK_PATCH_ASSET_BASE =
-  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.1";
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.5";
+const MINECRAFT_BEDROCK_CONFIG_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.2";
+const MINECRAFT_BEDROCK_WIN_FIX_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.5";
+const MINECRAFT_BEDROCK_NATIVE_WIN_BRIDGE_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.3";
 const MINECRAFT_SANDBOX_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-sandbox-3/1.1.0";
+const MINECRAFT_SANDBOX_CONFIG_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-sandbox-3/1.1.2";
+const MINECRAFT_SANDBOX_WIN_FIX_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-sandbox-3/1.1.3";
 const CULT_OF_THE_LAMB_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/cult-of-the-lamb/1.0.2";
 const STARDEW_VALLEY_ASSET_BASE =
@@ -31,7 +41,7 @@ const TERRARIA_ASSET_BASE =
 
 const GAME_INSTALLERS = Object.freeze({
   "gtav-montchiliad": {
-    version: "1.0.3",
+    version: "1.0.4",
     title: "GTA V Mont Chiliad",
     targetLabel: "dossier GTA V",
     autoDetect: true,
@@ -94,9 +104,9 @@ const GAME_INSTALLERS = Object.freeze({
         fileName: "ShenPulseMontChiliadEnhanced.asi",
         action: "copy",
         editions: ["enhanced"],
-        size: 394752,
+        size: 396800,
         sha256:
-          "9163c6e21a66fbb737b550405229d14d6ea29d4960e12be0b1cdeee7d88ad632",
+          "e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1",
         url: `${GTA_ENHANCED_PLUGIN_BASE}/shenpulse-mont-chiliad-enhanced.asi`
       },
       {
@@ -215,7 +225,7 @@ const GAME_INSTALLERS = Object.freeze({
     ]
   },
   "minecraft-bedrock-box": {
-    version: "1.1.1",
+    version: "1.1.5",
     title: "Minecraft Bedrock Box",
     managedTarget: true,
     requiresMinecraftEula: true,
@@ -224,7 +234,8 @@ const GAME_INSTALLERS = Object.freeze({
       javaDirectory: "runtime/java",
       port: 25565,
       xms: "1024M",
-      xmx: "2048M"
+      xmx: "2048M",
+      creativeMode: true
     },
     warning:
       "ShenPulse installe un serveur PaperMC 1.21 privé et Java 21, puis le lance sur 127.0.0.1:25565. En continuant, vous acceptez le CLUF Minecraft : https://aka.ms/MinecraftEULA",
@@ -263,19 +274,29 @@ const GAME_INSTALLERS = Object.freeze({
         fileName: "shenpulse-bedrock-guard.jar",
         action: "copy",
         targetPath: "plugins",
-        size: 34587,
+        size: 33284,
         sha256:
-          "6e4b3520396cae669e2dc1c57c4bc34b2b93bb088f5c879142b109f25c91d57e",
-        url: `${MINECRAFT_BEDROCK_ASSET_BASE}/shenpulse-bedrock-guard.jar`
+          "dabc2fc47644127ac7a7b8bb35eede8e0b7324cd21f7996ecadba08d03ffcc66",
+        url: `${MINECRAFT_BEDROCK_WIN_FIX_ASSET_BASE}/shenpulse-bedrock-guard.jar`
+      },
+      {
+        id: "nativeWinBridge",
+        fileName: "shenpulse-bedrock-native-win-bridge.jar",
+        action: "copy",
+        targetPath: "plugins",
+        size: 4074,
+        sha256:
+          "ca8f680956dd8840bbb65ba00d72467b66275437af60dd291725885ebfe37f69",
+        url: `${MINECRAFT_BEDROCK_NATIVE_WIN_BRIDGE_ASSET_BASE}/shenpulse-bedrock-native-win-bridge.jar`
       },
       {
         id: "effectsPatch",
         fileName: "shenpulse-bedrock-effects-patch.jar",
         action: "copy",
         targetPath: "plugins",
-        size: 13686,
+        size: 12783,
         sha256:
-          "ba70571d1bdefb8d02f6ca52403f160c3f8e09f1a9b513dad45df557f2e5b757",
+          "c68e9c3ac1c7840be1a0591ef011c9a67c7718fe56876c23de480ef96823a052",
         url: `${MINECRAFT_BEDROCK_PATCH_ASSET_BASE}/shenpulse-bedrock-effects-patch.jar`
       },
       {
@@ -292,10 +313,10 @@ const GAME_INSTALLERS = Object.freeze({
         id: "serverProperties",
         fileName: "server.properties",
         action: "copy",
-        size: 1452,
+        size: 1361,
         sha256:
-          "15fbbe32588d281cc85a5beb826a75d24d2b036ec8dea2808931d471cf4f54eb",
-        url: `${MINECRAFT_BEDROCK_ASSET_BASE}/server.properties`
+          "d2e540a222a82a548edf403a72679694c0dbe8f0af533db5669081d79f9ef14c",
+        url: `${MINECRAFT_BEDROCK_CONFIG_ASSET_BASE}/server.properties`
       },
       {
         id: "world",
@@ -323,7 +344,7 @@ const GAME_INSTALLERS = Object.freeze({
     }
   },
   "minecraft-sandbox-3": {
-    version: "1.1.1",
+    version: "1.1.3",
     title: "Minecraft SandBox 3",
     managedTarget: true,
     requiresMinecraftEula: true,
@@ -332,7 +353,8 @@ const GAME_INSTALLERS = Object.freeze({
       javaDirectory: "runtime/java",
       port: 25565,
       xms: "1024M",
-      xmx: "2048M"
+      xmx: "2048M",
+      creativeMode: true
     },
     warning:
       "ShenPulse installe un serveur PaperMC 1.21 privé et Java 21, puis le lance sur 127.0.0.1:25565. En continuant, vous acceptez le CLUF Minecraft : https://aka.ms/MinecraftEULA",
@@ -381,10 +403,10 @@ const GAME_INSTALLERS = Object.freeze({
         fileName: "shenpulse-bedrock-guard.jar",
         action: "copy",
         targetPath: "plugins",
-        size: 34587,
+        size: 34113,
         sha256:
-          "6e4b3520396cae669e2dc1c57c4bc34b2b93bb088f5c879142b109f25c91d57e",
-        url: `${MINECRAFT_SANDBOX_ASSET_BASE}/shenpulse-bedrock-guard.jar`
+          "da6fd533ecdab1d3b437622d7d00f7e1325746ae79f6d9eb562d932a867e141f",
+        url: `${MINECRAFT_SANDBOX_WIN_FIX_ASSET_BASE}/shenpulse-bedrock-guard.jar`
       },
       {
         id: "config",
@@ -400,10 +422,10 @@ const GAME_INSTALLERS = Object.freeze({
         id: "serverProperties",
         fileName: "server.properties",
         action: "copy",
-        size: 1090,
+        size: 1044,
         sha256:
-          "fad3c1fd94b5a7e9cedc249e1344266687e65047e7e3f3343826bcf26005dd2b",
-        url: `${MINECRAFT_SANDBOX_ASSET_BASE}/server.properties`
+          "f635078fd71c49e15b99f0795b257dff983f952efabba5e157be3e02635e9a18",
+        url: `${MINECRAFT_SANDBOX_CONFIG_ASSET_BASE}/server.properties`
       },
       {
         id: "autoClicker",

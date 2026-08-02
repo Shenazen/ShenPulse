@@ -89,6 +89,45 @@ test("les jeux intégrés ont leurs réglages et leur fenêtre de jeu dédiée",
   assert.match(gameHost, /function renderDeal/);
 });
 
+test("Coin Pusher et DealOrNoDeal exposent tous leurs réglages historiques", () => {
+  for (const field of [
+    "guardGiftDurationSeconds",
+    "mysterySpawnChance",
+    "mysteryPointsMin",
+    "mysteryCoinRainMax",
+    "mysteryMultiplierDurationSeconds",
+    "ticketsCountPerGift",
+    "diamondCoinTiers",
+    "winnerPrizePercents",
+    "giftRules"
+  ]) {
+    assert.match(renderer, new RegExp(field));
+  }
+  for (const field of [
+    "bankerRequestCount",
+    "spendPremiumEntryCost",
+    "riggingSelectedChancePercent",
+    "riggingFinalLowChancePercent"
+  ]) {
+    assert.match(renderer, new RegExp(field.replace(/\./g, "\\.")));
+  }
+  assert.match(renderer, /\["finalDuel", "Duel final"/);
+  assert.match(renderer, /name="music\.\$\{scene\}\.url"/);
+  assert.match(renderer, /Valeurs des 24 boîtes/);
+  assert.match(renderer, /name="boxValue" type="number"/);
+  assert.match(renderer, /integratedSettingsTabLabel\("deal-settings-cheat"[\s\S]*"Triche"/);
+  assert.match(renderer, /function renderDealPrivateMonitor/);
+  assert.match(renderer, /effectiveValue[\s\S]*payoutMultiplier/);
+  assert.match(renderer, /GAINS ×/);
+  assert.match(renderer, /api\.on\("deal-host-state"/);
+  assert.match(renderer, /function canUseDealCheatSettings/);
+  assert.match(rendererCss, /#deal-settings-cheat:checked/);
+  assert.match(rendererCss, /\[data-integrated-panel="bonus"\]/);
+  assert.match(rendererCss, /\.deal-private-box-grid/);
+  assert.match(rendererCss, /\.integrated-box-values-grid/);
+  assert.match(rendererCss, /grid-template-columns:\s*minmax\(215px,\s*245px\)/);
+});
+
 test("le Like Goal classique garde son ratio et remplit le cadre intérieur", () => {
   assert.match(rendererCss, /\.preview-theme-classic/);
   assert.match(rendererCss, /aspect-ratio:\s*6\.5\s*\/\s*1/);
@@ -109,6 +148,21 @@ test("le Like Goal classique garde son ratio et remplit le cadre intérieur", ()
   assert.match(
     stateStore,
     /overlayId === "likeGoal"[\s\S]*Number\(saved\.scale\) === 60[\s\S]*merged\.scale = 100/
+  );
+});
+
+test("les anciennes couleurs Like Goal alimentent les trois couleurs de texte", () => {
+  assert.match(
+    stateStore,
+    /merged\.likeGoalTitleColor\s*=\s*[\s\S]*stored\.textColor/
+  );
+  assert.match(
+    stateStore,
+    /merged\.likeGoalContentColor\s*=\s*[\s\S]*stored\.textColor/
+  );
+  assert.match(
+    stateStore,
+    /merged\.likeGoalPercentColor\s*=\s*[\s\S]*stored\.secondaryColor/
   );
 });
 
@@ -221,7 +275,7 @@ test("les cartes montrent les aperçus Pro mais masquent leurs sources verrouill
   assert.match(renderer, /url: overlayCatalogPreviewUrl\(item\)/);
   assert.match(
     overlayRuntime,
-    /classList\.toggle\("overlay-idle-hidden", !isStaticPreview && !showWhenIdle\)/
+    /classList\.toggle\("overlay-idle-hidden", !isCatalogPreview && !showWhenIdle\)/
   );
   assert.doesNotMatch(renderer, /Overlay réservé/);
   assert.match(renderer, /L’aperçu et tous les réglages restent accessibles/);
@@ -282,11 +336,20 @@ test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
   assert.match(overlayRuntime, /runtime\.recentEvents[\s\S]*spawnCoinJarDrop\(event\)/);
   assert.doesNotMatch(overlayRuntime, /setTimeout\(\(\) => node\.remove\(\), 8000\)/);
   assert.match(overlayHtml, /coin-jar-physics\.js[\s\S]*overlay\.js/);
-  assert.match(overlayCss, /html\[data-jar-model="fantasy"\] #coin-jar-back[\s\S]*scale\(1\.14\)/);
+  assert.match(
+    overlayCss,
+    /\.coin-jar-widget\s*\{[\s\S]*width:\s*min\(69\.444444vw,\s*96\.153846vh\)[\s\S]*aspect-ratio:\s*1/
+  );
+  assert.doesNotMatch(overlayCss, /data-jar-model[^\{]*#coin-jar-back/);
+  assert.doesNotMatch(overlayCss, /#coin-jar-back\s*\{[\s\S]*?transform:/);
   assert.match(overlayHtml, /id="coin-jar-glass-clip"/);
+  assert.match(
+    overlayHtml,
+    /M \.31 \.075 L \.69 \.075[\s\S]*L \.785 \.80[\s\S]*L \.34 \.925[\s\S]*L \.215 \.31/
+  );
   assert.match(overlayHtml, /id="coin-jar-contained-drops"[\s\S]*id="coin-jar-overflow-drops"/);
   assert.match(overlayCss, /\.coin-jar-contained-drops\s*\{[\s\S]*clip-path:\s*url\("#coin-jar-glass-clip"\)/);
-  assert.match(overlayRuntime, /gift\.y - gift\.radius >= coinJarGeometry\.mouthTop/);
+  assert.match(overlayRuntime, /gift\.y - visualRadius >= coinJarGeometry\.mouthTop/);
   assert.match(overlayRuntime, /jar-test-back-clean-localized\.png/);
   assert.doesNotMatch(overlayHtml, /coin-jar-meter/);
   assert.doesNotMatch(overlayCss, /\.coin-jar-meter/);
@@ -411,7 +474,7 @@ test("tous les jeux réutilisent le générateur historique ShenazenOverlay", ()
 test("le bouton des sources suit la visibilité de sa page", () => {
   assert.match(
     renderer,
-    /canNavigateTo\("connections"\) \? '<button class="button ghost" data-navigate="connections"/
+    /canNavigateTo\("connections"\) \? '<button class="button small ghost" data-navigate="connections"/
   );
 });
 
@@ -562,6 +625,14 @@ test("les classements alignent les profils dans chaque cadre et restaurent le cl
       )
     );
   }
+  assert.match(
+    overlayCss,
+    /\[data-theme="assassination-classroom"\] #leaderboard-view \.leaderboard-widget[\s\S]*?--leaderboard-rows-right:\s*10\.75%[\s\S]*?--leaderboard-rows-left:\s*12\.69%[\s\S]*?aspect-ratio:\s*67\s*\/\s*120[\s\S]*?overflow:\s*hidden/
+  );
+  assert.match(
+    overlayCss,
+    /\[data-theme="assassination-classroom"\] #leaderboard-view #leaderboard-frame\s*\{[\s\S]*?inset:\s*0 auto 0 -34\.328%[\s\S]*?width:\s*134\.328%/
+  );
   for (const asset of [
     "rank-crown.webp",
     "rank-medal-1.webp",
@@ -594,7 +665,10 @@ test("chaque source charge uniquement ses propres médias lourds", () => {
     overlayCss,
     /#coin-jar-view\s*\{[\s\S]*align-items:\s*center;[\s\S]*justify-content:\s*center;/
   );
-  assert.match(overlayCss, /\.coin-jar-widget\s*\{[\s\S]*90vmin/);
+  assert.match(
+    overlayCss,
+    /\.coin-jar-widget\s*\{[\s\S]*69\.444444vw[\s\S]*96\.153846vh/
+  );
 });
 
 test("les cartes ne saturent pas les connexions réservées aux aperçus live", () => {
@@ -602,10 +676,14 @@ test("les cartes ne saturent pas les connexions réservées aux aperçus live", 
     renderer,
     /const previewUrl = new URL\(runtimeUrl\);[\s\S]*searchParams\.set\("preview", "static"\)/
   );
-  assert.match(overlayRuntime, /const isStaticPreview = parameters\.get\("preview"\) === "static"/);
+  assert.match(overlayRuntime, /const isStaticPreview = previewMode === "static"/);
   assert.match(
     overlayRuntime,
-    /setupOverlayDesign\(\);\s*renderTimer\(\);[\s\S]*fetch\(`\/api\/state[\s\S]*if \(isStaticPreview\) return;/
+    /const isCatalogPreview =\s*isStaticPreview \|\| previewMode === "animated"/
+  );
+  assert.match(
+    overlayRuntime,
+    /setupOverlayDesign\(\);\s*renderTimer\(\);[\s\S]*fetch\(`\/api\/state[\s\S]*if \(isCatalogPreview\) return;/
   );
   assert.match(
     renderer,

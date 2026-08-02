@@ -73,9 +73,26 @@ test("l'aperçu de configuration se met à jour sans recharger son iframe", () =
   assert.match(previewUpdate, /contentWindow\?\.postMessage/);
   assert.doesNotMatch(previewUpdate, /frame\.src\s*=/);
   assert.match(overlayRuntime, /function updatePreviewConfiguration\(payload = \{\}\)/);
+  assert.match(overlayRuntime, /function updateOverlayConfiguration\(payload = \{\}\)/);
   assert.match(
     overlayRuntime,
-    /overlayChannels\.configuration = updatePreviewConfiguration/
+    /overlayKey && overlayKey !== activeOverlayConfigKey\(\)/
+  );
+  assert.match(
+    overlayRuntime,
+    /overlayChannels\.configuration = updateOverlayConfiguration/
+  );
+});
+
+test("une configuration enregistrée atteint aussi les sources déjà ouvertes", () => {
+  assert.match(renderer, /function publishOverlayConfiguration\(key, config\)/);
+  assert.match(renderer, /await publishOverlayConfiguration\(key, nextConfig\)/);
+  assert.match(renderer, /"view",[\s\S]*"token",[\s\S]*"channel"/);
+  assert.match(renderer, /delete payload\[key\]/);
+  assert.match(mainIpc, /handle\("overlay:configuration"/);
+  assert.match(
+    mainIpc,
+    /core\.overlayServer\.publish\("configuration",\s*\{[\s\S]*overlayKey,[\s\S]*config:/
   );
 });
 
@@ -108,6 +125,48 @@ test("le Like Goal propose en français les quatre comportements de fin", () => 
   assert.match(renderer, /whenReached:\s*"whenReached"/);
   assert.match(overlayRuntime, /LikeGoalPolicy\.resolveCompletion/);
   assert.match(overlayRuntime, /like-goal-reached-hidden/);
+});
+
+test("les options du Like Goal restaurent les elements et deplacent ses textes", () => {
+  assert.match(overlayRuntime, /element\.hidden = !showHeader/);
+  assert.match(
+    overlayRuntime,
+    /#like-goal-progress-label, \.win-counter-content > small/
+  );
+  assert.doesNotMatch(
+    overlayRuntime,
+    /querySelectorAll\("\.like-goal-bar, \.win-counter-content > small"\)/
+  );
+  assert.match(
+    overlayRuntime,
+    /progressLabel\.hidden = !showGoal \|\| !likeGoalProgressLabel/
+  );
+  for (const field of [
+    "likeGoalTitleOffsetX",
+    "likeGoalTitleOffsetY",
+    "likeGoalTitleScale",
+    "likeGoalTitleColor",
+    "likeGoalContentOffsetX",
+    "likeGoalContentOffsetY",
+    "likeGoalContentScale",
+    "likeGoalContentColor",
+    "likeGoalPercentColor"
+  ]) {
+    assert.match(renderer, new RegExp(`"${field}"`));
+  }
+  for (const parameter of [
+    "titleX",
+    "titleY",
+    "titleScale",
+    "titleColor",
+    "contentX",
+    "contentY",
+    "contentScale",
+    "contentColor",
+    "percentColor"
+  ]) {
+    assert.match(overlayRuntime, new RegExp(`"${parameter}"`));
+  }
 });
 
 test("le Like Goal et le timer standard proposent une action de fin", () => {
@@ -238,6 +297,22 @@ test("les réglages vidéo des matchs atteignent réellement leur source", () =>
   );
 });
 
+test("les timers forcent les heures et dimensionnent titre et valeur séparément", () => {
+  const timerStart = overlayRuntime.indexOf("function renderTimer()");
+  const timerEnd = overlayRuntime.indexOf("function spinWheel", timerStart);
+  const timerRenderer = overlayRuntime.slice(timerStart, timerEnd);
+
+  assert.match(timerRenderer, /const value = showHours\s*\?/);
+  assert.doesNotMatch(timerRenderer, /showHours && hours > 0/);
+  for (const field of ["timerTitleScale", "timerValueScale"]) {
+    assert.match(renderer, new RegExp(`"${field}"`));
+    assert.match(overlayRuntime, new RegExp(`"${field}"`));
+  }
+  assert.match(rendererCss, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(rendererCss, /@media \(max-width:\s*900px\)[\s\S]*grid-template-columns:\s*repeat\(2/);
+  assert.match(rendererCss, /@media \(max-width:\s*620px\)[\s\S]*grid-template-columns:\s*1fr/);
+});
+
 test("chaque popup overlay se rouvre en haut avec des champs lisibles", () => {
   const openEditorStart = renderer.indexOf("function openEditor({");
   const openEditorEnd = renderer.indexOf(
@@ -271,6 +346,44 @@ test("les aperçus Match figent une vraie image représentative du design", () =
   assert.match(
     overlayRuntime,
     /if \(isStaticPreview\) positionStaticMatchPreview\(video,\s*source\)/
+  );
+});
+
+test("les apercus Match jouent leur animation en boucle dans le catalogue", () => {
+  const runtimeFrameStart = renderer.indexOf("function overlayRuntimeFrame");
+  const runtimeFrameEnd = renderer.indexOf(
+    "const observedOverlayRuntimeFrames",
+    runtimeFrameStart
+  );
+  const runtimeFrame = renderer.slice(runtimeFrameStart, runtimeFrameEnd);
+
+  assert.match(runtimeFrame, /item\.previewKind === "match"/);
+  assert.match(runtimeFrame, /preview",\s*"animated"/);
+  assert.match(runtimeFrame, /autoplay",\s*"true"/);
+  assert.match(runtimeFrame, /loop",\s*"true"/);
+  assert.match(
+    overlayRuntime,
+    /isStaticPreview \|\| previewMode === "animated"/
+  );
+  assert.match(overlayRuntime, /if \(isCatalogPreview\) return/);
+});
+
+test("la carte Like Goal place son apercu compact au-dessus des details", () => {
+  assert.match(
+    renderer,
+    /overlay-catalog-card--\$\{escapeHtml\(previewVariant\)\}/
+  );
+  assert.match(
+    rendererCss,
+    /\.overlay-catalog-card--like-goal\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/
+  );
+  assert.match(
+    rendererCss,
+    /\.overlay-catalog-card--like-goal > \.overlay-preview\s*\{[\s\S]*height:\s*118px/
+  );
+  assert.match(
+    rendererCss,
+    /\.overlay-catalog-card--like-goal > \.overlay-card-copy\s*\{[\s\S]*grid-template-columns:\s*repeat\(2/
   );
 });
 

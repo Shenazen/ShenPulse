@@ -83,6 +83,11 @@ test("protège l'état local et accepte un événement authentifié", async () =
     );
     assert.equal(liveScript.status, 200);
     assert.equal(liveScript.headers.get("cache-control"), "no-store");
+    const vendorScript = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/vendor/lottie-player.js`
+    );
+    assert.equal(vendorScript.status, 200);
+    assert.match(vendorScript.headers.get("content-type"), /javascript/);
     const lottieAnimation = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/media/lottie/10849-halloween-pumpkin.json?token=overlay-secret`
     );
@@ -97,6 +102,10 @@ test("protège l'état local et accepte un événement authentifié", async () =
       `http://127.0.0.1:${overlayPort}/overlay/?view=win-counter&preview=static&token=overlay-secret`
     );
     assert.equal(proStaticPreviewWhileFree.status, 200);
+    const proAnimatedPreviewWhileFree = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/?view=match&preview=animated&token=overlay-secret`
+    );
+    assert.equal(proAnimatedPreviewWhileFree.status, 200);
     const proEventsWhileFree = await fetch(
       `http://127.0.0.1:${overlayPort}/events?view=win-counter&preview=static&token=overlay-secret`
     );

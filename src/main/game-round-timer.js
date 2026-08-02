@@ -51,7 +51,7 @@ function minecraftTimeoutCommands(packId, appliedAmount = -1) {
     "delay 2500",
     resetCommand,
     "delay 500",
-    "shenpulse_win hide"
+    "shenpulse_win show"
   ];
 }
 
@@ -96,9 +96,14 @@ class MinecraftRoundTimer extends EventEmitter {
       state.session.game.roundStatus = "running";
     }, true);
     await this.#publishTimer(durationSeconds);
+    const currentWins = Number(
+      this.store.getState().overlaySession?.winCounterCurrent || 0
+    );
     try {
       await this.gameHub.executeMinecraftCommands(packId, [
-        "shenpulse_win hide"
+        `shenpulse_win set ${currentWins}`,
+        `shenpulse_win timer ${durationSeconds}`,
+        "shenpulse_win show"
       ]);
     } catch {
       // Le chrono ShenPulse reste la source de vérité si le plugin démarre encore.
@@ -169,8 +174,8 @@ class MinecraftRoundTimer extends EventEmitter {
     }
     const commands =
       packId === "minecraft-sandbox-3"
-        ? ["sandbox stop", "shenpulse_win hide"]
-        : ["shenpulse_win hide"];
+        ? ["sandbox stop", "shenpulse_win hide", "shenpulse_win show"]
+        : ["shenpulse_win hide", "shenpulse_win show"];
     try {
       await this.gameHub.executeMinecraftCommands(packId, commands);
       return true;
@@ -181,6 +186,64 @@ class MinecraftRoundTimer extends EventEmitter {
 
   async dispose() {
     await this.stop({ clearState: false, publish: false });
+  }
+
+  async resolveNativeOutcome(
+    packId,
+    { outcome = "win", currentWins = 0, source = "native" } = {}
+  ) {
+    const state = this.store.getState();
+    const game = state.session?.game || {};
+    if (
+      game.running !== true ||
+      game.packId !== packId ||
+      game.roundStatus !== "running" ||
+      !isMinecraftRoundGame(packId)
+    ) {
+      return { resolved: false };
+    }
+    this.#clearScheduledTimeout();
+    const settings = minecraftRoundSettings(state, packId);
+    const resolvedAt = new Date().toISOString();
+    this.store.mutate((nextState) => {
+      const active = nextState.session?.game;
+      if (
+        active?.running !== true ||
+        active.packId !== packId ||
+        active.roundStatus !== "running"
+      ) {
+        return;
+      }
+      active.roundEndsAt = null;
+      active.roundStatus = outcome === "loss" ? "timeout" : "won";
+      active.lastRoundResolvedAt = resolvedAt;
+      active.lastRoundOutcome = outcome;
+      active.lastRoundNativeSource = source;
+      if (outcome === "loss") {
+        active.lastRoundTimeoutAt = resolvedAt;
+        active.roundTimeoutCount =
+          Math.max(0, Number(active.roundTimeoutCount || 0)) + 1;
+      } else {
+        active.lastRoundWinAt = resolvedAt;
+        active.roundWinCount =
+          Math.max(0, Number(active.roundWinCount || 0)) + 1;
+      }
+    }, true);
+    await this.#publishTimer(0);
+    const result = {
+      resolved: true,
+      packId,
+      outcome,
+      currentWins,
+      source,
+      autoRestart: settings.autoRestart,
+      resolvedAt
+    };
+    this.emit("resolved", result);
+    if (settings.autoRestart) {
+      await this.start(packId, `native-${outcome}-restart`);
+    }
+    return result;
   }
 
   #clearScheduledTimeout() {

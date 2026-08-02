@@ -22,6 +22,14 @@ const overlayRuntime = fs.readFileSync(
   path.join(root, "resources", "overlays", "overlay.js"),
   "utf8"
 );
+const overlayStyles = fs.readFileSync(
+  path.join(root, "resources", "overlays", "overlay.css"),
+  "utf8"
+);
+const overlayHtml = fs.readFileSync(
+  path.join(root, "resources", "overlays", "index.html"),
+  "utf8"
+);
 const actionRunner = fs.readFileSync(
   path.join(root, "src", "main", "action-runner.js"),
   "utf8"
@@ -78,4 +86,27 @@ test("les actions rapides pilotent aussi les sources OBS déjà ouvertes", () =>
   assert.match(ipc, /"overlay\.coin-jar"/);
   assert.match(overlayRuntime, /"like-goal": updateLikeGoal/);
   assert.match(overlayRuntime, /"coin-jar": updateCoinJar/);
+});
+
+test("les designs du compteur de wins restent devant le fond intérieur", () => {
+  assert.match(
+    overlayHtml,
+    /win-counter-backdrop[\s\S]*win-counter-frame[\s\S]*win-counter-content/
+  );
+  assert.match(
+    overlayStyles,
+    /\.themed-widget > \.theme-frame,[^{]*\{[^}]*z-index:\s*1;/
+  );
+  assert.match(
+    overlayStyles,
+    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.win-counter-content\s*\{[^}]*z-index:\s*2;/
+  );
+  assert.match(
+    overlayStyles,
+    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.win-counter-backdrop\s*\{[^}]*z-index:\s*0;/
+  );
+  assert.doesNotMatch(
+    overlayStyles,
+    /\.win-counter-content::before/
+  );
 });

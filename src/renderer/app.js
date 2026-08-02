@@ -91,6 +91,7 @@ let soundSearch = "";
 let soundCategory = "all";
 let gameSearch = "";
 let gameFilter = "all";
+let subscriptionCheckoutBusyTier = "";
 let selectedGameId = "";
 let gamePageMode = "catalog";
 let gameWorkspaceStep = "installation";
@@ -100,6 +101,8 @@ let gameInstallProgress = null;
 let gameInstallBusyId = "";
 let gameLaunchProgress = null;
 let gameLaunchBusyId = "";
+let dealOrNoDealHostState = null;
+const integratedSettingsPanels = new Map();
 const gamePageMessages = new Map();
 const GTA_INTERACTION_OVERLAY_BACKGROUNDS = [
   ["#082b63", "Bleu nuit"],
@@ -133,6 +136,8 @@ let adminVisibilitySection = "navigation";
 let adminVisibilitySearch = "";
 let adminCommerceSearch = "";
 let adminBusy = false;
+let gameCheatAccessAllowed = false;
+let gameCheatAccessPromise = null;
 let siteVisibility = {
   schemaVersion: 7,
   navigation: {},
@@ -710,7 +715,7 @@ function giftPickerField(name, label, value = "", extra = "", help = "") {
       <button type="button" data-gift-clear title="Effacer">×</button>
     </div>
     <div class="gift-picker-results" data-gift-results hidden></div>
-    <small>Recherche rapide par nom ou nombre de pièces dans le catalogue TikTok global.</small>
+    <small>Recherche rapide par nom ou nombre de pièces dans le catalogue TikTok français/anglais.</small>
   </div>`;
 }
 
@@ -1502,6 +1507,17 @@ function isAccountAuthenticated() {
   return accountSession.authenticated === true;
 }
 
+function canUseDealCheatSettings() {
+  return (
+    isVerifiedAdminSession() ||
+    (
+      isAccountAuthenticated() &&
+      accountSession.emailVerified === true &&
+      gameCheatAccessAllowed === true
+    )
+  );
+}
+
 function isVerifiedAdminSession() {
   return (
     isAccountAuthenticated() &&
@@ -1883,9 +1899,11 @@ function syncChrome() {
     : "Détecter automatiquement si le compte TikTok est en LIVE";
   const serverDot = document.getElementById("server-dot");
   const serverDetail = document.getElementById("server-detail");
+  const appVersion = document.getElementById("app-version");
   const urlsReady = Boolean(snapshot.overlayUrls?.base);
   serverDot.classList.toggle("error", !urlsReady);
   serverDetail.textContent = urlsReady ? `API : ${state.settings.apiPort} · Overlay : ${state.settings.overlayPort}` : "Serveurs indisponibles";
+  appVersion.textContent = `Version : ${snapshot.appVersion || "—"}`;
 }
 
 function render() {
@@ -1911,9 +1929,15 @@ function render() {
     admin: renderAdmin
   };
   const pageMarkup = (renderers[currentPage] || renderDashboard)();
+  const installPack = (snapshot.packs || []).find(
+    (pack) => pack.id === gameInstallProgress?.gameId
+  );
+  const installProgressMarkup = installPack
+    ? renderGameInstallProgressModal(installPack)
+    : "";
   const nextContentMarkup = isAccountAuthenticated()
-    ? pageMarkup
-    : `${renderGuestAccessNotice()}${pageMarkup}`;
+    ? `${pageMarkup}${installProgressMarkup}`
+    : `${renderGuestAccessNotice()}${pageMarkup}${installProgressMarkup}`;
   if (
     renderedContentPage === currentPage &&
     renderedContentMarkup === nextContentMarkup
@@ -2103,7 +2127,7 @@ function renderDashboard() {
   const { state } = snapshot;
   const stats = state.statistics;
   const connected = state.connections.filter((item) => item.status === "connected").length;
-  const recent = state.activity.slice(0, 6);
+  const recent = visibleActivityEntries(state).slice(0, 6);
   return `
     <div class="page-grid">
       <section class="stats-grid">
@@ -2121,7 +2145,6 @@ function renderDashboard() {
             <div class="button-row">
               <button class="button primary" data-action="toggle-session">${state.session.running ? "■ Arrêter la session" : "▶ Démarrer la session"}</button>
               <button class="button" data-action="test-event" data-type="gift">🎁 Tester un cadeau</button>
-              ${canNavigateTo("connections") ? '<button class="button ghost" data-navigate="connections">Configurer les sources →</button>' : ""}
             </div>
           </div>
           <div class="pulse-visual">
@@ -2131,7 +2154,7 @@ function renderDashboard() {
           </div>
         </article>
         <article class="card">
-          <header class="card-header"><div><p class="eyebrow">SOURCES</p><h3>État des connexions</h3></div><span class="badge ${connected ? "success" : ""}">${connected} ACTIVE${connected > 1 ? "S" : ""}</span></header>
+          <header class="card-header"><div><p class="eyebrow">SOURCES</p><h3>État des connexions</h3><p>Le rôle de chaque source, en un coup d’œil.</p></div><div class="dashboard-connection-header-actions"><span class="badge ${connected ? "success" : ""}">${connected} ACTIVE${connected > 1 ? "S" : ""}</span>${canNavigateTo("connections") ? '<button class="button small ghost" data-navigate="connections">Voir les connexions →</button>' : ""}</div></header>
           <div class="card-body list">
             ${state.connections.slice(0, 4).map(connectionRow).join("")}
           </div>
@@ -2157,9 +2180,29 @@ function connectionRow(connection) {
   const statusClass = connection.status === "connected" ? "success" : connection.status === "error" ? "error" : "";
   return `<div class="list-row">
     <span class="connector-icon">${connection.type === "demo" ? "◈" : connection.type === "twitch-irc" ? "T" : "⌁"}</span>
-    <div><h4>${escapeHtml(connection.name)}</h4><p>${escapeHtml(connection.type)}${connection.error ? ` · ${escapeHtml(connection.error)}` : ""}</p></div>
-    <span class="badge ${statusClass}">${escapeHtml(connection.status || "disconnected")}</span>
+    <div><h4>${escapeHtml(connection.name)}</h4><p>${escapeHtml(connectionDashboardPurpose(connection.type))}${connection.error ? ` · ${escapeHtml(connection.error)}` : ""}</p></div>
+    <span class="badge ${statusClass}">${escapeHtml(connectionStatusLabel(connection.status))}</span>
   </div>`;
+}
+
+function connectionDashboardPurpose(type) {
+  return ({
+    "tiktok-direct": "Reçoit les interactions du LIVE TikTok",
+    "tiktok-relay": "Reçoit TikTok depuis un relais",
+    websocket: "Reçoit les événements d’un outil externe",
+    "twitch-irc": "Reçoit le chat Twitch",
+    demo: "Sert uniquement aux tests manuels"
+  })[type] || "Reçoit des événements externes";
+}
+
+function connectionStatusLabel(status) {
+  return ({
+    connected: "connecté",
+    connecting: "connexion…",
+    reconnecting: "reconnexion…",
+    disconnected: "déconnecté",
+    error: "erreur"
+  })[status] || String(status || "déconnecté");
 }
 
 function activityRow(entry) {
@@ -2463,7 +2506,7 @@ function renderActions() {
               <label class="field"><span>@ du viewer test</span><input name="username" value="test_viewer" required></label>
               <label class="field"><span>Nom affiché</span><input name="nickname" value="Spectateur test" required></label>
               <label class="field"><span>Quantité / likes</span><input name="count" type="number" min="1" value="${simulatorType === "like" ? 25 : 5}"></label>
-              <label class="field"><span>Valeur</span><input name="value" type="number" min="0" value="5"></label>
+              <label class="field"><span>Valeur (hors cadeau)</span><input name="value" type="number" min="0" value="5" ${simulatorType === "gift" ? "disabled" : ""}></label>
               ${giftPickerField("giftName", "Cadeau", "Rose", simulatorType === "gift" ? "" : "disabled")}
               <label class="field"><span>Message</span><input name="message" value="!help" ${simulatorType === "chat" ? "" : "disabled"}></label>
             </div>
@@ -2737,7 +2780,16 @@ function overlayConfig(key) {
       progressLabel: "Objectif LIVE",
       showHeader: true,
       showGoal: true,
-      showPercent: true
+      showPercent: true,
+      likeGoalTitleOffsetX: 0,
+      likeGoalTitleOffsetY: 0,
+      likeGoalTitleScale: 100,
+      likeGoalTitleColor: "#ffffff",
+      likeGoalContentOffsetX: 0,
+      likeGoalContentOffsetY: 0,
+      likeGoalContentScale: 100,
+      likeGoalContentColor: "#ffffff",
+      likeGoalPercentColor: "#ff4f86"
     },
     topDonors: {
       title: "CLASSEMENT DONATEURS",
@@ -2785,6 +2837,8 @@ function overlayConfig(key) {
       completionActionId: "",
       showHours: true,
       showGoal: true,
+      timerTitleScale: 100,
+      timerValueScale: 100,
       timerAutoStart: false,
       incrementShortcut: "Alt+W, Alt+ArrowUp",
       decrementShortcut: "Alt+S, Alt+ArrowDown",
@@ -2797,6 +2851,8 @@ function overlayConfig(key) {
       multiplier: 2,
       showHours: false,
       showGoal: true,
+      timerTitleScale: 100,
+      timerValueScale: 100,
       timerAutoStart: false
     },
     winCounter: {
@@ -2894,6 +2950,15 @@ function overlayUrl(item, configOverride = null) {
       showHeader: "showHeader",
       showGoal: "showGoal",
       showPercent: "showPercent",
+      likeGoalTitleOffsetX: "titleX",
+      likeGoalTitleOffsetY: "titleY",
+      likeGoalTitleScale: "titleScale",
+      likeGoalTitleColor: "titleColor",
+      likeGoalContentOffsetX: "contentX",
+      likeGoalContentOffsetY: "contentY",
+      likeGoalContentScale: "contentScale",
+      likeGoalContentColor: "contentColor",
+      likeGoalPercentColor: "percentColor",
       showRank: "showRank",
       showAvatars: "showAvatars",
       showCrown: "showCrown",
@@ -2901,6 +2966,8 @@ function overlayUrl(item, configOverride = null) {
       showMetricLabel: "showMetricLabel",
       showBase: "showBase",
       showHours: "showHours",
+      timerTitleScale: "timerTitleScale",
+      timerValueScale: "timerValueScale",
       timerAutoStart: "timerAutoStart",
       allowNegative: "allowNegative",
       minCoins: "minCoins",
@@ -3014,7 +3081,13 @@ function overlayRuntimeFrame(
   let runtimeUrl = overlayUrl(previewItem, config);
   try {
     const previewUrl = new URL(runtimeUrl);
-    previewUrl.searchParams.set("preview", "static");
+    if (item.previewKind === "match") {
+      previewUrl.searchParams.set("preview", "animated");
+      previewUrl.searchParams.set("autoplay", "true");
+      previewUrl.searchParams.set("loop", "true");
+    } else {
+      previewUrl.searchParams.set("preview", "static");
+    }
     runtimeUrl = previewUrl.toString();
   } catch {
     // Keep the original local URL if it cannot be parsed.
@@ -3171,7 +3244,10 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
     tools: "Outils",
     matches: "Matchs"
   }[item.category] || item.category;
-  return `<article class="overlay-catalog-card ${allowed ? "" : "locked"}" data-overlay-card="${escapeHtml(item.key)}">
+  const previewVariant = String(item.previewKind || "generic")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-");
+  return `<article class="overlay-catalog-card overlay-catalog-card--${escapeHtml(previewVariant)} ${allowed ? "" : "locked"}" data-overlay-card="${escapeHtml(item.key)}">
     <div class="overlay-preview">${overlayPreview(item)}</div>
     <div class="overlay-card-copy">
       <div class="overlay-card-title">
@@ -3337,6 +3413,37 @@ function previewOverlayDesignSelection(item, value) {
   }
 }
 
+function overlayConfigurationPayload(item, config) {
+  try {
+    const payload = Object.fromEntries(
+      new URL(overlayUrl(item, config)).searchParams.entries()
+    );
+    for (const key of [
+      "view",
+      "token",
+      "channel",
+      "preview",
+      "screen",
+      "kind",
+      "match"
+    ]) {
+      delete payload[key];
+    }
+    return payload;
+  } catch {
+    return {};
+  }
+}
+
+async function publishOverlayConfiguration(key, config) {
+  const item = overlayDefinitions().find((entry) => entry.key === key);
+  if (!item || typeof api.publishOverlayConfiguration !== "function") return;
+  await api.publishOverlayConfiguration(
+    key,
+    overlayConfigurationPayload(item, config)
+  );
+}
+
 async function saveOverlayConfig(
   key,
   nextConfig,
@@ -3354,6 +3461,7 @@ async function saveOverlayConfig(
         [key]: nextConfig
       }
     }));
+    await publishOverlayConfiguration(key, nextConfig);
   } catch (error) {
     if (updateCard) locallyHandledOverlayConfigs.delete(key);
     throw error;
@@ -3432,11 +3540,22 @@ const OVERLAY_FIELD_HELP = {
   whenReached: "Définit le comportement automatique lorsque le Like Goal atteint sa valeur cible.",
   completionActionId: "Action ShenPulse lancée une seule fois lorsque le Like Goal franchit son objectif ou lorsque le timer standard arrive à zéro.",
   showPercent: "Affiche ou masque le pourcentage calculé à côté des valeurs du Like Goal.",
+  likeGoalTitleOffsetX: "Déplace horizontalement le titre du Like Goal sans déplacer le cadre ni la progression.",
+  likeGoalTitleOffsetY: "Déplace verticalement le titre du Like Goal sans déplacer le cadre ni la progression.",
+  likeGoalTitleScale: "Agrandit ou réduit uniquement le titre du Like Goal, sans modifier sa position ni le cadre.",
+  likeGoalTitleColor: "Modifie uniquement la couleur du titre du Like Goal.",
+  likeGoalContentOffsetX: "Déplace horizontalement tout le texte central : valeur actuelle, objectif, libellé et pourcentage.",
+  likeGoalContentOffsetY: "Déplace verticalement tout le texte central : valeur actuelle, objectif, libellé et pourcentage.",
+  likeGoalContentScale: "Agrandit ou réduit ensemble la valeur actuelle, l’objectif, le libellé et le pourcentage.",
+  likeGoalContentColor: "Modifie la couleur des valeurs et du libellé central, sans modifier le pourcentage.",
+  likeGoalPercentColor: "Modifie uniquement la couleur du pourcentage du Like Goal.",
   minCoins: "Valeur minimale du bocal après une remise à zéro ou une mise à jour.",
   showBase: "Affiche ou masque la partie de support prévue par le design.",
   seconds: "Temps chargé au démarrage de la source, avant les ajouts, retraits ou remises à zéro.",
   timerAutoStart: "Démarre automatiquement le compte à rebours dès que la source navigateur est chargée.",
-  showHours: "Affiche le format heures:minutes:secondes dès qu’une heure ou plus reste au compteur.",
+  showHours: "Force le format heures:minutes:secondes, même lorsque le compteur contient moins d’une heure.",
+  timerTitleScale: "Agrandit ou réduit uniquement le titre du timer, sans modifier le cadre ni la valeur.",
+  timerValueScale: "Agrandit ou réduit uniquement la valeur du timer, sans modifier le cadre ni le titre.",
   multiplier: "Valeur X2 à X5 affichée sur le Timer multiplicateur.",
   maxRows: "Nombre maximal d’éléments ou de personnes visibles simultanément.",
   showRank: "Affiche ou masque le numéro et le badge de chaque position du classement.",
@@ -4027,7 +4146,10 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
     "rankColor",
     "winCounterLabelColorNegative",
     "winCounterLabelColorNeutral",
-    "winCounterLabelColorPositive"
+    "winCounterLabelColorPositive",
+    "likeGoalTitleColor",
+    "likeGoalContentColor",
+    "likeGoalPercentColor"
   ];
   const numberKeys = [
     "scale",
@@ -4043,7 +4165,15 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
     "current",
     "target",
     "goalBaseline",
+    "likeGoalTitleOffsetX",
+    "likeGoalTitleOffsetY",
+    "likeGoalTitleScale",
+    "likeGoalContentOffsetX",
+    "likeGoalContentOffsetY",
+    "likeGoalContentScale",
     "seconds",
+    "timerTitleScale",
+    "timerValueScale",
     "multiplier",
     "maxRows",
     "minCoins",
@@ -4209,7 +4339,13 @@ function openOverlayConfig(item) {
       ${overlayField("progressLabel", "Unité / libellé de progression", config.progressLabel || "likes", "text")}
       ${overlaySelect("whenReached", "Lorsque l’objectif est atteint", config.whenReached || "increase", [["keep", "Conserver l’objectif"], ["increase", "Augmenter l’objectif"], ["double", "Doubler l’objectif"], ["hide", "Masquer le Like Goal"]])}
       ${overlayActionSelect("completionActionId", "Action à lancer lorsque l’objectif est atteint", config.completionActionId)}
-      ${overlaySelect("showPercent", "Afficher le pourcentage", String(config.showPercent !== false), [["true", "Oui"], ["false", "Non"]])}`;
+      ${overlaySelect("showPercent", "Afficher le pourcentage", String(config.showPercent !== false), [["true", "Oui"], ["false", "Non"]])}
+      ${overlayField("likeGoalTitleOffsetX", "Décalage horizontal du titre (px)", config.likeGoalTitleOffsetX ?? 0, "number", 'min="-500" max="500"')}
+      ${overlayField("likeGoalTitleOffsetY", "Décalage vertical du titre (px)", config.likeGoalTitleOffsetY ?? 0, "number", 'min="-500" max="500"')}
+      ${overlayField("likeGoalTitleScale", "Taille du titre (%)", config.likeGoalTitleScale ?? 100, "number", 'min="50" max="200"')}
+      ${overlayField("likeGoalContentOffsetX", "Décalage horizontal du texte central (px)", config.likeGoalContentOffsetX ?? 0, "number", 'min="-500" max="500"')}
+      ${overlayField("likeGoalContentOffsetY", "Décalage vertical du texte central (px)", config.likeGoalContentOffsetY ?? 0, "number", 'min="-500" max="500"')}
+      ${overlayField("likeGoalContentScale", "Taille du texte central (%)", config.likeGoalContentScale ?? 100, "number", 'min="50" max="200"')}`;
   }
   if (item.key === "coinJar") {
     specialized += `${overlayField("minCoins", "Minimum de pièces conservé", config.minCoins ?? 0, "number", 'min="0"')}
@@ -4218,7 +4354,9 @@ function openOverlayConfig(item) {
   if (["timer", "multiplierTimer"].includes(item.key)) {
     specialized += `${overlayField("seconds", "Durée initiale (secondes)", config.seconds ?? 300, "number", 'min="0" max="359999" full')}
       ${overlaySelect("timerAutoStart", "Démarrage automatique", String(config.timerAutoStart === true), [["true", "Oui"], ["false", "Non"]])}
-      ${overlaySelect("showHours", "Afficher les heures", String(config.showHours !== false), [["true", "Oui"], ["false", "Non"]])}`;
+      ${overlaySelect("showHours", "Afficher les heures", String(config.showHours !== false), [["true", "Oui"], ["false", "Non"]])}
+      ${overlayField("timerTitleScale", "Taille du titre (%)", config.timerTitleScale ?? 100, "number", 'min="50" max="200"')}
+      ${overlayField("timerValueScale", "Taille du texte du timer (%)", config.timerValueScale ?? 100, "number", 'min="50" max="200"')}`;
   }
   if (item.key === "timer") {
     specialized += overlayActionSelect(
@@ -4266,10 +4404,13 @@ function openOverlayConfig(item) {
     ${typographyOverlays.includes(item.key) ? overlaySelect("rtl", "Sens de lecture", String(config.rtl === true), [["false", "Gauche vers droite"], ["true", "Droite vers gauche"]]) : ""}`;
 
   const appearance = `${typographyOverlays.includes(item.key) ? `${overlaySelect("font", "Police", config.font || "Inter", [["Inter", "Inter"], ["Arial", "Arial"], ["Georgia", "Georgia"], ["Impact", "Impact"], ["Verdana", "Verdana"]])}
-    ${overlayField("fontSize", "Taille du texte (%)", config.fontSize ?? 100, "number", 'min="50" max="200"')}
-    ${overlayField("textColor", "Couleur générale du texte", config.textColor || "#ffffff", "color")}` : ""}
-    ${["myActions", "likeGoal", "timer", "multiplierTimer"].includes(item.key) ? overlayField("accentColor", "Couleur principale", config.accentColor || "#22d3ee", "color") : ""}
-    ${item.key === "likeGoal" ? overlayField("secondaryColor", "Couleur secondaire", config.secondaryColor || "#ff4f86", "color") : ""}
+    ${["timer", "multiplierTimer"].includes(item.key) ? "" : overlayField("fontSize", "Taille du texte (%)", config.fontSize ?? 100, "number", 'min="50" max="200"')}
+    ${item.key === "likeGoal"
+      ? `${overlayField("likeGoalTitleColor", "Couleur du titre", config.likeGoalTitleColor || config.textColor || "#ffffff", "color")}
+        ${overlayField("likeGoalContentColor", "Couleur du texte central", config.likeGoalContentColor || config.textColor || "#ffffff", "color")}
+        ${overlayField("likeGoalPercentColor", "Couleur du pourcentage", config.likeGoalPercentColor || config.secondaryColor || "#ff4f86", "color")}`
+      : overlayField("textColor", "Couleur générale du texte", config.textColor || "#ffffff", "color")}` : ""}
+    ${["myActions", "timer", "multiplierTimer"].includes(item.key) ? overlayField("accentColor", "Couleur principale", config.accentColor || "#22d3ee", "color") : ""}
     ${item.key === "myActions" ? `${overlayField("backgroundColor", "Couleur du panneau", config.backgroundColor || "#111315", "color")}
       ${overlayField("backgroundOpacity", "Opacité du panneau (%)", config.backgroundOpacity ?? 82, "number", 'min="0" max="100"')}` : ""}
     ${overlayField("saturation", "Saturation du rendu (%)", config.saturation ?? 100, "number", 'min="0" max="200"')}
@@ -4361,7 +4502,7 @@ function openOverlayConfigLegacy(item) {
       ${dialogSection("Placement", "Déplacez et redimensionnez le rendu sans modifier les dimensions de la source OBS.", common, "dialog-section-accent")}
       ${dialogSection("Contenu & design", "Seuls les réglages réellement pris en charge par ce moteur sont proposés.", specialized || `<div class="field full"><small>Aucun réglage spécifique supplémentaire.</small></div>`)}
       ${dialogSection("Affichage", "Affinez les éléments visibles dans la source navigateur.", toggles)}
-      <div class="overlay-config-source"><span>Source HTTPS recommandée</span><strong>${item.previewKind === "match" ? "1080 × 1920" : item.previewKind === "leaderboard" || item.previewKind === "coin-jar" ? "520 × 640" : "1920 × 1080"}</strong><code>${escapeHtml(overlayUrl(item))}</code><small>OBS local</small><code>${escapeHtml(localOverlayUrl(item))}</code></div>
+      <div class="overlay-config-source"><span>Source HTTPS recommandée</span><strong>${escapeHtml(overlaySourceSize(item).label)}</strong><code>${escapeHtml(overlayUrl(item))}</code><small>OBS local</small><code>${escapeHtml(localOverlayUrl(item))}</code></div>
     </div>`,
     onSubmit: async (data) => {
       const next = {
@@ -4729,11 +4870,17 @@ function gameEntitlement(pack) {
   return (snapshot.state.commerce?.gameEntitlements || []).find((entry) => {
     if (typeof entry === "string") return entry === pack.id;
     if (!entry || entry.gameId !== pack.id) return false;
-    if (["expired", "revoked"].includes(entry.status)) return false;
-    if (entry.source === "trial" || entry.status === "trial") {
+    const status = String(entry.status || "").trim().toLowerCase();
+    const source = String(entry.source || "").trim().toLowerCase();
+    if (source === "trial" || status === "trial") {
       return commerceExpiryMs(entry) > Date.now();
     }
-    return true;
+    return (
+      !status ||
+      ["active", "captured", "completed", "paid", "purchased"].includes(
+        status
+      )
+    );
   });
 }
 
@@ -4757,6 +4904,16 @@ function gamePrice(pack) {
     style: "currency",
     currency: pack.currency || "EUR"
   }).format(Number(pack.price || 0));
+}
+
+function gameTileActionLabel(pack) {
+  if (isGameUnlocked(pack)) {
+    return pack.modeSelector ? "Choisir le mode" : "Entrer dans le jeu";
+  }
+  if (pack.accessMode === "purchase" && !hasGameEntitlement(pack)) {
+    return "Acheter le jeu";
+  }
+  return "Voir l’abonnement";
 }
 
 function gameAccessLabel(pack) {
@@ -4796,6 +4953,76 @@ function requireGameAccess(pack) {
     true
   );
   return false;
+}
+
+function openGamePurchaseDialog(pack) {
+  const price = gamePrice(pack);
+  const subscriptionMessage = hasProAccess()
+    ? "Votre abonnement est actif : le jeu sera accessible dès la validation du paiement."
+    : "Un abonnement Pro ou Premium actif sera aussi nécessaire pour lancer le jeu.";
+  openEditor({
+    title: `Acheter ${pack.name}`,
+    kicker: "ACHAT UNIQUE · PAIEMENT PAYPAL",
+    variant: "game-purchase",
+    submitLabel: `Acheter pour ${price}`,
+    pendingLabel: "Ouverture de PayPal…",
+    successMessage: "",
+    body: `
+      <div class="game-purchase-dialog">
+        <div class="game-purchase-visual">
+          <img src="${escapeHtml(gameArtwork(pack))}" alt="${escapeHtml(pack.name)}">
+          <div>
+            <small>MODULE INTERACTIF SHENPULSE</small>
+            <strong>${escapeHtml(pack.name)}</strong>
+          </div>
+        </div>
+        <div class="game-purchase-copy">
+          <span class="game-purchase-badge">ACHAT UNIQUE</span>
+          <h3>Ajoutez ce jeu à votre compte</h3>
+          <p>${escapeHtml(pack.description || "Débloquez ce jeu interactif dans ShenPulse.")}</p>
+          <div class="game-purchase-price">
+            <span>Prix du jeu</span>
+            <strong>${escapeHtml(price)}</strong>
+            <small>Paiement unique, sans renouvellement pour le jeu</small>
+          </div>
+          <ul class="game-purchase-facts">
+            <li><span>✓</span><div><strong>Conservé sur votre compte</strong><small>L’achat est resynchronisé automatiquement après votre retour de PayPal.</small></div></li>
+            <li><span>✓</span><div><strong>${hasProAccess() ? "Abonnement actif" : "Abonnement requis pour jouer"}</strong><small>${escapeHtml(subscriptionMessage)}</small></div></li>
+            <li><span>✓</span><div><strong>Paiement sécurisé par PayPal</strong><small>Votre navigateur s’ouvrira après confirmation.</small></div></li>
+          </ul>
+        </div>
+      </div>`,
+    onSubmit: async () => {
+      const response = await api.account.startGameCheckout({
+        productId: pack.id
+      });
+      const result = response?.result || response;
+      if (response?.snapshot) {
+        acceptSnapshot(response.snapshot);
+        currentPage = "games";
+      }
+      if (result?.cancelled) {
+        toast(
+          "Achat annulé",
+          `Aucun paiement n’a été enregistré pour ${pack.name}.`
+        );
+      } else if (result?.alreadyPurchased) {
+        toast(
+          "Jeu déjà acheté",
+          `${pack.name} est déjà associé à votre compte ShenPulse.`
+        );
+      } else if (result?.checkoutCompleted) {
+        toast(
+          "Achat validé",
+          `${pack.name} est maintenant associé à votre compte ShenPulse.`
+        );
+      } else {
+        throw new Error(
+          "L’achat n’a pas pu être confirmé. Aucun accès n’a été modifié."
+        );
+      }
+    }
+  });
 }
 
 function renderGamesCatalogLegacy() {
@@ -4886,7 +5113,7 @@ function renderGamesV2() {
             <div class="game-tile-art" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(gameArtwork(pack))}')"></div>
             <span class="tile-status ${isGameUnlocked(pack) ? "unlocked" : "locked"}">${isGameUnlocked(pack) ? "✓ " : "🔒 "}${escapeHtml(gameAccessLabel(pack))}</span>
             <div class="tile-caption"><span>${escapeHtml(pack.source || pack.connector.type)}</span><h3>${escapeHtml(pack.name)}</h3><small>${pack.modeSelector ? `${pack.modes.length} modes · ${pack.effects.length} interactions` : `${pack.effects.length} interactions · ${gamePrice(pack)}`}</small></div>
-            <button class="tile-action-button" data-action="open-game" data-id="${escapeHtml(pack.id)}" aria-disabled="${String(!isGameUnlocked(pack))}">${isGameUnlocked(pack) ? (pack.modeSelector ? "Choisir le mode" : "Entrer dans le jeu") : "Accès requis"}</button>
+            <button class="tile-action-button" type="button" data-action="open-game" data-id="${escapeHtml(pack.id)}">${escapeHtml(gameTileActionLabel(pack))}</button>
           </article>`).join("")}
       </section>
       ${packs.length ? "" : emptyInline("Aucun jeu ne correspond à ces filtres.")}
@@ -4937,6 +5164,9 @@ async function enterGameWorkspace(pack) {
   gameEffectCategory = "all";
   await api.selectGame(pack.id);
   snapshot = await api.getSnapshot();
+  await restoreActiveGameInstallProgress(pack.id, {
+    renderWhenFound: false
+  });
   render();
   content.scrollTop = 0;
 }
@@ -4974,7 +5204,6 @@ function renderGameWorkspace(pack) {
       </button>`).join("")}
     </nav>
     <section class="game-workspace-content">${renderGameWorkspaceStep(pack, unlocked)}</section>
-    ${renderGameInstallProgressModal(pack)}
     ${renderGameLaunchProgressModal(pack)}
   </div>`;
 }
@@ -4996,11 +5225,13 @@ function gameJourneyFor(pack) {
     .filter(Boolean);
   const journey = custom.length ? custom : DEFAULT_GAME_JOURNEY;
   if (!CONFIGURABLE_INTEGRATED_GAMES.has(pack.id)) return journey;
-  return journey.map((step) =>
-    step.id === "installation"
-      ? { ...step, label: "Réglages", icon: "⚙" }
-      : step
-  );
+  return journey
+    .filter((step) => step.id === "installation" || step.id === "launch")
+    .map((step) =>
+      step.id === "installation"
+        ? { ...step, label: "Réglages", icon: "⚙" }
+        : step
+    );
 }
 
 function renderGameWorkspaceStep(pack, unlocked) {
@@ -5019,6 +5250,7 @@ function renderGameWorkspaceStep(pack, unlocked) {
 function integratedGameSettings(gameId) {
   const defaults = {
     "coin-pusher": {
+      capacityModelVersion: 2,
       theme: "arcade",
       topN: 3,
       roundDurationMinutes: 15,
@@ -5026,7 +5258,59 @@ function integratedGameSettings(gameId) {
       coinScale: 1,
       volume: 0.8,
       maxCoins: 1000,
-      sideLossEnabled: false
+      sideLossEnabled: false,
+      guardGift: {
+        giftId: "",
+        name: "",
+        image: "",
+        cost: 0,
+        durationSeconds: 12,
+        includeCoinDrop: true
+      },
+      mysteryCube: {
+        giftId: "",
+        name: "",
+        image: "",
+        cost: 0,
+        enabled: false,
+        spawnChance: 2,
+        includeCoinDrop: false,
+        pointsBonusEnabled: true,
+        pointsBonusMin: 25,
+        pointsBonusMax: 100,
+        coinRainEnabled: true,
+        coinRainMin: 15,
+        coinRainMax: 40,
+        multiplierEnabled: true,
+        multiplierValue: 2,
+        multiplierDurationSeconds: 15,
+        barriersEnabled: true,
+        barriersDurationSeconds: 12
+      },
+      tickets: {
+        giftId: "",
+        name: "",
+        image: "",
+        cost: 0,
+        enabled: false,
+        spawnChance: 4,
+        includeCoinDrop: false,
+        countPerGift: 1,
+        minPoints: 10,
+        maxPoints: 75
+      },
+      platformImageUrl: "",
+      plinkoImageUrl: "",
+      scoreSlots: [-5, 0, 5, 10, 25, 10, 5, 0],
+      diamondCoinTiers: [
+        { diamonds: 5000, coinCount: 202 },
+        { diamonds: 1000, coinCount: 80 },
+        { diamonds: 100, coinCount: 20 },
+        { diamonds: 10, coinCount: 5 },
+        { diamonds: 1, coinCount: 1 }
+      ],
+      winnerPrizePercents: [10, 5, 2, 0, 0, 0, 0, 0, 0, 0],
+      giftRules: []
     },
     "connect-four": {
       columns: 7,
@@ -5039,29 +5323,127 @@ function integratedGameSettings(gameId) {
       rewards: { horizontal: 0, vertical: 0, diagonal: 0 }
     },
     "deal-or-no-deal": {
-      entryGift: "Rose",
-      premiumGift: "TikTok Universe",
-      boxValues: "0.01, 1, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000, 25000, 50000, 75000, 100000",
-      roundPattern: "6, 5, 4, 3, 2, 1",
-      bankerOfferRatio: 0.72,
-      premiumMultiplier: 1.5,
-      cashOfferEnabled: true,
-      swapEnabled: true,
-      buyBoxEnabled: true,
-      musicEnabled: true,
-      musicVolume: 0.35,
-      musicTrack: "conquest-of-paradise.mp3"
+      boxValues: [
+        1, 5, 10, 20, 30, 49, 88, 90, 99, 100, 149, 199,
+        249, 299, 300, 349, 350, 399, 500, 699, 800, 899, 999, 1000
+      ],
+      entryCost: 300,
+      roundPattern: [6, 5, 4, 3, 2, 1, 1, 1],
+      bankerRequests: [
+        {
+          id: "cash-offer",
+          type: "cashOffer",
+          enabled: true,
+          weight: 70,
+          amount: 0,
+          targetMode: "random",
+          forceAfterOpenedCount: 0
+        },
+        {
+          id: "swap-box",
+          type: "swapBox",
+          enabled: true,
+          weight: 20,
+          amount: 0,
+          targetMode: "playerChoice",
+          forceAfterOpenedCount: 0
+        },
+        {
+          id: "buy-box",
+          type: "buyBox",
+          enabled: true,
+          weight: 10,
+          amount: 100,
+          targetMode: "random",
+          forceAfterOpenedCount: 0
+        }
+      ],
+      music: {},
+      rigging: {
+        enabled: true,
+        selectedBoxBigValueThreshold: 500,
+        selectedBoxBigValueChance: 0.05,
+        finalChoiceLowValue: -500,
+        finalChoiceHighValueThreshold: 500,
+        finalChoiceLowValueChance: 0.9
+      },
+      spend: {
+        enabled: false,
+        premiumEntryCost: 1000,
+        rewardMultiplier: 3
+      }
     }
   };
   const saved = snapshot.state.game.connectorOverrides?.[gameId] || {};
   const merged = { ...(defaults[gameId] || {}), ...saved };
+  if (gameId === "coin-pusher") {
+    merged.guardGift = {
+      ...defaults["coin-pusher"].guardGift,
+      ...(saved.guardGift || {})
+    };
+    merged.mysteryCube = {
+      ...defaults["coin-pusher"].mysteryCube,
+      ...(saved.mysteryCube || {})
+    };
+    merged.tickets = {
+      ...defaults["coin-pusher"].tickets,
+      ...(saved.tickets || {})
+    };
+    for (const key of [
+      "scoreSlots",
+      "diamondCoinTiers",
+      "winnerPrizePercents",
+      "giftRules"
+    ]) {
+      merged[key] = Array.isArray(saved[key])
+        ? structuredClone(saved[key])
+        : structuredClone(defaults["coin-pusher"][key]);
+    }
+  }
   if (gameId === "connect-four") {
     merged.rewards = {
       ...defaults["connect-four"].rewards,
       ...(saved.rewards || {})
     };
   }
+  if (gameId === "deal-or-no-deal") {
+    const savedBoxValues = integratedNumberList(saved.boxValues);
+    const savedRoundPattern = integratedNumberList(saved.roundPattern);
+    merged.boxValues =
+      savedBoxValues.length === 24
+        ? savedBoxValues
+        : [...defaults["deal-or-no-deal"].boxValues];
+    merged.roundPattern = savedRoundPattern.length
+      ? savedRoundPattern
+      : [...defaults["deal-or-no-deal"].roundPattern];
+    merged.bankerRequests =
+      Array.isArray(saved.bankerRequests) && saved.bankerRequests.length
+      ? structuredClone(saved.bankerRequests)
+      : structuredClone(defaults["deal-or-no-deal"].bankerRequests);
+    merged.music =
+      saved.music && typeof saved.music === "object" && !Array.isArray(saved.music)
+        ? structuredClone(saved.music)
+        : {};
+    merged.rigging = {
+      ...defaults["deal-or-no-deal"].rigging,
+      ...(saved.rigging || {})
+    };
+    merged.spend = {
+      ...defaults["deal-or-no-deal"].spend,
+      ...(saved.spend || {})
+    };
+    if (!saved.spend && Number(saved.premiumMultiplier) > 0) {
+      merged.spend.rewardMultiplier = Number(saved.premiumMultiplier);
+    }
+  }
   return merged;
+}
+
+function integratedNumberList(value) {
+  const source = Array.isArray(value)
+    ? value
+    : String(value || "").split(/[\s,;|]+/);
+  return source.map(Number).filter(Number.isFinite);
 }
 
 function integratedNumberField(name, label, value, min, max, step = 1, detail = "") {
@@ -5072,27 +5454,387 @@ function integratedNumberField(name, label, value, min, max, step = 1, detail = 
   </label>`;
 }
 
+function integratedTextArea(name, label, value, detail = "") {
+  return `<label class="integrated-setting-field full">
+    <span>${escapeHtml(label)}</span>
+    <textarea name="${escapeHtml(name)}">${escapeHtml(value)}</textarea>
+    ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+  </label>`;
+}
+
+function integratedToggle(name, title, detail, checked) {
+  return `<label class="integrated-setting-toggle">
+    <input name="${escapeHtml(name)}" type="checkbox" ${checked ? "checked" : ""}>
+    <span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(detail)}</small></span>
+  </label>`;
+}
+
+function integratedGiftField(name, label, value, detail = "") {
+  return `<label class="integrated-setting-field">
+    <span>${escapeHtml(label)}</span>
+    <input name="${escapeHtml(name)}" value="${escapeHtml(value || "")}" list="gift-catalog-options" autocomplete="off">
+    ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+  </label>`;
+}
+
+function integratedSettingsTabLabel(id, icon, title, detail, className = "") {
+  return `<label for="${escapeHtml(id)}" class="${escapeHtml(className)}">
+    <span class="integrated-tab-icon" aria-hidden="true">${escapeHtml(icon)}</span>
+    <span class="integrated-tab-copy">
+      <strong>${escapeHtml(title)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </span>
+  </label>`;
+}
+
+function renderDealBoxValueFields(values) {
+  return `<div class="integrated-box-values-grid">
+    ${(Array.isArray(values) ? values : [])
+      .slice(0, 24)
+      .map(
+        (value, index) => `<label class="integrated-box-value-field">
+          <span>Valeur ${index + 1}</span>
+          <div><b>#${index + 1}</b><input name="boxValue" type="number" min="-999999" max="999999" step="1" value="${escapeHtml(value)}" required></div>
+        </label>`
+      )
+      .join("")}
+  </div>`;
+}
+
+function renderDealRoundPreview(roundPattern) {
+  return `<div class="integrated-round-preview">
+    ${(Array.isArray(roundPattern) ? roundPattern : [])
+      .slice(0, 12)
+      .map(
+        (count, index) => `<span>
+          <small>Manche ${index + 1}</small>
+          <strong>${escapeHtml(count)}</strong>
+          <em>boîte${Number(count) > 1 ? "s" : ""}</em>
+        </span>`
+      )
+      .join("")}
+  </div>`;
+}
+
+function dealHostValueTone(box, allBoxes) {
+  const value = Number(box?.value) || 0;
+  if (value < 0) return "value-negative";
+  const values = (Array.isArray(allBoxes) ? allBoxes : [])
+    .map((item) => Number(item?.value) || 0)
+    .sort((left, right) => left - right);
+  if (values.length <= 1) return "value-mid";
+  const index = Math.max(0, values.findIndex((item) => item >= value));
+  const rank = index / Math.max(1, values.length - 1);
+  if (rank >= 0.86) return "value-jackpot";
+  if (rank >= 0.62) return "value-high";
+  if (rank <= 0.28) return "value-low";
+  return "value-mid";
+}
+
+function formatDealHostValue(value) {
+  return new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: 0
+  }).format(Number(value) || 0);
+}
+
+function formatDealHostMultiplier(value) {
+  return new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: 2
+  }).format(Number(value) || 1);
+}
+
+function renderDealPrivateMonitor() {
+  if (!canUseDealCheatSettings()) return "";
+  const state = dealOrNoDealHostState;
+  const boxes = Array.isArray(state?.boxes) ? state.boxes : [];
+  const payoutMultiplier = Math.max(
+    0.01,
+    Math.min(100, Number(state?.payoutMultiplier) || 1)
+  );
+  const multiplierLabel = formatDealHostMultiplier(payoutMultiplier);
+  const updatedAt = Number(state?.updatedAt) || 0;
+  const updateLabel = updatedAt
+    ? `Actualisé à ${new Intl.DateTimeFormat("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }).format(new Date(updatedAt))}`
+    : "En attente de l’ouverture du jeu";
+  const phaseLabels = {
+    lobby: "Salle d’attente",
+    select: "Choix de la boîte joueur",
+    opening: "Ouverture des boîtes",
+    bankerCall: "Appel du banquier",
+    banker: "Appel du banquier",
+    targetChoice: "Choix d’une boîte",
+    decision: "Décision du joueur",
+    finalChoice: "Duel final",
+    final: "Duel final",
+    result: "Résultat"
+  };
+  return `<section class="deal-private-monitor" data-deal-private-monitor>
+    <header>
+      <div>
+        <span class="deal-private-kicker"><i></i> SUIVI PRIVÉ EN DIRECT</span>
+        <div class="deal-private-title-row">
+          <h3>Contenu réel des 24 boîtes</h3>
+          ${payoutMultiplier > 1 ? `<strong>GAINS ×${escapeHtml(multiplierLabel)}</strong>` : ""}
+        </div>
+        <p>${payoutMultiplier > 1 ? `Les montants affichés incluent le multiplicateur ×${escapeHtml(multiplierLabel)} de la partie Premium.` : "Visible uniquement par les comptes autorisés dans l’administration. Les joueurs ne voient jamais ces valeurs avant l’ouverture."}</p>
+      </div>
+      <div class="deal-private-status">
+        <strong>${escapeHtml(phaseLabels[state?.phase] || (boxes.length ? "Partie en cours" : "Jeu fermé"))}</strong>
+        <small>${escapeHtml(updateLabel)}</small>
+      </div>
+    </header>
+    ${
+      boxes.length
+        ? `<div class="deal-private-box-grid">
+          ${boxes
+            .map((box) => {
+              const effectiveValue = Math.round(
+                (Number(box.value) || 0) * payoutMultiplier
+              );
+              const status = box.own
+                ? "Boîte joueur"
+                : box.opened
+                  ? "Ouverte"
+                  : "Fermée";
+              const stateClass = box.own
+                ? "is-own"
+                : box.opened
+                  ? "is-opened"
+                  : "is-closed";
+              return `<article class="deal-private-box ${stateClass} ${dealHostValueTone(box, boxes)}">
+                <header><b>#${escapeHtml(box.id)}</b><small>${escapeHtml(status)}</small></header>
+                <strong>${escapeHtml(formatDealHostValue(effectiveValue))}<span>♦</span></strong>
+                ${payoutMultiplier > 1 ? `<em>Base ${escapeHtml(formatDealHostValue(box.value))}</em>` : ""}
+              </article>`;
+            })
+            .join("")}
+        </div>`
+        : `<div class="deal-private-empty">
+          <span>◇</span>
+          <div><strong>Les valeurs apparaîtront ici dès l’ouverture du jeu</strong><p>Lancez DealOrNoDeal : l’affectation aléatoire de chaque valeur sera transmise immédiatement.</p></div>
+        </div>`
+    }
+    ${
+      state?.playerName ||
+      state?.bankerRequestText ||
+      Number(state?.bonusValue) ||
+      payoutMultiplier > 1
+        ? `<footer>
+          ${state.playerName ? `<span><small>Joueur</small><strong>${escapeHtml(state.playerName)}</strong></span>` : ""}
+          ${payoutMultiplier > 1 ? `<span class="is-premium"><small>Mode choisi</small><strong>Gains ×${escapeHtml(multiplierLabel)}</strong></span>` : ""}
+          ${state.bankerRequestText ? `<span><small>Banquier</small><strong>${escapeHtml(state.bankerRequestText)}</strong></span>` : ""}
+          ${Number(state.bonusValue) ? `<span><small>Bonus</small><strong>${escapeHtml(formatDealHostValue(state.bonusValue))} ♦</strong></span>` : ""}
+        </footer>`
+        : ""
+    }
+  </section>`;
+}
+
+function syncDealPrivateMonitor() {
+  const current = content.querySelector("[data-deal-private-monitor]");
+  if (!current || !canUseDealCheatSettings()) return;
+  current.outerHTML = renderDealPrivateMonitor();
+}
+
+function coinPusherGiftRulesText(rules) {
+  return (Array.isArray(rules) ? rules : [])
+    .map((rule) =>
+      [
+        rule.name || rule.giftId || "",
+        Math.max(1, Math.round(Number(rule.coinCount) || 1)),
+        rule.enabled === false ? "non" : "oui"
+      ].join(" | ")
+    )
+    .join("\n");
+}
+
+function coinPusherDiamondTiersText(tiers) {
+  return (Array.isArray(tiers) ? tiers : [])
+    .map((tier) => `${Number(tier.diamonds) || 0} = ${Number(tier.coinCount) || 0}`)
+    .join("\n");
+}
+
+function renderDealBankerRequest(request, index, total) {
+  const type = ["cashOffer", "swapBox", "buyBox"].includes(request.type)
+    ? request.type
+    : "cashOffer";
+  const targetMode = ["random", "highest", "lowest", "playerChoice"].includes(
+    request.targetMode
+  )
+    ? request.targetMode
+    : type === "swapBox"
+      ? "playerChoice"
+      : "random";
+  return `<article class="integrated-banker-request">
+    <input type="hidden" name="banker.${index}.id" value="${escapeHtml(request.id || `banker-request-${index + 1}`)}">
+    <header>
+      <strong>Demande ${index + 1}</strong>
+      <label><input name="banker.${index}.enabled" type="checkbox" ${request.enabled !== false ? "checked" : ""}> Active</label>
+      <button type="button" data-action="remove-deal-banker-request" data-index="${index}" ${total <= 1 ? "disabled" : ""}>×</button>
+    </header>
+    <div class="integrated-settings-grid">
+      <label class="integrated-setting-field"><span>Type de demande</span><select name="banker.${index}.type">
+        <option value="cashOffer" ${type === "cashOffer" ? "selected" : ""}>Offre en diamants</option>
+        <option value="swapBox" ${type === "swapBox" ? "selected" : ""}>Échange de boîte</option>
+        <option value="buyBox" ${type === "buyBox" ? "selected" : ""}>Achat d’une boîte</option>
+      </select></label>
+      ${integratedNumberField(`banker.${index}.weight`, "Poids de tirage", request.weight, 0, 999)}
+      ${integratedNumberField(`banker.${index}.forceAfterOpenedCount`, "Forcer après X boîtes", request.forceAfterOpenedCount, 0, 21, 1, "0 conserve un tirage uniquement aléatoire.")}
+      ${integratedNumberField(`banker.${index}.amount`, "Montant / prix", request.amount, 0, 999999, 1, "0 calcule automatiquement une offre en diamants.")}
+      <label class="integrated-setting-field"><span>Boîte ciblée</span><select name="banker.${index}.targetMode">
+        <option value="random" ${targetMode === "random" ? "selected" : ""}>Aléatoire</option>
+        <option value="highest" ${targetMode === "highest" ? "selected" : ""}>Plus haute valeur</option>
+        <option value="lowest" ${targetMode === "lowest" ? "selected" : ""}>Plus basse valeur</option>
+        <option value="playerChoice" ${targetMode === "playerChoice" ? "selected" : ""}>Choix du joueur</option>
+      </select></label>
+    </div>
+  </article>`;
+}
+
+function renderDealMusicFields(config) {
+  const scenes = [
+    ["waiting", "Attente", "Epilogue (Romeo and Juliet)"],
+    ["dramaticLoss", "Perte dramatique", "Epilogue (Romeo and Juliet)"],
+    ["funeral", "Funérailles", "Chopin - Marche Funèbre"],
+    ["badRun", "Mauvaise série", "Bruno Coulais - Norbu"],
+    ["uncertain", "Incertitude", "Sorrow"],
+    ["bankerOffer", "Offre du banquier", "Sorrow"],
+    ["heroicOffer", "Offre héroïque", "Titans From Alexander"],
+    ["solemnFinal", "Final solennel", "Conquest of Paradise"],
+    ["heroicTension", "Tension héroïque", "Titans From Alexander"],
+    ["finalDuel", "Duel final", "The Last of the Mohicans - Promentory"]
+  ];
+  return scenes
+    .map(([scene, label, defaultTitle]) => {
+      const override = config.music?.[scene] || {};
+      return `<article class="integrated-music-row">
+        <header><strong>${escapeHtml(label)}</strong><small>${escapeHtml(defaultTitle)}</small></header>
+        <label class="integrated-setting-field"><span>Titre personnalisé</span><input name="music.${scene}.title" value="${escapeHtml(override.title || "")}" placeholder="${escapeHtml(defaultTitle)}"></label>
+        <label class="integrated-setting-field"><span>URL audio personnalisée</span><input name="music.${scene}.url" type="url" value="${escapeHtml(override.url || "")}" placeholder="https://…"><small>Vide = musique originale intégrée.</small></label>
+      </article>`;
+    })
+    .join("");
+}
+
 function renderIntegratedGameFields(pack, config) {
   if (pack.id === "coin-pusher") {
-    return `<div class="integrated-settings-sections">
-      <section class="integrated-settings-card">
-        <header><span>01</span><div><h4>Plateau et manche</h4><p>Les réglages essentiels du Coin Pusher de ShenazenOverlay.</p></div></header>
-        <div class="integrated-settings-grid">
-          <label class="integrated-setting-field"><span>Thème du plateau</span><select name="theme"><option value="arcade" ${config.theme === "arcade" ? "selected" : ""}>Arcade classique</option><option value="galactic-palace" ${config.theme === "galactic-palace" ? "selected" : ""}>Palais galactique</option></select></label>
-          ${integratedNumberField("roundDurationMinutes", "Durée d’une manche (min)", config.roundDurationMinutes, 1, 180)}
-          ${integratedNumberField("topN", "Joueurs récompensés", config.topN, 1, 10)}
-          ${integratedNumberField("maxCoins", "Capacité du plateau", config.maxCoins, 80, 10000, 20)}
-        </div>
-      </section>
-      <section class="integrated-settings-card">
-        <header><span>02</span><div><h4>Physique et ambiance</h4><p>Ajustez le rythme sans modifier les associations de cadeaux.</p></div></header>
-        <div class="integrated-settings-grid">
-          ${integratedNumberField("pusherSpeed", "Vitesse du poussoir", config.pusherSpeed, 0.5, 2, 0.1)}
-          ${integratedNumberField("coinScale", "Taille des pièces", config.coinScale, 0.6, 2.2, 0.1)}
-          ${integratedNumberField("volume", "Volume général", config.volume, 0, 1, 0.05)}
-          <label class="integrated-setting-toggle"><input name="sideLossEnabled" type="checkbox" ${config.sideLossEnabled ? "checked" : ""}><span><strong>Pertes latérales</strong><small>Les pièces peuvent tomber sur les côtés du plateau.</small></span></label>
-        </div>
-      </section>
+    const activePanel = [
+      "general",
+      "board",
+      "gifts",
+      "bonus"
+    ].includes(integratedSettingsPanels.get(pack.id))
+      ? integratedSettingsPanels.get(pack.id)
+      : "general";
+    return `<div class="integrated-settings-tabs coin-pusher-settings-tabs">
+      <input id="coin-settings-general" type="radio" name="integratedSettingsPanel" value="general" ${activePanel === "general" ? "checked" : ""}>
+      <input id="coin-settings-board" type="radio" name="integratedSettingsPanel" value="board" ${activePanel === "board" ? "checked" : ""}>
+      <input id="coin-settings-gifts" type="radio" name="integratedSettingsPanel" value="gifts" ${activePanel === "gifts" ? "checked" : ""}>
+      <input id="coin-settings-bonus" type="radio" name="integratedSettingsPanel" value="bonus" ${activePanel === "bonus" ? "checked" : ""}>
+      <nav class="integrated-settings-tab-nav" aria-label="Réglages Coin Pusher">
+        ${integratedSettingsTabLabel("coin-settings-general", "01", "Général", "Manche, classement et physique")}
+        ${integratedSettingsTabLabel("coin-settings-board", "02", "Plateau & scores", "Design, cases et dotations")}
+        ${integratedSettingsTabLabel("coin-settings-gifts", "03", "Cadeaux & gains", "Diamants et règles spéciales")}
+        ${integratedSettingsTabLabel("coin-settings-bonus", "04", "Bonus spéciaux", "Barrières, dé mystère et tickets")}
+      </nav>
+      <div class="integrated-settings-tab-panels">
+        <section data-integrated-panel="general" class="integrated-settings-sections">
+          <article class="integrated-settings-card">
+            <header><span>01</span><div><h4>Manche et classement</h4><p>Durée, podium et capacité physique du jeu original.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedNumberField("roundDurationMinutes", "Durée d’une manche (min)", config.roundDurationMinutes, 1, 180)}
+              ${integratedNumberField("topN", "Joueurs récompensés", config.topN, 1, 10)}
+              ${integratedNumberField("maxCoins", "Capacité simultanée", config.maxCoins, 80, 999999, 20)}
+              ${integratedNumberField("volume", "Volume général", config.volume, 0, 1, 0.05)}
+            </div>
+          </article>
+          <article class="integrated-settings-card">
+            <header><span>02</span><div><h4>Physique</h4><p>Vitesse du poussoir, taille des pièces et pertes latérales.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedNumberField("pusherSpeed", "Vitesse du poussoir", config.pusherSpeed, 0.5, 2, 0.1)}
+              ${integratedNumberField("coinScale", "Taille des pièces", config.coinScale, 0.6, 2.2, 0.1)}
+              ${integratedToggle("sideLossEnabled", "Pertes latérales", "Les pièces peuvent tomber sur les côtés du plateau.", config.sideLossEnabled)}
+            </div>
+          </article>
+        </section>
+        <section data-integrated-panel="board" class="integrated-settings-sections">
+          <article class="integrated-settings-card">
+            <header><span>03</span><div><h4>Direction artistique</h4><p>Les deux designs et les images personnalisables de ShenazenOverlay.</p></div></header>
+            <div class="integrated-settings-grid">
+              <label class="integrated-setting-field"><span>Thème du plateau</span><select name="theme"><option value="arcade" ${config.theme === "arcade" ? "selected" : ""}>Arcade ShenPulse</option><option value="galactic-palace" ${config.theme === "galactic-palace" ? "selected" : ""}>Palais galactique</option></select></label>
+              <label class="integrated-setting-field"><span>Image de plateforme</span><input name="platformImageUrl" value="${escapeHtml(config.platformImageUrl || "")}" placeholder="Image intégrée par défaut"><small>URL HTTPS ou data URL courte ; vide conserve la plateforme originale.</small></label>
+              <label class="integrated-setting-field full"><span>Fond du Plinko</span><input name="plinkoImageUrl" value="${escapeHtml(config.plinkoImageUrl || "")}" placeholder="Fond intégré par défaut"><small>URL facultative utilisée derrière les plots.</small></label>
+            </div>
+          </article>
+          <article class="integrated-settings-card">
+            <header><span>04</span><div><h4>Cases et dotations</h4><p>Valeurs des cases et pourcentage attribué à chaque rang.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedTextArea("scoreSlots", "Cases de points", config.scoreSlots.join(", "), "De 3 à 12 valeurs, négatives ou positives.")}
+              ${integratedTextArea("winnerPrizePercents", "Dotations du classement (%)", config.winnerPrizePercents.join(", "), "Un pourcentage par rang, jusqu’au Top 10.")}
+            </div>
+          </article>
+        </section>
+        <section data-integrated-panel="gifts" class="integrated-settings-sections">
+          <article class="integrated-settings-card">
+            <header><span>05</span><div><h4>Diamants → pièces</h4><p>Barème exact utilisé pour décomposer le coût total d’un combo.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedTextArea("diamondCoinTiers", "Paliers", coinPusherDiamondTiersText(config.diamondCoinTiers), "Une ligne par palier : diamants = pièces. Exemple : 1000 = 80.")}
+            </div>
+          </article>
+          <article class="integrated-settings-card">
+            <header><span>06</span><div><h4>Exceptions par cadeau</h4><p>Un cadeau précis peut remplacer le barème automatique.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedTextArea("giftRules", "Règles personnalisées", coinPusherGiftRulesText(config.giftRules), "Une ligne : nom du cadeau | nombre de pièces | oui/non.")}
+            </div>
+          </article>
+        </section>
+        <section data-integrated-panel="bonus" class="integrated-settings-sections">
+          <article class="integrated-settings-card">
+            <header><span>07</span><div><h4>Barrières latérales</h4><p>Un cadeau désigné relève temporairement les protections.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedGiftField("guardGiftName", "Cadeau des barrières", config.guardGift.name, "Laissez vide pour désactiver ce déclencheur dédié.")}
+              ${integratedNumberField("guardGiftDurationSeconds", "Durée (secondes)", config.guardGift.durationSeconds, 1, 300)}
+              ${integratedToggle("guardGiftIncludeCoinDrop", "Ajouter aussi les pièces normales", "Le cadeau conserve sa pluie de pièces en plus des barrières.", config.guardGift.includeCoinDrop)}
+            </div>
+          </article>
+          <article class="integrated-settings-card">
+            <header><span>08</span><div><h4>Dé mystère</h4><p>Toutes les probabilités et récompenses du cube bonus original.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedToggle("mysteryEnabled", "Activer le dé mystère", "Autorise le cadeau désigné et les apparitions aléatoires.", config.mysteryCube.enabled)}
+              ${integratedGiftField("mysteryGiftName", "Cadeau du dé", config.mysteryCube.name)}
+              ${integratedNumberField("mysterySpawnChance", "Chance sur les autres cadeaux (%)", config.mysteryCube.spawnChance, 0, 100, 0.5)}
+              ${integratedToggle("mysteryIncludeCoinDrop", "Ajouter les pièces normales", "Le cadeau spécial génère également ses pièces habituelles.", config.mysteryCube.includeCoinDrop)}
+              ${integratedToggle("mysteryPointsEnabled", "Bonus de points", "Ajoute un montant aléatoire au score.", config.mysteryCube.pointsBonusEnabled)}
+              ${integratedNumberField("mysteryPointsMin", "Points minimum", config.mysteryCube.pointsBonusMin, 1, 1000000)}
+              ${integratedNumberField("mysteryPointsMax", "Points maximum", config.mysteryCube.pointsBonusMax, 1, 1000000)}
+              ${integratedToggle("mysteryCoinRainEnabled", "Pluie de pièces", "Fait tomber une quantité aléatoire de pièces.", config.mysteryCube.coinRainEnabled)}
+              ${integratedNumberField("mysteryCoinRainMin", "Pièces minimum", config.mysteryCube.coinRainMin, 1, 10000)}
+              ${integratedNumberField("mysteryCoinRainMax", "Pièces maximum", config.mysteryCube.coinRainMax, 1, 10000)}
+              ${integratedToggle("mysteryMultiplierEnabled", "Multiplicateur de score", "Active temporairement un multiplicateur.", config.mysteryCube.multiplierEnabled)}
+              ${integratedNumberField("mysteryMultiplierValue", "Multiplicateur", config.mysteryCube.multiplierValue, 1.1, 10, 0.1)}
+              ${integratedNumberField("mysteryMultiplierDurationSeconds", "Durée du multiplicateur", config.mysteryCube.multiplierDurationSeconds, 1, 300)}
+              ${integratedToggle("mysteryBarriersEnabled", "Barrières bonus", "Relève aussi les protections latérales.", config.mysteryCube.barriersEnabled)}
+              ${integratedNumberField("mysteryBarriersDurationSeconds", "Durée des barrières", config.mysteryCube.barriersDurationSeconds, 1, 300)}
+            </div>
+          </article>
+          <article class="integrated-settings-card">
+            <header><span>09</span><div><h4>Tickets de points</h4><p>Des tickets physiques tombent sur le plateau et révèlent leur valeur.</p></div></header>
+            <div class="integrated-settings-grid">
+              ${integratedToggle("ticketsEnabled", "Activer les tickets", "Autorise le cadeau désigné et les tickets aléatoires.", config.tickets.enabled)}
+              ${integratedGiftField("ticketsGiftName", "Cadeau des tickets", config.tickets.name)}
+              ${integratedNumberField("ticketsSpawnChance", "Chance sur les autres cadeaux (%)", config.tickets.spawnChance, 0, 100, 0.5)}
+              ${integratedNumberField("ticketsCountPerGift", "Tickets par cadeau", config.tickets.countPerGift, 1, 50)}
+              ${integratedNumberField("ticketsMinPoints", "Valeur minimale", config.tickets.minPoints, 1, 1000000)}
+              ${integratedNumberField("ticketsMaxPoints", "Valeur maximale", config.tickets.maxPoints, 1, 1000000)}
+              ${integratedToggle("ticketsIncludeCoinDrop", "Ajouter les pièces normales", "Les tickets s’ajoutent au nombre normal de pièces.", config.tickets.includeCoinDrop)}
+            </div>
+          </article>
+        </section>
+      </div>
     </div>`;
   }
   if (pack.id === "connect-four") {
@@ -5119,49 +5861,114 @@ function renderIntegratedGameFields(pack, config) {
       </section>
     </div>`;
   }
-  return `<div class="integrated-settings-sections">
-    <section class="integrated-settings-card">
-      <header><span>01</span><div><h4>Entrée et boîtes</h4><p>Configurez la valeur du ticket et le déroulé des manches.</p></div></header>
-      <div class="integrated-settings-grid">
-        <label class="integrated-setting-field"><span>Cadeau d’entrée</span><input name="entryGift" value="${escapeHtml(config.entryGift)}" list="integrated-game-gifts"></label>
-        <label class="integrated-setting-field"><span>Cadeau premium</span><input name="premiumGift" value="${escapeHtml(config.premiumGift)}" list="integrated-game-gifts"></label>
-        <label class="integrated-setting-field full"><span>Valeurs des boîtes</span><textarea name="boxValues">${escapeHtml(config.boxValues)}</textarea><small>Séparez les valeurs par des virgules.</small></label>
-        <label class="integrated-setting-field full"><span>Rythme des manches</span><input name="roundPattern" value="${escapeHtml(config.roundPattern)}"><small>Nombre de boîtes à ouvrir : 6, 5, 4, 3, 2, 1.</small></label>
-      </div>
-    </section>
-    <section class="integrated-settings-card">
-      <header><span>02</span><div><h4>Banquier et ambiance</h4><p>Retrouvez les demandes et la bande-son du jeu d’origine.</p></div></header>
-      <div class="integrated-settings-grid">
-        ${integratedNumberField("bankerOfferRatio", "Ratio de l’offre", config.bankerOfferRatio, 0.1, 1.5, 0.01)}
-        ${integratedNumberField("premiumMultiplier", "Multiplicateur premium", config.premiumMultiplier, 1, 10, 0.1)}
-        <label class="integrated-setting-field"><span>Musique</span><select name="musicTrack">
-          ${[
-            ["conquest-of-paradise.mp3", "Conquest of Paradise"],
-            ["last-of-the-mohicans-promentory.mp3", "Last of the Mohicans"],
-            ["titans-alexander.mp3", "Titans · Alexander"],
-            ["romeo-juliet-epilogue.mp3", "Roméo & Juliette · Épilogue"],
-            ["norbu-cordes.mp3", "Norbu · Cordes"],
-            ["sorrow.mp3", "Sorrow"],
-            ["chopin-marche-funebre.mp3", "Chopin · Marche funèbre"]
-          ].map(([value, label]) => `<option value="${value}" ${config.musicTrack === value ? "selected" : ""}>${label}</option>`).join("")}
-        </select></label>
-        ${integratedNumberField("musicVolume", "Volume musique", config.musicVolume, 0, 1, 0.05)}
-        <label class="integrated-setting-toggle"><input name="cashOfferEnabled" type="checkbox" ${config.cashOfferEnabled !== false ? "checked" : ""}><span><strong>Offres en argent</strong><small>Le banquier peut proposer un montant.</small></span></label>
-        <label class="integrated-setting-toggle"><input name="swapEnabled" type="checkbox" ${config.swapEnabled !== false ? "checked" : ""}><span><strong>Échanges de boîte</strong><small>Le banquier peut proposer un échange.</small></span></label>
-        <label class="integrated-setting-toggle"><input name="buyBoxEnabled" type="checkbox" ${config.buyBoxEnabled !== false ? "checked" : ""}><span><strong>Achats de boîte</strong><small>Le banquier peut vendre une boîte.</small></span></label>
-        <label class="integrated-setting-toggle"><input name="musicEnabled" type="checkbox" ${config.musicEnabled !== false ? "checked" : ""}><span><strong>Bande-son active</strong><small>Jouer la musique dans la fenêtre du jeu.</small></span></label>
-      </div>
-      <datalist id="integrated-game-gifts">${GIFT_CATALOG.map((gift) => `<option value="${escapeHtml(gift.name)}"></option>`).join("")}</datalist>
-    </section>
+  const bankerRequests = Array.isArray(config.bankerRequests)
+    ? config.bankerRequests.slice(0, 12)
+    : [];
+  const showCheatTab = canUseDealCheatSettings();
+  const allowedPanels = [
+    "access",
+    "boxes",
+    "rounds",
+    "banker",
+    "music",
+    ...(showCheatTab ? ["cheat"] : [])
+  ];
+  const activePanel = allowedPanels.includes(
+    integratedSettingsPanels.get(pack.id)
+  )
+    ? integratedSettingsPanels.get(pack.id)
+    : "access";
+  return `<div class="integrated-settings-tabs deal-settings-tabs">
+    <input id="deal-settings-access" type="radio" name="integratedSettingsPanel" value="access" ${activePanel === "access" ? "checked" : ""}>
+    <input id="deal-settings-boxes" type="radio" name="integratedSettingsPanel" value="boxes" ${activePanel === "boxes" ? "checked" : ""}>
+    <input id="deal-settings-rounds" type="radio" name="integratedSettingsPanel" value="rounds" ${activePanel === "rounds" ? "checked" : ""}>
+    <input id="deal-settings-banker" type="radio" name="integratedSettingsPanel" value="banker" ${activePanel === "banker" ? "checked" : ""}>
+    <input id="deal-settings-music" type="radio" name="integratedSettingsPanel" value="music" ${activePanel === "music" ? "checked" : ""}>
+    ${showCheatTab ? `<input id="deal-settings-cheat" type="radio" name="integratedSettingsPanel" value="cheat" ${activePanel === "cheat" ? "checked" : ""}>` : ""}
+    <nav class="integrated-settings-tab-nav" aria-label="Réglages DealOrNoDeal">
+      ${integratedSettingsTabLabel("deal-settings-access", "01", "Accès", "Prix normal et entrée Premium")}
+      ${integratedSettingsTabLabel("deal-settings-boxes", "02", "Boîtes", "Les 24 valeurs de la partie")}
+      ${integratedSettingsTabLabel("deal-settings-rounds", "03", "Manches", "Rythme des appels du banquier")}
+      ${integratedSettingsTabLabel("deal-settings-banker", "04", "Banquier", "Offres, échanges et achats")}
+      ${integratedSettingsTabLabel("deal-settings-music", "05", "Musique", "Ambiance de chaque scène")}
+      ${showCheatTab ? integratedSettingsTabLabel("deal-settings-cheat", "!", "Triche", "Équilibrage privé du jeu", "cheat-tab-label") : ""}
+    </nav>
+    <div class="integrated-settings-tab-panels">
+      <section data-integrated-panel="access" class="integrated-settings-sections">
+        <article class="integrated-settings-card">
+          <header><span>01</span><div><h4>Prix d’entrée</h4><p>Coût normal nécessaire pour rejoindre la file du jeu.</p></div></header>
+          <div class="integrated-settings-grid">
+            ${integratedNumberField("entryCost", "Entrée normale (diamants)", config.entryCost, 1, 999999)}
+          </div>
+        </article>
+        <article class="integrated-settings-card">
+          <header><span>+</span><div><h4>Entrée premium</h4><p>Option de dépense supérieure avec récompenses multipliées.</p></div></header>
+          <div class="integrated-settings-grid">
+            ${integratedToggle("spendEnabled", "Activer l’entrée premium", "Propose une deuxième option au joueur.", config.spend.enabled)}
+            ${integratedNumberField("spendPremiumEntryCost", "Prix premium", config.spend.premiumEntryCost, 1, 999999)}
+            ${integratedNumberField("spendRewardMultiplier", "Multiplicateur des gains", config.spend.rewardMultiplier, 0.01, 100, 0.01)}
+          </div>
+        </article>
+      </section>
+      <section data-integrated-panel="boxes" class="integrated-settings-sections">
+        <article class="integrated-settings-card integrated-settings-card-wide">
+          <header><span>02</span><div><h4>Valeurs des 24 boîtes</h4><p>La liste originale accepte aussi les valeurs négatives, mais jamais zéro ni doublon.</p></div></header>
+          <div class="integrated-settings-metrics">
+            <span><small>Plus petite valeur</small><strong>${escapeHtml(formatDealHostValue(Math.min(...config.boxValues)))} ♦</strong></span>
+            <span><small>Plus grande valeur</small><strong>${escapeHtml(formatDealHostValue(Math.max(...config.boxValues)))} ♦</strong></span>
+            <span><small>Configuration</small><strong>24 / 24</strong></span>
+          </div>
+          ${renderDealBoxValueFields(config.boxValues)}
+        </article>
+      </section>
+      <section data-integrated-panel="rounds" class="integrated-settings-sections">
+        <article class="integrated-settings-card integrated-settings-card-wide">
+          <header><span>03</span><div><h4>Rythme des manches</h4><p>Nombre de boîtes ouvertes avant chaque appel du banquier.</p></div></header>
+          <div class="integrated-settings-grid">
+            ${integratedTextArea("roundPattern", "Boîtes à ouvrir par manche", config.roundPattern.join(", "), "Jusqu’à 12 manches. Réglage original : 6, 5, 4, 3, 2, 1, 1, 1.")}
+          </div>
+          ${renderDealRoundPreview(config.roundPattern)}
+        </article>
+      </section>
+      <section data-integrated-panel="banker" class="integrated-settings-stack">
+        <header class="integrated-section-toolbar">
+          <div><strong>Demandes du banquier</strong><small>Offres, échanges et achats pondérés ou forcés selon l’avancement.</small></div>
+          <button class="button" type="button" data-action="add-deal-banker-request" ${bankerRequests.length >= 12 ? "disabled" : ""}>＋ Ajouter une demande</button>
+        </header>
+        <input type="hidden" name="bankerRequestCount" value="${bankerRequests.length}">
+        ${bankerRequests.map((request, index) => renderDealBankerRequest(request, index, bankerRequests.length)).join("")}
+      </section>
+      <section data-integrated-panel="music" class="integrated-music-list">
+        <header class="integrated-section-toolbar">
+          <div><strong>Ambiances musicales</strong><small>Chaque moment du jeu possède sa piste d’origine et peut recevoir une URL personnalisée.</small></div>
+        </header>
+        ${renderDealMusicFields(config)}
+      </section>
+      ${showCheatTab ? `<section data-integrated-panel="cheat" class="integrated-settings-sections integrated-cheat-panel">
+        <article class="integrated-settings-card integrated-settings-card-wide">
+          <header><span>!</span><div><h4>Triche et équilibrage privé</h4><p>Cet onglet propriétaire reprend exactement les probabilités spéciales de ShenazenOverlay.</p></div></header>
+          <div class="integrated-settings-grid">
+            ${integratedToggle("riggingEnabled", "Activer les probabilités spéciales", "Autorise les deux règles de triche ci-dessous.", config.rigging.enabled)}
+            ${integratedNumberField("riggingSelectedThreshold", "Seuil d’une grosse valeur", config.rigging.selectedBoxBigValueThreshold, -999999, 999999)}
+            ${integratedNumberField("riggingSelectedChancePercent", "Chance de grosse valeur dans la boîte choisie (%)", Number(config.rigging.selectedBoxBigValueChance || 0) * 100, 0, 100, 0.01)}
+            ${integratedNumberField("riggingFinalLowValue", "Valeur piège du choix final", config.rigging.finalChoiceLowValue, -999999, 999999)}
+            ${integratedNumberField("riggingFinalHighThreshold", "Seuil haut du duel final", config.rigging.finalChoiceHighValueThreshold, -999999, 999999)}
+            ${integratedNumberField("riggingFinalLowChancePercent", "Chance d’imposer la valeur piège (%)", Number(config.rigging.finalChoiceLowValueChance || 0) * 100, 0, 100, 0.01)}
+          </div>
+        </article>
+      </section>` : ""}
+    </div>
   </div>`;
 }
 
 function renderIntegratedGameSettings(pack, unlocked) {
   const config = integratedGameSettings(pack.id);
-  return `<form class="integrated-game-settings" data-integrated-game-settings="${escapeHtml(pack.id)}">
+  return `<div class="integrated-game-config-page">
+    ${pack.id === "deal-or-no-deal" ? renderDealPrivateMonitor() : ""}
+    <form class="integrated-game-settings" data-integrated-game-settings="${escapeHtml(pack.id)}">
     <section class="game-interaction-toolbar integrated-settings-heading">
-      <div><span>⚙ RÉGLAGES DU JEU</span><h3>Configurer ${escapeHtml(pack.name)}</h3><p>Ces réglages reprennent l’écran dédié de ShenazenOverlay et restent enregistrés uniquement pour ${escapeHtml(overlayProfileName())}.</p></div>
-      <span class="game-step-count">INTÉGRÉ</span>
+      <div><span>⚙ RÉGLAGES DU JEU</span><h3>Configurer ${escapeHtml(pack.name)}</h3><p>Chaque rubrique regroupe une seule partie du jeu. Les changements restent propres au profil ${escapeHtml(overlayProfileName())}.</p></div>
+      <div class="integrated-settings-profile"><small>PROFIL ACTIF</small><strong>${escapeHtml(overlayProfileName())}</strong></div>
     </section>
     ${renderGamePageMessage(pack, "installation")}
     ${renderIntegratedGameFields(pack, config)}
@@ -5169,12 +5976,81 @@ function renderIntegratedGameSettings(pack, unlocked) {
       <div><strong>Jeu local prêt</strong><small>Aucune installation externe n’est nécessaire.</small></div>
       <button class="button" type="submit" ${unlocked ? "" : "disabled"}>Enregistrer</button>
       <button class="button primary game-launch-button" type="submit" data-launch-after-save="true" ${unlocked ? "" : "disabled"}>▶ Enregistrer et ouvrir le jeu</button>
-      <button class="button ghost" type="button" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Configurer les interactions →</button>
+      <button class="button ghost" type="button" data-action="game-step" data-value="launch" ${unlocked ? "" : "disabled"}>Voir le démarrage →</button>
     </footer>
-  </form>`;
+    </form>
+  </div>`;
+}
+
+function integratedGiftDefinition(name, fallback = {}) {
+  const cleanName = String(name || "").trim();
+  if (!cleanName) {
+    return { giftId: "", name: "", image: "", cost: 0 };
+  }
+  const gift = giftForName(cleanName);
+  const sameAsFallback =
+    normalizeGiftName(cleanName) === normalizeGiftName(fallback.name);
+  return {
+    giftId: String(
+      gift?.id || (sameAsFallback ? fallback.giftId : "") || ""
+    ).trim(),
+    name: cleanName,
+    image: String(
+      gift?.imageUrl || (sameAsFallback ? fallback.image : "") || ""
+    ).trim(),
+    cost: Math.max(
+      0,
+      Math.round(
+        Number(gift?.cost ?? (sameAsFallback ? fallback.cost : 0)) || 0
+      )
+    )
+  };
+}
+
+function parseCoinPusherDiamondTiers(value, fallback) {
+  const tiers = String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.split(/\s*(?:=|:|\|)\s*/))
+    .map(([diamonds, coinCount]) => ({
+      diamonds: Math.round(Number(diamonds)),
+      coinCount: Math.round(Number(coinCount))
+    }))
+    .filter(
+      (tier) =>
+        Number.isFinite(tier.diamonds) &&
+        tier.diamonds > 0 &&
+        Number.isFinite(tier.coinCount) &&
+        tier.coinCount > 0
+    )
+    .slice(0, 20);
+  return tiers.length ? tiers : structuredClone(fallback);
+}
+
+function parseCoinPusherGiftRules(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name = "", coinCount = "1", enabled = "oui"] = line
+        .split(/\s*\|\s*/)
+        .map((part) => part.trim());
+      const gift = giftForName(name);
+      return {
+        giftId: String(gift?.id || "").trim(),
+        name,
+        image: String(gift?.imageUrl || "").trim(),
+        cost: Math.max(0, Math.round(Number(gift?.cost) || 0)),
+        coinCount: Math.max(1, Math.round(Number(coinCount) || 1)),
+        enabled: !/^(?:0|false|non|no|off)$/i.test(enabled)
+      };
+    })
+    .filter((rule) => rule.name || rule.giftId)
+    .slice(0, 100);
 }
 
 function integratedSettingsFromForm(gameId, data) {
+  const current = integratedGameSettings(gameId);
   const number = (name, fallback, minimum, maximum) => {
     const value = Number(data.get(name));
     return Number.isFinite(value)
@@ -5182,15 +6058,123 @@ function integratedSettingsFromForm(gameId, data) {
       : fallback;
   };
   if (gameId === "coin-pusher") {
+    const pointsRange = [
+      Math.round(number("mysteryPointsMin", current.mysteryCube.pointsBonusMin, 1, 1000000)),
+      Math.round(number("mysteryPointsMax", current.mysteryCube.pointsBonusMax, 1, 1000000))
+    ].sort((left, right) => left - right);
+    const rainRange = [
+      Math.round(number("mysteryCoinRainMin", current.mysteryCube.coinRainMin, 1, 10000)),
+      Math.round(number("mysteryCoinRainMax", current.mysteryCube.coinRainMax, 1, 10000))
+    ].sort((left, right) => left - right);
+    const ticketRange = [
+      Math.round(number("ticketsMinPoints", current.tickets.minPoints, 1, 1000000)),
+      Math.round(number("ticketsMaxPoints", current.tickets.maxPoints, 1, 1000000))
+    ].sort((left, right) => left - right);
+    const scoreSlots = integratedNumberList(data.get("scoreSlots"))
+      .map((value) => Math.max(-9999, Math.min(9999, Math.round(value))))
+      .slice(0, 12);
+    const winnerPrizePercents = integratedNumberList(
+      data.get("winnerPrizePercents")
+    )
+      .map((value) => Math.max(0, Math.min(100, value)))
+      .slice(0, 10);
     return {
+      capacityModelVersion: 2,
       theme: data.get("theme") === "galactic-palace" ? "galactic-palace" : "arcade",
-      roundDurationMinutes: Math.round(number("roundDurationMinutes", 15, 1, 180)),
-      topN: Math.round(number("topN", 3, 1, 10)),
-      maxCoins: Math.round(number("maxCoins", 1000, 80, 10000)),
-      pusherSpeed: number("pusherSpeed", 1, 0.5, 2),
-      coinScale: number("coinScale", 1, 0.6, 2.2),
-      volume: number("volume", 0.8, 0, 1),
-      sideLossEnabled: data.has("sideLossEnabled")
+      roundDurationMinutes: Math.round(
+        number("roundDurationMinutes", current.roundDurationMinutes, 1, 180)
+      ),
+      topN: Math.round(number("topN", current.topN, 1, 10)),
+      maxCoins: Math.round(
+        number("maxCoins", current.maxCoins, 80, Number.MAX_SAFE_INTEGER)
+      ),
+      pusherSpeed: number("pusherSpeed", current.pusherSpeed, 0.5, 2),
+      coinScale: number("coinScale", current.coinScale, 0.6, 2.2),
+      volume: number("volume", current.volume, 0, 1),
+      sideLossEnabled: data.has("sideLossEnabled"),
+      guardGift: {
+        ...integratedGiftDefinition(
+          data.get("guardGiftName"),
+          current.guardGift
+        ),
+        durationSeconds: number(
+          "guardGiftDurationSeconds",
+          current.guardGift.durationSeconds,
+          1,
+          300
+        ),
+        includeCoinDrop: data.has("guardGiftIncludeCoinDrop")
+      },
+      mysteryCube: {
+        ...integratedGiftDefinition(
+          data.get("mysteryGiftName"),
+          current.mysteryCube
+        ),
+        enabled: data.has("mysteryEnabled"),
+        spawnChance: number(
+          "mysterySpawnChance",
+          current.mysteryCube.spawnChance,
+          0,
+          100
+        ),
+        includeCoinDrop: data.has("mysteryIncludeCoinDrop"),
+        pointsBonusEnabled: data.has("mysteryPointsEnabled"),
+        pointsBonusMin: pointsRange[0],
+        pointsBonusMax: pointsRange[1],
+        coinRainEnabled: data.has("mysteryCoinRainEnabled"),
+        coinRainMin: rainRange[0],
+        coinRainMax: rainRange[1],
+        multiplierEnabled: data.has("mysteryMultiplierEnabled"),
+        multiplierValue: number(
+          "mysteryMultiplierValue",
+          current.mysteryCube.multiplierValue,
+          1.1,
+          10
+        ),
+        multiplierDurationSeconds: number(
+          "mysteryMultiplierDurationSeconds",
+          current.mysteryCube.multiplierDurationSeconds,
+          1,
+          300
+        ),
+        barriersEnabled: data.has("mysteryBarriersEnabled"),
+        barriersDurationSeconds: number(
+          "mysteryBarriersDurationSeconds",
+          current.mysteryCube.barriersDurationSeconds,
+          1,
+          300
+        )
+      },
+      tickets: {
+        ...integratedGiftDefinition(
+          data.get("ticketsGiftName"),
+          current.tickets
+        ),
+        enabled: data.has("ticketsEnabled"),
+        spawnChance: number(
+          "ticketsSpawnChance",
+          current.tickets.spawnChance,
+          0,
+          100
+        ),
+        includeCoinDrop: data.has("ticketsIncludeCoinDrop"),
+        countPerGift: Math.round(
+          number("ticketsCountPerGift", current.tickets.countPerGift, 1, 50)
+        ),
+        minPoints: ticketRange[0],
+        maxPoints: ticketRange[1]
+      },
+      platformImageUrl: String(data.get("platformImageUrl") || "").trim(),
+      plinkoImageUrl: String(data.get("plinkoImageUrl") || "").trim(),
+      scoreSlots: scoreSlots.length >= 3 ? scoreSlots : current.scoreSlots,
+      diamondCoinTiers: parseCoinPusherDiamondTiers(
+        data.get("diamondCoinTiers"),
+        current.diamondCoinTiers
+      ),
+      winnerPrizePercents: winnerPrizePercents.length
+        ? winnerPrizePercents
+        : current.winnerPrizePercents,
+      giftRules: parseCoinPusherGiftRules(data.get("giftRules"))
     };
   }
   if (gameId === "connect-four") {
@@ -5210,22 +6194,162 @@ function integratedSettingsFromForm(gameId, data) {
       }
     };
   }
-  const cashOfferEnabled = data.has("cashOfferEnabled");
-  const swapEnabled = data.has("swapEnabled");
-  const buyBoxEnabled = data.has("buyBoxEnabled");
+  const individualBoxValues = data.getAll("boxValue");
+  const boxValues = integratedNumberList(
+    individualBoxValues.length ? individualBoxValues : data.get("boxValues")
+  )
+    .map((value) => Math.max(-999999, Math.min(999999, Math.round(value))))
+    .filter((value) => value !== 0);
+  if (boxValues.length !== 24 || new Set(boxValues).size !== 24) {
+    throw new Error(
+      "DealOrNoDeal exige exactement 24 valeurs de boîtes uniques et différentes de zéro."
+    );
+  }
+  const roundPattern = integratedNumberList(data.get("roundPattern"))
+    .map((value) => Math.round(value))
+    .filter((value) => value > 0)
+    .slice(0, 12);
+  if (!roundPattern.length) {
+    throw new Error("Ajoutez au moins une manche pour DealOrNoDeal.");
+  }
+  const bankerRequests = [];
+  const bankerCount = Math.min(
+    12,
+    Math.max(0, Math.round(Number(data.get("bankerRequestCount")) || 0))
+  );
+  for (let index = 0; index < bankerCount; index += 1) {
+    const type = String(data.get(`banker.${index}.type`) || "cashOffer");
+    const cleanType = ["cashOffer", "swapBox", "buyBox"].includes(type)
+      ? type
+      : "cashOffer";
+    const targetMode = String(
+      data.get(`banker.${index}.targetMode`) || "random"
+    );
+    bankerRequests.push({
+      id:
+        String(data.get(`banker.${index}.id`) || "").trim() ||
+        `banker-request-${Date.now()}-${index + 1}`,
+      type: cleanType,
+      enabled: data.has(`banker.${index}.enabled`),
+      weight: Math.round(
+        number(`banker.${index}.weight`, 1, 0, 999)
+      ),
+      amount: Math.round(
+        number(`banker.${index}.amount`, 0, 0, 999999)
+      ),
+      targetMode:
+        cleanType === "swapBox"
+          ? "playerChoice"
+          : ["random", "highest", "lowest", "playerChoice"].includes(targetMode)
+            ? targetMode
+            : "random",
+      forceAfterOpenedCount: Math.round(
+        number(`banker.${index}.forceAfterOpenedCount`, 0, 0, 21)
+      )
+    });
+  }
+  if (
+    !bankerRequests.some(
+      (request) =>
+        request.enabled &&
+        (request.weight > 0 || request.forceAfterOpenedCount > 0)
+    )
+  ) {
+    throw new Error(
+      "Activez au moins une demande du banquier avec un poids ou un déclenchement forcé."
+    );
+  }
+  const music = {};
+  for (const scene of [
+    "waiting",
+    "dramaticLoss",
+    "funeral",
+    "badRun",
+    "uncertain",
+    "bankerOffer",
+    "heroicOffer",
+    "solemnFinal",
+    "heroicTension",
+    "finalDuel"
+  ]) {
+    const url = String(data.get(`music.${scene}.url`) || "")
+      .trim()
+      .slice(0, 1200);
+    if (!url || /^javascript:/i.test(url)) continue;
+    music[scene] = {
+      title: String(data.get(`music.${scene}.title`) || "")
+        .trim()
+        .slice(0, 160),
+      url
+    };
+  }
+  const rigging = canUseDealCheatSettings()
+    ? {
+        enabled: data.has("riggingEnabled"),
+        selectedBoxBigValueThreshold: Math.round(
+          number(
+            "riggingSelectedThreshold",
+            current.rigging.selectedBoxBigValueThreshold,
+            -999999,
+            999999
+          )
+        ),
+        selectedBoxBigValueChance:
+          number(
+            "riggingSelectedChancePercent",
+            current.rigging.selectedBoxBigValueChance * 100,
+            0,
+            100
+          ) / 100,
+        finalChoiceLowValue: Math.round(
+          number(
+            "riggingFinalLowValue",
+            current.rigging.finalChoiceLowValue,
+            -999999,
+            999999
+          )
+        ),
+        finalChoiceHighValueThreshold: Math.round(
+          number(
+            "riggingFinalHighThreshold",
+            current.rigging.finalChoiceHighValueThreshold,
+            -999999,
+            999999
+          )
+        ),
+        finalChoiceLowValueChance:
+          number(
+            "riggingFinalLowChancePercent",
+            current.rigging.finalChoiceLowValueChance * 100,
+            0,
+            100
+          ) / 100
+      }
+    : structuredClone(current.rigging);
   return {
-    entryGift: String(data.get("entryGift") || "").trim(),
-    premiumGift: String(data.get("premiumGift") || "").trim(),
-    boxValues: String(data.get("boxValues") || "").trim(),
-    roundPattern: String(data.get("roundPattern") || "").trim(),
-    bankerOfferRatio: number("bankerOfferRatio", 0.72, 0.1, 1.5),
-    premiumMultiplier: number("premiumMultiplier", 1.5, 1, 10),
-    cashOfferEnabled: cashOfferEnabled || (!swapEnabled && !buyBoxEnabled),
-    swapEnabled,
-    buyBoxEnabled,
-    musicEnabled: data.has("musicEnabled"),
-    musicVolume: number("musicVolume", 0.35, 0, 1),
-    musicTrack: String(data.get("musicTrack") || "conquest-of-paradise.mp3")
+    boxValues: boxValues.sort((left, right) => left - right),
+    entryCost: Math.round(number("entryCost", current.entryCost, 1, 999999)),
+    roundPattern,
+    bankerRequests,
+    music,
+    rigging,
+    spend: {
+      enabled: data.has("spendEnabled"),
+      premiumEntryCost: Math.round(
+        number(
+          "spendPremiumEntryCost",
+          current.spend.premiumEntryCost,
+          1,
+          999999
+        )
+      ),
+      rewardMultiplier: number(
+        "spendRewardMultiplier",
+        current.spend.rewardMultiplier,
+        0.01,
+        100
+      )
+    }
   };
 }
 
@@ -5254,7 +6378,7 @@ function renderGameInstallation(pack, unlocked) {
     ? "Ce jeu est déjà inclus dans ShenPulse. Vous pouvez passer directement aux interactions."
     : updateAvailable
       ? pack.id === "gtav-montchiliad"
-        ? "Mettez à jour le pack pour profiter des 178 véhicules du nouveau tirage aléatoire GTA."
+        ? "Mettez à jour le pack pour installer le tonneau complet corrigé de l’interaction Retourner le véhicule."
         : `Mettez à jour le pack ${pack.name} pour installer la dernière version du mod et de sa passerelle ShenPulse.`
     : installation
       ? "Tous les éléments nécessaires sont installés. Vous pouvez continuer la configuration."
@@ -6142,18 +7266,76 @@ function renderGamePageMessage(pack, scope) {
   </div>`;
 }
 
+async function restoreActiveGameInstallProgress(
+  preferredGameId = "",
+  { renderWhenFound = true } = {}
+) {
+  if (!snapshot || !isAccountAuthenticated()) return null;
+  const gameIds = [
+    preferredGameId,
+    ...AUTOMATED_GAME_INSTALLERS
+  ].filter(
+    (gameId, index, entries) =>
+      gameId &&
+      entries.indexOf(gameId) === index &&
+      (snapshot.packs || []).some((pack) => pack.id === gameId)
+  );
+  const statuses = await Promise.all(
+    gameIds.map((gameId) =>
+      api.getGameRuntimeStatus(gameId).catch(() => null)
+    )
+  );
+  const active = statuses.find(
+    (status) => status?.installing && status.installProgress
+  );
+  if (!active) return null;
+  const repairing = Boolean(
+    snapshot.state.game.installations?.[active.gameId]
+  );
+  gameInstallBusyId = active.gameId;
+  gameInstallProgress = {
+    ...active.installProgress,
+    gameId: active.gameId,
+    operation: repairing ? "repair" : "install",
+    open: true
+  };
+  if (renderWhenFound) render();
+  return active;
+}
+
 function friendlyInstallStage(progress = {}) {
+  const repairing = progress.operation === "repair";
+  if (progress.phase === "error") {
+    return {
+      kicker: repairing ? "RÉPARATION INTERROMPUE" : "INSTALLATION INTERROMPUE",
+      title: repairing ? "La réparation a échoué" : "L’installation a échoué",
+      detail:
+        progress.message ||
+        "L’opération n’a pas pu se terminer. Vérifiez le dossier du jeu puis réessayez."
+    };
+  }
   if (progress.phase === "complete") {
     return {
       kicker: "TERMINÉ",
-      title: "Installation terminée",
+      title: repairing ? "Réparation terminée" : "Installation terminée",
       detail: `${progress.gameTitle || "Le jeu"} est prêt dans ShenPulse.`
+    };
+  }
+  if (progress.phase === "launch") {
+    return {
+      kicker: "FINALISATION",
+      title: "Premier démarrage en cours",
+      detail:
+        progress.message ||
+        "ShenPulse termine la préparation et vérifie que le serveur répond."
     };
   }
   if (progress.phase === "install") {
     return {
-      kicker: "INSTALLATION",
-      title: "Préparation automatique en cours",
+      kicker: repairing ? "RÉPARATION" : "INSTALLATION",
+      title: repairing
+        ? "Réparation automatique en cours"
+        : "Préparation automatique en cours",
       detail: progress.message || "ShenPulse installe les éléments nécessaires."
     };
   }
@@ -6207,9 +7389,11 @@ function renderGameInstallProgressModal(pack) {
     Math.max(0, Number(gameInstallProgress.percent || 0))
   );
   const complete = gameInstallProgress.phase === "complete";
+  const failed = gameInstallProgress.phase === "error";
+  const finished = complete || failed;
   const downloading = gameInstallProgress.phase === "download";
   const indeterminate =
-    !complete && Boolean(gameInstallProgress.indeterminate);
+    !finished && Boolean(gameInstallProgress.indeterminate);
   const totalBytes = Math.max(
     0,
     Number(gameInstallProgress.totalBytes || 0)
@@ -6252,25 +7436,27 @@ function renderGameInstallProgressModal(pack) {
   const waitingForNetwork = downloading && idleSeconds >= 10;
   const activityText = complete
     ? "Installation terminée."
-    : gameInstallProgress.phase === "install"
-      ? "Préparation locale des fichiers en cours…"
-      : idleSeconds < 2
-        ? "Activité en cours…"
-        : idleSeconds < 10
-          ? `Dernière activité il y a ${idleSeconds} s`
-          : `Toujours en attente du serveur · ${idleSeconds} s`;
+    : failed
+      ? "L’opération est arrêtée."
+      : gameInstallProgress.phase === "install"
+        ? "Préparation locale des fichiers en cours…"
+        : idleSeconds < 2
+          ? "Activité en cours…"
+          : idleSeconds < 10
+            ? `Dernière activité il y a ${idleSeconds} s`
+            : `Toujours en attente du serveur · ${idleSeconds} s`;
   return `<div class="game-progress-backdrop" role="presentation">
     <section class="game-progress-modal" role="dialog" aria-modal="true" aria-labelledby="game-progress-title">
       <header>
         <div><span>${escapeHtml(stage.kicker)}</span><h3 id="game-progress-title">${escapeHtml(stage.title)}</h3></div>
         <strong>${Math.round(percent)}%</strong>
       </header>
-      <div class="game-progress-visual ${complete ? "complete" : ""} ${indeterminate ? "is-indeterminate" : ""}">
-        <span>${complete ? "✓" : downloading ? "↓" : "↻"}</span>
+      <div class="game-progress-visual ${complete ? "complete" : ""} ${failed ? "failed" : ""} ${indeterminate ? "is-indeterminate" : ""}">
+        <span>${complete ? "✓" : failed ? "!" : downloading ? "↓" : "↻"}</span>
         <div class="game-progress-track ${indeterminate ? "indeterminate" : ""}"><i style="width:${progressWidth}%"></i></div>
       </div>
       <p>${escapeHtml(stage.detail)}</p>
-      ${complete ? "" : `<div class="game-progress-stats">
+      ${finished ? "" : `<div class="game-progress-stats">
         <span><small>ÉTAPE</small><strong>${current && total ? `${current} sur ${total}` : "Préparation"}</strong></span>
         ${downloading ? `<span><small>TÉLÉCHARGÉ</small><strong>${formatTransferBytes(receivedBytes)}${totalBytes ? ` / ${formatTransferBytes(totalBytes)}` : ""}</strong></span>` : ""}
         ${downloading ? `<span><small>PROGRESSION</small><strong>${downloadPercent === null ? "Calcul…" : `${Math.round(downloadPercent)} %`}</strong></span>` : ""}
@@ -6278,12 +7464,12 @@ function renderGameInstallProgressModal(pack) {
         ${downloading && gameInstallProgress.etaSeconds != null ? `<span><small>RESTANT</small><strong>${formatTransferDuration(gameInstallProgress.etaSeconds)}</strong></span>` : ""}
         <span><small>ÉCOULÉ</small><strong>${formatTransferDuration(elapsedSeconds)}</strong></span>
       </div>`}
-      <div class="game-progress-activity ${waitingForNetwork ? "waiting" : ""}">
+      <div class="game-progress-activity ${failed ? "failed" : waitingForNetwork ? "waiting" : ""}">
         <i></i>
         <span>${escapeHtml(activityText)}</span>
       </div>
-      <small>${complete ? "Vous pouvez continuer la configuration." : waitingForNetwork ? "ShenPulse fonctionne toujours. Si aucune donnée n’arrive pendant une minute, un message d’erreur vous proposera de réessayer." : gameInstallProgress.phase === "install" ? "L’extraction et la copie peuvent prendre plusieurs minutes selon votre disque." : "Gardez ShenPulse ouvert jusqu’à la fin de l’installation."}</small>
-      ${complete ? `<footer><button class="button primary" data-action="dismiss-game-progress">Continuer</button></footer>` : ""}
+      <small>${complete ? "Vous pouvez continuer la configuration." : failed ? "Aucun travail ne continue en arrière-plan. Vous pouvez fermer cette fenêtre et réessayer." : waitingForNetwork ? "ShenPulse fonctionne toujours. Si aucune donnée n’arrive pendant une minute, un message d’erreur vous proposera de réessayer." : gameInstallProgress.phase === "install" ? "L’extraction et la copie peuvent prendre plusieurs minutes selon votre disque." : "Gardez ShenPulse ouvert jusqu’à la fin de l’installation."}</small>
+      ${finished ? `<footer><button class="button ${failed ? "" : "primary"}" data-action="dismiss-game-progress">${failed ? "Fermer" : "Continuer"}</button></footer>` : ""}
     </section>
   </div>`;
 }
@@ -6448,6 +7634,30 @@ function findGameInteractionRow(
 
 function renderMembership() {
   const subscription = currentSubscription();
+  const activeSubscriptionTier = hasProAccess()
+    ? subscription.tier
+    : "free";
+  const paidSubscriptionTier =
+    subscription.source === "own" &&
+    ["active", "paid"].includes(String(subscription.status || ""))
+      ? subscription.tier
+      : "";
+  const membershipSummary =
+    subscription.source === "trial"
+      ? `${subscription.tier} · essai`
+      : subscription.source === "premiumSeat"
+        ? `${subscription.tier} · offert`
+        : activeSubscriptionTier;
+  const membershipPlanLabel = (plan) => {
+    if (activeSubscriptionTier !== plan.tier) {
+      return plan.tier === "free" ? "OFFRE GRATUITE" : "OFFRE MENSUELLE";
+    }
+    if (plan.tier === "free") return "OFFRE ACTUELLE";
+    if (paidSubscriptionTier === plan.tier) return "ABONNEMENT ACTUEL";
+    if (subscription.source === "trial") return "ESSAI ACTIF";
+    if (subscription.source === "premiumSeat") return "ACCÈS PRO OFFERT";
+    return "ACCÈS ACTUEL";
+  };
   const premiumBeneficiary =
     snapshot.state.commerce?.premiumSeat?.beneficiaryEmail || "";
   const paidGames = visibleGamePacks().filter(
@@ -6457,16 +7667,22 @@ function renderMembership() {
     <div class="reference-page membership-page">
       <section class="page-hero compact">
         <div><span class="hero-chip">ACCÈS SHENPULSE</span><h2>Tarifs & abonnements</h2><p>Les droits sont synchronisés par le compte ShenPulse. Premium comprend toujours l’intégralité de Pro.</p></div>
-        <span class="membership-current">${escapeHtml(subscription.tier || "free")}</span>
+        <span class="membership-current">${escapeHtml(membershipSummary || "free")}</span>
       </section>
       <div class="subscription-grid">
         ${SUBSCRIPTION_PLANS.map((plan) => `
-          <article class="subscription-card ${subscription.tier === plan.tier ? "current" : ""} ${plan.tier === "premium" ? "premium" : ""}">
-            <header><span>${plan.tier === "premium" ? "♛" : plan.tier === "pro" ? "◆" : "○"}</span><div><small>${subscription.tier === plan.tier ? "ABONNEMENT ACTUEL" : "OFFRE MENSUELLE"}</small><h3>${plan.name}</h3></div></header>
+          <article class="subscription-card ${activeSubscriptionTier === plan.tier ? "current" : ""} ${plan.tier === "premium" ? "premium" : ""}" ${activeSubscriptionTier === plan.tier ? 'aria-current="true"' : ""}>
+            <header><span>${plan.tier === "premium" ? "♛" : plan.tier === "pro" ? "◆" : "○"}</span><div><small>${membershipPlanLabel(plan)}</small><h3>${plan.name}</h3></div></header>
             <strong>${plan.price === 0 ? "Gratuit" : `${plan.price.toFixed(2).replace(".", ",")} €`}<small>${plan.price ? " / mois" : ""}</small></strong>
             <p>${plan.description}</p>
             <ul>${plan.features.map((feature) => `<li>✓ ${feature}</li>`).join("")}</ul>
-            ${subscription.tier === plan.tier ? `<button class="button" disabled>Offre active</button>` : `<button class="button primary" data-action="open-url" data-value="https://shenpulse.leuridan.fr">Choisir ${plan.name}</button>`}
+            ${activeSubscriptionTier === plan.tier && plan.tier !== "free"
+              ? `<button class="button" type="button" disabled>Offre active</button>`
+              : plan.tier === "free"
+                ? `<button class="button primary" type="button" data-action="open-url" data-value="https://shenpulse.leuridan.fr/setup">Gérer l’abonnement</button>`
+                : subscriptionCheckoutBusyTier === plan.tier
+                  ? `<button class="button primary" type="button" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}">Annuler PayPal</button>`
+                  : `<button class="button primary" type="button" data-action="subscription-checkout" data-tier="${escapeHtml(plan.tier)}" ${subscriptionCheckoutBusyTier ? "disabled" : ""}>Choisir ${plan.name}</button>`}
           </article>`).join("")}
       </div>
       ${hasActivePaidPremium() ? `
@@ -6613,23 +7829,66 @@ function renderConnections() {
   }
   const connections = snapshot.state.connections;
   return `
-    <div class="section-toolbar"><div><h2>Sources d’événements</h2><p>Utilisez uniquement une API, un relais ou des identifiants que vous êtes autorisé à exploiter.</p></div><button class="button primary" data-action="add-connection">＋ Ajouter une source</button></div>
+    <div class="section-toolbar"><div><h2>Sources d’événements</h2><p>Chaque connexion indique comment ShenPulse reçoit les interactions de votre audience.</p></div></div>
+    <section class="connection-help-grid" aria-label="À quoi servent les connexions">
+      <article class="card connection-help-card">
+        <span class="connector-icon">♪</span>
+        <div><strong>TikTok LIVE direct</strong><p>La connexion recommandée : renseignez seulement le @ TikTok. ShenPulse surveille le compte et reçoit les événements du LIVE.</p></div>
+      </article>
+      <article class="card connection-help-card">
+        <span class="connector-icon">⌁</span>
+        <div><strong>WebSocket ou relais</strong><p>Relie un outil externe autorisé qui envoie des événements au format { event, data } à ShenPulse.</p></div>
+      </article>
+      <article class="card connection-help-card">
+        <span class="connector-icon">T</span>
+        <div><strong>Twitch IRC</strong><p>Reçoit le chat et certaines notifications Twitch avec votre chaîne, votre utilisateur et un jeton OAuth.</p></div>
+      </article>
+      <article class="card connection-help-card">
+        <span class="connector-icon">◈</span>
+        <div><strong>Démo manuelle</strong><p>Désactivée par défaut. Elle ne crée aucun viewer et n’émet rien automatiquement ; utilisez Actions → Simulateur pour vos tests volontaires.</p></div>
+      </article>
+    </section>
+    <div class="connection-mode-legend">
+      <span><b>AUTO</b> démarre avec les sources actives de la session.</span>
+      <span><b>MANUEL</b> démarre uniquement avec le bouton Connecter.</span>
+      <span><b>Déconnecter</b> arrête immédiatement la source.</span>
+    </div>
     <div class="connector-grid">
       ${connections.map((connection) => {
         const statusClass = connection.status === "connected" ? "success" : connection.status === "error" ? "error" : "";
         return `<article class="card entity-card">
           <div class="entity-top"><span class="connector-icon">${connection.type === "demo" ? "◈" : connection.type === "twitch-irc" ? "T" : "⌁"}</span><span class="badge ${statusClass}">${escapeHtml(connection.status || "disconnected")}</span></div>
-          <h3 style="margin-top:13px">${escapeHtml(connection.name)}</h3><p>${escapeHtml(connection.type)}${connection.config?.url ? ` · ${escapeHtml(connection.config.url)}` : ""}</p>
-          <div class="entity-meta"><span class="badge ${connection.enabled ? "cyan" : ""}">${connection.enabled ? "AUTO" : "MANUEL"}</span>${connection.hasSecret ? '<span class="badge success">SECRET CHIFFRÉ</span>' : ""}</div>
+          <h3 style="margin-top:13px">${escapeHtml(connection.name)}</h3><p>${escapeHtml(connectionTypeLabel(connection.type))}${connection.config?.url ? ` · ${escapeHtml(connection.config.url)}` : ""}</p>
+          <p class="connection-card-description">${escapeHtml(connectionTypeDescription(connection.type))}</p>
+          <div class="entity-meta"><span class="badge ${connection.enabled && connection.type !== "demo" ? "cyan" : ""}">${connection.enabled && connection.type !== "demo" ? "AUTO" : "MANUEL"}</span>${connection.hasSecret ? '<span class="badge success">SECRET CHIFFRÉ</span>' : ""}</div>
           <div class="entity-actions">
             <button class="button small ${connection.status === "connected" ? "danger" : "primary"}" data-action="${connection.status === "connected" ? "stop-connection" : "start-connection"}" data-id="${escapeHtml(connection.id)}">${connection.status === "connected" ? "Déconnecter" : "Connecter"}</button>
-            <button class="button small" data-action="edit-connection" data-id="${escapeHtml(connection.id)}">Modifier</button>
             ${connection.type === "demo" ? "" : `<button class="button small ghost" data-action="delete-entity" data-collection="connections" data-id="${escapeHtml(connection.id)}">Supprimer</button>`}
           </div>
         </article>`;
       }).join("")}
     </div>
-    <article class="card" style="margin-top:16px"><header class="card-header"><div><p class="eyebrow">TIKTOK LIVE</p><h3>Détection automatique</h3></div><span class="badge success">AUCUN RÉGLAGE TECHNIQUE</span></header><div class="card-body"><p style="margin:0;color:var(--muted);font-size:11px;line-height:1.7">Renseignez seulement le @ TikTok. ShenPulse surveille ensuite le compte, détecte son passage en LIVE, reçoit les cadeaux, likes, follows, partages, abonnements et chats, puis se reconnecte automatiquement entre les sessions.</p></div></article>`;
+    `;
+}
+
+function connectionTypeLabel(type) {
+  return ({
+    "tiktok-direct": "TikTok LIVE direct",
+    "tiktok-relay": "Relais TikTok",
+    websocket: "WebSocket",
+    "twitch-irc": "Twitch IRC",
+    demo: "Démo manuelle"
+  })[type] || String(type || "Connexion");
+}
+
+function connectionTypeDescription(type) {
+  return ({
+    "tiktok-direct": "Surveille le @ configuré et reçoit automatiquement cadeaux, likes, follows, partages, abonnements et messages du LIVE.",
+    "tiktok-relay": "Reçoit les événements TikTok transmis par un relais WebSocket autorisé.",
+    websocket: "Reçoit les événements envoyés par une application ou un relais externe compatible.",
+    "twitch-irc": "Reçoit le chat et les notifications Twitch prises en charge via IRC.",
+    demo: "Source de test strictement manuelle, sans génération automatique de viewers, likes ou cadeaux."
+  })[type] || "Source d’événements personnalisée configurée dans ShenPulse.";
 }
 
 function renderActivity() {
@@ -6639,11 +7898,28 @@ function renderActivity() {
       "Connectez-vous pour consulter le journal local de ShenPulse."
     );
   }
-  const entries = snapshot.state.activity;
+  const entries = visibleActivityEntries(snapshot.state);
   return `
     <div class="section-toolbar"><div><h2>${entries.length} entrées locales</h2><p>Les secrets sont masqués et aucune télémétrie n’est envoyée.</p></div><button class="button" data-action="export-data">Exporter la configuration</button></div>
     <section class="card">
       ${entries.length ? `<table class="activity-table"><thead><tr><th>HEURE</th><th>NIVEAU</th><th>CATÉGORIE</th><th>ÉVÉNEMENT</th><th>DÉTAIL</th></tr></thead><tbody>${entries.map((entry) => `<tr><td>${formatTime(entry.timestamp)}</td><td><span class="badge ${entry.level === "error" ? "error" : entry.level === "success" ? "success" : ""}">${escapeHtml(entry.level)}</span></td><td>${escapeHtml(entry.category)}</td><td><strong>${escapeHtml(entry.title)}</strong></td><td>${escapeHtml(entry.detail)}</td></tr>`).join("")}</tbody></table>` : emptyInline("Le journal est vide.")}</section>`;
+}
+
+function visibleActivityEntries(state = {}) {
+  const live =
+    state.session?.running === true ||
+    state.session?.game?.running === true;
+  if (live) return state.activity || [];
+  const seenOfflineErrors = new Set();
+  return (state.activity || []).filter((entry) => {
+    const category = String(entry?.category || "").toLowerCase();
+    if (!["connection", "tiktok"].includes(category)) return true;
+    if (String(entry?.level || "").toLowerCase() !== "error") return false;
+    const key = `${category}\u0000${entry.title || ""}\u0000${entry.detail || ""}`;
+    if (seenOfflineErrors.has(key)) return false;
+    seenOfflineErrors.add(key);
+    return true;
+  });
 }
 
 function renderPrivateDataPlaceholder(title, detail) {
@@ -6869,12 +8145,14 @@ function renderAdmin() {
   const workspaces = [
     ["overview", "Tableau de bord", "Synthèse"],
     ["visibility", "Visibilité", "Pages et fonctions"],
+    ["game-cheats", "Triche de jeux", "Accès par e-mail"],
     ["trials", "Offres d’essai", "Utilisateurs"],
     ["commerce", "Tarifs & promotions", "PRO / Premium / jeux"]
   ];
   const contentByWorkspace = {
     overview: renderAdminOverview,
     visibility: renderAdminVisibility,
+    "game-cheats": renderAdminGameCheats,
     trials: renderAdminTrials,
     commerce: renderAdminCommerce
   };
@@ -7024,6 +8302,80 @@ function renderAdminVisibility() {
       </div>
     </section>
     </div>
+  </div>`;
+}
+
+function adminGameCheatEntries() {
+  const entries =
+    adminDashboard?.siteSettings?.cheatAccess?.["game-tabs"]?.entries;
+  if (!Array.isArray(entries)) return [];
+  const seen = new Set();
+  return entries
+    .map((entry) => String(entry?.email || "").trim().toLowerCase())
+    .filter((email) => {
+      if (
+        !email ||
+        email === ADMIN_OWNER_EMAIL ||
+        seen.has(email)
+      ) {
+        return false;
+      }
+      seen.add(email);
+      return true;
+    })
+    .sort((left, right) => left.localeCompare(right, "fr"));
+}
+
+function renderAdminGameCheats() {
+  const entries = adminGameCheatEntries();
+  return `<div class="admin-game-cheats">
+    <section class="admin-cheat-access-hero">
+      <span>!</span>
+      <div>
+        <p class="eyebrow">ACCÈS PRIVÉ AUX JEUX</p>
+        <h3>Onglets de triche</h3>
+        <p>Seuls le propriétaire et les comptes ShenPulse vérifiés ci-dessous voient les onglets de triche et les suivis privés lorsqu’un jeu en possède. DealOrNoDeal utilise déjà cette autorisation.</p>
+      </div>
+      <strong>${entries.length + 1}<small>compte${entries.length ? "s" : ""} autorisé${entries.length ? "s" : ""}</small></strong>
+    </section>
+    <div class="admin-cheat-access-layout">
+      <form id="admin-game-cheat-form" class="admin-panel admin-cheat-access-form" autocomplete="off">
+        <header>
+          <div><p class="eyebrow">AJOUTER UN COMPTE</p><h3>Autoriser une adresse e-mail</h3><p>L’adresse doit être celle du compte Firebase utilisé dans ShenPulse.</p></div>
+        </header>
+        <label class="field">
+          <span>Adresse e-mail du compte</span>
+          <input name="email" type="email" maxlength="254" placeholder="utilisateur@exemple.com" required autofocus>
+          <small>Les majuscules et espaces sont normalisés automatiquement.</small>
+        </label>
+        <footer><button class="button primary" type="submit" ${adminBusy ? "disabled" : ""}>＋ Autoriser ce compte</button></footer>
+      </form>
+      <section class="admin-panel admin-cheat-access-list">
+        <header>
+          <div><p class="eyebrow">COMPTES AUTORISÉS</p><h3>${entries.length + 1} accès</h3><p>La suppression prend effet à la prochaine vérification du compte, au plus tard sous 30 secondes.</p></div>
+        </header>
+        <div data-admin-scroll="game-cheat-access">
+          <article class="is-owner">
+            <span class="admin-cheat-access-avatar">♜</span>
+            <div><strong>${escapeHtml(ADMIN_OWNER_EMAIL)}</strong><small>Propriétaire ShenPulse · accès permanent</small></div>
+            <b>PROPRIÉTAIRE</b>
+          </article>
+          ${entries
+            .map(
+              (email) => `<article>
+                <span class="admin-cheat-access-avatar">${escapeHtml(email.slice(0, 1).toUpperCase())}</span>
+                <div><strong>${escapeHtml(email)}</strong><small>Compte ShenPulse vérifié</small></div>
+                <b>AUTORISÉ</b>
+                <button class="button small danger" type="button" data-action="admin-game-cheat-remove" data-email="${escapeHtml(email)}" ${adminBusy ? "disabled" : ""}>Retirer</button>
+              </article>`
+            )
+            .join("")}
+        </div>
+      </section>
+    </div>
+    <section class="admin-security-note">
+      <span>✓</span><div><strong>La liste en clair reste privée</strong><p>Le logiciel publie uniquement une empreinte non réversible de chaque adresse. À la connexion, Firebase vérifie le compte actif puis ne renvoie que son droit d’accès.</p></div>
+    </section>
   </div>`;
 }
 
@@ -7352,6 +8704,7 @@ function openAccountLogin(mode = "login", preservedEmail = "") {
           });
       acceptSnapshot(await api.getSnapshot());
       await syncAdminSessionFromAccount();
+      await refreshGameCheatAccess({ renderWhenChanged: false });
       syncAccountChrome();
       toast(
         registering ? "Compte créé" : "Compte connecté",
@@ -7474,6 +8827,29 @@ async function syncAdminVisibilityCatalog() {
   try {
     adminDashboard.siteSettings = await api.admin.saveSiteSettings(next);
     siteVisibility = await api.admin.visibility();
+  } finally {
+    adminBusy = false;
+    render();
+  }
+}
+
+async function saveAdminGameCheatEntries(emails) {
+  const normalized = Array.from(
+    new Set(
+      (Array.isArray(emails) ? emails : [])
+        .map((email) => String(email || "").trim().toLowerCase())
+        .filter((email) => email && email !== ADMIN_OWNER_EMAIL)
+    )
+  ).slice(0, 250);
+  const next = canonicalAdminSiteSettings(adminDashboard.siteSettings);
+  next.cheatAccess = next.cheatAccess || {};
+  next.cheatAccess["game-tabs"] = {
+    entries: normalized.map((email) => ({ email }))
+  };
+  adminBusy = true;
+  try {
+    adminDashboard.siteSettings = await api.admin.saveSiteSettings(next);
+    await refreshGameCheatAccess({ renderWhenChanged: false });
   } finally {
     adminBusy = false;
     render();
@@ -7666,6 +9042,8 @@ function openEditor({
   kicker = "CONFIGURATION",
   body,
   submitLabel = "Enregistrer",
+  pendingLabel = "Enregistrement…",
+  successMessage = "Configuration enregistrée",
   onSubmit,
   variant = "standard"
 }) {
@@ -7681,6 +9059,8 @@ function openEditor({
   dialogSubmitButton.hidden = typeof onSubmit !== "function";
   dialogSubmitButton.disabled = false;
   dialogSubmitButton.dataset.defaultLabel = submitLabel;
+  dialogSubmitButton.dataset.pendingLabel = pendingLabel;
+  dialog.dataset.successMessage = successMessage;
   clearDialogError();
   dialogSubmitHandler = onSubmit;
   dialog.scrollTop = 0;
@@ -8957,7 +10337,7 @@ function openConnectionEditor(connection) {
     body: `<div class="form-grid">
       ${field("name", "Nom", current.name, "text", "required full")}
       <label class="field"><span>Type</span><select name="type"><option value="websocket" ${current.type === "websocket" ? "selected" : ""}>WebSocket autorisé</option><option value="twitch-irc" ${current.type === "twitch-irc" ? "selected" : ""}>Twitch IRC</option><option value="demo" ${current.type === "demo" ? "selected" : ""}>Démo</option></select></label>
-      <label class="field"><span>Démarrage automatique</span><select name="enabled"><option value="true" ${current.enabled ? "selected" : ""}>Oui</option><option value="false" ${!current.enabled ? "selected" : ""}>Non</option></select></label>
+      <label class="field"><span>Démarrage automatique (hors démo)</span><select name="enabled"><option value="true" ${current.enabled && current.type !== "demo" ? "selected" : ""}>Oui</option><option value="false" ${!current.enabled || current.type === "demo" ? "selected" : ""}>Non</option></select><small>Une source Démo reste toujours manuelle et n’émet rien toute seule.</small></label>
       ${field("url", "URL WebSocket", current.config?.url || "", "text", "full")}
       ${field("channel", "Chaîne Twitch", current.config?.channel || "")}
       ${field("username", "Utilisateur Twitch", current.config?.username || "")}
@@ -8970,7 +10350,7 @@ function openConnectionEditor(connection) {
         id: current.id || `source_${cryptoId()}`,
         name: data.get("name"),
         type: data.get("type"),
-        enabled: data.get("enabled") === "true",
+        enabled: data.get("type") !== "demo" && data.get("enabled") === "true",
         secret: data.get("secret"),
         config: { ...(current.config || {}), url: data.get("url"), channel: data.get("channel"), username: data.get("username") }
       });
@@ -9615,6 +10995,7 @@ async function handleAction(target) {
     })();
     pendingAccountLogoutPromise = logoutOperation;
     accountSession = signedOutAccountSession();
+    gameCheatAccessAllowed = false;
     liveEvents = [];
     adminSession = {
       authorized: false,
@@ -9727,6 +11108,28 @@ async function handleAction(target) {
     return perform(
       () => saveAdminVisibilityBulk(scope),
       "Catégorie mise à jour"
+    );
+  }
+  if (action === "admin-game-cheat-remove") {
+    const email = String(target.dataset.email || "").trim().toLowerCase();
+    if (
+      !email ||
+      !(await confirmAction(
+        `Retirer l’accès aux onglets de triche de ${email} ?`,
+        {
+          title: "Retirer l’accès privé",
+          confirmLabel: "Retirer"
+        }
+      ))
+    ) {
+      return;
+    }
+    return perform(
+      () =>
+        saveAdminGameCheatEntries(
+          adminGameCheatEntries().filter((entry) => entry !== email)
+        ),
+      "Accès aux triches retiré"
     );
   }
   if (action === "admin-trial-edit") {
@@ -9869,6 +11272,12 @@ async function handleAction(target) {
         true
       );
     }
+    if (
+      pack.accessMode === "purchase" &&
+      !hasGameEntitlement(pack)
+    ) {
+      return openGamePurchaseDialog(pack);
+    }
     if (showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
     if (pack.modeSelector) return openMinecraftModeSelector(pack);
@@ -9900,6 +11309,45 @@ async function handleAction(target) {
     content.scrollTop = 0;
     return;
   }
+  if (
+    action === "add-deal-banker-request" ||
+    action === "remove-deal-banker-request"
+  ) {
+    const form = target.closest("[data-integrated-game-settings]");
+    const pack = snapshot.packs.find(
+      (item) => item.id === "deal-or-no-deal"
+    );
+    if (!form || !pack || !requireGameAccess(pack)) return;
+    await perform(async () => {
+      const config = integratedSettingsFromForm(
+        "deal-or-no-deal",
+        new FormData(form)
+      );
+      if (action === "add-deal-banker-request") {
+        if (config.bankerRequests.length >= 12) return;
+        config.bankerRequests.push({
+          id: `banker-request-${Date.now()}`,
+          type: "cashOffer",
+          enabled: true,
+          weight: 10,
+          amount: 0,
+          targetMode: "random",
+          forceAfterOpenedCount: 0
+        });
+      } else {
+        const requestIndex = Math.max(
+          0,
+          Math.round(Number(target.dataset.index) || 0)
+        );
+        if (config.bankerRequests.length <= 1) return;
+        config.bankerRequests.splice(requestIndex, 1);
+      }
+      snapshot = await api.configureGame(pack.id, config);
+      integratedSettingsPanels.set(pack.id, "banker");
+      render();
+    }, "Demandes du banquier mises à jour");
+    return;
+  }
   if (action === "game-step") {
     const nextStep = target.dataset.value || "installation";
     const pack = snapshot.packs.find(
@@ -9908,6 +11356,9 @@ async function handleAction(target) {
     if (!requireGameAccess(pack)) {
       gamePageMode = "catalog";
       render();
+      return;
+    }
+    if (!gameJourneyFor(pack).some((step) => step.id === nextStep)) {
       return;
     }
     if (nextStep === "interactions") {
@@ -10231,6 +11682,52 @@ async function handleAction(target) {
   if (action === "toggle-session") return toggleSession();
   if (action === "configure-tiktok") return openTikTokEditor();
   if (action === "toggle-tiktok") return toggleTikTok();
+  if (action === "subscription-checkout-cancel") {
+    if (!subscriptionCheckoutBusyTier) return;
+    target.disabled = true;
+    target.textContent = "Annulation…";
+    return perform(() =>
+      api.account.cancelCheckout({ type: "subscription" })
+    );
+  }
+  if (action === "subscription-checkout") {
+    const tier = target.dataset.tier;
+    const plan = SUBSCRIPTION_PLANS.find((item) => item.tier === tier);
+    if (subscriptionCheckoutBusyTier) return;
+    subscriptionCheckoutBusyTier = tier;
+    render();
+    try {
+      return await perform(async () => {
+        const response = await api.account.startSubscriptionCheckout({ tier });
+        const result = response?.result || response;
+        if (response?.snapshot) {
+          acceptSnapshot(response.snapshot);
+          currentPage = "membership";
+          render();
+        }
+        if (result?.cancelled) {
+          toast(
+            "Paiement annulé",
+            "L’abonnement n’a pas été modifié."
+          );
+        } else if (result?.checkoutCompleted) {
+          toast(
+            "Abonnement synchronisé",
+            `L’offre ${plan?.name || tier} est maintenant reliée à ShenPulse.`
+          );
+        } else if (result?.scheduled) {
+          toast(
+            "Changement programmé",
+            "Le changement prendra effet à la prochaine échéance."
+          );
+        }
+        return response;
+      });
+    } finally {
+      subscriptionCheckoutBusyTier = "";
+      render();
+    }
+  }
   if (action === "test-event") return perform(() => api.testEvent(target.dataset.type), "Événement de test envoyé");
   if (action === "copy") return perform(() => api.copy(target.dataset.value), "URL copiée");
   if (action === "open-url") return perform(() => api.openExternal(target.dataset.value));
@@ -10297,9 +11794,13 @@ async function handleAction(target) {
     gamePageMessages.delete(id);
     gameInstallBusyId = id;
     const startedAt = new Date().toISOString();
+    const operation = snapshot.state.game.installations?.[id]
+      ? "repair"
+      : "install";
     gameInstallProgress = {
       open: true,
       gameId: id,
+      operation,
       phase: "prepare",
       percent: 2,
       startedAt,
@@ -10331,7 +11832,17 @@ async function handleAction(target) {
       });
       return result;
     } catch (error) {
-      gameInstallProgress = null;
+      gameInstallProgress = {
+        ...(gameInstallProgress || {}),
+        open: true,
+        gameId: id,
+        operation,
+        phase: "error",
+        indeterminate: false,
+        message:
+          error.message ||
+          "Vérifiez que le jeu est fermé puis réessayez."
+      };
       gamePageMessages.set(id, {
         type: "error",
         scope: "installation",
@@ -10536,6 +12047,16 @@ content.addEventListener("input", (event) => {
 });
 
 content.addEventListener("change", (event) => {
+  if (event.target.matches('[name="integratedSettingsPanel"]')) {
+    const form = event.target.closest("[data-integrated-game-settings]");
+    if (form?.dataset.integratedGameSettings) {
+      integratedSettingsPanels.set(
+        form.dataset.integratedGameSettings,
+        event.target.value
+      );
+    }
+    return;
+  }
   const scopePicker = event.target.closest(
     'select[data-action="admin-scope"]'
   );
@@ -10870,8 +12391,12 @@ dialogForm.addEventListener("submit", async (event) => {
     dialogSubmitButton.dataset.defaultLabel ||
     dialogSubmitButton.textContent ||
     "Enregistrer";
+  const pendingLabel =
+    dialogSubmitButton.dataset.pendingLabel ||
+    "Enregistrement…";
+  const successMessage = dialog.dataset.successMessage || "";
   dialogSubmitButton.disabled = true;
-  dialogSubmitButton.textContent = "Enregistrement…";
+  dialogSubmitButton.textContent = pendingLabel;
   dialogForm.setAttribute("aria-busy", "true");
   try {
     await activeSubmitHandler(new FormData(dialogForm));
@@ -10883,7 +12408,7 @@ dialogForm.addEventListener("submit", async (event) => {
     }
     dialog.close();
     render();
-    toast("Configuration enregistrée");
+    if (successMessage) toast(successMessage);
   } catch (error) {
     if (
       activeDialogSessionId !== dialogSessionId ||
@@ -10907,11 +12432,23 @@ dialogForm.addEventListener("submit", async (event) => {
 
 dialog.addEventListener("click", (event) => {
   if (!event.target.closest("[data-dialog-close]")) return;
+  if (
+    dialog.dataset.variant === "game-purchase" &&
+    dialogForm.getAttribute("aria-busy") === "true"
+  ) {
+    api.account.cancelCheckout({ type: "game" }).catch(() => {});
+  }
   dialogSubmitHandler = null;
   dialog.close("cancel");
 });
 
 dialog.addEventListener("cancel", () => {
+  if (
+    dialog.dataset.variant === "game-purchase" &&
+    dialogForm.getAttribute("aria-busy") === "true"
+  ) {
+    api.account.cancelCheckout({ type: "game" }).catch(() => {});
+  }
   dialogSubmitHandler = null;
 });
 
@@ -10975,6 +12512,8 @@ dialog.addEventListener("click", (event) => {
           acceptSnapshot(await api.getSnapshot());
           if (activeDialogSessionId !== dialogSessionId) return;
           await syncAdminSessionFromAccount();
+          if (activeDialogSessionId !== dialogSessionId) return;
+          await refreshGameCheatAccess({ renderWhenChanged: false });
           if (activeDialogSessionId !== dialogSessionId) return;
           dialog.close();
           render();
@@ -11474,6 +13013,37 @@ content.addEventListener("submit", async (event) => {
     }, "Offre d’essai accordée");
     return;
   }
+  if (event.target.id === "admin-game-cheat-form") {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const email = String(data.get("email") || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return toast(
+        "Adresse invalide",
+        "Renseignez l’adresse e-mail exacte du compte ShenPulse.",
+        true
+      );
+    }
+    if (
+      email === ADMIN_OWNER_EMAIL ||
+      adminGameCheatEntries().includes(email)
+    ) {
+      return toast(
+        "Compte déjà autorisé",
+        "Cette adresse possède déjà l’accès aux onglets de triche.",
+        true
+      );
+    }
+    await perform(
+      () =>
+        saveAdminGameCheatEntries([
+          ...adminGameCheatEntries(),
+          email
+        ]),
+      "Accès aux triches accordé"
+    );
+    return;
+  }
   if (event.target.id === "simulator-form") {
     event.preventDefault();
     const data = new FormData(event.target);
@@ -11486,7 +13056,10 @@ content.addEventListener("submit", async (event) => {
           username: values.username,
           nickname: values.nickname,
           count: Number(values.count || 1),
-          value: Number(values.value || 0),
+          value:
+            values.type === "gift" && selectedGift
+              ? Math.max(1, Number(selectedGift.cost || 1))
+              : Number(values.value || 0),
           giftId: selectedGift?.id || "",
           giftName: values.giftName || "Rose",
           giftImageUrl: selectedGift?.imageUrl || "",
@@ -11531,23 +13104,43 @@ content.addEventListener("submit", async (event) => {
 });
 
 api.on("game-install-progress", (progress) => {
-  if (!progress?.gameId || progress.gameId !== gameInstallBusyId) return;
+  if (!progress?.gameId) return;
+  if (progress.phase === "canceled") {
+    if (gameInstallProgress?.gameId === progress.gameId) {
+      gameInstallProgress = null;
+    }
+    if (gameInstallBusyId === progress.gameId) {
+      gameInstallBusyId = "";
+    }
+    render();
+    return;
+  }
+  const sameOperation = gameInstallProgress?.gameId === progress.gameId;
+  const repairing = Boolean(
+    snapshot?.state?.game?.installations?.[progress.gameId]
+  );
+  gameInstallBusyId = ["complete", "error"].includes(progress.phase)
+    ? ""
+    : progress.gameId;
   gameInstallProgress = {
-    ...(gameInstallProgress || {}),
+    ...(sameOperation ? gameInstallProgress : {}),
     ...progress,
+    operation:
+      (sameOperation && gameInstallProgress?.operation) ||
+      (repairing ? "repair" : "install"),
     lastActivityAt:
       progress.occurredAt ||
-      gameInstallProgress?.lastActivityAt ||
+      (sameOperation && gameInstallProgress?.lastActivityAt) ||
       new Date().toISOString(),
     open: true
   };
-  if (
-    currentPage === "games" &&
-    gamePageMode === "detail" &&
-    selectedGameId === progress.gameId
-  ) {
-    render();
-  }
+  render();
+});
+
+api.on("deal-host-state", (state) => {
+  dealOrNoDealHostState =
+    state && typeof state === "object" ? state : null;
+  syncDealPrivateMonitor();
 });
 
 api.on("state-changed", (value) => {
@@ -11818,12 +13411,40 @@ document.addEventListener("keydown", (event) => {
   handleOverlayKeyboardShortcut(event);
 });
 
+function refreshGameCheatAccess({ renderWhenChanged = true } = {}) {
+  if (!isAccountAuthenticated()) {
+    const changed = gameCheatAccessAllowed;
+    gameCheatAccessAllowed = false;
+    if (changed && renderWhenChanged) render();
+    return Promise.resolve({ allowed: false, checkedAt: "" });
+  }
+  if (gameCheatAccessPromise) return gameCheatAccessPromise;
+  const expectedUid = accountSession.uid;
+  gameCheatAccessPromise = api.account
+    .gameCheatAccess()
+    .catch(() => ({ allowed: false, checkedAt: "" }))
+    .then((result) => {
+      if (accountSession.uid !== expectedUid) return result;
+      const nextAllowed = result?.allowed === true;
+      const changed = nextAllowed !== gameCheatAccessAllowed;
+      gameCheatAccessAllowed = nextAllowed;
+      if (changed && renderWhenChanged) render();
+      return result;
+    })
+    .finally(() => {
+      gameCheatAccessPromise = null;
+    });
+  return gameCheatAccessPromise;
+}
+
 function refreshAccountEntitlements() {
   if (!isAccountAuthenticated() || entitlementSyncPromise) {
     return entitlementSyncPromise;
   }
-  entitlementSyncPromise = api.account
-    .syncEntitlements()
+  entitlementSyncPromise = Promise.all([
+    api.account.syncEntitlements(),
+    refreshGameCheatAccess()
+  ])
     .catch(() => null)
     .finally(() => {
       entitlementSyncPromise = null;
@@ -11889,6 +13510,9 @@ api.getSnapshot()
     };
     await hydrateGiftCatalog();
     ensureCurrentPageAccess();
+    await restoreActiveGameInstallProgress("", {
+      renderWhenFound: false
+    });
     render();
 
     const [accountStatus, visibility] = await Promise.all([
@@ -11909,6 +13533,7 @@ api.getSnapshot()
     ]);
     accountSession = accountStatus;
     siteVisibility = visibility;
+    await refreshGameCheatAccess({ renderWhenChanged: false });
     adminSession = await api.admin
       .status()
       .catch(() => ({
@@ -11916,9 +13541,12 @@ api.getSnapshot()
         email: "",
         uid: "",
         lastAuthenticatedAt: ""
-      }));
+    }));
     acceptSnapshot(await api.getSnapshot());
     ensureCurrentPageAccess();
+    await restoreActiveGameInstallProgress("", {
+      renderWhenFound: false
+    });
     render();
     if (isVerifiedAdminSession()) {
       try {

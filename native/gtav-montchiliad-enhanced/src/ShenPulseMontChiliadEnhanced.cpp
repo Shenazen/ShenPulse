@@ -19,7 +19,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 namespace {
-const char* kVersion = "2026.07.28.12-natural-zone-entry";
+const char* kVersion = "2026.08.02.1-vehicle-flip-roll";
 const unsigned short kPort = 58430;
 const size_t kMaxQueuedRequests = 250;
 const int kEffectRetryStatus = 9;
@@ -36,6 +36,7 @@ const int kBlackHoleTelegraphMs = 3000;
 const int kBlackHoleDurationMs = 22000;
 const int kTrainTelegraphMs = 2200;
 const int kTrainApproachMs = 1050;
+const int kVehicleFlipDurationMs = 900;
 const Vector3 kAirport = {-1034.6f, 0, -2733.6f, 0, 20.2f, 0};
 const Vector3 kTeleports[] = {
     {-75.0f, 0, -818.0f, 0, 326.0f, 0}, {425.4f, 0, 5614.3f, 0, 766.5f, 0},
@@ -56,17 +57,20 @@ ULONGLONG g_superJumpUntil = 0, g_nextSuperJumpBoostAt = 0, g_explosiveAmmoUntil
 ULONGLONG g_infiniteAmmoUntil = 0, g_drunkUntil = 0, g_slowMotionUntil = 0, g_frozenUntil = 0;
 ULONGLONG g_prisonUntil = 0, g_blackHoleStartedAt = 0, g_blackHolePullStartsAt = 0, g_blackHoleUntil = 0, g_nextBlackHolePullAt = 0, g_magneticStormUntil = 0, g_danceUntil = 0;
 ULONGLONG g_trainUntil = 0, g_trainApproachAt = 0, g_trainImpactAt = 0;
+ULONGLONG g_vehicleFlipStartedAt = 0, g_vehicleFlipUntil = 0;
 ULONGLONG g_nativeWinMultiplierUntil = 0, g_counterHudUntil = 0;
 ULONGLONG g_lastDeathAt = 0;
 ULONGLONG g_playerAliveSince = 0;
 Entity g_frozenEntity = 0;
 Entity g_trainTarget = 0;
 Vehicle g_trainVehicle = 0;
+Vehicle g_flippingVehicle = 0;
 Ped g_prisonPed = 0, g_dancePed = 0, g_drunkPed = 0;
 Vector3 g_prisonCenter = {0.0f, 0, 0.0f, 0, 0.0f, 0};
 Vector3 g_blackHoleCenter = {0.0f, 0, 0.0f, 0, 0.0f, 0};
 Vector3 g_trainDirection = {0.0f, 0, 0.0f, 0, 0.0f, 0};
 Vector3 g_trainSpawnPosition = {0.0f, 0, 0.0f, 0, 0.0f, 0};
+Vector3 g_vehicleFlipStartRotation = {0.0f, 0, 0.0f, 0, 0.0f, 0};
 std::vector<Object> g_prisonObjects;
 std::vector<TimedGiftObject> g_giftObjects;
 const size_t kMaxGiftObjects = 512;
@@ -74,6 +78,7 @@ bool g_restoreInvincibility = false, g_wasInvincible = false, g_infiniteAmmoActi
 bool g_drunkActive = false, g_slowMotionActive = false, g_roundActive = false, g_inZone = false, g_won = false;
 bool g_playerWasDead = false, g_autoTeleportedWinner = false;
 bool g_trainImpactApplied = false;
+bool g_vehicleFlipHalfLogged = false;
 bool g_playerAliveObserved = false;
 Ped g_lastObservedPlayerPed = 0;
 int g_lastObservedPlayerHealth = 0;
@@ -1749,12 +1754,22 @@ Result Execute(std::string code) {
         Result required = RequireVehicle(ped, vehicle);
         if (required.status != 0) return required;
         Vector3 position = ENTITY::GET_ENTITY_COORDS(vehicle, TRUE);
-        position.z += 1.2f;
+        Vector3 rotation = ENTITY::GET_ENTITY_ROTATION(vehicle, 2);
+        Vector3 velocity = ENTITY::GET_ENTITY_VELOCITY(vehicle);
+        position.z += 1.6f;
         ENTITY::SET_ENTITY_COORDS_NO_OFFSET(vehicle, position.x, position.y, position.z, FALSE, FALSE, TRUE);
-        ENTITY::SET_ENTITY_ROTATION(vehicle, 0.0f, 0.0f, ENTITY::GET_ENTITY_HEADING(vehicle), 2, TRUE);
-        ENTITY::SET_ENTITY_VELOCITY(vehicle, 0.0f, 0.0f, 0.0f);
-        VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(vehicle);
-        return {0, "Le vehicule du joueur a ete retourne."};
+        ENTITY::SET_ENTITY_VELOCITY(
+            vehicle,
+            velocity.x,
+            velocity.y,
+            std::max(velocity.z, 0.0f) + 9.0f
+        );
+        g_flippingVehicle = vehicle;
+        g_vehicleFlipStartRotation = rotation;
+        g_vehicleFlipStartedAt = GetTickCount64();
+        g_vehicleFlipUntil = g_vehicleFlipStartedAt + kVehicleFlipDurationMs;
+        g_vehicleFlipHalfLogged = false;
+        return {0, "Le vehicule du joueur effectue un tonneau complet."};
     }
     if (code == "chaos_vehicle_random_color") {
         Vehicle vehicle = 0;
@@ -1990,12 +2005,57 @@ void StartRound(const char* eventName) {
     g_lastEvent = eventName;
     g_lastState = 0;
 }
+void UpdateVehicleFlip(ULONGLONG now) {
+    if (!g_flippingVehicle || !g_vehicleFlipStartedAt) return;
+    if (!ENTITY::DOES_ENTITY_EXIST(g_flippingVehicle)
+        || ENTITY::IS_ENTITY_DEAD(g_flippingVehicle)) {
+        Log("Vehicle flip cancelled because the vehicle no longer exists.");
+        g_flippingVehicle = 0;
+        g_vehicleFlipStartedAt = 0;
+        g_vehicleFlipUntil = 0;
+        g_vehicleFlipHalfLogged = false;
+        return;
+    }
+    if (now < g_vehicleFlipStartedAt) return;
+
+    float progress = std::min(
+        1.0f,
+        static_cast<float>(now - g_vehicleFlipStartedAt)
+            / static_cast<float>(kVehicleFlipDurationMs)
+    );
+    float easedProgress = progress * progress * (3.0f - 2.0f * progress);
+    ENTITY::SET_ENTITY_ROTATION(
+        g_flippingVehicle,
+        g_vehicleFlipStartRotation.x,
+        g_vehicleFlipStartRotation.y + 360.0f * easedProgress,
+        g_vehicleFlipStartRotation.z,
+        2,
+        TRUE
+    );
+
+    if (!g_vehicleFlipHalfLogged && progress >= 0.5f) {
+        Vector3 observed = ENTITY::GET_ENTITY_ROTATION(g_flippingVehicle, 2);
+        std::ostringstream midpoint;
+        midpoint << "Vehicle flip midpoint rotation: "
+                 << observed.x << ", " << observed.y << ", " << observed.z << ".";
+        Log(midpoint.str());
+        g_vehicleFlipHalfLogged = true;
+    }
+    if (now < g_vehicleFlipUntil && progress < 1.0f) return;
+
+    Log("Vehicle flip completed through 360 degrees.");
+    g_flippingVehicle = 0;
+    g_vehicleFlipStartedAt = 0;
+    g_vehicleFlipUntil = 0;
+    g_vehicleFlipHalfLogged = false;
+}
 void UpdateTimedEffects(ULONGLONG now) {
     Player player = PLAYER::PLAYER_ID();
     Ped ped = PLAYER::PLAYER_PED_ID();
     bool pedExists = ped && ENTITY::DOES_ENTITY_EXIST(ped);
 
     CleanupGiftObjects(now);
+    UpdateVehicleFlip(now);
 
     if (now < g_superJumpUntil) {
         GAMEPLAY::SET_SUPER_JUMP_THIS_FRAME(player);

@@ -7,7 +7,7 @@ import {
 } from '/content.js'
 
 const app = document.querySelector('#app')
-const DOWNLOAD_URL = '/downloads/ShenPulseSetup.exe'
+const DOWNLOAD_URL = '/downloads/ShenPulseSetup-1.0.6.exe'
 const SITE_ORIGIN = 'https://www.shenpulse.leuridan.fr'
 const RETIRED_ROUTES = ['/login', '/setup', '/admin', '/app']
 

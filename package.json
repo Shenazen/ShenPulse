@@ -1,32 +1,42 @@
 {
   "name": "shenpulse",
   "productName": "ShenPulse",
-  "version": "1.0.4-beta2",
+  "version": "1.0.6",
   "description": "Plateforme locale d'interactions pour livestreams et jeux",
   "main": "src/main/main.js",
-  "author": "ShenPulse",
+  "author": "Alexandre Leuridan",
   "license": "UNLICENSED",
   "private": true,
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "prestart": "npm run assets && npm run brand:dev",
+    "prestart": "npm run games:build && npm run assets && npm run brand:dev",
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-packaged-dev.ps1",
     "brand:dev": "node scripts/brand-dev-executable.js",
     "test": "node --test --test-isolation=none tests/*.test.js",
     "lint": "node scripts/lint.js",
     "verify": "npm run lint && npm test",
+    "games:build": "vite build --config vite.games.config.mjs",
     "assets": "node scripts/generate-assets.js",
-    "build:dir": "npm run assets && electron-builder --win dir --x64",
+    "build:dir": "npm run games:build && npm run assets && electron-builder --win dir --x64",
     "package:upload": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-appxupload.ps1",
-    "build:store": "npm run verify && npm run assets && electron-builder --win appx --x64 && npm run package:upload",
-    "build:exe": "npm run verify && npm run assets && electron-builder --win portable --x64",
+    "build:store": "npm run verify && npm run games:build && npm run assets && electron-builder --win appx --x64 && npm run package:upload",
+    "package:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-windows-installer.ps1",
+    "build:installer": "npm run verify && npm run games:build && npm run assets && npm run package:installer",
+    "build:exe": "npm run build:installer",
     "dist": "npm run build:store"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "5.2.4",
     "electron": "43.2.0",
-    "electron-builder": "26.15.3"
+    "electron-builder": "26.15.3",
+    "lucide-vue-next": "0.468.0",
+    "three": "0.185.1",
+    "typescript": "6.0.3",
+    "vite": "6.4.3",
+    "vue": "3.5.38",
+    "vue-i18n": "11.4.0"
   },
   "build": {
     "appId": "ShenPulse.ShenPulse",
@@ -82,6 +92,19 @@
       ],
       "showNameOnTiles": true,
       "setBuildNumber": false
+    },
+    "nsis": {
+      "artifactName": "ShenPulseSetup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "ShenPulse",
+      "uninstallDisplayName": "ShenPulse ${version}",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
     }
   },
   "dependencies": {

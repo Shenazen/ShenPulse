@@ -42,7 +42,7 @@ async function main() {
       `[${index + 1}/${uploadOrder.length}] Vérification ${asset.remoteName}\n`
     );
     await verifyLocalAsset(sourcePath, asset);
-    if (await remoteHasExpectedSize(config, key, asset.size)) {
+    if ((await remoteHasExpectedSize(config, key, asset.size)) === true) {
       process.stdout.write(
         `    Déjà présent sur Backblaze (${asset.size} octets)\n`
       );
@@ -50,7 +50,18 @@ async function main() {
     }
     process.stdout.write(`    Envoi vers ${key}\n`);
     await uploadFile(config, key, sourcePath);
-    if (!(await remoteHasExpectedSize(config, key, asset.size))) {
+    const verification = await remoteHasExpectedSize(
+      config,
+      key,
+      asset.size
+    );
+    if (verification === null) {
+      process.stdout.write(
+        `    Lecture publique temporairement plafonnée ; l’upload PUT a été accepté\n`
+      );
+      continue;
+    }
+    if (verification === false) {
       throw new Error(
         `la vérification distante a échoué pour ${asset.remoteName}`
       );
@@ -61,11 +72,11 @@ async function main() {
   const manifestKey = `${remotePrefix}/manifest.json`;
   await uploadFile(config, manifestKey, manifestPath);
   if (
-    !(await remoteHasExpectedSize(
+    (await remoteHasExpectedSize(
       config,
       manifestKey,
       fs.statSync(manifestPath).size
-    ))
+    )) === false
   ) {
     throw new Error("la vérification distante du manifeste a échoué");
   }
@@ -138,9 +149,11 @@ async function remoteHasExpectedSize(config, key, expectedSize) {
     method: "HEAD",
     cache: "no-store"
   }).catch(() => null);
-  return Boolean(
-    response?.ok &&
-      Number(response.headers.get("content-length") || 0) === expectedSize
+  if (!response) return null;
+  if (response.status === 403 || response.status === 429) return null;
+  if (!response.ok) return false;
+  return (
+    Number(response.headers.get("content-length") || 0) === expectedSize
   );
 }
 

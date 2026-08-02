@@ -10,7 +10,10 @@ const mediaScreen = Math.min(
   8,
   Math.max(1, Math.round(Number(parameters.get("screen")) || 1))
 );
-const isStaticPreview = parameters.get("preview") === "static";
+const previewMode = parameters.get("preview") || "";
+const isStaticPreview = previewMode === "static";
+const isCatalogPreview =
+  isStaticPreview || previewMode === "animated";
 let themeName = parameters.get("theme") || "classic";
 let jarModel = parameters.get("model") || "fantasy";
 let wheelDesign = parameters.get("design") || "classic";
@@ -36,6 +39,8 @@ let showCrown = parameters.get("showCrown") !== "false";
 let showRankBadges = parameters.get("showRankBadges") !== "false";
 let showMetricLabel = parameters.get("showMetricLabel") !== "false";
 let timerAutoStart = parameters.get("timerAutoStart") === "true";
+let timerTitleScale = Math.min(2, Math.max(.5, Number(parameters.get("timerTitleScale") || 100) / 100));
+let timerValueScale = Math.min(2, Math.max(.5, Number(parameters.get("timerValueScale") || 100) / 100));
 const overlaySoundEnabled = parameters.get("soundEnabled") !== "false";
 const overlaySoundVolume = Math.min(1, Math.max(0, Number(parameters.get("soundVolume") || 70) / 100));
 const overlayDisplayTime = Math.min(120, Math.max(1, Number(parameters.get("displayTime") || 8)));
@@ -48,6 +53,15 @@ let overlayBackgroundOpacity = Math.min(100, Math.max(0, Number(parameters.get("
 let leaderboardRowOpacity = Math.min(100, Math.max(0, Number(parameters.get("rowOpacity") || 68)));
 let likeGoalBaseline = Math.max(0, Number(parameters.get("goalBaseline") || 0));
 let likeGoalProgressLabel = String(parameters.get("progressLabel") || "likes").trim();
+let likeGoalTitleX = Math.min(500, Math.max(-500, Number(parameters.get("titleX") || 0)));
+let likeGoalTitleY = Math.min(500, Math.max(-500, Number(parameters.get("titleY") || 0)));
+let likeGoalTitleScale = Math.min(2, Math.max(.5, Number(parameters.get("titleScale") || 100) / 100));
+let likeGoalTitleColor = parameters.get("titleColor") || parameters.get("textColor") || "#ffffff";
+let likeGoalContentX = Math.min(500, Math.max(-500, Number(parameters.get("contentX") || 0)));
+let likeGoalContentY = Math.min(500, Math.max(-500, Number(parameters.get("contentY") || 0)));
+let likeGoalContentScale = Math.min(2, Math.max(.5, Number(parameters.get("contentScale") || 100) / 100));
+let likeGoalContentColor = parameters.get("contentColor") || parameters.get("textColor") || "#ffffff";
+let likeGoalPercentColor = parameters.get("percentColor") || parameters.get("secondary") || "#ff4f86";
 let overlayMaxRows = Math.min(12, Math.max(1, Number(parameters.get("maxRows") || 5)));
 let matchFit = parameters.get("fit") === "cover" ? "cover" : "contain";
 let matchAutoplay = parameters.get("autoplay") !== "false";
@@ -108,6 +122,17 @@ document.documentElement.style.setProperty("--overlay-background", parameters.ge
 document.documentElement.style.setProperty("--overlay-background-opacity", `${overlayBackgroundOpacity}%`);
 document.documentElement.style.setProperty("--overlay-shadow-color", parameters.get("shadowColor") || "#000000");
 document.documentElement.style.setProperty("--overlay-font-size", overlayFontSize);
+document.documentElement.style.setProperty("--timer-title-scale", timerTitleScale);
+document.documentElement.style.setProperty("--timer-value-scale", timerValueScale);
+document.documentElement.style.setProperty("--like-goal-title-x", `${likeGoalTitleX}px`);
+document.documentElement.style.setProperty("--like-goal-title-y", `${likeGoalTitleY}px`);
+document.documentElement.style.setProperty("--like-goal-title-scale", likeGoalTitleScale);
+document.documentElement.style.setProperty("--like-goal-title-color", likeGoalTitleColor);
+document.documentElement.style.setProperty("--like-goal-content-x", `${likeGoalContentX}px`);
+document.documentElement.style.setProperty("--like-goal-content-y", `${likeGoalContentY}px`);
+document.documentElement.style.setProperty("--like-goal-content-scale", likeGoalContentScale);
+document.documentElement.style.setProperty("--like-goal-content-color", likeGoalContentColor);
+document.documentElement.style.setProperty("--like-goal-percent-color", likeGoalPercentColor);
 document.documentElement.style.setProperty("--leaderboard-name-color", parameters.get("nameColor") || "#ffffff");
 document.documentElement.style.setProperty("--leaderboard-score-color", parameters.get("scoreColor") || "#ffe575");
 document.documentElement.style.setProperty("--leaderboard-rank-color", parameters.get("rankColor") || "#ffe575");
@@ -116,7 +141,7 @@ activeView.style.fontFamily = parameters.get("font") || "Inter";
 activeView.style.direction = parameters.get("rtl") === "true" ? "rtl" : "ltr";
 activeView.style.filter = `saturate(${Math.min(200, Math.max(0, Number(parameters.get("saturation") || 100)))}%) hue-rotate(${Math.min(180, Math.max(-180, Number(parameters.get("hue") || 0)))}deg)`;
 activeView.classList.toggle("overlay-without-shadow", !showShadow);
-activeView.classList.toggle("overlay-idle-hidden", !isStaticPreview && !showWhenIdle);
+activeView.classList.toggle("overlay-idle-hidden", !isCatalogPreview && !showWhenIdle);
 activeView.classList.toggle("overlay-config-disabled", !overlayEnabled);
 activeView.dataset.layout = parameters.get("layout") || "wide";
 
@@ -236,6 +261,7 @@ function setThemeFrame(elementId, kind, classicPath = "") {
     : `widgets/interactive-overlays/${kind}-theme-${themeName}.png`;
   if (!path) {
     element.hidden = true;
+    element.removeAttribute("src");
     return;
   }
   element.src = mediaUrl(path);
@@ -364,6 +390,27 @@ function updatePreviewConfiguration(payload = {}) {
     0,
     999999999
   );
+  likeGoalTitleX = previewNumber(payload, "titleX", likeGoalTitleX, -500, 500);
+  likeGoalTitleY = previewNumber(payload, "titleY", likeGoalTitleY, -500, 500);
+  likeGoalTitleScale = previewNumber(
+    payload,
+    "titleScale",
+    likeGoalTitleScale * 100,
+    50,
+    200
+  ) / 100;
+  likeGoalTitleColor = payload.titleColor || likeGoalTitleColor;
+  likeGoalContentX = previewNumber(payload, "contentX", likeGoalContentX, -500, 500);
+  likeGoalContentY = previewNumber(payload, "contentY", likeGoalContentY, -500, 500);
+  likeGoalContentScale = previewNumber(
+    payload,
+    "contentScale",
+    likeGoalContentScale * 100,
+    50,
+    200
+  ) / 100;
+  likeGoalContentColor = payload.contentColor || likeGoalContentColor;
+  likeGoalPercentColor = payload.percentColor || likeGoalPercentColor;
   likeGoalProgressLabel = Object.prototype.hasOwnProperty.call(payload, "progressLabel")
     ? String(payload.progressLabel || "").trim()
     : likeGoalProgressLabel;
@@ -385,6 +432,20 @@ function updatePreviewConfiguration(payload = {}) {
   showRankBadges = previewBoolean(payload, "showRankBadges", showRankBadges);
   showMetricLabel = previewBoolean(payload, "showMetricLabel", showMetricLabel);
   timerAutoStart = previewBoolean(payload, "timerAutoStart", timerAutoStart);
+  timerTitleScale = previewNumber(
+    payload,
+    "timerTitleScale",
+    timerTitleScale * 100,
+    50,
+    200
+  ) / 100;
+  timerValueScale = previewNumber(
+    payload,
+    "timerValueScale",
+    timerValueScale * 100,
+    50,
+    200
+  ) / 100;
   matchAutoplay = previewBoolean(payload, "autoplay", matchAutoplay);
   matchLoop = previewBoolean(payload, "loop", matchLoop);
   matchFit = payload.fit === "cover" ? "cover" : payload.fit ? "contain" : matchFit;
@@ -431,6 +492,17 @@ function updatePreviewConfiguration(payload = {}) {
   document.documentElement.style.setProperty("--overlay-background", payload.background || parameters.get("background") || "#111315");
   document.documentElement.style.setProperty("--overlay-background-opacity", `${overlayBackgroundOpacity}%`);
   document.documentElement.style.setProperty("--overlay-font-size", overlayFontSize);
+  document.documentElement.style.setProperty("--timer-title-scale", timerTitleScale);
+  document.documentElement.style.setProperty("--timer-value-scale", timerValueScale);
+  document.documentElement.style.setProperty("--like-goal-title-x", `${likeGoalTitleX}px`);
+  document.documentElement.style.setProperty("--like-goal-title-y", `${likeGoalTitleY}px`);
+  document.documentElement.style.setProperty("--like-goal-title-scale", likeGoalTitleScale);
+  document.documentElement.style.setProperty("--like-goal-title-color", likeGoalTitleColor);
+  document.documentElement.style.setProperty("--like-goal-content-x", `${likeGoalContentX}px`);
+  document.documentElement.style.setProperty("--like-goal-content-y", `${likeGoalContentY}px`);
+  document.documentElement.style.setProperty("--like-goal-content-scale", likeGoalContentScale);
+  document.documentElement.style.setProperty("--like-goal-content-color", likeGoalContentColor);
+  document.documentElement.style.setProperty("--like-goal-percent-color", likeGoalPercentColor);
   document.documentElement.style.setProperty("--leaderboard-name-color", payload.nameColor || parameters.get("nameColor") || "#ffffff");
   document.documentElement.style.setProperty("--leaderboard-score-color", payload.scoreColor || parameters.get("scoreColor") || "#ffe575");
   document.documentElement.style.setProperty("--leaderboard-rank-color", payload.rankColor || parameters.get("rankColor") || "#ffe575");
@@ -533,6 +605,47 @@ function updatePreviewConfiguration(payload = {}) {
   renderMyActions();
 }
 
+function activeOverlayConfigKey() {
+  if (viewName === "leaderboard") {
+    return leaderboardKind === "tappers" ? "topTappers" : "topDonors";
+  }
+  if (viewName === "match") {
+    return {
+      x2: "matchX2",
+      x3: "matchX3",
+      guantes: "matchGants",
+      cofre: "matchCoffre",
+      snipe: "matchSnipe",
+      taptap: "matchTapTap",
+      quiereme: "matchQuiereme",
+      enigma: "matchEnigma"
+    }[matchName] || "";
+  }
+  return {
+    alerts: "alerts",
+    "my-actions": "myActions",
+    goals: "goals",
+    "like-goal": "likeGoal",
+    feed: "feed",
+    game: "game",
+    "coin-jar": "coinJar",
+    timer: "timer",
+    "multiplier-timer": "multiplierTimer",
+    "win-counter": "winCounter",
+    wheel: "wheel"
+  }[viewName] || "";
+}
+
+function updateOverlayConfiguration(payload = {}) {
+  const overlayKey = String(payload.overlayKey || "").trim();
+  if (overlayKey && overlayKey !== activeOverlayConfigKey()) return;
+  const configuration =
+    payload.config && typeof payload.config === "object"
+      ? payload.config
+      : payload;
+  updatePreviewConfiguration(configuration);
+}
+
 function setupConfiguration() {
   const titleTargets = {
     "my-actions": "my-actions-title",
@@ -564,15 +677,17 @@ function setupConfiguration() {
   }
   if (likeProgressLabel) {
     likeProgressLabel.textContent = likeGoalProgressLabel;
-    likeProgressLabel.hidden = !likeGoalProgressLabel;
+    likeProgressLabel.hidden = !showGoal || !likeGoalProgressLabel;
   }
   if (winTarget) winTarget.textContent = formatNumber(winCounterTarget);
   if (winTitle && overlayTitle) winTitle.textContent = overlayTitle;
   activeView.querySelectorAll("header, #like-goal-title, #timer-label, #multiplier-timer-label, .win-counter-content > span, #wheel-caption").forEach((element) => {
-    if (!showHeader) element.hidden = true;
+    element.hidden = !showHeader;
   });
-  activeView.querySelectorAll(".like-goal-bar, .win-counter-content > small").forEach((element) => {
-    if (!showGoal) element.hidden = true;
+  activeView.querySelectorAll("#like-goal-progress-label, .win-counter-content > small").forEach((element) => {
+    element.hidden =
+      !showGoal ||
+      (element.id === "like-goal-progress-label" && !likeGoalProgressLabel);
   });
   activeView.querySelectorAll(".leaderboard-rank").forEach((element) => {
     element.hidden = !showRank;
@@ -817,9 +932,9 @@ function seedStaticLeaderboardPreview() {
     return;
   }
   [
-    ["LunaPulse", leaderboardKind === "tappers" ? 2450 : 820],
-    ["AlexLive", leaderboardKind === "tappers" ? 1870 : 540],
-    ["NoxGaming", leaderboardKind === "tappers" ? 920 : 310]
+    ["APERÇU 1", leaderboardKind === "tappers" ? 2450 : 820],
+    ["APERÇU 2", leaderboardKind === "tappers" ? 1870 : 540],
+    ["APERÇU 3", leaderboardKind === "tappers" ? 920 : 310]
   ].forEach(([name, score], index) => leaderboardScores.set(`demo-${index}`, {
     avatarUrl: "",
     name,
@@ -1135,6 +1250,7 @@ function renderLikeGoal(options = {}) {
   const progressLabel = document.getElementById("like-goal-progress-label");
   const bar = document.getElementById("like-goal-progress");
   if (title) title.textContent = overlayTitle || "LIKE GOAL";
+  if (title) title.hidden = !showHeader;
   if (currentLabel) currentLabel.textContent = formatNumber(current);
   if (targetLabel) targetLabel.textContent = formatNumber(target);
   if (percentLabel) {
@@ -1143,7 +1259,7 @@ function renderLikeGoal(options = {}) {
   }
   if (progressLabel) {
     progressLabel.textContent = likeGoalProgressLabel;
-    progressLabel.hidden = !likeGoalProgressLabel;
+    progressLabel.hidden = !showGoal || !likeGoalProgressLabel;
   }
   if (bar) bar.style.width = `${progress}%`;
 }
@@ -1388,12 +1504,13 @@ function currentCoinJarGeometry(stage) {
       gift.y *= scaleY;
       gift.vx *= scaleX;
       gift.vy *= scaleY;
+      gift.visualRadius = (gift.visualRadius || gift.radius) * radiusScale;
       gift.radius *= radiusScale;
       gift.mass = gift.radius * gift.radius;
       if (Number.isFinite(gift.restX)) gift.restX *= scaleX;
       if (Number.isFinite(gift.restY)) gift.restY *= scaleY;
-      gift.node.style.width = `${gift.radius * 2}px`;
-      gift.node.style.height = `${gift.radius * 2}px`;
+      gift.node.style.width = `${gift.visualRadius * 2}px`;
+      gift.node.style.height = `${gift.visualRadius * 2}px`;
     }
   }
   coinJarGeometry = globalThis.CoinJarPhysics.createGeometry(width, height);
@@ -1406,7 +1523,8 @@ function spawnCoinJarGift(stage, event) {
     event.data?.value,
     geometry.width
   );
-  const radius = size / 2;
+  const visualRadius = size / 2;
+  const radius = size * 0.43;
   const node = document.createElement("span");
   node.className = "coin-jar-gift";
   node.style.width = `${size}px`;
@@ -1437,14 +1555,15 @@ function spawnCoinJarGift(stage, event) {
     x:
       geometry.centerX +
       (Math.random() - 0.5) *
-        Math.max(size, geometry.mouthRight - geometry.mouthLeft - size * 2.4),
-    y: -radius - Math.random() * geometry.height * 0.035,
-    vx: (Math.random() - 0.5) * geometry.width * 0.13,
+        Math.max(0, geometry.mouthRight - geometry.mouthLeft - size),
+    y: -visualRadius - Math.random() * geometry.height * 0.035,
+    vx: (Math.random() - 0.5) * geometry.width * 0.28,
     vy: geometry.height * (0.05 + Math.random() * 0.08),
     radius,
     angle: (Math.random() - 0.5) * 120,
     angularVelocity: (Math.random() - 0.5) * 120
   });
+  body.visualRadius = visualRadius;
   body.node = node;
   coinJarDrops.push(body);
   renderCoinJarGift(body);
@@ -1452,19 +1571,20 @@ function spawnCoinJarGift(stage, event) {
 }
 
 function renderCoinJarGift(gift) {
-  const diameter = gift.radius * 2;
+  const visualRadius = gift.visualRadius || gift.radius;
+  const diameter = visualRadius * 2;
   const containedLayer = document.getElementById("coin-jar-contained-drops");
   const overflowLayer = document.getElementById("coin-jar-overflow-drops");
   const fullyInsideGlass =
     gift.state === "contained" &&
     coinJarGeometry &&
-    gift.y - gift.radius >= coinJarGeometry.mouthTop;
+    gift.y - visualRadius >= coinJarGeometry.mouthTop;
   const targetLayer = fullyInsideGlass ? containedLayer : overflowLayer;
   if (targetLayer && gift.node.parentElement !== targetLayer) {
     targetLayer.append(gift.node);
   }
   gift.node.style.transform =
-    `translate3d(${gift.x - gift.radius}px, ${gift.y - gift.radius}px, 0) ` +
+    `translate3d(${gift.x - visualRadius}px, ${gift.y - visualRadius}px, 0) ` +
     `rotate(${gift.angle}deg)`;
   gift.node.classList.toggle(
     "settled",
@@ -1771,7 +1891,7 @@ function renderTimer() {
   const hours = Math.floor(timerSeconds / 3600);
   const minutes = Math.floor((timerSeconds % 3600) / 60);
   const seconds = String(timerSeconds % 60).padStart(2, "0");
-  const value = showHours && hours > 0
+  const value = showHours
     ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${seconds}`
     : `${String(hours * 60 + minutes).padStart(2, "0")}:${seconds}`;
   for (const id of ["timer-value", "multiplier-timer-value"]) {
@@ -1936,7 +2056,7 @@ const overlayChannels = {
 };
 overlayChannels["session-state"] = hydrateOverlaySession;
 overlayChannels.design = updatePreviewDesign;
-overlayChannels.configuration = updatePreviewConfiguration;
+overlayChannels.configuration = updateOverlayConfiguration;
 
 window.addEventListener("resize", () => {
   if (viewName === "coin-jar" && coinJarDrops.length) startCoinJarPhysics();
@@ -1944,7 +2064,7 @@ window.addEventListener("resize", () => {
 
 window.addEventListener("message", (event) => {
   if (
-    !isStaticPreview ||
+    !isCatalogPreview ||
     event.source !== window.parent ||
     event.data?.source !== "shenpulse-overlay-card"
   ) {
@@ -1970,7 +2090,7 @@ async function initialize() {
       // The SSE retry loop keeps the overlay alive if the app restarts.
     }
   }
-  if (isStaticPreview) return;
+  if (isCatalogPreview) return;
   if (
     timerAutoStart &&
     viewName === "multiplier-timer"
@@ -2018,7 +2138,7 @@ let relayInitialized = false;
 let lastRelayBatchId = "";
 
 function connectPublicRelay() {
-  if (isStaticPreview) return;
+  if (isCatalogPreview) return;
   const source = new EventSource(
     `${relayDatabaseUrl}/publicOverlayRelay/${encodeURIComponent(
       relayChannel

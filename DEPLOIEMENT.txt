@@ -1,0 +1,82 @@
+DEPLOIEMENT SHENPULSE
+=====================
+
+Prérequis :
+- Windows 10 ou plus récent
+- Node.js 22 ou plus récent
+- Accès Git et, pour une publication Store, accès à Microsoft Partner Center
+
+1. Préparer la nouvelle version
+   - Vérifier que le dépôt est propre avec : git status
+   - Mettre à jour le numéro "version" dans package.json.
+   - Mettre à jour package-lock.json si nécessaire.
+   - Vérifier les notes de version, les URL légales et l'URL de support.
+
+2. Installer exactement les dépendances verrouillées
+   npm ci
+
+3. Lancer les contrôles avant déploiement
+   npm run verify
+
+   Cette commande exécute le lint et tous les tests. Ne pas continuer en cas
+   d'échec.
+
+4. Créer le package Microsoft Store
+   npm run build:store
+
+   Les fichiers .appx et .appxupload sont générés dans le dossier dist/.
+   Le fichier .appxupload est celui à envoyer dans Microsoft Partner Center.
+
+5. Créer le véritable installateur Windows
+   npm run build:installer
+
+   Les fichiers ShenPulseSetup-X.Y.Z-x64.exe et ShenPulseSetup-X.Y.Z.exe sont
+   générés dans le dossier dist/. Ils sont identiques ; le second correspond au
+   nom public utilisé par le site. L'installateur crée les raccourcis et fournit
+   un désinstalleur.
+
+   Pour le site public, publier ShenPulseSetup-X.Y.Z.exe sous
+   /downloads/ShenPulseSetup-X.Y.Z.exe, puis reconstruire et valider le site :
+   npm --prefix website run check
+
+6. Vérifier les fichiers générés
+   - Lancer l'exécutable sur une machine Windows de test.
+   - Tester les fonctions principales et les connexions nécessaires.
+   - Vérifier les noms, la version et l'architecture des fichiers dans dist/.
+   - Calculer et conserver les empreintes SHA-256 des fichiers distribués :
+     Get-FileHash .\dist\* -Algorithm SHA256
+   - Pour le Store, lancer le Windows App Certification Kit (WACK).
+
+7. Déployer les overlays publics si leur code ou les règles Firebase ont changé
+   node scripts/smoke-public-overlay-relay.js
+   firebase deploy --only "database,hosting" --project shenazenoverlay
+
+   Cette étape est facultative si aucun fichier des overlays publics et aucune
+   règle Firebase n'ont été modifiés.
+
+8. Mettre à jour Git
+   - Contrôler une dernière fois les changements : git status
+   - Ajouter uniquement les fichiers source et de documentation utiles.
+   - Créer le commit de version, par exemple :
+     git commit -m "release: version X.Y.Z"
+   - Envoyer le commit : git push
+   - Créer puis envoyer un tag de version si les tags sont utilisés :
+     git tag vX.Y.Z
+     git push origin vX.Y.Z
+
+   Important : le dossier dist/ est ignoré par Git et ne doit pas être commité.
+   Ne jamais commiter de certificat, clé privée, fichier .env ou autre secret.
+
+9. Publier la version
+   - Envoyer le fichier .appxupload dans le produit ShenPulse de Partner Center.
+   - Mettre à jour la fiche Store, les captures et la classification d'âge.
+   - Justifier la capacité runFullTrust.
+   - Publier d'abord sur un vol privé, installer et tester cette version.
+   - Soumettre en production seulement après validation du vol privé.
+   - Distribuer l'installateur .exe uniquement par le canal officiel prévu.
+
+Documents utiles :
+- docs/STORE_SUBMISSION.md
+- docs/VALIDATION.md
+- docs/PUBLIC_OVERLAYS.md
+- docs/FEATURE_MATRIX.md

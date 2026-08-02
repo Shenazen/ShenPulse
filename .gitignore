@@ -5,6 +5,8 @@ coverage/
 .artifacts/
 .firebase/
 .tmp/
+.tmp-*/
+.tmp-*.jar
 *.log
 account-payments-hardening.patch
 private/

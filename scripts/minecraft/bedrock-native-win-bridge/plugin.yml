@@ -1,0 +1,10 @@
+name: ShenPulseBedrockNativeWinBridge
+version: 1.0.0
+main: fr.shenpulse.minecraft.ShenPulseBedrockNativeWinBridge
+api-version: '1.21'
+authors:
+  - ShenPulse
+description: Relays only confirmed native Bedrock Box wins to the ShenPulse counter.
+depend:
+  - ShenPulseBedrockGuard
+  - s2e-bedrock-box

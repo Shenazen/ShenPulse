@@ -117,7 +117,9 @@ test("le chrono démarre avec le serveur et synchronise Minecraft", async () => 
     label: "Temps restant"
   });
   assert.deepEqual(runtime.commands[0].entries, [
-    "shenpulse_win hide"
+    "shenpulse_win set 5",
+    "shenpulse_win timer 600",
+    "shenpulse_win show"
   ]);
 });
 
@@ -174,7 +176,7 @@ test("les commandes TIME OUT sont adaptées aux deux modes Minecraft", () => {
     )
   );
   assert.ok(
-    !minecraftTimeoutCommands("minecraft-bedrock-box").includes(
+    minecraftTimeoutCommands("minecraft-bedrock-box").includes(
       "shenpulse_win show"
     )
   );
@@ -185,4 +187,57 @@ test("les commandes TIME OUT sont adaptées aux deux modes Minecraft", () => {
     ) < commands.indexOf("bedrock reset 1")
   );
   assert.ok(commands.includes("delay 2500"));
+});
+
+test("une victoire native termine la manche sans appliquer ensuite un TIME OUT", async () => {
+  const runtime = harness();
+  await runtime.timer.start("minecraft-bedrock-box");
+  const timeout = runtime.scheduled[0];
+
+  const result = await runtime.timer.resolveNativeOutcome(
+    "minecraft-bedrock-box",
+    {
+      outcome: "win",
+      currentWins: 6,
+      source: "auto-win"
+    }
+  );
+
+  assert.equal(result.resolved, true);
+  assert.equal(timeout.cleared, true);
+  assert.equal(runtime.state.session.game.roundStatus, "won");
+  assert.equal(runtime.state.session.game.roundEndsAt, null);
+  assert.equal(runtime.state.session.game.roundWinCount, 1);
+  assert.ok(
+    runtime.actions.some(
+      (action) =>
+        action.type === "timer.add" && action.config.seconds === 0
+    )
+  );
+});
+
+test("une défaite native est enregistrée sans retirer deux fois une WIN", async () => {
+  const runtime = harness({ currentWins: 4 });
+  await runtime.timer.start("minecraft-bedrock-box");
+
+  const result = await runtime.timer.resolveNativeOutcome(
+    "minecraft-bedrock-box",
+    {
+      outcome: "loss",
+      currentWins: 3,
+      source: "timer-penalty"
+    }
+  );
+
+  assert.equal(result.resolved, true);
+  assert.equal(runtime.state.overlaySession.winCounterCurrent, 4);
+  assert.equal(runtime.state.session.game.roundStatus, "timeout");
+  assert.equal(runtime.state.session.game.roundTimeoutCount, 1);
+  assert.ok(
+    !runtime.actions.some(
+      (action) =>
+        action.type === "overlay.win-counter" &&
+        action.config.amount === -1
+    )
+  );
 });

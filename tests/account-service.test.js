@@ -4,7 +4,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { AccountService } = require("../src/main/account-service");
+const {
+  AccountService,
+  createPaymentLoopbackCallback
+} = require("../src/main/account-service");
 const { createDefaultState } = require("../src/main/defaults");
 const {
   hasActiveGameSubscription,
@@ -249,6 +252,564 @@ test("utilise l’accès public vérifié si la synchronisation privée échoue"
       { id: "coin-pusher", accessMode: "purchase" }
     ),
     true
+  );
+});
+
+test("ouvre directement le checkout PayPal depuis le compte de l'application", async () => {
+  const store = createStore();
+  const openedUrls = [];
+  let checkoutRequest = null;
+  let syncRequest = null;
+  const service = new AccountService({
+    store,
+    openExternal: async (url) => {
+      openedUrls.push(url);
+      const callbackUrl = new URL(
+        `http://127.0.0.1:${checkoutRequest.body.desktopCallbackPort}/payment-callback`
+      );
+      callbackUrl.searchParams.set(
+        "state",
+        checkoutRequest.body.desktopCallbackState
+      );
+      callbackUrl.searchParams.set("status", "success");
+      callbackUrl.searchParams.set(
+        "subscription_id",
+        "I-SANDBOX"
+      );
+      const callbackResponse = await fetch(callbackUrl);
+      assert.equal(callbackResponse.status, 200);
+    },
+    fetchImpl: async (url, options = {}) => {
+      if (String(url).includes("accounts:lookup")) {
+        return jsonResponse({
+          users: [{
+            email: "sandbox-buyer@example.com",
+            localId: "sandbox_buyer_uid",
+            emailVerified: true
+          }]
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/create")) {
+        checkoutRequest = {
+          authorization: options.headers.Authorization,
+          body: JSON.parse(options.body)
+        };
+        return jsonResponse({
+          approvalUrl:
+            "https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=BA-TEST",
+          id: "I-SANDBOX",
+          tier: "pro"
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/sync")) {
+        syncRequest = {
+          authorization: options.headers.Authorization,
+          body: JSON.parse(options.body)
+        };
+        return jsonResponse({
+          ok: true,
+          paypalStatus: "ACTIVE",
+          subscriptionId: "I-SANDBOX",
+          tier: "pro"
+        });
+      }
+      if (
+        String(url).includes("/api/account/entitlements") ||
+        String(url).includes("/api/entitlements/subscription")
+      ) {
+        return jsonResponse({
+          checkedAt: "2026-07-30T08:00:00.000Z",
+          gameEntitlements: [],
+          source: "free",
+          tier: "free"
+        });
+      }
+      return jsonResponse({
+        email: "sandbox-buyer@example.com",
+        localId: "sandbox_buyer_uid",
+        idToken: "id-token",
+        refreshToken: "refresh-token",
+        expiresIn: "3600"
+      });
+    }
+  });
+
+  await service.login({
+    email: "sandbox-buyer@example.com",
+    password: "mot-de-passe"
+  });
+  const result = await service.startSubscriptionCheckout({ tier: "pro" });
+
+  assert.equal(result.checkoutOpened, true);
+  assert.equal(result.checkoutCompleted, true);
+  assert.equal(result.approvalUrl, undefined);
+  assert.equal(checkoutRequest.authorization, "Bearer id-token");
+  assert.equal(checkoutRequest.body.ownerId, "sandbox_buyer_uid");
+  assert.equal(checkoutRequest.body.tier, "pro");
+  assert.equal(
+    Number.isInteger(checkoutRequest.body.desktopCallbackPort),
+    true
+  );
+  assert.match(
+    checkoutRequest.body.desktopCallbackState,
+    /^[a-zA-Z0-9_-]{43}$/
+  );
+  assert.match(checkoutRequest.body.requestId, /^[0-9a-f-]{36}$/i);
+  assert.equal(syncRequest.authorization, "Bearer id-token");
+  assert.equal(
+    Number.isInteger(syncRequest.body.desktopCallbackPort),
+    true
+  );
+  assert.match(
+    syncRequest.body.desktopCallbackState,
+    /^[a-zA-Z0-9_-]{43}$/
+  );
+  const {
+    desktopCallbackPort: _desktopCallbackPort,
+    desktopCallbackState: _desktopCallbackState,
+    ...syncBody
+  } = syncRequest.body;
+  assert.deepEqual(syncBody, {
+    ownerId: "sandbox_buyer_uid",
+    subscriptionId: "I-SANDBOX",
+    tier: "pro",
+    token: ""
+  });
+  assert.deepEqual(openedUrls, [
+    "https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=BA-TEST"
+  ]);
+});
+
+test("annule immédiatement l’attente si la fenêtre PayPal a été fermée", async () => {
+  const store = createStore();
+  let markPayPalOpened;
+  const paypalOpened = new Promise((resolve) => {
+    markPayPalOpened = resolve;
+  });
+  let syncCalls = 0;
+  const service = new AccountService({
+    store,
+    openExternal: async () => {
+      markPayPalOpened();
+    },
+    fetchImpl: async (url) => {
+      if (String(url).includes("accounts:lookup")) {
+        return jsonResponse({
+          users: [{
+            email: "cancelled-buyer@example.com",
+            localId: "cancelled_buyer_uid",
+            emailVerified: true
+          }]
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/create")) {
+        return jsonResponse({
+          approvalUrl:
+            "https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=BA-CANCEL",
+          id: "I-CANCEL",
+          tier: "premium"
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/sync")) {
+        syncCalls += 1;
+        return jsonResponse({
+          ok: true,
+          paypalStatus: "ACTIVE",
+          subscriptionId: "I-CANCEL",
+          tier: "premium"
+        });
+      }
+      if (
+        String(url).includes("/api/account/entitlements") ||
+        String(url).includes("/api/entitlements/subscription")
+      ) {
+        return jsonResponse({
+          checkedAt: "2026-07-30T08:00:00.000Z",
+          gameEntitlements: [],
+          source: "free",
+          tier: "free"
+        });
+      }
+      return jsonResponse({
+        email: "cancelled-buyer@example.com",
+        localId: "cancelled_buyer_uid",
+        idToken: "id-token",
+        refreshToken: "refresh-token",
+        expiresIn: "3600"
+      });
+    }
+  });
+
+  await service.login({
+    email: "cancelled-buyer@example.com",
+    password: "mot-de-passe"
+  });
+  const checkout = service.startSubscriptionCheckout({
+    tier: "premium"
+  });
+  await paypalOpened;
+
+  assert.deepEqual(
+    service.cancelCheckout({ type: "subscription" }),
+    {
+      cancelled: true,
+      pending: true,
+      type: "subscription"
+    }
+  );
+  assert.deepEqual(await checkout, {
+    cancelled: true,
+    checkoutOpened: true,
+    id: "I-CANCEL",
+    tier: "premium"
+  });
+  assert.equal(syncCalls, 0);
+  assert.equal(
+    service.cancelCheckout({ type: "subscription" }).cancelled,
+    false
+  );
+});
+
+test("achète un jeu dans PayPal puis revient le valider dans l’application", async () => {
+  const store = createStore();
+  const openedUrls = [];
+  let createRequest = null;
+  let captureRequest = null;
+  const service = new AccountService({
+    store,
+    openExternal: async (url) => {
+      openedUrls.push(url);
+      const callbackUrl = new URL(
+        `http://127.0.0.1:${createRequest.body.desktopCallbackPort}/payment-callback`
+      );
+      callbackUrl.searchParams.set(
+        "state",
+        createRequest.body.desktopCallbackState
+      );
+      callbackUrl.searchParams.set("status", "success");
+      callbackUrl.searchParams.set("token", "ORDER-GAME");
+      const callbackResponse = await fetch(callbackUrl);
+      assert.equal(callbackResponse.status, 200);
+    },
+    fetchImpl: async (url, options = {}) => {
+      if (String(url).includes("accounts:lookup")) {
+        return jsonResponse({
+          users: [{
+            email: "game-buyer@example.com",
+            localId: "game_buyer_uid",
+            emailVerified: true
+          }]
+        });
+      }
+      if (String(url).includes("/api/payments/orders/create")) {
+        createRequest = {
+          authorization: options.headers.Authorization,
+          body: JSON.parse(options.body)
+        };
+        return jsonResponse({
+          approvalUrl:
+            "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-GAME",
+          amount: "4.99",
+          currency: "EUR",
+          id: "ORDER-GAME",
+          productId: "coin-pusher"
+        });
+      }
+      if (String(url).includes("/api/payments/orders/capture")) {
+        captureRequest = {
+          authorization: options.headers.Authorization,
+          body: JSON.parse(options.body)
+        };
+        return jsonResponse({
+          ok: true,
+          orderId: "ORDER-GAME",
+          productId: "coin-pusher"
+        });
+      }
+      if (String(url).includes("/api/account/entitlements")) {
+        return new Response(
+          "<!doctype html><html><body>ShenPulse</body></html>",
+          {
+            status: 200,
+            headers: { "Content-Type": "text/html; charset=utf-8" }
+          }
+        );
+      }
+      if (String(url).includes("/api/entitlements/subscription")) {
+        return jsonResponse({
+          checkedAt: "2026-07-30T08:00:00.000Z",
+          gameEntitlements: [],
+          source: "own",
+          tier: "pro"
+        });
+      }
+      return jsonResponse({
+        email: "game-buyer@example.com",
+        localId: "game_buyer_uid",
+        idToken: "id-token",
+        refreshToken: "refresh-token",
+        expiresIn: "3600"
+      });
+    }
+  });
+
+  await service.login({
+    email: "game-buyer@example.com",
+    password: "mot-de-passe"
+  });
+  const result = await service.startGameCheckout({
+    productId: "coin-pusher"
+  });
+
+  assert.equal(result.checkoutOpened, true);
+  assert.equal(result.checkoutCompleted, true);
+  assert.equal(result.approvalUrl, undefined);
+  assert.equal(result.orderId, "ORDER-GAME");
+  assert.equal(result.productId, "coin-pusher");
+  assert.equal(createRequest.authorization, "Bearer id-token");
+  assert.equal(createRequest.body.ownerId, "game_buyer_uid");
+  assert.equal(createRequest.body.productId, "coin-pusher");
+  assert.equal(
+    Number.isInteger(createRequest.body.desktopCallbackPort),
+    true
+  );
+  assert.match(
+    createRequest.body.desktopCallbackState,
+    /^[a-zA-Z0-9_-]{43}$/
+  );
+  assert.match(createRequest.body.requestId, /^[0-9a-f-]{36}$/i);
+  assert.equal(captureRequest.authorization, "Bearer id-token");
+  assert.deepEqual(captureRequest.body, {
+    orderId: "ORDER-GAME",
+    ownerId: "game_buyer_uid",
+    productId: "coin-pusher",
+    token: "ORDER-GAME"
+  });
+  assert.deepEqual(openedUrls, [
+    "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-GAME"
+  ]);
+  assert.equal(
+    store.state.commerce.gameEntitlements.some(
+      (entry) => entry.gameId === "coin-pusher"
+    ),
+    true
+  );
+});
+
+test("un upgrade Premium revient aussi dans l’application après le prorata", async () => {
+  const store = createStore();
+  const openedUrls = [];
+  let checkoutBody = null;
+  let syncBody = null;
+  let captureBody = null;
+  const returnToApp = async (body, parameters) => {
+    const callbackUrl = new URL(
+      `http://127.0.0.1:${body.desktopCallbackPort}/payment-callback`
+    );
+    callbackUrl.searchParams.set(
+      "state",
+      body.desktopCallbackState
+    );
+    callbackUrl.searchParams.set("status", "success");
+    for (const [key, value] of Object.entries(parameters)) {
+      callbackUrl.searchParams.set(key, value);
+    }
+    const response = await fetch(callbackUrl);
+    assert.equal(response.status, 200);
+  };
+  const service = new AccountService({
+    store,
+    openExternal: async (url) => {
+      openedUrls.push(url);
+      if (openedUrls.length === 1) {
+        await returnToApp(checkoutBody, {
+          subscription_id: "I-UPGRADE"
+        });
+      } else {
+        await returnToApp(syncBody, {
+          token: "ORDER-PRORATION"
+        });
+      }
+    },
+    fetchImpl: async (url, options = {}) => {
+      if (String(url).includes("accounts:lookup")) {
+        return jsonResponse({
+          users: [{
+            email: "upgrade-buyer@example.com",
+            localId: "upgrade_buyer_uid",
+            emailVerified: true
+          }]
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/create")) {
+        checkoutBody = JSON.parse(options.body);
+        return jsonResponse({
+          approvalUrl:
+            "https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=BA-UPGRADE",
+          id: "I-UPGRADE",
+          tier: "premium"
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/sync")) {
+        syncBody = JSON.parse(options.body);
+        return jsonResponse({
+          approvalUrl:
+            "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-PRORATION",
+          ok: true,
+          requiresProrationPayment: true,
+          subscriptionId: "I-UPGRADE",
+          targetTier: "premium",
+          tier: "pro"
+        });
+      }
+      if (
+        String(url).includes(
+          "/api/payments/subscriptions/proration/capture"
+        )
+      ) {
+        captureBody = JSON.parse(options.body);
+        return jsonResponse({
+          ok: true,
+          subscriptionId: "I-UPGRADE",
+          tier: "premium"
+        });
+      }
+      if (
+        String(url).includes("/api/account/entitlements") ||
+        String(url).includes("/api/entitlements/subscription")
+      ) {
+        return jsonResponse({
+          checkedAt: "2026-07-30T08:00:00.000Z",
+          gameEntitlements: [],
+          source: "own",
+          status: "active",
+          tier: "premium"
+        });
+      }
+      return jsonResponse({
+        email: "upgrade-buyer@example.com",
+        localId: "upgrade_buyer_uid",
+        idToken: "id-token",
+        refreshToken: "refresh-token",
+        expiresIn: "3600"
+      });
+    }
+  });
+
+  await service.login({
+    email: "upgrade-buyer@example.com",
+    password: "mot-de-passe"
+  });
+  const result = await service.startSubscriptionCheckout({
+    tier: "premium"
+  });
+
+  assert.equal(result.checkoutCompleted, true);
+  assert.equal(result.requiresProrationPayment, false);
+  assert.equal(result.tier, "premium");
+  assert.deepEqual(captureBody, {
+    orderId: "ORDER-PRORATION",
+    ownerId: "upgrade_buyer_uid",
+    subscriptionId: "I-UPGRADE",
+    tier: "premium",
+    token: "ORDER-PRORATION"
+  });
+  assert.deepEqual(openedUrls, [
+    "https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=BA-UPGRADE",
+    "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-PRORATION"
+  ]);
+});
+
+test("refuse un lien de checkout qui ne pointe pas vers PayPal", async () => {
+  const store = createStore();
+  let opened = false;
+  const service = new AccountService({
+    store,
+    openExternal: async () => {
+      opened = true;
+    },
+    fetchImpl: async (url) => {
+      if (String(url).includes("accounts:lookup")) {
+        return jsonResponse({
+          users: [{
+            email: "sandbox-buyer@example.com",
+            localId: "sandbox_buyer_uid",
+            emailVerified: true
+          }]
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/create")) {
+        return jsonResponse({
+          approvalUrl: "https://example.com/faux-paypal",
+          id: "I-SANDBOX",
+          tier: "premium"
+        });
+      }
+      if (
+        String(url).includes("/api/account/entitlements") ||
+        String(url).includes("/api/entitlements/subscription")
+      ) {
+        return jsonResponse({
+          checkedAt: "2026-07-30T08:00:00.000Z",
+          gameEntitlements: [],
+          source: "free",
+          tier: "free"
+        });
+      }
+      return jsonResponse({
+        email: "sandbox-buyer@example.com",
+        localId: "sandbox_buyer_uid",
+        idToken: "id-token",
+        refreshToken: "refresh-token",
+        expiresIn: "3600"
+      });
+    }
+  });
+
+  await service.login({
+    email: "sandbox-buyer@example.com",
+    password: "mot-de-passe"
+  });
+  await assert.rejects(
+    service.startSubscriptionCheckout({ tier: "premium" }),
+    /ne pointe pas vers PayPal/
+  );
+  assert.equal(opened, false);
+});
+
+test("le retour PayPal local vérifie le jeton et distingue une annulation", async () => {
+  const state = "a".repeat(43);
+  const cancelledCallback = await createPaymentLoopbackCallback({
+    state,
+    timeoutMs: 2000
+  });
+  const cancelledUrl = new URL(
+    `http://127.0.0.1:${cancelledCallback.port}/payment-callback`
+  );
+  cancelledUrl.searchParams.set("state", state);
+  cancelledUrl.searchParams.set("status", "cancelled");
+  const cancelledResponse = await fetch(cancelledUrl);
+  assert.equal(cancelledResponse.status, 200);
+  assert.deepEqual(await cancelledCallback.result, {
+    cancelled: true,
+    subscriptionId: "",
+    token: ""
+  });
+
+  const protectedCallback = await createPaymentLoopbackCallback({
+    state,
+    timeoutMs: 2000
+  });
+  const forgedUrl = new URL(
+    `http://127.0.0.1:${protectedCallback.port}/payment-callback`
+  );
+  forgedUrl.searchParams.set("state", "b".repeat(43));
+  forgedUrl.searchParams.set("status", "success");
+  const forgedResponse = await fetch(forgedUrl);
+  assert.equal(forgedResponse.status, 400);
+  await assert.rejects(
+    protectedCallback.result,
+    /n’a pas pu être vérifié/
   );
 });
 

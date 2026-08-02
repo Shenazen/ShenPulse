@@ -135,6 +135,19 @@ async function verifyGame(gameId) {
       true,
       "le correctif des interactions Bedrock Box n'a pas Ã©tÃ© installÃ©"
     );
+    assert.equal(
+      (
+        await fs.promises.stat(
+          path.join(
+            installationRoot,
+            "plugins",
+            "shenpulse-bedrock-native-win-bridge.jar"
+          )
+        )
+      ).isFile(),
+      true,
+      "le relais des victoires natives Bedrock Box n'a pas été installé"
+    );
   }
   const autoClickerPath = path.join(
     installationRoot,

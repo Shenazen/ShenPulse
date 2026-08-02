@@ -84,6 +84,22 @@ test("normalise aussi l'image imbriquée du cadeau TikTok", () => {
   assert.equal(event.data.giftImageUrl, "https://cdn.example/rose.png");
 });
 
+test("conserve le cout TikTok fourni dans l'objet cadeau", () => {
+  const event = normalizeEvent({
+    event: "gift",
+    data: {
+      uniqueId: "alice",
+      value: 0,
+      gift: {
+        name: "TikTok Universe",
+        cost: 44999
+      }
+    }
+  });
+
+  assert.equal(event.data.value, 44999);
+});
+
 test("normalise les alias d'événements", () => {
   assert.equal(normalizeType("member"), "join");
   assert.equal(normalizeType("roomUser"), "roomUser");

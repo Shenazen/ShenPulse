@@ -13,6 +13,13 @@ const {
 } = require("./overlay-session-state");
 
 const ACCOUNT_WORKSPACE_SCHEMA_VERSION = 1;
+const LEGACY_AUTOMATIC_DEMO_VIEWER_IDS = new Set([
+  "luna_live",
+  "nox_player",
+  "pixel_ade",
+  "nova_fr",
+  "orbit_tv"
+]);
 const ACCOUNT_SETTING_KEYS = [
   "locale",
   "theme",
@@ -111,6 +118,33 @@ class StateStore {
         const merged = { ...config, ...stored };
         if (overlayId === "likeGoal") {
           if (
+            !Object.prototype.hasOwnProperty.call(
+              stored,
+              "likeGoalTitleColor"
+            )
+          ) {
+            merged.likeGoalTitleColor =
+              stored.textColor || config.likeGoalTitleColor;
+          }
+          if (
+            !Object.prototype.hasOwnProperty.call(
+              stored,
+              "likeGoalContentColor"
+            )
+          ) {
+            merged.likeGoalContentColor =
+              stored.textColor || config.likeGoalContentColor;
+          }
+          if (
+            !Object.prototype.hasOwnProperty.call(
+              stored,
+              "likeGoalPercentColor"
+            )
+          ) {
+            merged.likeGoalPercentColor =
+              stored.secondaryColor || config.likeGoalPercentColor;
+          }
+          if (
             Number(stored.schemaVersion || 0) < 2 &&
             Number(stored.scale) === 60
           ) {
@@ -199,6 +233,7 @@ class StateStore {
     ]) {
       if (!Array.isArray(this.state[key])) this.state[key] = defaults[key];
     }
+    this.state.connections = makeDemoConnectionsManual(this.state.connections);
     const tiktokUsername = String(this.state.settings.tiktok.username || "")
       .trim()
       .replace(/^@+/, "");
@@ -247,7 +282,7 @@ class StateStore {
     this.state.statistics.sessionActions = 0;
     this.state.statistics.sessionLikes = 0;
     this.state.statistics.sessionUniqueViewers = [];
-    this.state.overlaySession = normalizeOverlaySession(
+    this.state.overlaySession = removeLegacyAutomaticDemoActivity(
       this.state.overlaySession
     );
     this.state.overlaySession.active = false;
@@ -966,9 +1001,11 @@ function normalizeAccountWorkspace(workspace, ownerUid = "") {
         ];
       })
     ),
-    connections: Array.isArray(saved.connections)
-      ? clone(saved.connections)
-      : clone(defaults.connections),
+    connections: makeDemoConnectionsManual(
+      Array.isArray(saved.connections)
+        ? clone(saved.connections)
+        : clone(defaults.connections)
+    ),
     profiles: profiles.map((profile, index) => {
       const profileWorkspace = normalizeProfileWorkspace(
         profile?.workspace
@@ -1046,7 +1083,7 @@ function normalizeAccountWorkspace(workspace, ownerUid = "") {
     activity: Array.isArray(saved.activity)
       ? clone(saved.activity)
       : [],
-    overlaySession: normalizeOverlaySession(saved.overlaySession),
+    overlaySession: removeLegacyAutomaticDemoActivity(saved.overlaySession),
     statistics: {
       ...clone(defaults.statistics),
       ...(saved.statistics || {})
@@ -1060,6 +1097,71 @@ function normalizeObjectMap(value) {
   return value && typeof value === "object" && !Array.isArray(value)
     ? clone(value)
     : {};
+}
+
+function makeDemoConnectionsManual(connections) {
+  if (!Array.isArray(connections)) return [];
+  return connections.map((connection) =>
+    connection?.type === "demo"
+      ? {
+          ...connection,
+          enabled: false,
+          status: "disconnected",
+          error: ""
+        }
+      : connection
+  );
+}
+
+function removeLegacyAutomaticDemoActivity(value) {
+  const runtime = normalizeOverlaySession(value);
+  const demoEvent = (event) =>
+    event?.source === "source_demo" ||
+    LEGACY_AUTOMATIC_DEMO_VIEWER_IDS.has(String(event?.user?.id || ""));
+  const demoLeaderboardEntry = (entry) =>
+    LEGACY_AUTOMATIC_DEMO_VIEWER_IDS.has(String(entry?.id || ""));
+  const removedRecentEvents = runtime.recentEvents.filter(demoEvent);
+  const removedDonors = runtime.leaderboards.donors.filter(
+    demoLeaderboardEntry
+  );
+  const removedTappers = runtime.leaderboards.tappers.filter(
+    demoLeaderboardEntry
+  );
+
+  if (
+    !removedRecentEvents.length &&
+    !removedDonors.length &&
+    !removedTappers.length
+  ) {
+    return runtime;
+  }
+
+  runtime.recentEvents = runtime.recentEvents.filter(
+    (event) => !demoEvent(event)
+  );
+  runtime.leaderboards.donors = runtime.leaderboards.donors.filter(
+    (entry) => !demoLeaderboardEntry(entry)
+  );
+  runtime.leaderboards.tappers = runtime.leaderboards.tappers.filter(
+    (entry) => !demoLeaderboardEntry(entry)
+  );
+  runtime.coinJarCurrent = Math.max(
+    0,
+    runtime.coinJarCurrent -
+      removedDonors.reduce((total, entry) => total + entry.score, 0)
+  );
+  runtime.likeGoalCurrent = Math.max(
+    0,
+    runtime.likeGoalCurrent -
+      removedTappers.reduce((total, entry) => total + entry.score, 0)
+  );
+
+  const hasRealAudienceActivity =
+    runtime.recentEvents.length > 0 ||
+    runtime.leaderboards.donors.length > 0 ||
+    runtime.leaderboards.tappers.length > 0;
+  if (!hasRealAudienceActivity) runtime.winCounterCurrent = 0;
+  return runtime;
 }
 
 function applyAccountWorkspace(state, workspace) {
@@ -1149,6 +1251,33 @@ function normalizeProfileOverlayConfigs(storedConfigs) {
       const merged = { ...clone(defaultConfig), ...clone(saved) };
 
       if (overlayId === "likeGoal") {
+        if (
+          !Object.prototype.hasOwnProperty.call(
+            saved,
+            "likeGoalTitleColor"
+          )
+        ) {
+          merged.likeGoalTitleColor =
+            saved.textColor || defaultConfig.likeGoalTitleColor;
+        }
+        if (
+          !Object.prototype.hasOwnProperty.call(
+            saved,
+            "likeGoalContentColor"
+          )
+        ) {
+          merged.likeGoalContentColor =
+            saved.textColor || defaultConfig.likeGoalContentColor;
+        }
+        if (
+          !Object.prototype.hasOwnProperty.call(
+            saved,
+            "likeGoalPercentColor"
+          )
+        ) {
+          merged.likeGoalPercentColor =
+            saved.secondaryColor || defaultConfig.likeGoalPercentColor;
+        }
         if (
           Number(saved.schemaVersion || 0) < 2 &&
           Number(saved.scale) === 60

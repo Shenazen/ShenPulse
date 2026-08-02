@@ -170,10 +170,16 @@ test("le renderer et les IPC appliquent le verrou avant d’entrer", () => {
   );
   assert.match(
     renderer,
-    /if \(action === "open-game"\)[\s\S]*?if \(!requireGameAccess\(pack\)\) return;[\s\S]*?gamePageMode = "detail";/
+    /if \(action === "open-game"\)[\s\S]*?pack\.accessMode === "purchase"[\s\S]*?!hasGameEntitlement\(pack\)[\s\S]*?openGamePurchaseDialog\(pack\)[\s\S]*?if \(!requireGameAccess\(pack\)\) return;/
   );
   assert.match(renderer, /Le catalogue reste accessible/);
-  assert.match(renderer, /Accès requis/);
+  assert.match(renderer, /Acheter le jeu/);
+  assert.match(renderer, /function openGamePurchaseDialog\(pack\)/);
+  assert.match(renderer, /api\.account\.startGameCheckout/);
+  assert.doesNotMatch(
+    renderer,
+    /class="tile-action-button"[^>]*aria-disabled/
+  );
   assert.match(ipc, /const requireGameAccess = \(packId\) =>/);
   assert.match(ipc, /handle\("game:install"[\s\S]*?requireGameAccess\(targetId\);/);
   assert.match(ipc, /handle\("game:launch"[\s\S]*?requireGameAccess\(targetId\);/);

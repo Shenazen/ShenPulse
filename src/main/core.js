@@ -42,6 +42,7 @@ class ShenPulseCore extends EventEmitter {
     super();
     this.store = store;
     this.notifyRenderer = notifyRenderer;
+    this.appVersion = String(appVersion || "");
     this.gameHub = new GameHub({
       store,
       packsDirectory: path.join(resourcesDirectory, "packs"),
@@ -188,6 +189,7 @@ class ShenPulseCore extends EventEmitter {
         );
       });
     }
+    this.refreshGiftCatalog().then(() => this.#changed(true));
     return this.snapshot();
   }
 
@@ -248,6 +250,7 @@ class ShenPulseCore extends EventEmitter {
     const soundCatalog = [...this.soundCatalog, ...customSounds];
     const mediaCatalog = [...this.mediaCatalog, ...customMedia];
     return {
+      appVersion: this.appVersion,
       state: this.store.getState(),
       packs: this.gameHub.listPacks(),
       soundCatalog,
@@ -268,6 +271,17 @@ class ShenPulseCore extends EventEmitter {
       }),
       publicOverlayRelay: this.publicOverlayRelay.status()
     };
+  }
+
+  async refreshGiftCatalog({ force = false } = {}) {
+    const username =
+      this.store.getState().settings.tiktok?.username || "tiktok";
+    try {
+      await this.giftCatalog.refreshLocalized(username, { force });
+    } catch {
+      // Le petit catalogue local français/anglais reste disponible hors ligne.
+    }
+    return this.giftCatalog.gifts;
   }
 
   async rotatePublicOverlayChannel() {
@@ -538,7 +552,7 @@ class ShenPulseCore extends EventEmitter {
              overrides.giftImage
            ),
            repeatCount: Math.max(1, Number(overrides.repeatCount ?? count)),
-          value: Number(overrides.value || 5)
+           value: Math.max(1, Number(overrides.value || 1))
         }
       },
       follow: { event: "follow", data: shared },
@@ -634,6 +648,100 @@ class ShenPulseCore extends EventEmitter {
       previousSettings,
       nextSettings
     );
+  }
+
+  async handleMinecraftWinCounter({
+    gameId,
+    current,
+    outcome = "win",
+    source = "native"
+  } = {}) {
+    const packId = String(gameId || "");
+    if (!isMinecraftRoundGame(packId) || !Number.isFinite(Number(current))) {
+      return { synchronized: false };
+    }
+    const session = this.store.getState().session?.game || {};
+    if (session.running !== true || session.packId !== packId) {
+      return { synchronized: false };
+    }
+    const previous = Number(
+      this.store.getState().overlaySession?.winCounterCurrent || 0
+    );
+    const next = Math.max(
+      -1_000_000,
+      Math.min(1_000_000, Math.round(Number(current)))
+    );
+    if (previous === next) {
+      const resolution =
+        await this.minecraftRoundTimer.resolveNativeOutcome(packId, {
+          outcome,
+          currentWins: next,
+          source
+        });
+      return {
+        synchronized: false,
+        unchanged: true,
+        current: next,
+        resolution
+      };
+    }
+    const result = await this.actionRunner.run(
+      {
+        id: `minecraft_native_${source}_${Date.now()}`,
+        type: "overlay.win-counter",
+        config: {
+          effectId: `minecraft_native_${source}`,
+          operation: "set",
+          amount: next
+        }
+      },
+      {
+        source: "minecraft-native",
+        user: {
+          id: "minecraft",
+          name: "minecraft",
+          displayName: "Minecraft"
+        }
+      }
+    );
+    const synchronizedCurrent = Number(result?.current ?? next);
+    const resolution = await this.minecraftRoundTimer.resolveNativeOutcome(
+      packId,
+      {
+        outcome,
+        currentWins: synchronizedCurrent,
+        source
+      }
+    );
+    const pack = this.gameHub
+      .listPacks()
+      .find((entry) => entry.id === packId);
+    this.#activity(
+      outcome === "loss" ? "warning" : "success",
+      "game",
+      outcome === "loss"
+        ? `Défaite ${pack?.name || "Minecraft"}`
+        : `Victoire ${pack?.name || "Minecraft"}`,
+      `${synchronizedCurrent > previous ? "+" : ""}${
+        synchronizedCurrent - previous
+      } WIN${Math.abs(synchronizedCurrent - previous) === 1 ? "" : "S"} · total ${synchronizedCurrent}`
+    );
+    this.notifyRenderer("minecraft-win-counter", {
+      packId,
+      previous,
+      current: synchronizedCurrent,
+      outcome,
+      source,
+      resolution
+    });
+    this.#changed(true);
+    return {
+      synchronized: true,
+      previous,
+      current: synchronizedCurrent,
+      outcome,
+      resolution
+    };
   }
 
   async shutdown() {
@@ -1002,12 +1110,14 @@ class ShenPulseCore extends EventEmitter {
   }
 
   #activity(level, category, title, detail) {
-    this.store.addActivity({
+    const entry = {
       level,
       category,
       title: safeString(title, 200),
       detail: safeString(detail, 1000)
-    });
+    };
+    if (!shouldRecordActivity(this.store.getState(), entry)) return;
+    this.store.addActivity(entry);
   }
 
   #changed(deferred = false) {
@@ -1150,6 +1260,38 @@ function resolveLikeGoalCompletionChange(event, change = {}) {
   return { previousLikeGoalCurrent, likeGoalCurrent };
 }
 
+function shouldRecordActivity(state, entry, nowMs = Date.now()) {
+  const category = String(entry?.category || "").trim().toLowerCase();
+  if (!["connection", "tiktok"].includes(category)) return true;
+  if (
+    state?.session?.running === true ||
+    state?.session?.game?.running === true
+  ) {
+    return true;
+  }
+  if (String(entry?.level || "").trim().toLowerCase() !== "error") {
+    return false;
+  }
+  const title = String(entry?.title || "");
+  const detail = String(entry?.detail || "");
+  return !(state?.activity || []).some((previous) => {
+    if (
+      String(previous?.category || "").trim().toLowerCase() !== category ||
+      String(previous?.level || "").trim().toLowerCase() !== "error" ||
+      String(previous?.title || "") !== title ||
+      String(previous?.detail || "") !== detail
+    ) {
+      return false;
+    }
+    const timestampMs = Date.parse(String(previous?.timestamp || ""));
+    return (
+      Number.isFinite(timestampMs) &&
+      nowMs - timestampMs >= 0 &&
+      nowMs - timestampMs < 15 * 60 * 1000
+    );
+  });
+}
+
 module.exports = {
   ShenPulseCore,
   clearSessionState,
@@ -1157,5 +1299,6 @@ module.exports = {
   recordEventStatistics,
   resolveLikeGoalCompletionChange,
   resetSessionStatistics,
+  shouldRecordActivity,
   synchronizeSessionWithTikTok
 };

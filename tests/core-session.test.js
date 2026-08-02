@@ -7,6 +7,7 @@ const {
   readMontChiliadCounterEvent,
   recordEventStatistics,
   resolveLikeGoalCompletionChange,
+  shouldRecordActivity,
   synchronizeSessionWithTikTok
 } = require("../src/main/core");
 
@@ -196,5 +197,79 @@ test("transmet une seule fois chaque victoire ou mort native au compteur WINS", 
       amount: -1,
       eventName: "death"
     }
+  );
+});
+
+test("le journal masque les reconnexions répétitives hors LIVE", () => {
+  const offlineState = {
+    activity: [],
+    session: {
+      running: false,
+      game: { running: false }
+    }
+  };
+  assert.equal(
+    shouldRecordActivity(offlineState, {
+      category: "connection",
+      detail: "",
+      level: "info",
+      title: "source_tiktok : reconnecting"
+    }),
+    false
+  );
+  assert.equal(
+    shouldRecordActivity(offlineState, {
+      category: "tiktok",
+      detail: "@viewer",
+      level: "info",
+      title: "Vérification du LIVE TikTok"
+    }),
+    false
+  );
+
+  const liveState = structuredClone(offlineState);
+  liveState.session.running = true;
+  assert.equal(
+    shouldRecordActivity(liveState, {
+      category: "connection",
+      detail: "",
+      level: "info",
+      title: "source_tiktok : connected"
+    }),
+    true
+  );
+});
+
+test("le journal conserve une erreur hors LIVE sans la répéter en boucle", () => {
+  const timestamp = "2026-07-30T12:00:00.000Z";
+  const entry = {
+    category: "tiktok",
+    detail: "Connexion refusée",
+    level: "error",
+    title: "Connexion TikTok en erreur"
+  };
+  const offlineState = {
+    activity: [],
+    session: {
+      running: false,
+      game: { running: false }
+    }
+  };
+  assert.equal(
+    shouldRecordActivity(
+      offlineState,
+      entry,
+      Date.parse(timestamp)
+    ),
+    true
+  );
+  offlineState.activity.push({ ...entry, timestamp });
+  assert.equal(
+    shouldRecordActivity(
+      offlineState,
+      entry,
+      Date.parse(timestamp) + 60_000
+    ),
+    false
   );
 });

@@ -38,11 +38,17 @@ function gameEntitlement(state, pack, nowMs = Date.now()) {
   ).find((entry) => {
     if (typeof entry === "string") return entry === pack.id;
     if (!entry || entry.gameId !== pack.id) return false;
-    if (["expired", "revoked"].includes(entry.status)) return false;
-    if (entry.source === "trial" || entry.status === "trial") {
+    const status = String(entry.status || "").trim().toLowerCase();
+    const source = String(entry.source || "").trim().toLowerCase();
+    if (source === "trial" || status === "trial") {
       return commerceExpiryMs(entry) > nowMs;
     }
-    return true;
+    return (
+      !status ||
+      ["active", "captured", "completed", "paid", "purchased"].includes(
+        status
+      )
+    );
   }) || null;
 }
 

@@ -268,6 +268,93 @@ test("cumule le seuil de likes entre tous les spectateurs", async () => {
   assert.equal(calls, 1);
 });
 
+test("exécute chaque tapotage d'un lot comme une interaction distincte", async () => {
+  const executions = [];
+  const rule = {
+    id: "like_batch",
+    name: "Tapotages rapprochés",
+    enabled: true,
+    trigger: { type: "like", source: "*", threshold: 1 },
+    conditions: [],
+    cooldown: { globalMs: 60_000, perUserMs: 60_000 },
+    chance: 1,
+    actions: [{ id: "tap_action", type: "test", config: {} }]
+  };
+  const engine = new RuleEngine({
+    store: createStore(rule),
+    actionRunner: {
+      async run(_action, context) {
+        executions.push(context);
+      }
+    }
+  });
+
+  await engine.process({
+    id: "like_event",
+    type: "like",
+    source: "tiktok-direct",
+    user: { id: "viewer", displayName: "Alice" },
+    data: { count: 5 }
+  });
+
+  assert.equal(executions.length, 5);
+  assert.deepEqual(
+    executions.map((context) => context.data.count),
+    [1, 1, 1, 1, 1]
+  );
+  assert.deepEqual(
+    executions.map((context) => context.data.batchIndex),
+    [1, 2, 3, 4, 5]
+  );
+  assert.equal(executions[0].data.batchCount, 5);
+  assert.equal(new Set(executions.map((context) => context.id)).size, 5);
+});
+
+test("exécute immédiatement tous les paliers de likes franchis par une rafale", async () => {
+  const executions = [];
+  const rule = {
+    id: "like_threshold_batch",
+    name: "Likes par groupes de dix",
+    enabled: true,
+    trigger: { type: "like", source: "*", threshold: 10 },
+    conditions: [],
+    cooldown: { globalMs: 60_000, perUserMs: 60_000 },
+    chance: 1,
+    actions: [{ id: "like_action", type: "test", config: {} }]
+  };
+  const engine = new RuleEngine({
+    store: createStore(rule),
+    actionRunner: {
+      async run(_action, context) {
+        executions.push(context.data);
+      }
+    }
+  });
+
+  await engine.process({
+    id: "like_burst_1",
+    type: "like",
+    user: { id: "alice" },
+    data: { count: 25 }
+  });
+  await engine.process({
+    id: "like_burst_2",
+    type: "like",
+    user: { id: "bob" },
+    data: { count: 5 }
+  });
+
+  assert.equal(executions.length, 3);
+  assert.deepEqual(
+    executions.map((data) => data.count),
+    [10, 10, 10]
+  );
+  assert.deepEqual(
+    executions.map((data) => data.batchCount),
+    [25, 25, 5]
+  );
+});
+
 test("une action lente ne bloque pas les événements suivants", async () => {
   let releaseSlowAction;
   const slowAction = new Promise((resolve) => {

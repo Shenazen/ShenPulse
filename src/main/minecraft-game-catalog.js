@@ -397,7 +397,7 @@ const BEDROCK_EFFECTS = [
   effect({
     id: "bedrock-auto-replace",
     name: "Auto replace",
-    description: "Affiche son état puis active ou désactive la restauration automatique des blocs détruits dans la box.",
+    description: "Active ou désactive la conversion automatique des blocs placés vers le matériau attendu par la box.",
     category: "Box",
     commands: titled("/bedrock autoreplace", "Auto Replace"),
     image: "bedrock-auto-replace-ai.png"

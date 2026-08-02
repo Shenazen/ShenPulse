@@ -145,11 +145,53 @@ function registerIpc({
       email: safeString(incoming?.email, 254)
     })
   );
+  handle("account:checkout-cancel", (_event, incoming) =>
+    accountService.cancelCheckout({
+      type: safeString(incoming?.type, 20)
+    })
+  );
+  handle("account:subscription-checkout", async (_event, incoming) => {
+    try {
+      const result = await accountService.startSubscriptionCheckout({
+        tier: safeString(incoming?.tier, 20)
+      });
+      notify(core, "state-changed", core.snapshot());
+      return {
+        result,
+        snapshot: snapshotForRenderer(core.snapshot(), store)
+      };
+    } finally {
+      const owner = getWindow?.();
+      if (owner?.isMinimized?.()) owner.restore();
+      owner?.show?.();
+      owner?.focus?.();
+    }
+  });
+  handle("account:game-checkout", async (_event, incoming) => {
+    try {
+      const result = await accountService.startGameCheckout({
+        productId: safeString(incoming?.productId, 160)
+      });
+      notify(core, "state-changed", core.snapshot());
+      return {
+        result,
+        snapshot: snapshotForRenderer(core.snapshot(), store)
+      };
+    } finally {
+      const owner = getWindow?.();
+      if (owner?.isMinimized?.()) owner.restore();
+      owner?.show?.();
+      owner?.focus?.();
+    }
+  });
   handle("account:sync-entitlements", async () => {
     const result = await accountService.syncEntitlements();
     notify(core, "state-changed", core.snapshot());
     return result;
   });
+  handle("account:game-cheat-access", () =>
+    accountService.gameCheatAccess()
+  );
   handle("account:logout", async () => {
     await Promise.allSettled([
       core.stopSession(),
@@ -228,9 +270,10 @@ function registerIpc({
     notify(core, "state-changed", core.snapshot());
     return { result, snapshot: core.snapshot() };
   });
-  handle("catalog:gifts", (_event, query, limit) =>
-    core.giftCatalog.search(safeString(query, 200), Number(limit))
-  );
+  handle("catalog:gifts", async (_event, query, limit) => {
+    await core.refreshGiftCatalog();
+    return core.giftCatalog.search(safeString(query, 200), Number(limit));
+  });
   handle("catalog:sounds", (_event, incoming) =>
     searchMyInstantsSounds({
       query: safeString(incoming?.query, 80),
@@ -459,6 +502,7 @@ function registerIpc({
         username
       }
     });
+    await core.refreshGiftCatalog({ force: true });
     notify(core, "state-changed", core.snapshot());
     return core.snapshot();
   });
@@ -547,6 +591,16 @@ function registerIpc({
     return core.snapshot();
   });
 
+  handle("overlay:configuration", (_event, key, incoming) => {
+    const overlayKey = safeString(key, 80);
+    if (!overlayKey) throw new Error("Overlay invalide.");
+    core.overlayServer.publish("configuration", {
+      overlayKey,
+      config: sanitizeEntity(incoming || {})
+    });
+    return { ok: true };
+  });
+
   handle("profile:select", async (_event, profileId) => {
     await core.stopGameSession({ notify: false });
     store.selectProfile(safeString(profileId, 160));
@@ -580,6 +634,12 @@ function registerIpc({
     });
     notify(core, "state-changed", core.snapshot());
     return core.snapshot();
+  });
+  handle("game:deal-host-state", (_event, incoming) => {
+    requireGameAccess("deal-or-no-deal");
+    const state = sanitizeDealOrNoDealHostState(incoming);
+    notify(core, "deal-host-state", state);
+    return { ok: true };
   });
   handle("game:initialize-interactions", (_event, packId) => {
     const result = core.gameHub.initializeDefaultInteractions(
@@ -933,6 +993,57 @@ function sanitizeEntity(value, depth = 0) {
   return undefined;
 }
 
+function sanitizeDealOrNoDealHostState(value) {
+  const payload =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+  const seenIds = new Set();
+  const boxes = (Array.isArray(payload.boxes) ? payload.boxes : [])
+    .map((box) => {
+      const idValue = Math.round(Number(box?.id));
+      const boxValue = Math.round(Number(box?.value));
+      if (
+        !Number.isFinite(idValue) ||
+        idValue < 1 ||
+        idValue > 24 ||
+        seenIds.has(idValue) ||
+        !Number.isFinite(boxValue)
+      ) {
+        return null;
+      }
+      seenIds.add(idValue);
+      return {
+        id: idValue,
+        value: Math.max(-999999, Math.min(999999, boxValue)),
+        opened: box?.opened === true,
+        own: box?.own === true
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.id - right.id);
+  return {
+    phase: safeString(payload.phase, 40) || "lobby",
+    playerName: safeString(payload.playerName, 100),
+    payoutMultiplier: Math.max(
+      0.01,
+      Math.min(100, Number(payload.payoutMultiplier) || 1)
+    ),
+    entryOptionId:
+      safeString(payload.entryOptionId, 20) === "premium"
+        ? "premium"
+        : "base",
+    updatedAt: Math.max(0, Number(payload.updatedAt) || Date.now()),
+    boxes,
+    bankerRequestType: safeString(payload.bankerRequestType, 40),
+    bankerRequestText: safeString(payload.bankerRequestText, 300),
+    bonusValue: Math.max(
+      -999999,
+      Math.min(999999, Math.round(Number(payload.bonusValue) || 0))
+    )
+  };
+}
+
 function notify(core, channel, value) {
   core.notifyRenderer(channel, value);
 }
@@ -946,4 +1057,9 @@ function cleanTikTokUsername(value) {
     .slice(0, 30);
 }
 
-module.exports = { registerIpc, sanitizeEntity, cleanTikTokUsername };
+module.exports = {
+  registerIpc,
+  sanitizeEntity,
+  sanitizeDealOrNoDealHostState,
+  cleanTikTokUsername
+};

@@ -10,22 +10,23 @@
 | PFN attendu | `ShenPulse.ShenPulse_mammcwaggkw0m` |
 | Store ID | `9NDR71Z41ZJG` |
 
-`npm run build:store` génère `dist/ShenPulse-1.0.0-x64.appx` ainsi que le
-conteneur recommandé `dist/ShenPulse-1.0.0-x64.appxupload`. Le Microsoft Store
+`npm run build:store` génère `dist/ShenPulse-1.0.6-x64.appx` ainsi que le
+conteneur recommandé `dist/ShenPulse-1.0.6-x64.appxupload`. Le Microsoft Store
 accepte le format AppX pour une application Desktop Bridge et le resigne pour la
 distribution. L'identité Store est déjà renseignée dans `package.json`.
 
 ## Actions humaines obligatoires avant l'envoi
 
-1. Remplacer les adresses `YOUR-DOMAIN.example` dans les politiques.
-2. Fournir une URL publique de politique de confidentialité et une URL de support.
-3. Créer les captures 16:9 et 9:16 à partir du build final.
-4. Créer la fiche âge/contenu dans Partner Center.
-5. Décrire et justifier la capacité `runFullTrust` : elle est requise pour les
+1. Fournir l’URL publique de politique de confidentialité
+   `https://shenpulse.leuridan.fr/confidentialite` et l’URL de support
+   `https://shenpulse.leuridan.fr/docs`.
+2. Utiliser les captures 16:9 du dossier `store-screenshots`.
+3. Créer ou actualiser la fiche âge/contenu dans Partner Center.
+4. Décrire et justifier la capacité `runFullTrust` : elle est requise pour les
    connexions locales aux jeux, OBS et périphériques choisis par l'utilisateur.
-6. Charger le package dans le produit Store `9NDR71Z41ZJG`.
-7. Lancer le Windows App Certification Kit puis un vol privé Partner Center.
-8. Tester la connexion de chaque plateforme avec de vrais identifiants de
+5. Charger le package dans le produit Store `9NDR71Z41ZJG`.
+6. Lancer le Windows App Certification Kit puis un vol privé Partner Center.
+7. Tester la connexion de chaque plateforme avec de vrais identifiants de
    production et vérifier leurs conditions d'utilisation.
 
 ## Signature locale

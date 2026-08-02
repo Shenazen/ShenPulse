@@ -1,0 +1,14 @@
+name: ShenPulseBedrockGuard
+version: 1.0.39
+main: fr.shenpulse.minecraft.ShenPulseBedrockGuard
+api-version: '1.21'
+authors:
+  - ShenPulse
+description: Protects ShenPulse Bedrock Box walls and floor, and tracks ShenPulse WIN counters.
+commands:
+  shenpulse_win:
+    description: Controls the ShenPulse Minecraft WIN counter.
+    usage: /shenpulse_win <sync|settings|hud|add|multiply|x2|set|target|timer|reset|show|hide|status>
+permissions:
+  shenpulse.bedrockguard.win:
+    default: op

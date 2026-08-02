@@ -36,6 +36,19 @@ const index = await readFile(path.join(dist, 'index.html'), 'utf8')
 const app = await readFile(path.join(dist, 'app.js'), 'utf8')
 const content = await readFile(path.join(dist, 'content.js'), 'utf8')
 const { GAMES } = await import(pathToFileURL(path.join(dist, 'content.js')).href)
+const expectedDownload = '/downloads/ShenPulseSetup-1.0.6.exe'
+
+if (!app.includes(`const DOWNLOAD_URL = '${expectedDownload}'`)) {
+  errors.push(`Lien de téléchargement principal incorrect : ${expectedDownload}`)
+}
+
+if (!index.includes(`href="${expectedDownload}"`)) {
+  errors.push(`Lien de téléchargement sans JavaScript incorrect : ${expectedDownload}`)
+}
+
+if (`${index}\n${app}`.includes('/downloads/ShenPulseSetup.exe')) {
+  errors.push('L’ancien lien de téléchargement non versionné est encore référencé')
+}
 
 if (GAMES.length !== 8) {
   errors.push(`La documentation doit contenir exactement 8 jeux publics, trouvé : ${GAMES.length}`)

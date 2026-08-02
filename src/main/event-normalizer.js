@@ -16,6 +16,14 @@ function normalizeType(value) {
   return EVENT_ALIASES[key] || key || "unknown";
 }
 
+function firstPositiveNumber(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number) && number > 0) return number;
+  }
+  return 0;
+}
+
 function pickUser(payload = {}) {
   const user = payload.user || payload.userInfo || payload.sender || {};
   const userId =
@@ -95,7 +103,16 @@ function normalizeEvent(raw, source = "unknown") {
         payload.extendedGiftInfo?.image
       ),
       count: Number.isFinite(count) ? Math.max(1, count) : 1,
-      value: Number(payload.value || payload.diamondCount || gift.value || 0),
+      value: firstPositiveNumber(
+        payload.value,
+        payload.diamondCount,
+        payload.giftCost,
+        payload.cost,
+        gift.value,
+        gift.diamondCount,
+        gift.diamond_count,
+        gift.cost
+      ),
       totalLikes: Number(payload.totalLikes || payload.totalLikeCount || 0),
       viewers: Number(payload.viewers || payload.viewerCount || 0),
       raw: payload

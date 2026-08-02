@@ -33,4 +33,4 @@ Paramètres > Données et confidentialité. La désinstallation supprime le pack
 Windows peut conserver les données d'application selon ses règles de sauvegarde.
 
 Contact confidentialité à renseigner avant publication :
-`privacy@YOUR-DOMAIN.example`.
+`alexandre.leuridan@gmail.com`.

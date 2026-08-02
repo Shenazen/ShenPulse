@@ -8,6 +8,7 @@ const {
   GiftCatalog,
   SOUND_CATALOG,
   createMediaCatalog,
+  dedupeLocalizedGifts,
   extractMyInstantsSounds,
   normalizeWikimediaMediaPayload
 } = require("../src/main/catalogs");
@@ -111,15 +112,23 @@ test("normalise les images et GIF du catalogue web Wikimedia Commons", () => {
   assert.match(media[0].detail, /CC BY-SA 4\.0/);
 });
 
-test("recherche les cadeaux dans le catalogue TikTok global", () => {
+test("le catalogue de secours reste limité aux cadeaux français/anglais", () => {
   const catalog = new GiftCatalog(resourcesDirectory);
-  assert.equal(catalog.gifts.length, 932);
+  assert.equal(catalog.gifts.length, 27);
   const rose = catalog.search("Rose", 20);
   assert.ok(rose.gifts.some((gift) => /rose/i.test(gift.name)));
   assert.ok(rose.gifts.every((gift) => Number.isFinite(gift.cost)));
   const all = catalog.search("", 1000);
-  assert.equal(all.gifts.length, 932);
+  assert.equal(all.gifts.length, 27);
   assert.equal(all.gifts[0].cost, 1);
+  assert.equal(
+    all.gifts.some((gift) =>
+      /[\u0370-\u052f\u0590-\u08ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u.test(
+        gift.name
+      )
+    ),
+    false
+  );
   for (let index = 1; index < all.gifts.length; index += 1) {
     const previous = all.gifts[index - 1];
     const current = all.gifts[index];
@@ -133,4 +142,46 @@ test("recherche les cadeaux dans le catalogue TikTok global", () => {
       );
     }
   }
+});
+
+test("remplace le secours par la liste TikTok localisée en fr-FR", async () => {
+  const catalog = new GiftCatalog(resourcesDirectory, {
+    fetchLocalizedGifts: async () => [
+      {
+        diamond_count: 1,
+        icon: {
+          url_list: ["https://example.com/rose.webp"]
+        },
+        id: 5655,
+        name: "Rose"
+      },
+      {
+        diamond_count: 5,
+        id: 5487,
+        name: "Finger Heart"
+      },
+      {
+        diamond_count: 10,
+        id: 9999,
+        name: "日本語"
+      }
+    ]
+  });
+
+  await catalog.refreshLocalized("viewer");
+
+  assert.deepEqual(
+    catalog.search("", 100).gifts.map((gift) => gift.name),
+    ["Rose", "Finger Heart"]
+  );
+  assert.equal(catalog.search("Rose", 10).gifts[0].id, "5655");
+  assert.equal(
+    catalog.search("Rose", 10).gifts[0].imageUrl,
+    "https://example.com/rose.webp"
+  );
+  assert.equal(
+    dedupeLocalizedGifts([{ id: 1, name: "Rose", diamond_count: 1 }])
+      .length,
+    1
+  );
 });

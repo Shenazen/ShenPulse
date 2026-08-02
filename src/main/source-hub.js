@@ -10,50 +10,8 @@ const {
 const { normalizeEvent } = require("./event-normalizer");
 const { preferredImageUrl, safeString, serializeError } = require("./utils");
 
-const DEMO_EVENTS = [
-  {
-    event: "join",
-    data: { uniqueId: "luna_live", nickname: "Luna" }
-  },
-  {
-    event: "like",
-    data: { uniqueId: "luna_live", nickname: "Luna", likeCount: 25 }
-  },
-  {
-    event: "gift",
-    data: {
-      uniqueId: "nox_player",
-      nickname: "Nox",
-      giftId: "rose",
-      giftName: "Rose",
-      repeatCount: 1,
-      value: 1
-    }
-  },
-  {
-    event: "chat",
-    data: {
-      uniqueId: "pixel_ade",
-      nickname: "Pixel",
-      comment: "Cette interaction est incroyable !"
-    }
-  },
-  {
-    event: "follow",
-    data: { uniqueId: "nova_fr", nickname: "Nova" }
-  },
-  {
-    event: "gift",
-    data: {
-      uniqueId: "orbit_tv",
-      nickname: "Orbit",
-      giftId: "galaxy",
-      giftName: "Galaxy",
-      repeatCount: 5,
-      value: 500
-    }
-  }
-];
+const TIKTOK_REQUEST_POLLING_INTERVAL_MS = 250;
+const MAX_TIKTOK_LIKE_EVENT_IDS = 2000;
 
 class SourceHub extends EventEmitter {
   constructor({ store }) {
@@ -120,7 +78,10 @@ class SourceHub extends EventEmitter {
     const enabled = this.store
       .getState()
       .connections.filter((item) => item.enabled);
-    const results = await Promise.allSettled(enabled.map((item) => this.start(item.id)));
+    const automatic = enabled.filter((item) => item.type !== "demo");
+    const results = await Promise.allSettled(
+      automatic.map((item) => this.start(item.id))
+    );
     return results;
   }
 
@@ -135,23 +96,12 @@ class SourceHub extends EventEmitter {
   }
 
   #startDemo(connection) {
-    let index = 0;
-    const runtime = { closed: false, timer: null };
-    const emitNext = () => {
-      const raw = DEMO_EVENTS[index % DEMO_EVENTS.length];
-      index += 1;
-      this.emit("event", normalizeEvent(raw, connection.id));
-    };
-    runtime.timer = setInterval(
-      emitNext,
-      Math.max(1500, Number(connection.config?.intervalMs || 5000))
-    );
+    const runtime = { closed: false };
     runtime.send = (payload) => {
       this.emit("event", normalizeEvent(payload, connection.id));
       return { sent: true };
     };
     this.runtimes.set(connection.id, runtime);
-    setTimeout(emitNext, 500);
   }
 
   #startTikTokDirect(connection) {
@@ -167,6 +117,7 @@ class SourceHub extends EventEmitter {
       connector: null,
       lastEventStatusAt: 0,
       lastTotalLikes: 0,
+      seenLikeEventIds: new Set(),
       reconnectTimer: null,
       stop: async () => {
         const connector = runtime.connector;
@@ -267,13 +218,14 @@ class SourceHub extends EventEmitter {
 
       const connector = new TikTokLiveConnection(username, {
         enableExtendedGiftInfo: false,
-        processInitialData: false
+        processInitialData: false,
+        requestPollingIntervalMs: TIKTOK_REQUEST_POLLING_INTERVAL_MS
       });
       runtime.connector = connector;
       bind(connector);
 
       try {
-        const state = await connector.connect();
+        const state = await connectTikTokWhenLive(connector);
         if (runtime.closed || runtime.connector !== connector) {
           connector.removeAllListeners?.();
           await connector.disconnect?.().catch(() => {});
@@ -629,6 +581,10 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
   );
   const gift = event.gift || event.giftDetails || event.extendedGiftInfo || {};
   return {
+    id: safeString(
+      event.common?.msgId || event.msgId || event.id || "",
+      160
+    ),
     channelUsername: safeString(channelUsername, 80),
     uniqueId,
     nickname,
@@ -677,8 +633,11 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
       0,
       Number(
         event.diamondCount ||
+          event.giftCost ||
+          event.cost ||
           gift.diamondCount ||
           gift.diamond_count ||
+          gift.cost ||
           0
       )
     ),
@@ -700,6 +659,18 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
 }
 
 function applyTikTokLikeDelta(runtime, payload) {
+  const eventId = safeString(payload?.id, 160);
+  if (eventId) {
+    runtime.seenLikeEventIds ||= new Set();
+    if (runtime.seenLikeEventIds.has(eventId)) return null;
+    runtime.seenLikeEventIds.add(eventId);
+    if (runtime.seenLikeEventIds.size > MAX_TIKTOK_LIKE_EVENT_IDS) {
+      runtime.seenLikeEventIds.delete(
+        runtime.seenLikeEventIds.values().next().value
+      );
+    }
+  }
+
   const current = Math.max(1, Number(payload?.likeCount) || 1);
   const total = Math.max(0, Number(payload?.totalLikes) || 0);
   if (!total) return { ...payload, likeCount: current };
@@ -709,8 +680,10 @@ function applyTikTokLikeDelta(runtime, payload) {
   if (!previous || total < previous) {
     return { ...payload, likeCount: current };
   }
-  if (total === previous) return null;
-  return { ...payload, likeCount: total - previous };
+  return {
+    ...payload,
+    likeCount: Math.max(current, total - previous)
+  };
 }
 
 function isTikTokOfflineError(error) {
@@ -718,6 +691,16 @@ function isTikTokOfflineError(error) {
   return /offline|not live|isn't live|is not live|isn't online|is not online|room.*(?:missing|not found)|UserOffline|failed to (?:retrieve|extract) room[\s_-]*id/i.test(
     text
   );
+}
+
+async function connectTikTokWhenLive(connector) {
+  const live = await connector.fetchIsLive();
+  if (live !== true) {
+    const error = new Error("User is offline or room not found");
+    error.code = "TIKTOK_OFFLINE";
+    throw error;
+  }
+  return connector.connect();
 }
 
 function tiktokGiftIsFinal(event = {}) {
@@ -758,7 +741,9 @@ function tiktokErrorText(error) {
 }
 
 module.exports = {
+  TIKTOK_REQUEST_POLLING_INTERVAL_MS,
   SourceHub,
+  connectTikTokWhenLive,
   isTikTokOfflineError,
   parseTikTokRelayStatus,
   parseTwitchLine,

@@ -2,6 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -111,6 +112,27 @@ test("le super saut réutilise la propulsion verticale déjà validée", () => {
   );
 });
 
+test("retourner le vehicule declenche un vrai flip sans le recoller au sol", () => {
+  const flip = source.match(
+    /if \(code == "chaos_vehicle_flip"\) \{([\s\S]*?)\n\s*\}\n\s*if \(code == "chaos_vehicle_random_color"\)/
+  )?.[1];
+  const updateFlip = source.match(
+    /void UpdateVehicleFlip\(ULONGLONG now\) \{([\s\S]*?)\n\}\nvoid UpdateTimedEffects/
+  )?.[1];
+
+  assert.ok(flip, "l'interaction de flip du vehicule doit exister");
+  assert.ok(updateFlip, "le flip doit etre anime sur plusieurs images");
+  assert.match(flip, /GET_ENTITY_ROTATION\(vehicle, 2\)/);
+  assert.match(flip, /GET_ENTITY_VELOCITY\(vehicle\)/);
+  assert.match(flip, /velocity\.x/);
+  assert.match(flip, /velocity\.y/);
+  assert.match(flip, /std::max\(velocity\.z, 0\.0f\) \+ 9\.0f/);
+  assert.doesNotMatch(flip, /SET_VEHICLE_ON_GROUND_PROPERLY/);
+  assert.match(updateFlip, /360\.0f \* easedProgress/);
+  assert.match(updateFlip, /Vehicle flip midpoint rotation/);
+  assert.match(source, /UpdateVehicleFlip\(now\)/);
+});
+
 test("le trou noir est visible dans le ciel et attire le monde entier, joueur compris", () => {
   assert.match(source, /void DrawBlackHole\(\)/);
   assert.match(source, /52\.0f, 52\.0f, 52\.0f/);
@@ -178,7 +200,7 @@ test("GTA affiche chaque variation WINS et connaît le multiplicateur X2", () =>
   assert.doesNotMatch(source, /survive-timer/);
 });
 
-test("le manifeste 1.0.3 correspond au module GTA Enhanced compilé", () => {
+test("le manifeste 1.0.4 correspond au module GTA Enhanced compilé", () => {
   const manifest = JSON.parse(
     fs.readFileSync(
       path.join(
@@ -187,15 +209,28 @@ test("le manifeste 1.0.3 correspond au module GTA Enhanced compilé", () => {
         "resources",
         "installer-assets",
         "gtav-montchiliad",
-        "1.0.3",
+        "1.0.4",
         "manifest.json"
       ),
       "utf8"
     )
   );
-  assert.equal(manifest.version, "1.0.3");
+  const binary = fs.readFileSync(
+    path.join(
+      __dirname,
+      "..",
+      "native",
+      "gtav-montchiliad-enhanced",
+      "build",
+      "ShenPulseMontChiliadEnhanced.asi"
+    )
+  );
+  assert.equal(manifest.version, "1.0.4");
   assert.equal(manifest.assets.length, 1);
   assert.equal(manifest.assets[0].id, "enhancedplugin");
-  assert.equal(manifest.assets[0].size, 394752);
-  assert.equal(manifest.assets[0].sha256.length, 64);
+  assert.equal(manifest.assets[0].size, binary.length);
+  assert.equal(
+    manifest.assets[0].sha256,
+    createHash("sha256").update(binary).digest("hex")
+  );
 });

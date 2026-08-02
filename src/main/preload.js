@@ -15,6 +15,14 @@ contextBridge.exposeInMainWorld("shenPulse", {
     loginWithBrowser: () => invoke("account:login-browser"),
     requestPasswordReset: (payload) =>
       invoke("account:password-reset", payload),
+    cancelCheckout: (payload) =>
+      invoke("account:checkout-cancel", payload),
+    startGameCheckout: (payload) =>
+      invoke("account:game-checkout", payload),
+    startSubscriptionCheckout: (payload) =>
+      invoke("account:subscription-checkout", payload),
+    gameCheatAccess: () =>
+      invoke("account:game-cheat-access"),
     syncEntitlements: () =>
       invoke("account:sync-entitlements"),
     logout: () => invoke("account:logout")
@@ -55,9 +63,13 @@ contextBridge.exposeInMainWorld("shenPulse", {
   stopTikTok: () => invoke("tiktok:stop"),
   assignPremiumSeat: (payload) => invoke("premium-seat:assign", payload),
   saveSettings: (settings) => invoke("settings:save", settings),
+  publishOverlayConfiguration: (key, configuration) =>
+    invoke("overlay:configuration", key, configuration),
   selectProfile: (id) => invoke("profile:select", id),
   selectGame: (id) => invoke("game:select", id),
   configureGame: (id, config) => invoke("game:configure", id, config),
+  publishDealHostState: (state) =>
+    invoke("game:deal-host-state", state),
   initializeGameInteractions: (id) =>
     invoke("game:initialize-interactions", id),
   saveGameInteraction: (id, rule) =>
@@ -96,6 +108,7 @@ contextBridge.exposeInMainWorld("shenPulse", {
       "live-event",
       "playback",
       "game-effect",
+      "deal-host-state",
       "game-install-progress",
       "game-round-timeout",
       "overlay-completion-fired",

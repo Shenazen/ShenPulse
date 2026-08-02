@@ -22,7 +22,7 @@ const RAW_EFFECTS = [
   ["chaos_vehicle_helicopter", "Donner un hélicoptère", "Véhicule", "Fait apparaître un hélicoptère Buzzard et place le joueur aux commandes.", "vehicle-helicopter"],
   ["chaos_vehicle_repair", "Réparer le véhicule", "Véhicule", "Répare complètement le véhicule conduit par le joueur.", "vehicle-repair"],
   ["chaos_vehicle_boost", "Booster le véhicule", "Véhicule", "Propulse instantanément le véhicule du joueur vers l’avant.", "vehicle-boost"],
-  ["chaos_vehicle_flip", "Retourner le véhicule", "Véhicule", "Replace le véhicule conduit sur ses roues.", "vehicle-flip"],
+  ["chaos_vehicle_flip", "Retourner le véhicule", "Véhicule", "Fait effectuer un tonneau complet au véhicule dans les airs en conservant son élan.", "vehicle-flip"],
   ["chaos_vehicle_random_color", "Repeindre le véhicule", "Véhicule", "Applique deux couleurs surprises au véhicule du joueur.", "vehicle-random-color"],
   ["chaos_vehicle_eject", "Éjecter du véhicule", "Véhicule", "Force le joueur à quitter immédiatement son véhicule.", "vehicle-eject"],
   ["chaos_heal", "Restaurer la vie", "Joueur", "Restaure complètement la vie du personnage.", "heal"],

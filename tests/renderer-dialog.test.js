@@ -563,7 +563,7 @@ test("un tarif de jeu accepte la virgule et est publié en production", () => {
   );
 });
 
-test("les pages de jeu utilisent le parcours commun simplifié en quatre étapes", () => {
+test("les pages de jeu utilisent le parcours commun, réduit à deux étapes pour les jeux intégrés", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
     "utf8"
@@ -584,6 +584,18 @@ test("les pages de jeu utilisent le parcours commun simplifié en quatre étapes
   assert.ok(journey.indexOf('id: "overlays"') < journey.indexOf('id: "launch"'));
   assert.doesNotMatch(journey, /Test & LIVE|id: "live"/);
   assert.match(workspace, /function gameJourneyFor/);
+  assert.match(
+    workspace,
+    /\.filter\(\(step\) => step\.id === "installation" \|\| step\.id === "launch"\)/
+  );
+  assert.match(
+    workspace,
+    /data-value="launch"[\s\S]*?>Voir le démarrage →<\/button>/
+  );
+  assert.match(
+    app,
+    /if \(!gameJourneyFor\(pack\)\.some\(\(step\) => step\.id === nextStep\)\)/
+  );
   assert.match(workspace, /function renderGameInstallProgressModal/);
   assert.match(workspace, /Installation en un clic/);
   assert.match(workspace, /Ajouter à mon LIVE/);
@@ -625,14 +637,15 @@ test("les interactions de jeu disposent d'une bibliothèque visuelle complète",
   assert.match(styles, /\.game-effect-library-search/);
 });
 
-test("un ancien pack GTA propose explicitement la mise à jour des véhicules", () => {
+test("un ancien pack GTA propose explicitement la mise à jour du retournement", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
     "utf8"
   );
   assert.match(app, /pack\.installerVersion/);
   assert.match(app, /installation\.installerVersion/);
-  assert.match(app, /178 véhicules/);
+  assert.match(app, /tonneau complet corrigé/);
+  assert.match(app, /Retourner le véhicule/);
   assert.match(app, /Mettre à jour le pack/);
 });
 
@@ -745,6 +758,123 @@ test("les pages compactes utilisent une typographie secondaire plus lisible", ()
   assert.match(readability, /\.subscription-card > p,[\s\S]*font-size: 11px/);
 });
 
+test("un essai Pro sélectionne la carte et affiche Offre active", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const membership = app.slice(
+    app.indexOf("function renderMembership"),
+    app.indexOf("function renderSettings")
+  );
+
+  assert.match(membership, /subscription\.source === "own"/);
+  assert.match(
+    membership,
+    /const activeSubscriptionTier = hasProAccess\(\)[\s\S]*?subscription\.tier[\s\S]*?: "free"/
+  );
+  assert.match(
+    membership,
+    /activeSubscriptionTier === plan\.tier \? "current"/
+  );
+  assert.match(membership, /subscription\.source === "trial"/);
+  assert.match(membership, /ESSAI ACTIF/);
+  assert.match(membership, /data-action="subscription-checkout"/);
+  assert.match(
+    membership,
+    /activeSubscriptionTier === plan\.tier && plan\.tier !== "free"[\s\S]*?<button class="button" type="button" disabled>Offre active/
+  );
+});
+
+test("un accès Pro offert par Premium sélectionne aussi Pro avec Offre active", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const membership = app.slice(
+    app.indexOf("function renderMembership"),
+    app.indexOf("function renderSettings")
+  );
+
+  assert.match(membership, /subscription\.source === "premiumSeat"/);
+  assert.match(membership, /\$\{subscription\.tier\} · offert/);
+  assert.match(membership, /ACCÈS PRO OFFERT/);
+  assert.match(membership, /aria-current="true"/);
+  assert.match(
+    membership,
+    /activeSubscriptionTier === plan\.tier && plan\.tier !== "free"[\s\S]*?disabled>Offre active/
+  );
+});
+
+test("les jeux payants ouvrent une fenêtre d’achat illustrée avant PayPal", () => {
+  const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
+  const app = fs.readFileSync(
+    path.join(rendererDirectory, "app.js"),
+    "utf8"
+  );
+  const styles = fs.readFileSync(
+    path.join(rendererDirectory, "styles.css"),
+    "utf8"
+  );
+  const purchaseStart = app.indexOf(
+    "function openGamePurchaseDialog(pack)"
+  );
+  const purchaseEnd = app.indexOf(
+    "function renderGamesCatalogLegacy",
+    purchaseStart
+  );
+  const purchaseDialog = app.slice(purchaseStart, purchaseEnd);
+
+  assert.match(purchaseDialog, /variant: "game-purchase"/);
+  assert.match(purchaseDialog, /game-purchase-visual/);
+  assert.match(purchaseDialog, /gameArtwork\(pack\)/);
+  assert.match(purchaseDialog, /Acheter pour \$\{price\}/);
+  assert.match(purchaseDialog, /api\.account\.startGameCheckout/);
+  assert.match(purchaseDialog, /checkoutCompleted/);
+  assert.match(styles, /dialog\[data-variant="game-purchase"\]/);
+  assert.match(
+    styles,
+    /\.game-purchase-dialog\s*\{[\s\S]*?grid-template-columns:/
+  );
+  assert.match(styles, /\.game-purchase-visual > img/);
+});
+
+test("les boutons d’abonnement restent cliquables et signalent l’ouverture de PayPal", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const ipc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "main", "ipc.js"),
+    "utf8"
+  );
+  const preload = fs.readFileSync(
+    path.join(__dirname, "..", "src", "main", "preload.js"),
+    "utf8"
+  );
+  const membership = app.slice(
+    app.indexOf("function renderMembership"),
+    app.indexOf("function renderSettings")
+  );
+  const handler = app.slice(
+    app.indexOf('if (action === "subscription-checkout-cancel")'),
+    app.indexOf('if (action === "test-event")')
+  );
+
+  assert.match(
+    membership,
+    /type="button" data-action="subscription-checkout"/
+  );
+  assert.match(membership, /subscriptionCheckoutBusyTier/);
+  assert.match(membership, /Annuler PayPal/);
+  assert.match(handler, /api\.account\.cancelCheckout/);
+  assert.match(handler, /api\.account\.startSubscriptionCheckout/);
+  assert.match(handler, /subscriptionCheckoutBusyTier = tier/);
+  assert.match(handler, /finally \{/);
+  assert.match(ipc, /handle\("account:checkout-cancel"/);
+  assert.match(preload, /cancelCheckout: \(payload\)/);
+});
+
 test("toutes les cartes du tableau de bord affichent la session active", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
@@ -759,6 +889,51 @@ test("toutes les cartes du tableau de bord affichent la session active", () => {
   assert.match(dashboard, /stats\.sessionUniqueViewers\?\.length \|\| 0/);
   assert.doesNotMatch(dashboard, /"total local"/);
   assert.doesNotMatch(dashboard, /"historique local"/);
+});
+
+test("la vue d’ensemble résume les sources et ouvre leur page seulement si elle est visible", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const dashboard = app.slice(
+    app.indexOf("function renderDashboard"),
+    app.indexOf("function statCard")
+  );
+  const sourceButtonCount = (
+    dashboard.match(/data-navigate="connections"/g) || []
+  ).length;
+
+  assert.equal(sourceButtonCount, 1);
+  assert.match(dashboard, /État des connexions/);
+  assert.match(dashboard, /canNavigateTo\("connections"\)/);
+  assert.match(dashboard, /Voir les connexions/);
+  assert.match(app, /function connectionDashboardPurpose/);
+  assert.match(app, /Reçoit les interactions du LIVE TikTok/);
+  assert.match(app, /Sert uniquement aux tests manuels/);
+  assert.match(app, /function connectionStatusLabel/);
+});
+
+test("la page Connexions explique chaque source et le mode Démo manuel", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const connections = app.slice(
+    app.indexOf("function renderConnections"),
+    app.indexOf("function renderActivity")
+  );
+
+  assert.match(connections, /TikTok LIVE direct/);
+  assert.match(connections, /WebSocket ou relais/);
+  assert.match(connections, /Twitch IRC/);
+  assert.match(connections, /Démo manuelle/);
+  assert.match(connections, /Désactivée par défaut/);
+  assert.match(connections, /ne crée aucun viewer/);
+  assert.match(connections, /AUTO[\s\S]*MANUEL[\s\S]*Déconnecter/);
+  assert.match(connections, /connectionTypeDescription/);
+  assert.doesNotMatch(connections, /data-action="add-connection"/);
+  assert.doesNotMatch(connections, /data-action="edit-connection"/);
 });
 
 test("les déclencheurs proposés excluent Raid et Tous les déclencheurs", () => {
@@ -919,4 +1094,18 @@ test("les interactions incomplètes sont signalées avant overlay et lancement",
     app,
     /confirmGameInteractionReadiness\(\s*pack,\s*"de lancer le jeu et son serveur"/
   );
+});
+
+test("le simulateur utilise le cout catalogue du cadeau selectionne", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const start = app.indexOf('if (event.target.id === "simulator-form")');
+  const end = app.indexOf('if (event.target.id !== "settings-form")', start);
+  const submit = app.slice(start, end);
+
+  assert.match(submit, /values\.type === "gift" && selectedGift/);
+  assert.match(submit, /selectedGift\.cost/);
+  assert.doesNotMatch(submit, /value: Number\(values\.value \|\| 0\)/);
 });

@@ -54,6 +54,14 @@
         ".read": true,
         ".write": "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'"
       },
+      "gameCheatAccess": {
+        ".read": false,
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'",
+        "$emailHash": {
+          ".read": "auth != null && auth.token.email_verified == true",
+          ".validate": "newData.val() == true"
+        }
+      },
       "adminCommerce": {
         "history": {
           ".indexOn": "savedAt"

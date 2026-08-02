@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "gameId": "minecraft-bedrock-box",
+  "version": "1.1.5",
+  "parentVersion": "1.1.4",
+  "publishedAt": "2026-08-02T15:10:00.000Z",
+  "notes": "Masque uniquement le HUD WIN/TIME, conserve les titres et effets d'interaction, et empêche les retours de chat système liés aux interactions.",
+  "assets": [
+    {
+      "id": "paper",
+      "sourceName": "paper-1.21-130.jar",
+      "remoteName": "paper-1.21-130.jar",
+      "size": 49049109,
+      "sha256": "ab9bb1afc3cea6978a0c03ce8448aa654fe8a9c4dddf341e7cbda1b0edaa73f5",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/paper-1.21-130.jar",
+      "external": true,
+      "role": "server"
+    },
+    {
+      "id": "java",
+      "sourceName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "remoteName": "temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "size": 48850015,
+      "sha256": "7ee06c8f0636b22c7d4cb1e86799c8a1205a99e054bae1871f55308f4069aca9",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0/temurin-java-21.0.11_10-jre-windows-x64.zip",
+      "external": true,
+      "role": "runtime"
+    },
+    {
+      "id": "plugin",
+      "sourceName": "s2e-bedrock-box.jar",
+      "remoteName": "s2e-bedrock-box.jar",
+      "size": 163682,
+      "sha256": "ba1086ffcd93a22052877ce34112ff35a56b8e39955791239e1d04ec02764ebf",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.0/s2e-bedrock-box.jar",
+      "external": true,
+      "role": "installation"
+    },
+    {
+      "id": "guard",
+      "sourceName": "shenpulse-bedrock-guard.jar",
+      "remoteName": "shenpulse-bedrock-guard.jar",
+      "size": 33284,
+      "sha256": "dabc2fc47644127ac7a7b8bb35eede8e0b7324cd21f7996ecadba08d03ffcc66",
+      "role": "installation"
+    },
+    {
+      "id": "nativeWinBridge",
+      "sourceName": "shenpulse-bedrock-native-win-bridge.jar",
+      "remoteName": "shenpulse-bedrock-native-win-bridge.jar",
+      "size": 4074,
+      "sha256": "ca8f680956dd8840bbb65ba00d72467b66275437af60dd291725885ebfe37f69",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.3/shenpulse-bedrock-native-win-bridge.jar",
+      "external": true,
+      "role": "installation"
+    },
+    {
+      "id": "effectsPatch",
+      "sourceName": "shenpulse-bedrock-effects-patch.jar",
+      "remoteName": "shenpulse-bedrock-effects-patch.jar",
+      "size": 12783,
+      "sha256": "c68e9c3ac1c7840be1a0591ef011c9a67c7718fe56876c23de480ef96823a052",
+      "role": "installation"
+    },
+    {
+      "id": "config",
+      "sourceName": "config.yml",
+      "remoteName": "config.yml",
+      "size": 668,
+      "sha256": "c7b3d6a1866d02b70e9d652896fdbbfa59801b394c5e08a27f87eb12b4481ad4",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.0/config.yml",
+      "external": true,
+      "role": "installation"
+    },
+    {
+      "id": "serverProperties",
+      "sourceName": "server.properties",
+      "remoteName": "server.properties",
+      "size": 1361,
+      "sha256": "d2e540a222a82a548edf403a72679694c0dbe8f0af533db5669081d79f9ef14c",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.2/server.properties",
+      "external": true,
+      "role": "configuration"
+    },
+    {
+      "id": "world",
+      "sourceName": "world.zip",
+      "remoteName": "world.zip",
+      "size": 13700404,
+      "sha256": "8720d7c3b394ca822c9e22bb735d8054e46d99a4d136ce027b02dd4cc28774e9",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-bedrock-box/1.1.0/world.zip",
+      "external": true,
+      "role": "installation"
+    },
+    {
+      "id": "autoClicker",
+      "sourceName": "AutoClicker.exe",
+      "remoteName": "AutoClicker.exe",
+      "size": 1187192,
+      "sha256": "1ce7da6f2813c2ad1d2e496be6714e08cd618e6d9fe2df26c2bd4d894c9a6ec1",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.1.0/AutoClicker.exe",
+      "external": true,
+      "role": "tool"
+    }
+  ]
+}

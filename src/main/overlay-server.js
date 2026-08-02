@@ -245,12 +245,15 @@ class OverlayServer {
       url.pathname === "/overlay" ||
       url.pathname === "/overlay/";
     if (isOverlayDocument) {
+      const previewMode = url.searchParams.get("preview");
+      const isCatalogPreview =
+        previewMode === "static" || previewMode === "animated";
       if (!this.#authorized(request, settings.overlayToken)) {
         return this.#json(response, 401, { error: "Jeton local invalide." });
       }
       if (
         overlayViewRequiresPro(url.searchParams.get("view")) &&
-        url.searchParams.get("preview") !== "static" &&
+        !isCatalogPreview &&
         !hasProOverlayAccess(this.store.getState())
       ) {
         return this.#overlayAccessDenied(response);
@@ -270,7 +273,7 @@ class OverlayServer {
       return this.#serveStatic(url.pathname, response);
     }
     if (
-      /^\/overlay\/[^/]+\.(?:css|js|png|svg)$/i.test(url.pathname)
+      /^\/overlay\/(?:vendor\/)?[^/]+\.(?:css|js|png|svg)$/i.test(url.pathname)
     ) {
       return this.#serveStatic(url.pathname, response);
     }

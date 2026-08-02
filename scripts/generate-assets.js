@@ -4,8 +4,24 @@ const fs = require("node:fs");
 const path = require("node:path");
 const zlib = require("node:zlib");
 
-const outputDirectory = path.join(__dirname, "..", "build");
+const projectDirectory = path.join(__dirname, "..");
+const outputDirectory = path.join(projectDirectory, "build");
 const appxDirectory = path.join(outputDirectory, "appx");
+const sourcePath = path.join(
+  projectDirectory,
+  "src",
+  "renderer",
+  "assets",
+  "brand",
+  "shenpulse-512.png"
+);
+const cachedBuilderIconPath = path.join(
+  projectDirectory,
+  "dist",
+  ".icon-ico",
+  "icon.ico"
+);
+
 fs.mkdirSync(outputDirectory, { recursive: true });
 fs.rmSync(appxDirectory, { recursive: true, force: true });
 fs.mkdirSync(appxDirectory, { recursive: true });
@@ -31,55 +47,118 @@ function chunk(type, data) {
   return result;
 }
 
-function blend(pixel, color, alpha) {
-  pixel[0] = Math.round(pixel[0] * (1 - alpha) + color[0] * alpha);
-  pixel[1] = Math.round(pixel[1] * (1 - alpha) + color[1] * alpha);
-  pixel[2] = Math.round(pixel[2] * (1 - alpha) + color[2] * alpha);
-  pixel[3] = 255;
+function paethPredictor(left, up, upperLeft) {
+  const estimate = left + up - upperLeft;
+  const leftDistance = Math.abs(estimate - left);
+  const upDistance = Math.abs(estimate - up);
+  const upperLeftDistance = Math.abs(estimate - upperLeft);
+  if (leftDistance <= upDistance && leftDistance <= upperLeftDistance) return left;
+  if (upDistance <= upperLeftDistance) return up;
+  return upperLeft;
 }
 
-function createIcon(width, height, fileName, directory = outputDirectory) {
-  const rowSize = width * 4 + 1;
-  const pixels = Buffer.alloc(rowSize * height);
-  const centerX = (width - 1) / 2;
-  const centerY = (height - 1) / 2;
-  const radius = Math.min(width, height) * 0.43;
-  const cyan = [29, 232, 255];
-  const violet = [141, 92, 246];
-  const navy = [9, 11, 20];
+function decodeRgbaPng(png) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (!png.subarray(0, signature.length).equals(signature)) {
+    throw new Error(`Le logo source n'est pas un PNG valide : ${sourcePath}`);
+  }
 
+  let width = 0;
+  let height = 0;
+  let bitDepth = 0;
+  let colorType = 0;
+  let interlace = 0;
+  const imageDataChunks = [];
+
+  for (let offset = signature.length; offset < png.length; ) {
+    const length = png.readUInt32BE(offset);
+    const type = png.toString("ascii", offset + 4, offset + 8);
+    const data = png.subarray(offset + 8, offset + 8 + length);
+    offset += 12 + length;
+
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0);
+      height = data.readUInt32BE(4);
+      bitDepth = data[8];
+      colorType = data[9];
+      interlace = data[12];
+    } else if (type === "IDAT") {
+      imageDataChunks.push(data);
+    } else if (type === "IEND") {
+      break;
+    }
+  }
+
+  if (
+    !width ||
+    !height ||
+    bitDepth !== 8 ||
+    colorType !== 6 ||
+    interlace !== 0 ||
+    !imageDataChunks.length
+  ) {
+    throw new Error(
+      "Le logo source doit être un PNG RGBA 8 bits non entrelacé."
+    );
+  }
+
+  const bytesPerPixel = 4;
+  const rowLength = width * bytesPerPixel;
+  const filtered = zlib.inflateSync(Buffer.concat(imageDataChunks));
+  const expectedLength = (rowLength + 1) * height;
+  if (filtered.length !== expectedLength) {
+    throw new Error("Les données du logo source sont incomplètes.");
+  }
+
+  const pixels = Buffer.alloc(width * height * bytesPerPixel);
   for (let y = 0; y < height; y += 1) {
-    const row = y * rowSize;
-    pixels[row] = 0;
-    for (let x = 0; x < width; x += 1) {
-      const offset = row + 1 + x * 4;
-      const distance = Math.hypot(x - centerX, y - centerY);
-      const backgroundAlpha = distance <= radius ? 1 : 0;
-      const gradient = (x + y) / (width + height);
-      const base = [
-        Math.round(navy[0] + gradient * 12),
-        Math.round(navy[1] + gradient * 9),
-        Math.round(navy[2] + gradient * 20),
-        Math.round(255 * backgroundAlpha)
-      ];
-      pixels.set(base, offset);
+    const filteredRow = y * (rowLength + 1);
+    const outputRow = y * rowLength;
+    const filter = filtered[filteredRow];
 
-      if (!backgroundAlpha) continue;
-      const nx = (x - centerX) / radius;
-      const ny = (y - centerY) / radius;
-      const wave = -0.06 * Math.sin(nx * Math.PI * 3.5);
-      const pulse =
-        (nx > -0.72 && nx < -0.28 && Math.abs(ny - wave) < 0.055) ||
-        (nx >= -0.28 && nx < -0.08 && Math.abs(ny - (-0.68 + (nx + 0.28) * 3.2)) < 0.07) ||
-        (nx >= -0.08 && nx < 0.12 && Math.abs(ny - (0.68 - (nx + 0.08) * 6.8)) < 0.07) ||
-        (nx >= 0.12 && nx < 0.32 && Math.abs(ny - (-0.68 + (nx - 0.12) * 3.4)) < 0.07) ||
-        (nx >= 0.32 && nx < 0.75 && Math.abs(ny - wave) < 0.055);
-      if (pulse) {
-        const pixel = [pixels[offset], pixels[offset + 1], pixels[offset + 2], 255];
-        blend(pixel, x < centerX ? cyan : violet, 0.95);
-        pixels.set(pixel, offset);
+    for (let x = 0; x < rowLength; x += 1) {
+      const value = filtered[filteredRow + 1 + x];
+      const left = x >= bytesPerPixel ? pixels[outputRow + x - bytesPerPixel] : 0;
+      const up = y > 0 ? pixels[outputRow - rowLength + x] : 0;
+      const upperLeft =
+        y > 0 && x >= bytesPerPixel
+          ? pixels[outputRow - rowLength + x - bytesPerPixel]
+          : 0;
+
+      switch (filter) {
+        case 0:
+          pixels[outputRow + x] = value;
+          break;
+        case 1:
+          pixels[outputRow + x] = (value + left) & 0xff;
+          break;
+        case 2:
+          pixels[outputRow + x] = (value + up) & 0xff;
+          break;
+        case 3:
+          pixels[outputRow + x] =
+            (value + Math.floor((left + up) / 2)) & 0xff;
+          break;
+        case 4:
+          pixels[outputRow + x] =
+            (value + paethPredictor(left, up, upperLeft)) & 0xff;
+          break;
+        default:
+          throw new Error(`Filtre PNG non pris en charge : ${filter}`);
       }
     }
+  }
+
+  return { width, height, pixels };
+}
+
+function encodeRgbaPng(width, height, pixels) {
+  const rowLength = width * 4;
+  const filtered = Buffer.alloc((rowLength + 1) * height);
+  for (let y = 0; y < height; y += 1) {
+    const filteredRow = y * (rowLength + 1);
+    filtered[filteredRow] = 0;
+    pixels.copy(filtered, filteredRow + 1, y * rowLength, (y + 1) * rowLength);
   }
 
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -88,16 +167,200 @@ function createIcon(width, height, fileName, directory = outputDirectory) {
   header.writeUInt32BE(height, 4);
   header[8] = 8;
   header[9] = 6;
-  const png = Buffer.concat([
+
+  return Buffer.concat([
     signature,
     chunk("IHDR", header),
-    chunk("IDAT", zlib.deflateSync(pixels, { level: 9 })),
+    chunk("sRGB", Buffer.from([0])),
+    chunk("IDAT", zlib.deflateSync(filtered, { level: 9 })),
     chunk("IEND", Buffer.alloc(0))
   ]);
-  fs.writeFileSync(path.join(directory, fileName), png);
 }
 
-createIcon(512, 512, "icon.png");
+function lanczos(value, radius = 3) {
+  const distance = Math.abs(value);
+  if (distance === 0) return 1;
+  if (distance >= radius) return 0;
+  const piDistance = Math.PI * distance;
+  return (
+    (Math.sin(piDistance) / piDistance) *
+    (Math.sin(piDistance / radius) / (piDistance / radius))
+  );
+}
+
+function createContributions(sourceSize, targetSize) {
+  const scale = targetSize / sourceSize;
+  const support = scale < 1 ? 3 / scale : 3;
+  const kernelScale = scale < 1 ? scale : 1;
+  const contributions = [];
+
+  for (let target = 0; target < targetSize; target += 1) {
+    const center = (target + 0.5) / scale - 0.5;
+    const start = Math.ceil(center - support);
+    const end = Math.floor(center + support);
+    const weightsByIndex = new Map();
+    let totalWeight = 0;
+
+    for (let source = start; source <= end; source += 1) {
+      const weight = lanczos((center - source) * kernelScale);
+      if (weight === 0) continue;
+      const clampedSource = Math.max(0, Math.min(sourceSize - 1, source));
+      weightsByIndex.set(
+        clampedSource,
+        (weightsByIndex.get(clampedSource) || 0) + weight
+      );
+      totalWeight += weight;
+    }
+
+    contributions.push(
+      [...weightsByIndex].map(([index, weight]) => [
+        index,
+        weight / totalWeight
+      ])
+    );
+  }
+
+  return contributions;
+}
+
+function resizeRgba(source, targetWidth, targetHeight) {
+  if (source.width === targetWidth && source.height === targetHeight) {
+    return Buffer.from(source.pixels);
+  }
+
+  const horizontalContributions = createContributions(
+    source.width,
+    targetWidth
+  );
+  const verticalContributions = createContributions(
+    source.height,
+    targetHeight
+  );
+  const horizontal = new Float64Array(targetWidth * source.height * 4);
+
+  for (let y = 0; y < source.height; y += 1) {
+    for (let x = 0; x < targetWidth; x += 1) {
+      const outputOffset = (y * targetWidth + x) * 4;
+      for (const [sourceX, weight] of horizontalContributions[x]) {
+        const sourceOffset = (y * source.width + sourceX) * 4;
+        const alpha = source.pixels[sourceOffset + 3];
+        horizontal[outputOffset] +=
+          (source.pixels[sourceOffset] * alpha * weight) / 255;
+        horizontal[outputOffset + 1] +=
+          (source.pixels[sourceOffset + 1] * alpha * weight) / 255;
+        horizontal[outputOffset + 2] +=
+          (source.pixels[sourceOffset + 2] * alpha * weight) / 255;
+        horizontal[outputOffset + 3] += alpha * weight;
+      }
+    }
+  }
+
+  const pixels = Buffer.alloc(targetWidth * targetHeight * 4);
+  for (let y = 0; y < targetHeight; y += 1) {
+    for (let x = 0; x < targetWidth; x += 1) {
+      const outputOffset = (y * targetWidth + x) * 4;
+      let premultipliedRed = 0;
+      let premultipliedGreen = 0;
+      let premultipliedBlue = 0;
+      let alpha = 0;
+
+      for (const [sourceY, weight] of verticalContributions[y]) {
+        const sourceOffset = (sourceY * targetWidth + x) * 4;
+        premultipliedRed += horizontal[sourceOffset] * weight;
+        premultipliedGreen += horizontal[sourceOffset + 1] * weight;
+        premultipliedBlue += horizontal[sourceOffset + 2] * weight;
+        alpha += horizontal[sourceOffset + 3] * weight;
+      }
+
+      const clampedAlpha = Math.max(0, Math.min(255, alpha));
+      pixels[outputOffset + 3] = Math.round(clampedAlpha);
+      if (clampedAlpha > 0) {
+        pixels[outputOffset] = Math.round(
+          Math.max(0, Math.min(255, (premultipliedRed * 255) / clampedAlpha))
+        );
+        pixels[outputOffset + 1] = Math.round(
+          Math.max(0, Math.min(255, (premultipliedGreen * 255) / clampedAlpha))
+        );
+        pixels[outputOffset + 2] = Math.round(
+          Math.max(0, Math.min(255, (premultipliedBlue * 255) / clampedAlpha))
+        );
+      }
+    }
+  }
+
+  return pixels;
+}
+
+const sourceLogo = decodeRgbaPng(fs.readFileSync(sourcePath));
+const resizedLogoCache = new Map();
+
+function resizedLogo(size) {
+  if (!resizedLogoCache.has(size)) {
+    resizedLogoCache.set(size, resizeRgba(sourceLogo, size, size));
+  }
+  return resizedLogoCache.get(size);
+}
+
+function renderLogo(width, height, useSafeArea) {
+  const safeAreaRatio = useSafeArea ? 0.86 : 1;
+  const logoSize = Math.max(1, Math.round(Math.min(width, height) * safeAreaRatio));
+  const logoPixels = resizedLogo(logoSize);
+  const pixels = Buffer.alloc(width * height * 4);
+  const left = Math.floor((width - logoSize) / 2);
+  const top = Math.floor((height - logoSize) / 2);
+
+  for (let y = 0; y < logoSize; y += 1) {
+    const sourceOffset = y * logoSize * 4;
+    const targetOffset = ((top + y) * width + left) * 4;
+    logoPixels.copy(
+      pixels,
+      targetOffset,
+      sourceOffset,
+      sourceOffset + logoSize * 4
+    );
+  }
+
+  return encodeRgbaPng(width, height, pixels);
+}
+
+function writeLogoPng(filePath, width, height, useSafeArea = true) {
+  fs.writeFileSync(filePath, renderLogo(width, height, useSafeArea));
+}
+
+function createIco(sizes) {
+  const images = sizes.map((size) => renderLogo(size, size, false));
+  const headerSize = 6 + sizes.length * 16;
+  const header = Buffer.alloc(headerSize);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(sizes.length, 4);
+
+  let imageOffset = headerSize;
+  for (let index = 0; index < sizes.length; index += 1) {
+    const entryOffset = 6 + index * 16;
+    const size = sizes[index];
+    const image = images[index];
+    header[entryOffset] = size === 256 ? 0 : size;
+    header[entryOffset + 1] = size === 256 ? 0 : size;
+    header[entryOffset + 2] = 0;
+    header[entryOffset + 3] = 0;
+    header.writeUInt16LE(1, entryOffset + 4);
+    header.writeUInt16LE(32, entryOffset + 6);
+    header.writeUInt32LE(image.length, entryOffset + 8);
+    header.writeUInt32LE(imageOffset, entryOffset + 12);
+    imageOffset += image.length;
+  }
+
+  return Buffer.concat([header, ...images]);
+}
+
+fs.copyFileSync(sourcePath, path.join(outputDirectory, "icon.png"));
+
+const ico = createIco([16, 24, 32, 48, 64, 128, 256]);
+fs.writeFileSync(path.join(outputDirectory, "shenpulse.ico"), ico);
+if (fs.existsSync(path.dirname(cachedBuilderIconPath))) {
+  fs.writeFileSync(cachedBuilderIconPath, ico);
+}
 
 const appxAssets = [
   ["StoreLogo", 50, 50],
@@ -108,6 +371,12 @@ const appxAssets = [
   ["SmallTile", 71, 71],
   ["SplashScreen", 620, 300]
 ];
+const legacyTopLevelAssets = new Set([
+  "StoreLogo",
+  "Square44x44Logo",
+  "Square150x150Logo",
+  "Wide310x150Logo"
+]);
 const scales = [
   [100, 1],
   [125, 1.25],
@@ -117,14 +386,21 @@ const scales = [
 ];
 
 for (const [name, width, height] of appxAssets) {
-  createIcon(width, height, `${name}.png`, appxDirectory);
-  for (const [scale, multiplier] of scales.slice(1)) {
-    createIcon(
-      Math.round(width * multiplier),
-      Math.round(height * multiplier),
-      `${name}.scale-${scale}.png`,
-      appxDirectory
+  if (legacyTopLevelAssets.has(name)) {
+    writeLogoPng(path.join(outputDirectory, `${name}.png`), width, height);
+  }
+  for (const [scale, multiplier] of scales) {
+    const scaledWidth = Math.round(width * multiplier);
+    const scaledHeight = Math.round(height * multiplier);
+    const suffix = scale === 100 ? "" : `.scale-${scale}`;
+    writeLogoPng(
+      path.join(appxDirectory, `${name}${suffix}.png`),
+      scaledWidth,
+      scaledHeight
     );
   }
 }
-process.stdout.write("Assets ShenPulse générés.\n");
+
+process.stdout.write(
+  "Assets ShenPulse générés depuis src/renderer/assets/brand/shenpulse-512.png.\n"
+);

@@ -28,6 +28,10 @@ test("recrée les 37 jeux conservés sans doublon et avec les tarifs réels", ()
   assert.equal(games.length, 37);
   assert.equal(new Set(games.map((game) => game.id)).size, 37);
   assert.ok(games.some((game) => game.id === "gtav-montchiliad"));
+  assert.equal(
+    games.find((game) => game.id === "gtav-montchiliad")?.installerVersion,
+    "1.0.4"
+  );
   assert.deepEqual(
     games
       .filter((game) =>

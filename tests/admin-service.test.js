@@ -274,7 +274,7 @@ test("le stockage par défaut sépare la session admin des données publiques", 
   });
 });
 
-test("le renderer expose les quatre espaces de la console propriétaire", () => {
+test("le renderer expose les cinq espaces de la console propriétaire", () => {
   const source = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
     "utf8"
@@ -282,6 +282,7 @@ test("le renderer expose les quatre espaces de la console propriétaire", () => 
   for (const label of [
     "Tableau de bord",
     "Visibilité",
+    "Triche de jeux",
     "Offres d’essai",
     "Tarifs & promotions"
   ]) {
@@ -306,6 +307,7 @@ test("embarque la règle d’index Firebase requise par l’historique commercia
     "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'"
   );
   assert.equal(rules.rules.site.publicVisibility[".read"], true);
+  assert.equal(rules.rules.site.gameCheatAccess[".read"], false);
   assert.equal(
     rules.rules.site.publicVisibility[".write"],
     "auth != null && auth.token.email_verified == true && auth.token.email == 'alexandre.leuridan@gmail.com'"

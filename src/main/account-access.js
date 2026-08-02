@@ -1,6 +1,7 @@
 "use strict";
 
 const PRIVATE_RENDERER_CHANNELS = new Set([
+  "deal-host-state",
   "game-effect",
   "game-install-progress",
   "game-round-timeout",
