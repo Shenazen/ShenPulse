@@ -7,6 +7,9 @@ const { safeString } = require("./utils");
 
 const ACCOUNTS_BASE = "https://accounts.spotify.com";
 const API_BASE = "https://api.spotify.com/v1";
+// A Spotify Client ID is public by design. Shipping ShenPulse's own ID lets
+// creators authorize their account without creating or configuring an app.
+const SHENPULSE_SPOTIFY_CLIENT_ID = "996de28fa8b542f4958f4d49051d9406";
 const SCOPES = [
   "user-read-playback-state",
   "user-read-currently-playing",
@@ -415,7 +418,7 @@ class SpotifyService {
 
   #clientId() {
     return safeString(
-      this.#settings().clientId || process.env.SPOTIFY_CLIENT_ID,
+      process.env.SPOTIFY_CLIENT_ID || SHENPULSE_SPOTIFY_CLIENT_ID,
       300
     ).trim();
   }

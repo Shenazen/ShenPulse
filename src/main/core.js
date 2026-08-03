@@ -26,11 +26,17 @@ const {
   createMediaCatalog
 } = require("./catalogs");
 const { SpotifyService } = require("./spotify-service");
+const { IrlPythonBridge } = require("./irl-python-bridge");
+const { ShellyService } = require("./shelly-service");
 const {
   OverlayCompletionController
 } = require("./overlay-completion-controller");
 const { renderValue } = require("./template");
 const { preferredImageUrl, safeString, serializeError } = require("./utils");
+const {
+  giftValueFilterMatches,
+  normalizeGiftValueFilter
+} = require("../shared/gift-value-filter");
 const {
   finishOverlaySession,
   recordOverlayEvent,
@@ -54,6 +60,17 @@ class ShenPulseCore extends EventEmitter {
     this.soundCatalog = SOUND_CATALOG;
     this.mediaCatalog = createMediaCatalog(resourcesDirectory);
     this.spotifyService = new SpotifyService({ store, notifyRenderer });
+    this.irlPythonBridge = new IrlPythonBridge({
+      scriptPath: path.join(
+        resourcesDirectory,
+        "irl-python",
+        "shenpulse_irl_server.py"
+      )
+    });
+    this.shellyService = new ShellyService({
+      store,
+      pythonBridge: this.irlPythonBridge
+    });
     this.publicOverlayRelay = new PublicOverlayRelay({
       store,
       appVersion
@@ -73,6 +90,7 @@ class ShenPulseCore extends EventEmitter {
       obsClient: this.obsClient,
       sourceHub: this.sourceHub,
       spotifyService: this.spotifyService,
+      shellyService: this.shellyService,
       notifyRenderer,
       onOverlayOperation: (change) =>
         this.overlayCompletionController?.handleOperation(change)
@@ -202,6 +220,7 @@ class ShenPulseCore extends EventEmitter {
     await this.obsClient.disconnect();
     await this.publicOverlayRelay.stop();
     await this.overlayServer.stop();
+    await this.irlPythonBridge.stop();
     this.ruleEngine.resetProfileState();
     this.commandCooldowns.clear();
     this.gameCounterCursors.clear();
@@ -1081,10 +1100,7 @@ class ShenPulseCore extends EventEmitter {
       ? wheelConfig.wheels
       : [];
     const matchingWheels = wheels.filter((wheel) => {
-      const trigger = String(wheel.trigger || "")
-        .trim()
-        .toLocaleLowerCase("fr");
-      return wheel.enabled !== false && trigger && giftNames.has(trigger);
+      return wheelGiftTriggerMatches(wheel, event, giftNames);
     });
     const deliveryCount = giftEventCount(event);
     for (let index = 0; index < deliveryCount; index += 1) {
@@ -1135,6 +1151,22 @@ class ShenPulseCore extends EventEmitter {
     }, 50);
     this.deferredChangeTimer.unref?.();
   }
+}
+
+function wheelGiftTriggerMatches(wheel, event, knownGiftNames = null) {
+  if (wheel?.enabled === false || event?.type !== "gift") return false;
+  const trigger = String(wheel?.trigger || "")
+    .trim()
+    .toLocaleLowerCase("fr");
+  const filter = normalizeGiftValueFilter(wheel?.giftValueFilter);
+  if (!trigger && !filter) return false;
+  if (filter) return giftValueFilterMatches(filter, event.data?.value);
+  const giftNames = knownGiftNames || new Set(
+    [event.data?.giftName, event.data?.giftId]
+      .map((value) => String(value || "").trim().toLocaleLowerCase("fr"))
+      .filter(Boolean)
+  );
+  return giftNames.has(trigger);
 }
 
 function synchronizeSessionWithTikTok(state, status, now = new Date().toISOString()) {
@@ -1300,5 +1332,6 @@ module.exports = {
   resolveLikeGoalCompletionChange,
   resetSessionStatistics,
   shouldRecordActivity,
-  synchronizeSessionWithTikTok
+  synchronizeSessionWithTikTok,
+  wheelGiftTriggerMatches
 };

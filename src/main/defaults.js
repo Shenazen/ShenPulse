@@ -56,6 +56,7 @@ function createDefaultWheels() {
       name: "Roue Orange Classique - Actions LIVE",
       enabled: true,
       trigger: "",
+      giftValueFilter: null,
       design: "classic",
       settings: createDefaultWheelSettings(),
       segments: [
@@ -74,6 +75,7 @@ function createDefaultWheels() {
       name: "Roue Royale Prestige - Défis Sport",
       enabled: false,
       trigger: "",
+      giftValueFilter: null,
       design: "royal",
       settings: createDefaultWheelSettings({
         font: "Georgia",
@@ -268,6 +270,10 @@ function createDefaultState() {
       launchAtStartup: false,
       allowKeystrokes: false,
       telemetry: false,
+      irl: {
+        enabled: false,
+        devices: []
+      },
       tts: {
         enabled: true,
         language: "fr-FR",

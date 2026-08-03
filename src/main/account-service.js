@@ -236,11 +236,6 @@ class AccountService {
     const session = this.#session();
     const uid = cleanUid(session.uid);
     if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
-    if (session.emailVerified !== true) {
-      throw new Error(
-        "Vérifiez votre adresse e-mail avant de lancer l’achat."
-      );
-    }
     if (typeof this.openExternal !== "function") {
       throw new Error(
         "L’ouverture de PayPal n’est pas disponible dans cette version de ShenPulse."
@@ -372,11 +367,6 @@ class AccountService {
     const session = this.#session();
     const uid = cleanUid(session.uid);
     if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
-    if (session.emailVerified !== true) {
-      throw new Error(
-        "Vérifiez votre adresse e-mail avant de lancer l’abonnement."
-      );
-    }
     if (typeof this.openExternal !== "function") {
       throw new Error(
         "L’ouverture de PayPal n’est pas disponible dans cette version de ShenPulse."

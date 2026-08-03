@@ -12,6 +12,7 @@ const { safeString } = require("./utils");
 const AUDIO_TYPES = new Map([
   [".m4a", "audio/mp4"],
   [".mp3", "audio/mpeg"],
+  [".mp4", "audio/mp4"],
   [".ogg", "audio/ogg"],
   [".wav", "audio/wav"],
   [".webm", "audio/webm"]
@@ -105,7 +106,7 @@ class BackblazeMediaService {
     if (!contentType) {
       throw new Error(
         requestedKind === "sound"
-          ? "Format audio non pris en charge (MP3, WAV, OGG, M4A ou WebM)."
+          ? "Format audio non pris en charge (MP3, WAV, OGG, M4A, MP4 ou WebM)."
           : "Format média non pris en charge (PNG, JPG, WebP, GIF, MP4 ou WebM)."
       );
     }

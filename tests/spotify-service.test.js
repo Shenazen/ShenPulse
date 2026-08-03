@@ -3,11 +3,36 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  SpotifyService,
   normalizeAccount,
   normalizeDevice,
   normalizePlayback,
   spotifyTrackUri
 } = require("../src/main/spotify-service");
+
+test("utilise l'application Spotify ShenPulse sans configuration utilisateur", async () => {
+  const settings = {
+    clientId: "",
+    redirectPort: 21215,
+    refreshTokenSecretId: "",
+    account: null
+  };
+  const service = new SpotifyService({
+    store: {
+      getState: () => ({ settings: { spotify: settings } })
+    },
+    notifyRenderer: () => {}
+  });
+
+  assert.deepEqual(await service.status(), {
+    configured: true,
+    connected: false,
+    redirectUri: "http://127.0.0.1:21215/spotify/callback",
+    devices: [],
+    account: null,
+    playback: null
+  });
+});
 
 test("normalise les objets Spotify avant de les exposer au renderer", () => {
   assert.deepEqual(

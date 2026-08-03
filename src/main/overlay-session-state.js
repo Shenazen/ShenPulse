@@ -99,11 +99,14 @@ function finishOverlaySession(state, now = new Date().toISOString()) {
 }
 
 function recordOverlayEvent(state, event, now = new Date().toISOString()) {
-  if (!state.session?.running) return state.overlaySession;
+  const sessionRunning = state.session?.running === true;
+  const inactiveSimulation =
+    !sessionRunning && event?.source === "simulator";
+  if (!sessionRunning && !inactiveSimulation) return state.overlaySession;
   state.overlaySession = normalizeOverlaySession(state.overlaySession);
   const runtime = state.overlaySession;
   runtime.hasData = true;
-  runtime.active = true;
+  runtime.active = sessionRunning;
   runtime.updatedAt = now;
   runtime.recentEvents = [compactOverlayEvent(event), ...runtime.recentEvents]
     .slice(0, MAX_RECENT_EVENTS);

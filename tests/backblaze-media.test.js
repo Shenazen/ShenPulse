@@ -112,6 +112,37 @@ test("signe et téléverse un son personnalisé vers Backblaze", async () => {
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 });
 
+test("accepte un fichier MP4 comme son personnalisé", async () => {
+  const store = createStore({
+    keyIdSecretId: "key-id",
+    applicationKeySecretId: "application-key"
+  });
+  store.secrets.set("key-id", "test-key-id");
+  store.secrets.set("application-key", "test-application-key");
+  const calls = [];
+  const service = new BackblazeMediaService({
+    store,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200 };
+    }
+  });
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-sound-mp4-")
+  );
+  const soundPath = path.join(temporaryDirectory, "Alerte_Video.mp4");
+  fs.writeFileSync(soundPath, Buffer.from("test-mp4-audio"));
+
+  const sound = await service.uploadSound(soundPath);
+
+  assert.equal(sound.name, "Alerte Video");
+  assert.equal(sound.kind, "sound");
+  assert.equal(sound.contentType, "audio/mp4");
+  assert.match(sound.key, /^mediauploads\/desktop\/sound\/.+\.mp4$/);
+  assert.equal(calls[0].options.headers["Content-Type"], "audio/mp4");
+  fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+});
+
 test("téléverse aussi une image personnalisée dans la bibliothèque globale", async () => {
   const store = createStore({
     keyIdSecretId: "key-id",

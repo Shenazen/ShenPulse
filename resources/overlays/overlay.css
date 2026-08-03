@@ -2377,6 +2377,7 @@ body {
     inset 0 0 28px rgba(255, 255, 255, .22),
     inset 0 0 0 2px rgba(255, 255, 255, .24);
   backface-visibility: hidden;
+  container-type: inline-size;
   will-change: transform;
 }
 
@@ -2418,6 +2419,7 @@ body {
   justify-content: center;
   transform: translate(-50%, -50%) rotate(var(--segment-label-rotation));
   transform-origin: center;
+  box-sizing: border-box;
   overflow: visible;
   pointer-events: none;
 }
@@ -2429,12 +2431,15 @@ body {
   overflow: hidden;
   color: var(--segment-text-color);
   font-family: var(--segment-font-family);
-  font-size: clamp(9px, var(--segment-font-size), 28px);
+  font-size: clamp(8px, var(--segment-font-size), 34px);
   font-weight: 950;
   line-height: var(--segment-line-height);
   letter-spacing: var(--segment-letter-spacing);
+  hyphens: auto;
   overflow-wrap: anywhere;
   text-align: var(--segment-text-align);
+  text-wrap: balance;
+  white-space: normal;
   text-shadow:
     0 2px var(--segment-text-shadow-blur) var(--segment-text-shadow-color),
     0 0 calc(var(--segment-text-shadow-blur) * 1.5) var(--segment-text-shadow-color);

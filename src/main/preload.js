@@ -51,6 +51,16 @@ contextBridge.exposeInMainWorld("shenPulse", {
   testRule: (id, event) => invoke("rule:test", id, event),
   testAction: (action) => invoke("action:test", action),
   testTimer: (id) => invoke("timer:test", id),
+  irl: {
+    status: () => invoke("irl:status"),
+    scan: (options) => invoke("irl:scan", options),
+    pair: (options) => invoke("irl:pair", options),
+    add: (options) => invoke("irl:add", options),
+    remove: (id) => invoke("irl:remove", id),
+    rename: (id, name) => invoke("irl:rename", id, name),
+    setEnabled: (enabled) => invoke("irl:enabled", enabled),
+    test: (options) => invoke("irl:test", options)
+  },
   restartServers: () => invoke("server:restart"),
   rotatePublicOverlayUrls: () => invoke("overlay:public-urls-rotate"),
   upsert: (collection, item) => invoke("entity:upsert", collection, item),

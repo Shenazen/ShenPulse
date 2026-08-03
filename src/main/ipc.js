@@ -295,7 +295,7 @@ function registerIpc({
       filters: [
         {
           name: "Fichiers audio",
-          extensions: ["mp3", "wav", "ogg", "m4a", "webm"]
+          extensions: ["mp3", "wav", "ogg", "m4a", "mp4", "webm"]
         }
       ]
     });
@@ -325,7 +325,7 @@ function registerIpc({
           ? [
               {
                 name: "Fichiers audio",
-                extensions: ["mp3", "wav", "ogg", "m4a", "webm"]
+                extensions: ["mp3", "wav", "ogg", "m4a", "mp4", "webm"]
               }
             ]
           : [
@@ -401,6 +401,7 @@ function registerIpc({
       "websocket.send",
       "chat.reply",
       "spotify.queue",
+      "irl.shelly",
       "system.keys",
       "system.open",
       "delay"
@@ -420,6 +421,52 @@ function registerIpc({
   handle("timer:test", (_event, timerId) =>
     core.testTimer(safeString(timerId, 160))
   );
+  handle("irl:status", () => core.shellyService.status());
+  handle("irl:scan", async (_event, incoming) => {
+    const result = await core.shellyService.scan(sanitizeEntity(incoming || {}));
+    notify(core, "state-changed", core.snapshot());
+    return { ...result, snapshot: core.snapshot() };
+  });
+  handle("irl:pair", async (_event, incoming) => {
+    const result = await core.shellyService.pair(sanitizeEntity(incoming || {}));
+    notify(core, "state-changed", core.snapshot());
+    return { ...result, snapshot: core.snapshot() };
+  });
+  handle("irl:add", async (_event, incoming) => {
+    const result = await core.shellyService.addDevice(
+      sanitizeEntity(incoming || {})
+    );
+    notify(core, "state-changed", core.snapshot());
+    return { ...result, snapshot: core.snapshot() };
+  });
+  handle("irl:remove", (_event, deviceId) => {
+    const result = core.shellyService.removeDevice(safeString(deviceId, 160));
+    notify(core, "state-changed", core.snapshot());
+    return { ...result, snapshot: core.snapshot() };
+  });
+  handle("irl:rename", (_event, deviceId, name) => {
+    const result = core.shellyService.renameDevice(
+      safeString(deviceId, 160),
+      safeString(name, 80)
+    );
+    notify(core, "state-changed", core.snapshot());
+    return { ...result, snapshot: core.snapshot() };
+  });
+  handle("irl:enabled", (_event, enabled) => {
+    const result = core.shellyService.setEnabled(enabled === true);
+    notify(core, "state-changed", core.snapshot());
+    return { ...result, snapshot: core.snapshot() };
+  });
+  handle("irl:test", async (_event, incoming) => {
+    const payload = sanitizeEntity(incoming || {});
+    const result = await core.shellyService.test(
+      safeString(payload.deviceId, 160),
+      safeString(payload.operation || "toggle", 40),
+      Number(payload.durationMs || 3000)
+    );
+    notify(core, "state-changed", core.snapshot());
+    return { ...result, snapshot: core.snapshot() };
+  });
   handle("server:restart", () => core.restartServers());
   handle("overlay:public-urls-rotate", () =>
     core.rotatePublicOverlayChannel()

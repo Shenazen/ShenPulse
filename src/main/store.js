@@ -11,6 +11,7 @@ const { clone, id } = require("./utils");
 const {
   normalizeOverlaySession
 } = require("./overlay-session-state");
+const { normalizeIrlSettings } = require("./shelly-service");
 
 const ACCOUNT_WORKSPACE_SCHEMA_VERSION = 1;
 const LEGACY_AUTOMATIC_DEMO_VIEWER_IDS = new Set([
@@ -34,6 +35,7 @@ const ACCOUNT_SETTING_KEYS = [
   "launchAtStartup",
   "allowKeystrokes",
   "telemetry",
+  "irl",
   "tts",
   "obs",
   "spotify",
@@ -110,6 +112,7 @@ class StateStore {
       ...defaults.settings.tiktok,
       ...(this.state.settings.tiktok || {})
     };
+    this.state.settings.irl = normalizeIrlSettings(this.state.settings.irl);
     const overlayDefaults = createDefaultOverlayConfigs();
     const storedOverlayConfigs = this.state.settings.overlayConfigs || {};
     this.state.settings.overlayConfigs = Object.fromEntries(

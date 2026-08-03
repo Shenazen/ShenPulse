@@ -35,7 +35,9 @@ for (const target of [executable, editor, icon]) {
   }
 }
 
-const versionParts = String(packageJson.version || "1.0.0")
+const versionParts = String(
+  packageJson.build?.buildVersion || packageJson.version || "1.0.0"
+)
   .split(".")
   .slice(0, 4);
 while (versionParts.length < 4) versionParts.push("0");

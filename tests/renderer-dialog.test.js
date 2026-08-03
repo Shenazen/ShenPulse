@@ -205,6 +205,25 @@ test("les sons, le TTS, Spotify et les cadeaux utilisent les services globaux", 
   assert.match(app, /spotify-control/);
 });
 
+test("les sons et le TTS choisissent une sortie locale ou un écran LIVE", () => {
+  const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
+  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
+  const styles = fs.readFileSync(
+    path.join(rendererDirectory, "styles.css"),
+    "utf8"
+  );
+
+  assert.match(app, /function audioOutputSwitchMarkup/);
+  assert.match(app, /data-action="set-audio-output"/);
+  assert.match(app, /function openLiveAudioOutputEditor/);
+  assert.match(app, /name="liveScreen"/);
+  assert.match(app, /Attention aux doublons/);
+  assert.match(app, /renderMediaScreensPanel\(flattenActions\(\), \{ context: "sounds" \}\)/);
+  assert.match(app, /snapshot\.overlayUrls\?\.mediaScreens/);
+  assert.match(styles, /\.audio-output-switch/);
+  assert.match(styles, /\.live-audio-output-dialog/);
+});
+
 test("les sons et le TTS restent uniquement dans leur atelier dédié", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
@@ -338,6 +357,20 @@ test("l'éditeur d'action reste progressif et parle de déclencheurs", () => {
   assert.match(editor, /const rawUrl = String\(libraryUrl/);
   assert.match(editor, /Choisissez un son à jouer/);
   assert.match(app, /function syncActionEditorVisibility/);
+  assert.match(app, /function giftTriggerConditionFields/);
+  assert.match(app, /name="\$\{escapeHtml\(modeName\)\}" value="specific"/);
+  assert.match(app, /name="\$\{escapeHtml\(modeName\)\}" value="value"/);
+  assert.match(app, /data-gift-trigger-mode/);
+  assert.match(app, /function syncGiftTriggerCondition/);
+  assert.match(app, /giftTriggerMode === "specific" && giftName/);
+  assert.match(app, /giftTriggerMode === "value" &&/);
+  assert.match(app, /operatorName = "giftValueOperator"/);
+  assert.match(app, /amountName = "giftValueAmount"/);
+  assert.match(app, /\["less", "< · Moins de"\]/);
+  assert.match(app, /\["greater", "> · Plus de"\]/);
+  assert.match(styles, /\.gift-value-condition/);
+  assert.match(styles, /\.gift-trigger-mode-option:has\(input:checked\)/);
+  assert.doesNotMatch(app, /les deux critères doivent correspondre/);
   assert.match(app, /function setEditorConditionalVisibility/);
   assert.match(app, /control\.disabled = true/);
   assert.match(app, /dialogForm\.addEventListener\(\s*"invalid"/);
@@ -608,7 +641,7 @@ test("les pages de jeu utilisent le parcours commun, réduit à deux étapes pou
   assert.match(workspace, /toggle-game-interaction/);
   assert.match(workspace, /edit-game-interaction/);
   assert.match(app, /function openGameInteractionEditor/);
-  assert.match(app, /giftPickerField\("giftNameCondition"/);
+  assert.match(app, /giftTriggerConditionFields\(currentRule\.conditions/);
   assert.match(styles, /dialog\[data-variant="effect"\]/);
   assert.match(styles, /\.game-interaction-editor-hero/);
 });
@@ -1083,7 +1116,7 @@ test("les interactions incomplètes sont signalées avant overlay et lancement",
   );
 
   assert.match(app, /function gameInteractionReadinessIssues\(pack\)/);
-  assert.match(app, /aucun cadeau TikTok n’est sélectionné/);
+  assert.match(app, /aucun cadeau TikTok ni filtre de valeur n’est configuré/);
   assert.match(app, /function confirmGameInteractionReadiness\(pack, operationLabel\)/);
   assert.match(app, /Le fonctionnement sera dégradé/);
   assert.match(
@@ -1108,4 +1141,22 @@ test("le simulateur utilise le cout catalogue du cadeau selectionne", () => {
   assert.match(submit, /values\.type === "gift" && selectedGift/);
   assert.match(submit, /selectedGift\.cost/);
   assert.doesNotMatch(submit, /value: Number\(values\.value \|\| 0\)/);
+});
+
+test("dupliquer une action cree une regle independante", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const start = app.indexOf("async function duplicateActionRow(row)");
+  const end = app.indexOf("async function deleteActionRow(row)", start);
+  const duplicateAction = app.slice(start, end);
+
+  assert.match(duplicateAction, /const nextRule = structuredClone\(row\.rule\)/);
+  assert.match(duplicateAction, /nextRule\.id = `rule_\$\{cryptoId\(\)\}`/);
+  assert.match(duplicateAction, /nextRule\.actions = \[nextAction\]/);
+  assert.doesNotMatch(
+    duplicateAction,
+    /actions: \[\.\.\.\(row\.rule\.actions \|\| \[\]\), nextAction\]/
+  );
 });

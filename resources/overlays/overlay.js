@@ -10,6 +10,7 @@ const mediaScreen = Math.min(
   8,
   Math.max(1, Math.round(Number(parameters.get("screen")) || 1))
 );
+const hasMediaScreen = parameters.has("screen");
 const previewMode = parameters.get("preview") || "";
 const isStaticPreview = previewMode === "static";
 const isCatalogPreview =
@@ -460,7 +461,10 @@ function updatePreviewConfiguration(payload = {}) {
   }
   if (Object.prototype.hasOwnProperty.call(payload, "target")) {
     const target = Math.max(1, Number(payload.target || 1));
-    if (viewName === "like-goal") likeGoalInitialTarget = target;
+    if (viewName === "like-goal") {
+      likeGoalInitialTarget = target;
+      likeGoalTarget = target;
+    }
     if (viewName === "coin-jar") coinJarTarget = target;
     if (viewName === "win-counter") winCounterTarget = target;
   }
@@ -636,14 +640,47 @@ function activeOverlayConfigKey() {
   }[viewName] || "";
 }
 
-function updateOverlayConfiguration(payload = {}) {
+function configurationWithoutRuntimeReset(configuration = {}) {
+  if (isCatalogPreview) return configuration;
+  const next = { ...configuration };
+  delete next.current;
+  delete next.seconds;
+  return next;
+}
+
+function updateOverlayConfiguration(
+  payload = {},
+  { applyRuntimeDefaults = false } = {}
+) {
   const overlayKey = String(payload.overlayKey || "").trim();
   if (overlayKey && overlayKey !== activeOverlayConfigKey()) return;
   const configuration =
     payload.config && typeof payload.config === "object"
       ? payload.config
       : payload;
-  updatePreviewConfiguration(configuration);
+  updatePreviewConfiguration(
+    applyRuntimeDefaults
+      ? configuration
+      : configurationWithoutRuntimeReset(configuration)
+  );
+}
+
+function applyRelayConfiguration(configurations = {}) {
+  const overlayKey = activeOverlayConfigKey();
+  const configuration = configurations?.[overlayKey];
+  if (!overlayKey || !configuration || typeof configuration !== "object") {
+    return;
+  }
+  const signature = JSON.stringify(configuration);
+  if (signature === lastRelayConfigurationSignature) return;
+  lastRelayConfigurationSignature = signature;
+  updateOverlayConfiguration(
+    { overlayKey, config: configuration },
+    {
+      applyRuntimeDefaults:
+        relayDocument?.state?.overlaySession?.hasData !== true
+    }
+  );
 }
 
 function setupConfiguration() {
@@ -792,9 +829,11 @@ function applyWheelSettings(settings = {}) {
 function drawWheel(choices, customColors = []) {
   const wheel = document.getElementById("wheel");
   if (!wheel || !choices.length) return;
+  const segmentAngle = 360 / choices.length;
   document
     .getElementById("wheel-frame")
-    ?.style.setProperty("--segment-angle", `${360 / choices.length}deg`);
+    ?.style.setProperty("--segment-angle", `${segmentAngle}deg`);
+  wheel.style.setProperty("--segment-angle", `${segmentAngle}deg`);
   const design = document.documentElement.dataset.wheelDesign || wheelDesign;
   const colors = customColors.length
     ? customColors
@@ -802,7 +841,7 @@ function drawWheel(choices, customColors = []) {
     ? ["#5f310b", "#eabf65", "#1d143b", "#ca8f2e", "#fff0a6", "#6f3b13"]
     : ["#ff6a00", "#111111", "#f59f00", "#2a1207", "#ff8a1f", "#1e1e1e"];
   const step = 100 / choices.length;
-  wheel.style.background = `conic-gradient(from -90deg, ${choices.map((_choice, index) => `${colors[index % colors.length]} ${index * step}% ${(index + 1) * step}%`).join(",")})`;
+  wheel.style.background = `conic-gradient(from 0deg, ${choices.map((_choice, index) => `${colors[index % colors.length]} ${index * step}% ${(index + 1) * step}%`).join(",")})`;
   wheel.replaceChildren(...choices.map((choice, index) => {
     const label = document.createElement("span");
     label.className = "segment-label";
@@ -821,12 +860,15 @@ function drawWheel(choices, customColors = []) {
     );
     label.dataset.orientation = wheelRuntimeSettings.textOrientation || "radial";
     label.style.textAlign = wheelRuntimeSettings.textAlign || "center";
-    Object.entries(wheelSegmentLabelStyle(index, choices.length)).forEach(
+    const layout = wheelSegmentLabelStyle(index, choices.length, choice);
+    Object.entries(layout.styles).forEach(
       ([property, value]) => label.style.setProperty(property, value)
     );
+    label.dataset.fontScale = String(layout.fontScale);
+    label.dataset.orientation = layout.orientation;
     if (wheelBoolean(wheelRuntimeSettings.textClamp, true)) {
       copy.style.webkitLineClamp = String(
-        Math.min(4, Math.max(1, Number(wheelRuntimeSettings.textMaxLines || 2)))
+        layout.maxLines
       );
     } else {
       label.classList.add("unclamped");
@@ -834,63 +876,48 @@ function drawWheel(choices, customColors = []) {
     return label;
   }));
   renderWheelDecorations(choices.length);
+  requestAnimationFrame(syncWheelResponsiveTypography);
 }
 
-function wheelSegmentLabelStyle(index, segmentCount) {
-  const segmentAngle = 360 / segmentCount;
-  const segmentCenterAngle = segmentAngle * index + segmentAngle / 2 - 90;
-  const segmentOffset = Math.min(100, Math.max(-100, Number(wheelRuntimeSettings.textSegmentOffset || 0))) / 100;
-  const angle = segmentCenterAngle + segmentOffset * segmentAngle * 0.46;
-  const orientation = wheelRuntimeSettings.textOrientation || "horizontal";
-  const verticalText = orientation === "vertical";
+function wheelSegmentLabelStyle(index, segmentCount, label = "") {
   const design = document.documentElement.dataset.wheelDesign || wheelDesign;
-  const baseRadius = verticalText
-    ? design === "royal"
-      ? segmentCount <= 8 ? 35.8 : 36.8
-      : segmentCount <= 4 ? 42.8 : segmentCount <= 6 ? 41.2 : segmentCount <= 10 ? 39.2 : 36.8
-    : design === "royal"
-      ? segmentCount <= 8 ? 36.8 : 37.8
-      : segmentCount <= 4 ? 44.3 : segmentCount <= 6 ? 42.8 : segmentCount <= 10 ? 40.8 : 38.8;
-  const radiusScale = Math.min(1.35, Math.max(.2, Number(wheelRuntimeSettings.textRadius || 100) / 100));
-  const radius = Math.max(12, baseRadius * radiusScale);
-  const radians = angle * Math.PI / 180;
-  const x = 50 + Math.cos(radians) * radius;
-  const y = 50 + Math.sin(radians) * radius;
-  let rotation = (verticalText ? angle : angle + 90);
-  rotation += Number(wheelRuntimeSettings.textAngleOffset || 0);
-  const normalizedRotation = ((rotation % 360) + 360) % 360;
-  if ((verticalText || design === "royal") && normalizedRotation > 90 && normalizedRotation < 270) {
-    rotation += 180;
-  }
-  const baseWidth = verticalText
-    ? design === "royal"
-      ? Math.max(86, Math.min(126, 1240 / segmentCount))
-      : Math.max(78, Math.min(116, 980 / segmentCount))
-    : design === "royal"
-      ? Math.max(82, Math.min(128, 980 / segmentCount))
-      : Math.max(76, Math.min(126, 700 / segmentCount));
-  const baseCrossSize = verticalText
-    ? Math.max(21, Math.min(34, 360 / segmentCount))
-    : 32;
-  const requestedWidth = baseWidth * Math.min(2.6, Math.max(.45, Number(wheelRuntimeSettings.textBoxWidth || 100) / 100));
-  const requestedCrossSize = baseCrossSize * Math.min(3.2, Math.max(.5, Number(wheelRuntimeSettings.textBoxHeight || 240) / 100));
-  const segmentRadians = segmentAngle * Math.PI / 180;
-  const tangentialLimit = Math.max(4, radius * segmentRadians * .78);
-  const innerRadius = design === "royal" ? 19.5 : 18;
-  const outerRadius = design === "royal" ? 47.2 : 48;
-  const radialLimit = Math.max(5, Math.min(
-    Math.max(0, radius - innerRadius),
-    Math.max(0, outerRadius - radius)
-  ) * 2 * .9);
-  const widthLimit = verticalText ? radialLimit : tangentialLimit;
-  const crossSizeLimit = verticalText ? tangentialLimit : radialLimit;
+  const layout = globalThis.WheelLayout.resolveSegmentLayout({
+    index,
+    segmentCount,
+    label,
+    design,
+    settings: wheelRuntimeSettings
+  });
   return {
-    "--segment-label-x": `${x}%`,
-    "--segment-label-y": `${y}%`,
-    "--segment-label-rotation": `${rotation}deg`,
-    "--segment-label-width": `min(${requestedWidth.toFixed(2)}px, ${Math.max(2, widthLimit).toFixed(2)}%)`,
-    "--segment-label-cross-size": `min(${requestedCrossSize.toFixed(2)}px, ${Math.max(2, crossSizeLimit).toFixed(2)}%)`
+    fontScale: layout.fontScale,
+    maxLines: layout.maxLines,
+    orientation: layout.orientation,
+    styles: {
+      "--segment-label-x": `${layout.x.toFixed(3)}%`,
+      "--segment-label-y": `${layout.y.toFixed(3)}%`,
+      "--segment-label-rotation": `${layout.rotation.toFixed(3)}deg`,
+      "--segment-label-width": `${layout.widthPercent.toFixed(3)}%`,
+      "--segment-label-cross-size": `${layout.heightPercent.toFixed(3)}%`,
+      "--segment-font-scale": layout.fontScale
+    }
   };
+}
+
+function syncWheelResponsiveTypography() {
+  const wheel = document.getElementById("wheel");
+  if (!wheel) return;
+  const diameter = wheel.getBoundingClientRect().width || 420;
+  const responsiveScale = Math.min(1.35, Math.max(.72, diameter / 420));
+  const configuredSize = Math.min(
+    120,
+    Math.max(10, Number(wheelRuntimeSettings.fontSize || 50))
+  );
+  const baseFontPixels = (0.48 + configuredSize / 100) * 16;
+  wheel.querySelectorAll(".segment-label").forEach((label) => {
+    const scale = Number(label.dataset.fontScale || 1);
+    const pixels = Math.min(34, Math.max(8, baseFontPixels * scale * responsiveScale));
+    label.querySelector("span")?.style.setProperty("font-size", `${pixels.toFixed(2)}px`);
+  });
 }
 
 function renderWheelDecorations(segmentCount) {
@@ -1183,6 +1210,77 @@ async function drainAlerts() {
   }
   alertRunning = false;
   drainAlerts();
+}
+
+const liveAudioQueue = [];
+const handledPlaybackIds = new Set();
+let liveAudioRunning = false;
+
+function queueLivePlayback(type, payload = {}) {
+  const playbackId = String(payload.playbackId || "").trim();
+  if (playbackId && handledPlaybackIds.has(playbackId)) return;
+  if (playbackId) {
+    handledPlaybackIds.add(playbackId);
+    if (handledPlaybackIds.size > 500) {
+      handledPlaybackIds.delete(handledPlaybackIds.values().next().value);
+    }
+  }
+  liveAudioQueue.push({ type, payload });
+  drainLiveAudioQueue();
+}
+
+async function drainLiveAudioQueue() {
+  if (liveAudioRunning || !liveAudioQueue.length) return;
+  liveAudioRunning = true;
+  const entry = liveAudioQueue.shift();
+  try {
+    if (entry.type === "audio") {
+      await playLiveAudio(entry.payload);
+    } else if (entry.type === "tts") {
+      await playLiveTts(entry.payload);
+    }
+  } finally {
+    liveAudioRunning = false;
+    drainLiveAudioQueue();
+  }
+}
+
+function playLiveAudio(payload = {}) {
+  const url = String(payload.url || "").trim();
+  if (!/^https?:|^data:|^blob:/i.test(url)) return Promise.resolve();
+  return new Promise((resolve) => {
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    audio.volume = Math.min(1, Math.max(0, Number(payload.volume ?? 1)));
+    const done = () => resolve();
+    audio.addEventListener("ended", done, { once: true });
+    audio.addEventListener("error", done, { once: true });
+    audio.play().catch(done);
+  });
+}
+
+function playLiveTts(payload = {}) {
+  const text = String(payload.text || "").trim();
+  if (!text || !("speechSynthesis" in window)) return Promise.resolve();
+  return new Promise((resolve) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = Number(payload.rate || 1);
+    utterance.pitch = Number(payload.pitch || 1);
+    utterance.volume = Math.min(
+      1,
+      Math.max(0, Number(payload.volume ?? 1))
+    );
+    if (payload.voice) {
+      const voice = window.speechSynthesis
+        .getVoices()
+        .find((entry) => entry.name === payload.voice);
+      if (voice) utterance.voice = voice;
+    }
+    utterance.lang = utterance.voice?.lang || payload.language || "fr-FR";
+    utterance.addEventListener("end", resolve, { once: true });
+    utterance.addEventListener("error", resolve, { once: true });
+    window.speechSynthesis.speak(utterance);
+  });
 }
 
 function actionMediaMarkup(value = "") {
@@ -2013,6 +2111,8 @@ function spinWheel(payload) {
 
 const overlayChannels = {
   alert: showAlert,
+  audio: (payload) => queueLivePlayback("audio", payload),
+  tts: (payload) => queueLivePlayback("tts", payload),
   event: addFeedEvent,
   game: addGameEffect,
   goal: (goal) => {
@@ -2058,7 +2158,13 @@ const channelOverlayViews = {
 
 function currentViewAcceptsChannel(channel, payload = {}) {
   const normalizedChannel = String(channel || "").trim().toLowerCase();
-  if (["audio", "tts"].includes(normalizedChannel)) return false;
+  if (["audio", "tts"].includes(normalizedChannel)) {
+    const targetScreen = Math.min(
+      8,
+      Math.max(1, Math.round(Number(payload?.screen) || 1))
+    );
+    return viewName === "alerts" && hasMediaScreen && targetScreen === mediaScreen;
+  }
   if (["configuration", "design"].includes(normalizedChannel)) return true;
   if (normalizedChannel === "event") {
     if (["feed", "my-actions"].includes(viewName)) return true;
@@ -2154,6 +2260,7 @@ function applyRelayState(state) {
 let relayDocument = {};
 let relayInitialized = false;
 let lastRelayBatchId = "";
+let lastRelayConfigurationSignature = "";
 
 function connectPublicRelay() {
   if (isCatalogPreview) return;
@@ -2171,6 +2278,7 @@ function connectPublicRelay() {
         mutation.data,
         patch
       );
+      applyRelayConfiguration(relayDocument?.configurations);
       const batch = relayDocument?.lastBatch;
       if (!relayInitialized) {
         lastRelayBatchId = String(batch?.id || "");

@@ -10,7 +10,7 @@ const overlayScript = fs.readFileSync(
   "utf8"
 );
 
-test("le runtime OBS ignore TTS/audio et ne transforme plus un cadeau en WIN", () => {
+test("le runtime OBS réserve TTS/audio à l'écran numéroté et ne transforme plus un cadeau en WIN", () => {
   const interactiveWidgets = overlayScript.slice(
     overlayScript.indexOf("function updateInteractiveWidgets"),
     overlayScript.indexOf("function safeLeaderboardAvatarUrl")
@@ -21,8 +21,11 @@ test("le runtime OBS ignore TTS/audio et ne transforme plus un cadeau en WIN", (
   );
 
   assert.doesNotMatch(interactiveWidgets, /winCounter\s*\+=/);
-  assert.doesNotMatch(channels, /tts:\s*speak|audio:\s*playAudio/);
+  assert.match(channels, /audio:\s*\(payload\) => queueLivePlayback\("audio", payload\)/);
+  assert.match(channels, /tts:\s*\(payload\) => queueLivePlayback\("tts", payload\)/);
   assert.match(channels, /\["audio", "tts"\]\.includes\(normalizedChannel\)/);
+  assert.match(channels, /viewName === "alerts" && hasMediaScreen/);
+  assert.match(overlayScript, /const handledPlaybackIds = new Set\(\)/);
 });
 
 test("l'hydratation OBS ne relance l'animation WINS que sur une vraie variation", () => {

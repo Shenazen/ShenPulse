@@ -3,7 +3,10 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $packageJson = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw |
     ConvertFrom-Json
-$version = [string]$packageJson.version
+$version = [string]$packageJson.build.buildVersion
+if ([string]::IsNullOrWhiteSpace($version)) {
+    $version = [string]$packageJson.version
+}
 $installerPath = Join-Path $projectRoot "dist\ShenPulseSetup-$version-x64.exe"
 if (-not (Test-Path -LiteralPath $installerPath)) {
     throw "Installateur introuvable : $installerPath"
@@ -62,8 +65,7 @@ try {
     }
 
     $installedVersion = (Get-Item -LiteralPath $installedExecutable).VersionInfo.ProductVersion
-    $expectedWindowsVersion = "$version.0"
-    if ($installedVersion -ne $version -and $installedVersion -ne $expectedWindowsVersion) {
+    if ($installedVersion -ne $version) {
         throw "Version installée inattendue : $installedVersion au lieu de $version."
     }
 

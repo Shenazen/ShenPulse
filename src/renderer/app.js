@@ -136,6 +136,9 @@ let adminVisibilitySection = "navigation";
 let adminVisibilitySearch = "";
 let adminCommerceSearch = "";
 let adminBusy = false;
+let irlBusy = false;
+let irlDiscovery = { accessPoints: [], currentNetwork: "" };
+let irlActionSearch = "";
 let gameCheatAccessAllowed = false;
 let gameCheatAccessPromise = null;
 let siteVisibility = {
@@ -262,6 +265,7 @@ const ACTION_TYPE_LABELS = {
   "websocket.send": "Message WebSocket",
   "chat.reply": "Réponse chat",
   "spotify.queue": "Spotify",
+  "irl.shelly": "Prise Shelly",
   "system.keys": "Raccourci clavier",
   "system.open": "Ouvrir une URL",
   delay: "Délai"
@@ -281,6 +285,7 @@ const ACTION_TYPE_ICONS = {
   "websocket.send": "🔌",
   "chat.reply": "💬",
   "spotify.queue": "🎵",
+  "irl.shelly": "⚡",
   "system.keys": "⌨️",
   "system.open": "🔗",
   delay: "⌛"
@@ -318,6 +323,11 @@ const NAVIGATION_ICONS = {
     <line x1="15" x2="15.01" y1="12" y2="12"></line>
     <line x1="18" x2="18.01" y1="10" y2="10"></line>
     <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"></path>`,
+  irl: `
+    <path d="M7 2v5M17 2v5"></path>
+    <path d="M5 7h14v3a7 7 0 0 1-14 0z"></path>
+    <path d="M12 17v5"></path>
+    <path d="M9 22h6"></path>`,
   goals: `
     <circle cx="12" cy="12" r="10"></circle>
     <circle cx="12" cy="12" r="6"></circle>
@@ -369,6 +379,16 @@ const pages = [
   { id: "rules", label: "Automatisations", icon: "⎇", title: "Automatisations", kicker: "MOTEUR DE RÈGLES", count: () => snapshot?.state.rules.length },
   { id: "overlays", label: "Overlays", icon: "▱", title: "Overlays & widgets", kicker: "SOURCES NAVIGATEUR" },
   { id: "games", label: "Jeux & effets", icon: "◇", title: "Jeux & effets", kicker: "INTERACTIONS EN JEU", count: () => snapshot?.packs.length },
+  {
+    id: "irl",
+    label: "Interactions IRL",
+    icon: "⚡",
+    title: "Interactions IRL",
+    kicker: "APPAREILS CONNECTÉS",
+    count: () => snapshot?.state.settings.irl?.devices?.length || null,
+    ownerOnly: true,
+    defaultScope: "admin"
+  },
   { id: "goals", label: "Objectifs", icon: "◎", title: "Objectifs", kicker: "PROGRESSION EN DIRECT" },
   { id: "commands", label: "Chatbot", icon: "⌘", title: "Chatbot & commandes", kicker: "ENGAGEMENT DU CHAT" },
   { section: "SYSTÈME" },
@@ -517,6 +537,54 @@ function ruleGiftName(rule) {
       condition.field === "data.giftName" &&
       String(condition.operator || "equals") === "equals"
   )?.value || "";
+}
+
+const GIFT_VALUE_OPERATOR_OPTIONS = [
+  ["less", "< · Moins de"],
+  ["lessOrEqual", "≤ · Inférieur ou égal"],
+  ["equals", "= · Égal à"],
+  ["notEquals", "≠ · Différent de"],
+  ["greaterOrEqual", "≥ · Supérieur ou égal"],
+  ["greater", "> · Plus de"]
+];
+
+function giftValueCondition(conditions = []) {
+  return (conditions || []).find(
+    (condition) =>
+      condition.field === "data.value" &&
+      GIFT_VALUE_OPERATOR_OPTIONS.some(
+        ([operator]) => operator === condition.operator
+      )
+  ) || null;
+}
+
+function giftValueFilterLabel(filter) {
+  const value = Number(filter?.value);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const symbols = {
+    less: "<",
+    lessOrEqual: "≤",
+    equals: "=",
+    notEquals: "≠",
+    greaterOrEqual: "≥",
+    greater: ">"
+  };
+  return `${symbols[filter.operator] || "≥"} ${new Intl.NumberFormat("fr-FR").format(value)} pièces`;
+}
+
+function normalizeGiftValueFilterConfig(filter) {
+  const value = Number(filter?.value);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const operator = GIFT_VALUE_OPERATOR_OPTIONS.some(
+    ([candidate]) => candidate === filter?.operator
+  )
+    ? filter.operator
+    : "greaterOrEqual";
+  return { operator, value };
+}
+
+function ruleGiftValueLabel(rule) {
+  return giftValueFilterLabel(giftValueCondition(rule?.conditions || []));
 }
 
 function hasAutomaticTrigger(rule) {
@@ -717,6 +785,84 @@ function giftPickerField(name, label, value = "", extra = "", help = "") {
     <div class="gift-picker-results" data-gift-results hidden></div>
     <small>Recherche rapide par nom ou nombre de pièces dans le catalogue TikTok français/anglais.</small>
   </div>`;
+}
+
+function giftTriggerConditionFields(
+  conditions = [],
+  {
+    giftName = "giftNameCondition",
+    giftLabel = "Cadeau TikTok",
+    giftValue,
+    modeName = "giftTriggerMode",
+    operatorName = "giftValueOperator",
+    amountName = "giftValueAmount"
+  } = {}
+) {
+  const valueCondition = giftValueCondition(conditions);
+  const currentOperator = valueCondition?.operator || "greaterOrEqual";
+  const selectedGiftValue = giftValue === undefined
+    ? conditionValue(conditions, "data.giftName", "equals")
+    : giftValue;
+  const currentMode = valueCondition ? "value" : "specific";
+  return `<div class="gift-trigger-condition full" data-gift-trigger-condition>
+    <div class="gift-trigger-mode-heading">
+      <span>Méthode de déclenchement</span>
+      <small>Choisissez une seule façon d’identifier les cadeaux concernés.</small>
+    </div>
+    <div class="gift-trigger-mode" role="radiogroup" aria-label="Méthode de déclenchement par cadeau">
+      <label class="gift-trigger-mode-option">
+        <input type="radio" name="${escapeHtml(modeName)}" value="specific" data-gift-trigger-mode ${currentMode === "specific" ? "checked" : ""}>
+        <span class="gift-trigger-mode-icon" aria-hidden="true">🎁</span>
+        <span class="gift-trigger-mode-copy"><strong>Cadeau précis</strong><small>Choisir un cadeau dans le catalogue TikTok</small></span>
+        <span class="gift-trigger-mode-check" aria-hidden="true">✓</span>
+      </label>
+      <label class="gift-trigger-mode-option">
+        <input type="radio" name="${escapeHtml(modeName)}" value="value" data-gift-trigger-mode ${currentMode === "value" ? "checked" : ""}>
+        <span class="gift-trigger-mode-icon" aria-hidden="true">◎</span>
+        <span class="gift-trigger-mode-copy"><strong>Valeur en pièces</strong><small>Comparer le prix de tous les cadeaux reçus</small></span>
+        <span class="gift-trigger-mode-check" aria-hidden="true">✓</span>
+      </label>
+    </div>
+    <div class="gift-trigger-panel" data-gift-trigger-panel="specific" ${currentMode === "specific" ? "" : "hidden"}>
+      ${giftPickerField(
+        giftName,
+        giftLabel,
+        selectedGiftValue,
+        currentMode === "specific" ? "" : "disabled"
+      )}
+    </div>
+    <div class="gift-trigger-panel gift-value-condition" data-gift-trigger-panel="value" ${currentMode === "value" ? "" : "hidden"}>
+      <label class="field">
+        <span>Comparer la valeur</span>
+        <select name="${escapeHtml(operatorName)}" ${currentMode === "value" ? "" : "disabled"}>
+          ${GIFT_VALUE_OPERATOR_OPTIONS.map(
+            ([value, label]) =>
+              `<option value="${value}" ${currentOperator === value ? "selected" : ""}>${escapeHtml(label)}</option>`
+          ).join("")}
+        </select>
+      </label>
+      <label class="field">
+        <span>Montant en pièces</span>
+        <input name="${escapeHtml(amountName)}" type="number" min="1" step="1" value="${escapeHtml(valueCondition?.value ?? "")}" placeholder="500" ${currentMode === "value" ? "" : "disabled"}>
+      </label>
+    </div>
+    <small class="gift-trigger-condition-note">La méthode sélectionnée remplace l’autre : elles ne sont jamais cumulées.</small>
+  </div>`;
+}
+
+function syncGiftTriggerCondition(root) {
+  if (!root) return;
+  const mode =
+    root.querySelector("[data-gift-trigger-mode]:checked")?.value === "value"
+      ? "value"
+      : "specific";
+  root.querySelectorAll("[data-gift-trigger-panel]").forEach((panel) => {
+    const active = panel.dataset.giftTriggerPanel === mode;
+    panel.hidden = !active;
+    panel.querySelectorAll("input, select, button").forEach((control) => {
+      control.disabled = !active;
+    });
+  });
 }
 
 async function hydrateGiftCatalog(query = "", input = null) {
@@ -1396,7 +1542,7 @@ async function refreshSpotifyStatus({ redraw = true } = {}) {
     spotifyStatus = await api.getSpotifyStatus();
   } catch (error) {
     spotifyStatus = {
-      configured: Boolean(snapshot?.state.settings.spotify?.clientId),
+      configured: true,
       connected: false,
       account: snapshot?.state.settings.spotify?.account || null,
       devices: [],
@@ -1415,7 +1561,15 @@ function spotifyTrackLabel(track) {
 
 function visibilityScope(section, id) {
   const storedId = visibilityTools.storageKey(id);
-  return siteVisibility?.[section]?.[storedId]?.scope || "public";
+  const stored = siteVisibility?.[section]?.[storedId]?.scope;
+  if (stored) return stored;
+  if (
+    (section === "navigation" && id === "irl") ||
+    (["features", "actionTypes"].includes(section) && id === "irl.shelly")
+  ) {
+    return "admin";
+  }
+  return "public";
 }
 
 function canAccessCatalogItem(section, id) {
@@ -1426,6 +1580,7 @@ function canAccessCatalogItem(section, id) {
 }
 
 function canAccessFeature(id) {
+  if (id === "irl.shelly") return isVerifiedAdminSession();
   return canAccessCatalogItem("features", id);
 }
 
@@ -1482,11 +1637,15 @@ const ACTION_FEATURE_REQUIREMENTS = Object.freeze({
   "tts.speak": "tts.voices",
   "spotify.queue": "spotify.playback",
   "obs.request": "obs.websocket",
-  "websocket.send": "sources.custom"
+  "websocket.send": "sources.custom",
+  "irl.shelly": "irl.shelly"
 });
 
 function canAccessActionType(type) {
   const canonicalType = canonicalActionType(type);
+  if (canonicalType === "irl.shelly" && !isVerifiedAdminSession()) {
+    return false;
+  }
   const featureId = ACTION_FEATURE_REQUIREMENTS[canonicalType];
   return (
     canAccessCatalogItem("actionTypes", canonicalType) &&
@@ -1497,6 +1656,7 @@ function canAccessActionType(type) {
 function canAccessPage(page) {
   if (!page?.id || page.hidden?.()) return false;
   if (page.id === "admin") return isVerifiedAdminSession();
+  if (page.ownerOnly && !isVerifiedAdminSession()) return false;
   if (page.id === "activity" && !isAccountAuthenticated()) {
     return false;
   }
@@ -1919,6 +2079,7 @@ function render() {
     rules: renderRules,
     overlays: renderOverlaysV2,
     sounds: renderSounds,
+    irl: renderIrl,
     games: renderGamesV2,
     goals: renderGoals,
     commands: renderCommands,
@@ -2305,7 +2466,8 @@ function triggerLabel(rule) {
   const threshold = Number(trigger.threshold || 1);
   const type = trigger.type || "*";
   const giftName = type === "gift" ? ruleGiftName(rule) : "";
-  return `${EVENT_LABELS[type] || type}${giftName ? ` · ${giftName}` : ""}${threshold > 1 ? ` ×${threshold}` : ""}`;
+  const giftValue = type === "gift" ? ruleGiftValueLabel(rule) : "";
+  return `${EVENT_LABELS[type] || type}${giftName ? ` · ${giftName}` : ""}${giftValue ? ` · ${giftValue}` : ""}${threshold > 1 ? ` ×${threshold}` : ""}`;
 }
 
 function soundLibraryEntry(url) {
@@ -2355,6 +2517,19 @@ function actionDescription(action) {
       return Array.isArray(config.choices) ? config.choices.join(", ") : "Roue";
     case "game.effect":
       return config.effectId || "Effet du pack actif";
+    case "irl.shelly": {
+      const device = (snapshot?.state.settings.irl?.devices || []).find(
+        (entry) => entry.id === config.deviceId
+      );
+      const operation = {
+        on: "Allumer",
+        off: "Éteindre",
+        toggle: "Basculer",
+        cycle: `Éteindre puis rallumer après ${Math.round(Number(config.durationMs || 3000) / 1000)}s`,
+        pulse: `Allumer puis éteindre après ${Math.round(Number(config.durationMs || 3000) / 1000)}s`
+      }[config.operation || "toggle"];
+      return `${device?.name || "Prise non sélectionnée"} · ${operation}`;
+    }
     case "delay":
       return `${config.durationMs || 0} ms`;
     default:
@@ -2370,59 +2545,91 @@ function findActionRow(ruleId, actionId, actionIndex) {
   );
 }
 
-function renderMediaScreensPanel(rows) {
+function normalizedLiveScreen(config = {}) {
+  return Math.min(
+    8,
+    Math.max(1, Math.round(Number(config.liveScreen) || 1))
+  );
+}
+
+function isLiveAudioOutput(config = {}) {
+  return config.outputMode === "live";
+}
+
+function mediaScreenUsage(rows) {
+  const usage = Array.from({ length: 8 }, () => 0);
+  for (const { action } of rows) {
+    const type = canonicalActionType(action.type);
+    let screen = 0;
+    if (type === "overlay.media") {
+      screen = Math.min(
+        8,
+        Math.max(1, Math.round(Number(action.config?.screen) || 1))
+      );
+    } else if (
+      ["audio.play", "tts.speak"].includes(type) &&
+      isLiveAudioOutput(action.config)
+    ) {
+      screen = normalizedLiveScreen(action.config);
+    }
+    if (screen) usage[screen - 1] += 1;
+  }
+  return usage;
+}
+
+function renderMediaScreensTable(rows) {
+  const urls = Array.isArray(snapshot.overlayUrls?.mediaScreens)
+    ? snapshot.overlayUrls.mediaScreens
+    : [];
+  const usage = mediaScreenUsage(rows);
+  return `<div class="media-screens-table-wrap">
+    <table class="media-screens-table">
+      <thead><tr><th>ÉCRAN</th><th>URL DE LA SOURCE NAVIGATEUR</th><th>ACTIONS LIÉES</th><th>ÉTAT</th><th></th></tr></thead>
+      <tbody>
+        ${Array.from({ length: 8 }, (_value, index) => {
+          const screen = index + 1;
+          const url = urls[index] || "";
+          const actionCount = usage[index];
+          return `<tr>
+            <td><strong>Écran ${screen}</strong></td>
+            <td><code title="${escapeHtml(url)}">${escapeHtml(url || "Serveur d’overlay indisponible")}</code></td>
+            <td><span class="media-screen-count">${actionCount} action${actionCount > 1 ? "s" : ""}</span></td>
+            <td><span class="media-screen-status ${url ? "ready" : "offline"}"><i></i>${url ? "Prêt" : "Hors ligne"}</span></td>
+            <td><button class="button small ${url ? "primary" : ""}" data-action="copy" data-value="${escapeHtml(url)}" ${url ? "" : "disabled"}>Copier</button></td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderMediaScreensPanel(rows, { context = "actions" } = {}) {
+  const audioContext = context === "sounds";
+  const title = audioContext ? "Écrans audio du LIVE" : "Écrans Media";
   if (!isAccountAuthenticated()) {
     return `<section class="studio-panel panel-cyan media-screens-panel guest-media-screens">
       <header class="studio-panel-heading">
-        <div><span class="panel-accent"></span><div><h3>Écrans Media</h3><p>Les URL de vos sources navigateur sont protégées.</p></div></div>
+        <div><span class="panel-accent"></span><div><h3>${title}</h3><p>Les URL de vos sources navigateur sont protégées.</p></div></div>
         <span class="badge">CONNEXION REQUISE</span>
       </header>
       <div class="media-screens-intro">
-        <strong>Connectez-vous pour préparer vos écrans Media</strong>
+        <strong>Connectez-vous pour préparer vos écrans</strong>
         <p>Aucune URL locale ou publique n’est affichée et aucune copie n’est possible en mode consultation.</p>
       </div>
     </section>`;
   }
-  const urls = Array.isArray(snapshot.overlayUrls?.mediaScreens)
-    ? snapshot.overlayUrls.mediaScreens
-    : [];
-  const usage = Array.from({ length: 8 }, () => 0);
-  for (const { action } of rows) {
-    if (canonicalActionType(action.type) !== "overlay.media") continue;
-    const screen = Math.min(
-      8,
-      Math.max(1, Math.round(Number(action.config?.screen) || 1))
-    );
-    usage[screen - 1] += 1;
-  }
   return `<section class="studio-panel panel-cyan media-screens-panel">
     <header class="studio-panel-heading">
-      <div><span class="panel-accent"></span><div><h3>Écrans Media</h3><p>Une source navigateur indépendante par écran, avec sa propre file d’attente.</p></div></div>
+      <div><span class="panel-accent"></span><div><h3>${title}</h3><p>Une source navigateur indépendante par écran, avec sa propre file d’attente.</p></div></div>
       <span class="badge cyan">TIKTOK LIVE STUDIO · OBS</span>
     </header>
     <div class="media-screens-intro">
-      <strong>Affichez vos médias dans le logiciel de LIVE</strong>
-      <p>Copiez cette URL HTTPS dans TikTok LIVE Studio ou OBS en 1920 × 1080, puis choisissez le même écran dans la configuration de l’action Media.</p>
+      <strong>${audioContext ? "Diffusez les sons et le TTS dans le logiciel de LIVE" : "Affichez vos médias dans le logiciel de LIVE"}</strong>
+      <p>${audioContext
+        ? "Copiez l’URL HTTPS de l’écran choisi dans TikTok LIVE Studio ou OBS. Vérifiez d’abord qu’elle n’est pas déjà présente : deux sources avec la même URL joueraient le son deux fois. Spotify reste lu par l’appareil Spotify actif et doit être capturé séparément, sans exposer vos jetons dans une URL publique."
+        : "Copiez cette URL HTTPS dans TikTok LIVE Studio ou OBS en 1920 × 1080, puis choisissez le même écran dans la configuration de l’action Media."}</p>
     </div>
-    <div class="media-screens-table-wrap">
-      <table class="media-screens-table">
-        <thead><tr><th>ÉCRAN</th><th>URL DE LA SOURCE NAVIGATEUR</th><th>ACTIONS LIÉES</th><th>ÉTAT</th><th></th></tr></thead>
-        <tbody>
-          ${Array.from({ length: 8 }, (_value, index) => {
-            const screen = index + 1;
-            const url = urls[index] || "";
-            const actionCount = usage[index];
-            return `<tr>
-              <td><strong>Écran ${screen}</strong></td>
-              <td><code title="${escapeHtml(url)}">${escapeHtml(url || "Serveur d’overlay indisponible")}</code></td>
-              <td><span class="media-screen-count">${actionCount} action${actionCount > 1 ? "s" : ""}</span></td>
-              <td><span class="media-screen-status ${url ? "ready" : "offline"}"><i></i>${url ? "Prêt" : "Hors ligne"}</span></td>
-              <td><button class="button small ${url ? "primary" : ""}" data-action="copy" data-value="${escapeHtml(url)}" ${url ? "" : "disabled"}>Copier</button></td>
-            </tr>`;
-          }).join("")}
-        </tbody>
-      </table>
-    </div>
+    ${renderMediaScreensTable(rows)}
   </section>`;
 }
 
@@ -2493,7 +2700,7 @@ function renderActions() {
             </table>
           </div>
         </section>
-        ${renderMediaScreensPanel(rows)}` : ""}
+        ${renderMediaScreensPanel(flattenActions())}` : ""}
       ${actionsSection === "simulator" ? `
         <section class="studio-panel panel-pink">
           <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Simulateur</h3><p>Injectez des déclencheurs de test dans le même pipeline que le live.</p></div></div><span class="badge success">LOCAL</span></header>
@@ -2523,6 +2730,119 @@ function renderActions() {
         </section>` : ""}
       ${actionsSection === "timers" ? renderTimersPanel() : ""}
     </div>`;
+}
+
+function isControllableIrlDevice(device = {}) {
+  if (typeof device.controllable === "boolean") return device.controllable;
+  const identity = `${device.id || ""} ${device.model || ""}`;
+  return !/(?:shellypro3em|spem-003|shellyem3|shem-3)/i.test(identity);
+}
+
+function renderIrl() {
+  const irl = snapshot.state.settings.irl || { enabled: false, devices: [] };
+  const devices = Array.isArray(irl.devices) ? irl.devices : [];
+  const controllableDevices = devices.filter(isControllableIrlDevice);
+  const actions = flattenActions().filter(
+    ({ action }) => action.type === "irl.shelly"
+  );
+  const irlActionQuery = irlActionSearch.trim().toLocaleLowerCase("fr");
+  const visibleActions = actions.filter(({ rule, action }) =>
+    !irlActionQuery ||
+    `${rule.name} ${triggerLabel(rule)} ${actionDescription(action)}`
+      .toLocaleLowerCase("fr")
+      .includes(irlActionQuery)
+  );
+  return `<div class="irl-page">
+    <section class="irl-hero ${irl.enabled ? "is-enabled" : "is-disabled"}">
+      <div class="irl-hero-copy">
+        <span class="hero-chip">SHENPULSE · SHELLY LOCAL</span>
+        <h2>Interactions IRL</h2>
+        <p>Pilotez les prises enregistrées depuis un cadeau, une commande ou une automatisation, sans cloud Shelly.</p>
+      </div>
+      <label class="irl-master-switch">
+        <span><strong>${irl.enabled ? "Interactions activées" : "Interactions désactivées"}</strong><small>${irl.enabled ? "Les déclencheurs LIVE peuvent piloter les prises." : "Les règles restent enregistrées mais aucune prise ne sera commandée."}</small></span>
+        <span class="switch large"><input type="checkbox" data-action="irl-toggle" ${irl.enabled ? "checked" : ""} ${irlBusy ? "disabled" : ""}><span></span></span>
+      </label>
+    </section>
+    <section class="irl-summary-grid">
+      <article><span>⌁</span><strong>${devices.length}</strong><small>prise${devices.length > 1 ? "s" : ""} enregistrée${devices.length > 1 ? "s" : ""}</small></article>
+      <article><span>●</span><strong>${devices.filter((device) => device.online).length}</strong><small>appareil${devices.filter((device) => device.online).length > 1 ? "s" : ""} détecté${devices.filter((device) => device.online).length > 1 ? "s" : ""}</small></article>
+      <article><span>⚡</span><strong>${actions.length}</strong><small>action${actions.length > 1 ? "s" : ""} IRL configurée${actions.length > 1 ? "s" : ""}</small></article>
+    </section>
+    <section class="game-interactions-page irl-interactions-page irl-actions-panel">
+      <header class="game-effects-heading">
+        <span>${eventIconMarkup("gift")} INTERACTIONS IRL <strong>${actions.length}</strong></span>
+        <div class="button-row">
+          <span class="game-effect-catalog-count">${controllableDevices.length} prise${controllableDevices.length > 1 ? "s" : ""} pilotable${controllableDevices.length > 1 ? "s" : ""}</span>
+          <button class="button primary" data-action="irl-add-action" ${controllableDevices.length ? "" : "disabled"}>＋ Créer une interaction</button>
+        </div>
+      </header>
+      <section class="game-interaction-toolbar irl-interaction-toolbar">
+        <label class="search-control"><span>⌕</span><input data-search="irl-actions" type="search" value="${escapeHtml(irlActionSearch)}" placeholder="Rechercher dans vos interactions IRL"></label>
+      </section>
+      <section class="game-interaction-grid irl-interaction-grid">
+        ${visibleActions.map(({ rule, action, actionIndex }) => {
+          const targetDevice = devices.find(
+            (device) => device.id === action.config?.deviceId
+          );
+          const canTest = Boolean(
+            targetDevice && isControllableIrlDevice(targetDevice)
+          );
+          const enabled = rule.enabled !== false;
+          const rowData = `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
+          return `<article class="game-interaction-card irl-interaction-card configured ${enabled ? "" : "disabled"} ${canTest ? "" : "unavailable"}">
+          <div class="game-effect-side">
+            <button class="game-effect-icon" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" title="${enabled ? "Désactiver" : "Activer"}">
+              ${enabled
+                ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>'
+                : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.2A10 10 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.2 2.8M6.2 6.3C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6a9 9 0 0 0 3-.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>'}
+            </button>
+            <button class="game-effect-icon danger" data-action="delete-action" ${rowData} title="Supprimer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></button>
+          </div>
+          <button class="game-effect-main" data-action="edit-action" ${rowData} title="Modifier ${escapeHtml(rule.name)}">
+            <span class="game-effect-art irl-interaction-art"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M23 8h18v15a14 14 0 0 1-7 12v12h8v9H22v-9h8V35a14 14 0 0 1-7-12V8Z"/><path d="M28 8V3M36 8V3M29 20h8l-5 7h6l-10 11 3-8h-6l4-10Z"/></svg></span>
+            <strong>${escapeHtml(rule.name)}</strong>
+            <small>${escapeHtml(actionDescription(action))}${canTest ? "" : " · Aucun relais"}</small>
+          </button>
+          <div class="game-effect-side right">
+            <button class="game-effect-icon" data-action="edit-action" ${rowData} title="Modifier"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.4-10.4a2 2 0 0 0-2.8-2.8L5.4 16.2 4 20Z"/><path d="m14.5 7.1 2.8 2.8"/></svg></button>
+            <button class="game-effect-icon play" data-action="test-action" ${rowData} title="Tester l’interaction IRL" ${canTest ? "" : "disabled"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg></button>
+          </div>
+          <div class="game-effect-trigger">${triggerPill(rule)}</div>
+        </article>`;
+        }).join("")}
+      </section>
+      ${visibleActions.length ? "" : emptyInline(actions.length ? "Aucune interaction IRL ne correspond à cette recherche." : "Aucune interaction IRL configurée. Utilisez « Créer une interaction » pour commencer.")}
+    </section>
+    <section class="studio-panel panel-cyan irl-devices-panel">
+      <header class="studio-panel-heading">
+        <div><span class="panel-accent"></span><div><h3>Mes prises Shelly</h3><p>Association, détection locale et commandes de test.</p></div></div>
+        <div class="button-row">
+          <button class="button" data-action="irl-scan" ${irlBusy ? "disabled" : ""}>↻ Détecter</button>
+          <button class="button" data-action="irl-add-manual" ${irlBusy ? "disabled" : ""}>＋ Ajouter par IP</button>
+          <button class="button primary" data-action="irl-pair" ${irlBusy ? "disabled" : ""}>＋ Associer une prise neuve</button>
+        </div>
+      </header>
+      <div class="irl-device-grid">
+        ${devices.length ? devices.map((device) => {
+          const controllable = isControllableIrlDevice(device);
+          return `<article class="irl-device-card ${device.online ? "online" : "offline"}">
+          <header><span class="irl-device-icon">⌁</span><div><strong>${escapeHtml(device.name)}</strong><small>${escapeHtml(device.model || "Shelly")} · ${controllable ? `Gen ${escapeHtml(device.generation || 1)}` : "Mesure uniquement · aucun relais"}</small></div><i title="${device.online ? "Détectée sur le réseau" : "Non détectée lors de la dernière recherche"}"></i></header>
+          <dl><div><dt>Adresse locale</dt><dd>${escapeHtml(device.host || "En attente de détection")}</dd></div><div><dt>Identifiant</dt><dd>${escapeHtml(device.id)}</dd></div></dl>
+          <div class="irl-device-tests">
+            <button data-action="irl-test" data-id="${escapeHtml(device.id)}" data-operation="on" title="Allumer" ${controllable ? "" : "disabled"}>ON</button>
+            <button data-action="irl-test" data-id="${escapeHtml(device.id)}" data-operation="off" title="Éteindre" ${controllable ? "" : "disabled"}>OFF</button>
+            <button data-action="irl-test" data-id="${escapeHtml(device.id)}" data-operation="toggle" title="Basculer l’état" ${controllable ? "" : "disabled"}>↔</button>
+            <button data-action="irl-test" data-id="${escapeHtml(device.id)}" data-operation="cycle" title="Éteindre puis rallumer après 3 secondes" ${controllable ? "" : "disabled"}>OFF 3s</button>
+            <button data-action="irl-test" data-id="${escapeHtml(device.id)}" data-operation="pulse" title="Allumer puis éteindre après 3 secondes" ${controllable ? "" : "disabled"}>ON 3s</button>
+          </div>
+          <footer><button class="button small ghost" data-action="irl-rename" data-id="${escapeHtml(device.id)}">Renommer</button><button class="button small danger" data-action="irl-remove" data-id="${escapeHtml(device.id)}">Retirer</button></footer>
+        </article>`;
+        }).join("") : `<div class="irl-empty"><span>⌁</span><strong>Aucune prise enregistrée</strong><p>Mettez une prise Shelly neuve en mode association puis lancez l’assistant.</p><button class="button primary" data-action="irl-pair">Associer ma première prise</button></div>`}
+      </div>
+    </section>
+    <aside class="irl-safety-note"><span>!</span><div><strong>Ne branchez pas le PC ShenPulse ni votre routeur sans protection.</strong><p>Le mode « éteindre puis rallumer » programme le retour directement dans la prise quand son API le permet.</p></div></aside>
+  </div>`;
 }
 
 function renderRules() {
@@ -2882,10 +3202,27 @@ function overlayConfig(key) {
   return key === "wheel" ? normalizeWheelConfig(merged) : merged;
 }
 
-function overlayUrl(item, configOverride = null) {
+function isPublicRelayOverlayUrl(url) {
+  return (
+    url?.searchParams?.has("channel") &&
+    !url.searchParams.has("token")
+  );
+}
+
+function overlayUrl(
+  item,
+  configOverride = null,
+  { includePublicConfiguration = false } = {}
+) {
   if (!item?.url) return "";
   try {
     const url = new URL(item.url);
+    if (
+      isPublicRelayOverlayUrl(url) &&
+      !includePublicConfiguration
+    ) {
+      return url.toString();
+    }
     const config = configOverride
       ? { ...overlayConfig(item.key), ...configOverride }
       : overlayConfig(item.key);
@@ -3375,7 +3712,9 @@ function updateOverlayCardConfigUi(key, config) {
   const code = footer?.querySelector(".url-field code");
   if (code) code.textContent = url;
   footer
-    ?.querySelectorAll('[data-action="copy"], [data-action="open-url"]')
+    ?.querySelectorAll(
+      '.url-field [data-action="copy"], [data-action="open-url"]'
+    )
     .forEach((button) => {
       button.dataset.value = url;
     });
@@ -3416,7 +3755,11 @@ function previewOverlayDesignSelection(item, value) {
 function overlayConfigurationPayload(item, config) {
   try {
     const payload = Object.fromEntries(
-      new URL(overlayUrl(item, config)).searchParams.entries()
+      new URL(
+        overlayUrl(item, config, {
+          includePublicConfiguration: true
+        })
+      ).searchParams.entries()
     );
     for (const key of [
       "view",
@@ -3584,7 +3927,7 @@ const OVERLAY_FIELD_HELP = {
   wheelName: "Nom interne de cette roue et libellé utilisé dans la source lorsqu’il est affiché.",
   wheelEnabled: "Autorise cette roue à être choisie et déclenchée par ShenPulse.",
   wheelDesign: "Style graphique de la roue sélectionnée.",
-  wheelTrigger: "Cadeau TikTok précis qui lance cette roue. Laissez vide pour un lancement manuel ou depuis une action.",
+  wheelTrigger: "Choisissez soit un cadeau TikTok précis, soit un filtre de valeur en pièces pour lancer cette roue.",
   wheelSegmentLabel: "Texte affiché dans cette case de la roue.",
   wheelSegmentColor: "Couleur de fond de cette case.",
   wheelSegmentAction: "Comportement exécuté lorsque cette case gagne : affichage, action ShenPulse ou nouvelle rotation.",
@@ -3744,6 +4087,7 @@ function normalizeWheelConfig(rawConfig = {}) {
         name: "Roue classique",
         enabled: true,
         trigger: "",
+        giftValueFilter: null,
         design: rawConfig.design || "classic",
         settings: wheelDefaultSettings(rawConfig),
         segments: legacyLabels.map((label, index) => ({
@@ -3759,6 +4103,7 @@ function normalizeWheelConfig(rawConfig = {}) {
     name: wheel.name || `Roue ${wheelIndex + 1}`,
     enabled: wheel.enabled !== false,
     trigger: wheel.trigger || "",
+    giftValueFilter: normalizeGiftValueFilterConfig(wheel.giftValueFilter),
     design: wheel.design === "royal" ? "royal" : "classic",
     settings: normalizedWheelSettings(wheel),
     segments: (wheel.segments?.length ? wheel.segments : wheelSeedSegments(wheel.design)).map(
@@ -3784,6 +4129,7 @@ function normalizeWheelConfig(rawConfig = {}) {
       name: "Roue Orange Classique - Actions LIVE",
       enabled: true,
       trigger: "",
+      giftValueFilter: null,
       design: "classic",
       settings: wheelDefaultSettings(),
       segments: wheelSeedSegments("classic")
@@ -3795,6 +4141,7 @@ function normalizeWheelConfig(rawConfig = {}) {
       name: "Roue Royale Prestige - Défis Sport",
       enabled: false,
       trigger: "",
+      giftValueFilter: null,
       design: "royal",
       settings: wheelDefaultSettings({
         font: "Georgia",
@@ -3814,6 +4161,21 @@ function normalizeWheelConfig(rawConfig = {}) {
       : wheels[0].id,
     wheels
   };
+}
+
+function wheelTriggerSummary(wheel = {}) {
+  return (
+    giftValueFilterLabel(wheel.giftValueFilter) ||
+    String(wheel.trigger || "").trim() ||
+    "Manuel ou action"
+  );
+}
+
+function wheelGiftValueConditions(wheel = {}) {
+  const filter = normalizeGiftValueFilterConfig(wheel.giftValueFilter);
+  return filter
+    ? [{ field: "data.value", operator: filter.operator, value: filter.value }]
+    : [];
 }
 
 function wheelDesignOption(value, label, detail, selected) {
@@ -3886,9 +4248,21 @@ function collectWheelEditorForm() {
   const data = new FormData(dialogForm);
   wheel.name = String(data.get("wheelName") || wheel.name).trim() || "Roue sans nom";
   wheel.enabled = data.get("wheelEnabled") === "true";
-  wheel.trigger = String(data.get("wheelTrigger") || "").trim();
+  const triggerMode = data.get("wheelGiftTriggerMode") === "value"
+    ? "value"
+    : "specific";
+  wheel.trigger = triggerMode === "specific"
+    ? String(data.get("wheelTrigger") || "").trim()
+    : "";
+  wheel.giftValueFilter = triggerMode === "value"
+    ? normalizeGiftValueFilterConfig({
+        operator: data.get("wheelGiftValueOperator"),
+        value: data.get("wheelGiftValueAmount")
+      })
+    : null;
   wheel.design = data.get("wheelDesign") === "royal" ? "royal" : "classic";
   const settings = wheel.settings;
+  const wheelTriggerText = wheelTriggerSummary(wheel);
   for (const key of [
     "font",
     "textOrientation",
@@ -3991,7 +4365,7 @@ function openWheelOverlayConfig(item, rawConfig = null) {
           <div>
             <span class="game-step-kicker">ROUE SÉLECTIONNÉE</span>
             <h3>${escapeHtml(wheel.name)}</h3>
-            <p>${wheel.segments.length} secteurs · ${wheel.trigger ? `déclenchée par ${escapeHtml(wheel.trigger)}` : "lancement manuel ou via une action"}</p>
+            <p>${wheel.segments.length} secteurs · ${escapeHtml(wheelTriggerText)}</p>
           </div>
           <div class="wheel-live-toggle">
             ${fieldLabelWithInfo("État", OVERLAY_FIELD_HELP.wheelEnabled)}
@@ -4010,8 +4384,15 @@ function openWheelOverlayConfig(item, rawConfig = null) {
               <header class="wheel-panel-heading"><span>ÉTAPE 1</span><h3>Configurer l’essentiel</h3><p>Donnez un nom clair à la roue, choisissez son style puis décidez comment elle sera déclenchée.</p></header>
               <div class="wheel-settings-card form-grid">
                 ${overlayField("wheelName", "Nom de la roue", wheel.name, "text", "required full")}
-                ${giftPickerField("wheelTrigger", "Cadeau déclencheur", wheel.trigger, "full", OVERLAY_FIELD_HELP.wheelTrigger)}
-                <div class="wheel-inline-note full"><strong>Cadeau facultatif</strong><span>Sans cadeau, vous pourrez toujours lancer cette roue depuis une action ou le simulateur.</span></div>
+                ${giftTriggerConditionFields(wheelGiftValueConditions(wheel), {
+                  giftName: "wheelTrigger",
+                  giftLabel: "Cadeau TikTok",
+                  giftValue: wheel.trigger,
+                  modeName: "wheelGiftTriggerMode",
+                  operatorName: "wheelGiftValueOperator",
+                  amountName: "wheelGiftValueAmount"
+                })}
+                <div class="wheel-inline-note full"><strong>Déclenchement flexible</strong><span>Configurez une méthode, ou laissez son champ vide pour conserver un lancement manuel.</span></div>
               </div>
               <div class="wheel-settings-card">
                 <header><div><h4>Design de la roue</h4><p>L’aperçu réel à droite se met à jour dès votre choix.</p></div></header>
@@ -4091,7 +4472,7 @@ function openWheelOverlayConfig(item, rawConfig = null) {
             <div class="wheel-preview-summary">
               <span><small>Secteurs</small><strong>${wheel.segments.length}</strong></span>
               <span><small>Design</small><strong>${wheel.design === "royal" ? "Royal" : "Classique"}</strong></span>
-              <span><small>Déclencheur</small><strong>${wheel.trigger ? escapeHtml(wheel.trigger) : "Manuel"}</strong></span>
+              <span><small>Déclencheur</small><strong>${escapeHtml(wheelTriggerText)}</strong></span>
             </div>
             <div class="overlay-config-source"><span>Source HTTPS · 800 × 900</span><code>${escapeHtml(overlayUrl(item))}</code><small>OBS local</small><code>${escapeHtml(localOverlayUrl(item))}</code></div>
           </aside>
@@ -4439,7 +4820,10 @@ function openOverlayConfig(item) {
     onSubmit: async (data) => {
       const next = overlayDraftConfig(item, config, data);
       overlayDesignSelections[item.key] = next.theme || next.model || next.variant || "";
-      await saveOverlayConfig(item.key, next, { rerender: false });
+      await saveOverlayConfig(item.key, next, {
+        rerender: false,
+        updateCard: true
+      });
     }
   });
 }
@@ -4657,6 +5041,16 @@ function renderOverlaysV2() {
     </div>`;
 }
 
+function audioOutputSwitchMarkup(rule, action, actionIndex) {
+  const live = isLiveAudioOutput(action.config);
+  const screen = normalizedLiveScreen(action.config);
+  const label = live ? `LIVE · ÉCRAN ${screen}` : "MOI UNIQUEMENT";
+  return `<label class="audio-output-switch ${live ? "is-live" : "is-local"}" title="${escapeHtml(label)}">
+    <span class="switch"><input type="checkbox" data-action="set-audio-output" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}" ${live ? "checked" : ""}><span></span></span>
+    <small>${escapeHtml(label)}</small>
+  </label>`;
+}
+
 function renderSounds() {
   const query = normalizeCatalogSearch(soundSearch);
   const audioRows = soundActionRows().filter(({ rule, action }) =>
@@ -4683,16 +5077,17 @@ function renderSounds() {
         </header>
         <div class="data-table-wrap">
           <table class="data-table sounds-data-table">
-            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>DÉCLENCHEUR</th><th>SON</th><th>VOLUME</th><th>NOM</th></tr></thead>
+            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>DIFFUSION</th><th>DÉCLENCHEUR</th><th>SON</th><th>VOLUME</th><th>NOM</th></tr></thead>
             <tbody>${audioRows.length ? audioRows.map(({ rule, action, actionIndex }) => `
               <tr>
                 <td class="table-tools"><button title="Écouter" data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶</button><button title="Modifier" data-action="edit-sound" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">✎</button><button title="Supprimer" data-action="delete-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">×</button></td>
                 <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
+                <td>${audioOutputSwitchMarkup(rule, action, actionIndex)}</td>
                 <td>${triggerPill(rule)}</td>
                 <td><span class="sound-name"><span>♫</span>${escapeHtml(actionDescription(action))}</span></td>
                 <td><input class="volume-slider" type="range" min="0" max="1" step="0.05" value="${escapeHtml(action.config?.volume ?? 1)}" data-action="set-sound-volume" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"></td>
                 <td><strong>${escapeHtml(rule.name)}</strong></td>
-              </tr>`).join("") : `<tr><td colspan="6">${emptyInline("Aucune alerte sonore. Créez votre première règle audio.")}</td></tr>`}</tbody>
+              </tr>`).join("") : `<tr><td colspan="7">${emptyInline("Aucune alerte sonore. Créez votre première règle audio.")}</td></tr>`}</tbody>
           </table>
         </div>
       </section>
@@ -4700,16 +5095,18 @@ function renderSounds() {
         <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Synthèse vocale</h3><p>Chaque commentaire du chat peut être lu avec la voix Windows de votre choix.</p></div></div><div class="button-row"><button class="button" data-action="preview-tts">Tester la voix</button><button class="button primary" data-action="add-tts">＋ Ajouter une règle TTS</button></div></header>
         <div class="data-table-wrap">
           <table class="data-table">
-            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>TEXTE</th><th>VOIX</th><th>VOLUME</th></tr></thead>
+            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>DIFFUSION</th><th>TEXTE</th><th>VOIX</th><th>VOLUME</th></tr></thead>
             <tbody>${ttsRows.map(({ rule, action, actionIndex }) => `
               <tr>
                 <td class="table-tools"><button data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶</button><button data-action="edit-tts" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">✎</button><button data-action="delete-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">×</button></td>
                 <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
+                <td>${audioOutputSwitchMarkup(rule, action, actionIndex)}</td>
                 <td>Commentaire du chat</td><td>${escapeHtml(action.config?.voice || snapshot.state.settings.tts.voice || "Voix Windows par défaut")}</td><td>${Math.round(Number(action.config?.volume ?? snapshot.state.settings.tts.volume) * 100)}%</td>
-              </tr>`).join("") || `<tr><td colspan="5">${emptyInline("Aucune règle de synthèse vocale.")}</td></tr>`}</tbody>
+              </tr>`).join("") || `<tr><td colspan="6">${emptyInline("Aucune règle de synthèse vocale.")}</td></tr>`}</tbody>
           </table>
         </div>
       </section>
+      ${renderMediaScreensPanel(flattenActions(), { context: "sounds" })}
       <section class="studio-panel spotify-panel ${spotifyStatus.connected ? "is-connected" : ""}" ${canAccessFeature("spotify.playback") && canAccessActionType("spotify.queue") ? "" : "hidden"}>
         <header class="studio-panel-heading">
           <div><span class="spotify-mark">●</span><div><h3>Spotify en direct</h3><p>Contrôlez la musique et ajoutez des titres depuis les interactions du live.</p></div></div>
@@ -4718,7 +5115,7 @@ function renderSounds() {
           </div>
         </header>
         <div class="spotify-summary">
-          <article><span>COMPTE</span><strong>${escapeHtml(spotifyStatus.account?.displayName || spotifyStatus.account?.email || "Non connecté")}</strong><small>${spotifyStatus.connected ? "Compte autorisé" : spotifyStatus.configured ? "Prêt pour la connexion" : "Client ID à renseigner dans Paramètres"}</small></article>
+          <article><span>COMPTE</span><strong>${escapeHtml(spotifyStatus.account?.displayName || spotifyStatus.account?.email || "Non connecté")}</strong><small>${spotifyStatus.connected ? "Compte autorisé" : spotifyStatus.configured ? "Cliquez sur Connecter Spotify" : "Connexion Spotify indisponible"}</small></article>
           <article><span>APPAREIL</span><strong>${escapeHtml(spotifyStatus.activeDevice?.name || "Aucun appareil actif")}</strong><small>${escapeHtml(spotifyStatus.activeDevice?.type || "Ouvrez Spotify et lancez une musique")}</small></article>
           <article><span>EN COURS</span><strong>${escapeHtml(spotifyTrackLabel(spotifyStatus.playback?.item) || "Aucun titre")}</strong><small>${spotifyStatus.playback?.isPlaying ? "Lecture en cours" : "En pause"}</small></article>
         </div>
@@ -7562,9 +7959,10 @@ function gameInteractionReadinessIssues(pack) {
       }
       if (
         triggerType === "gift" &&
-        !String(ruleGiftName(rule) || "").trim()
+        !String(ruleGiftName(rule) || "").trim() &&
+        !ruleGiftValueLabel(rule)
       ) {
-        reasons.push("aucun cadeau TikTok n’est sélectionné");
+        reasons.push("aucun cadeau TikTok ni filtre de valeur n’est configuré");
       }
       if (
         ["like", "likes"].includes(triggerType) &&
@@ -7991,9 +8389,9 @@ function renderSettings() {
           <div class="card-body form-grid">
             <label class="field full"><span>OBS WebSocket</span><input name="obsUrl" value="${escapeHtml(settings.obs.url)}"></label>
             <label class="field full"><span>Nouveau mot de passe OBS</span><input type="password" name="obsPassword" placeholder="${settings.obs.passwordSecretId ? "Secret déjà enregistré" : "Facultatif"}"></label>
-            <label class="field full"><span>Client ID de l’application Spotify</span><input name="spotifyClientId" value="${escapeHtml(settings.spotify?.clientId || "")}" placeholder="Identifiant public depuis developer.spotify.com"><small>Ajoutez cette URI de redirection dans votre application Spotify : ${escapeHtml(`http://127.0.0.1:${settings.spotify?.redirectPort || 21215}/spotify/callback`)}</small></label>
+            <div class="field full"><span>Application Spotify</span><strong>ShenPulse configuré</strong><small>La connexion ouvre automatiquement l’autorisation Spotify. URI de retour : ${escapeHtml(`http://127.0.0.1:${settings.spotify?.redirectPort || 21215}/spotify/callback`)}</small></div>
             <label class="field"><span>Port OAuth Spotify</span><input type="number" name="spotifyRedirectPort" min="1024" max="65535" value="${escapeHtml(settings.spotify?.redirectPort || 21215)}"></label>
-            <div class="field"><span>État Spotify</span><strong>${settings.spotify?.refreshTokenSecretId ? "Compte autorisé" : "Non connecté"}</strong><small>Les jetons OAuth sont chiffrés par le coffre-fort Windows.</small></div>
+            <div class="field"><span>État Spotify</span><strong>${settings.spotify?.refreshTokenSecretId ? "Compte autorisé" : "Prêt à connecter"}</strong><small>Les jetons OAuth sont chiffrés par le coffre-fort Windows.</small></div>
           </div>
         </section>
         <section class="card">
@@ -8039,7 +8437,7 @@ function renderSettings() {
 }
 
 const ADMIN_VISIBILITY_SECTIONS = [
-  ["navigation", "Pages ShenPulse", "Les 13 pages réellement présentes dans la navigation de ShenPulseNew"],
+  ["navigation", "Pages ShenPulse", "Les 14 pages réellement présentes dans la navigation de ShenPulseNew"],
   ["features", "Fonctionnalités", "Les services réellement disponibles dans l’application"],
   ["actionTypes", "Actions disponibles", "Les actions proposées dans les éditeurs ShenPulseNew"],
   ["overlays", "Overlays", "Les 17 overlays réellement présents dans la galerie"],
@@ -8069,7 +8467,9 @@ function adminVisibilityCatalog() {
       label: page.label,
       detail: `${page.title} · ${page.kicker}`,
       group: pageGroup,
-      icon: page.icon
+      icon: page.icon,
+      defaultScope: page.defaultScope,
+      ownerOnly: page.ownerOnly === true
     });
   }
   return {
@@ -8079,7 +8479,9 @@ function adminVisibilityCatalog() {
       id,
       label,
       detail: "Action disponible dans les déclencheurs et automatisations",
-      icon: "⚡"
+      icon: "⚡",
+      defaultScope: id === "irl.shelly" ? "admin" : "public",
+      ownerOnly: id === "irl.shelly"
     })),
     overlays: overlayDefinitions().map((overlay) => ({
       id: overlay.key,
@@ -8101,10 +8503,19 @@ function adminVisibilityCatalog() {
 }
 
 function canonicalAdminSiteSettings(settings) {
-  return visibilityTools.canonicalizeVisibility(
+  const canonical = visibilityTools.canonicalizeVisibility(
     settings,
     adminVisibilityCatalog()
   );
+  for (const [section, items] of Object.entries(adminVisibilityCatalog())) {
+    for (const item of items) {
+      if (!item.ownerOnly) continue;
+      canonical[section][adminVisibilityStorageKey(item.id)] = {
+        scope: "admin"
+      };
+    }
+  }
+  return canonical;
 }
 
 function adminVisibilityAudit(settings) {
@@ -8235,10 +8646,11 @@ function renderAdminVisibility() {
     .map((item, order) => ({
       ...item,
       order,
-      scope:
-        settings[adminVisibilitySection]?.[
-          adminVisibilityStorageKey(item.id)
-        ]?.scope || "public"
+      scope: item.ownerOnly
+        ? "admin"
+        : settings[adminVisibilitySection]?.[
+            adminVisibilityStorageKey(item.id)
+          ]?.scope || item.defaultScope || "public"
     }))
     .filter((item) => {
       const query = adminVisibilitySearch.trim().toLocaleLowerCase();
@@ -8293,7 +8705,7 @@ function renderAdminVisibility() {
         ${entries.length ? entries.map((item) => `<article>
           <span class="admin-item-icon">${escapeHtml(item.icon || adminVisibilityIcon(item.scope))}</span>
           <div class="admin-item-copy"><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail || "")}</small><code>${escapeHtml(item.id)}</code></div>
-          <select data-action="admin-scope" data-section="${escapeHtml(adminVisibilitySection)}" data-id="${escapeHtml(item.id)}" class="scope-${escapeHtml(item.scope)}" aria-label="Visibilité de ${escapeHtml(item.label)}">
+          <select data-action="admin-scope" data-section="${escapeHtml(adminVisibilitySection)}" data-id="${escapeHtml(item.id)}" class="scope-${escapeHtml(item.scope)}" aria-label="Visibilité de ${escapeHtml(item.label)}" ${item.ownerOnly ? "disabled title=\"Accès propriétaire forcé\"" : ""}>
             <option value="public" ${item.scope === "public" ? "selected" : ""}>Visible par tous</option>
             <option value="admin" ${item.scope === "admin" ? "selected" : ""}>Moi uniquement</option>
             <option value="hidden" ${item.scope === "hidden" ? "selected" : ""}>Masqué</option>
@@ -8710,7 +9122,7 @@ function openAccountLogin(mode = "login", preservedEmail = "") {
         registering ? "Compte créé" : "Compte connecté",
         accountSession.emailVerified
           ? accountSession.email
-          : `${accountSession.email} · vérifiez l’e-mail reçu avant tout paiement`
+          : `${accountSession.email} · vérification facultative recommandée pour sécuriser le compte`
       );
     }
   });
@@ -8782,9 +9194,13 @@ function openAdminLogin() {
 
 async function saveAdminVisibilityScope(section, id, scope) {
   const next = canonicalAdminSiteSettings(adminDashboard.siteSettings);
-  if (!adminVisibilityCatalog()[section]?.some((item) => item.id === id)) {
+  const catalogItem = adminVisibilityCatalog()[section]?.find(
+    (item) => item.id === id
+  );
+  if (!catalogItem) {
     throw new Error("Cet élément n’existe pas dans ShenPulseNew.");
   }
+  if (catalogItem.ownerOnly) scope = "admin";
   const storedId = adminVisibilityStorageKey(id);
   next[section][storedId] = { scope };
   if (section === "actionTypes") {
@@ -8806,7 +9222,10 @@ async function saveAdminVisibilityBulk(scope) {
   const items = adminVisibilityCatalog()[adminVisibilitySection] || [];
   for (const { id } of items) {
     const storedId = adminVisibilityStorageKey(id);
-    next[adminVisibilitySection][storedId] = { scope };
+    const item = items.find((entry) => entry.id === id);
+    next[adminVisibilitySection][storedId] = {
+      scope: item?.ownerOnly ? "admin" : scope
+    };
     if (adminVisibilitySection === "actionTypes") {
       next.actionTypeOverrides[storedId] = true;
     }
@@ -9285,20 +9704,49 @@ function conditionValue(conditions, fieldName, operator) {
 }
 
 function buildTriggerConditions(existing, data) {
-  const managedFields = new Set(["data.giftName", "user.name", "data.message"]);
+  const managedFields = new Set([
+    "data.giftName",
+    "data.value",
+    "user.name",
+    "data.message"
+  ]);
   const conditions = (existing || []).filter(
     (condition) => !managedFields.has(condition.field)
   );
+  const giftTriggerMode = data.get("giftTriggerMode") === "value"
+    ? "value"
+    : "specific";
   const giftName = String(data.get("giftNameCondition") || "").trim();
+  const giftValueAmount = String(data.get("giftValueAmount") || "").trim();
+  const giftValueOperator = String(
+    data.get("giftValueOperator") || "greaterOrEqual"
+  );
   const username = String(data.get("usernameCondition") || "")
     .trim()
     .replace(/^@+/, "");
   const message = String(data.get("messageCondition") || "").trim();
-  if (giftName) {
+  if (giftTriggerMode === "specific" && giftName) {
     conditions.push({
       field: "data.giftName",
       operator: "equals",
       value: giftName
+    });
+  }
+  if (
+    giftTriggerMode === "value" &&
+    giftValueAmount &&
+    Number.isFinite(Number(giftValueAmount)) &&
+    Number(giftValueAmount) > 0
+  ) {
+    const supportedOperator = GIFT_VALUE_OPERATOR_OPTIONS.some(
+      ([operator]) => operator === giftValueOperator
+    )
+      ? giftValueOperator
+      : "greaterOrEqual";
+    conditions.push({
+      field: "data.value",
+      operator: supportedOperator,
+      value: Number(giftValueAmount)
     });
   }
   if (username) {
@@ -9323,7 +9771,7 @@ function actionTypeOptions(currentType) {
   const groups = [
     ["VISUEL & AUDIO", ["overlay.media", "audio.play"]],
     ["INTERACTIONS", ["goal.add", "timer.add", "wheel.spin", "chat.reply"]],
-    ["INTÉGRATIONS", ["spotify.queue", "obs.request", "http.request", "websocket.send"]],
+    ["INTÉGRATIONS", ["irl.shelly", "spotify.queue", "obs.request", "http.request", "websocket.send"]],
     ["SYSTÈME", ["system.keys", "system.open", "delay"]]
   ];
   const existingHiddenOption =
@@ -9518,7 +9966,7 @@ function openGameInteractionEditor(pack, effect, row = null) {
         "Associez un événement ou un cadeau précis à cet effet.",
         `<label class="field"><span>Type de déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(currentRule.trigger?.type)}</select></label>
         ${field("threshold", "Seuil / quantité", currentRule.trigger?.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftPickerField("giftNameCondition", "Cadeau TikTok", conditionValue(currentRule.conditions, "data.giftName", "equals"), "full")}</div>
+        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions, { giftLabel: "Cadeau TikTok précis (optionnel)" })}</div>
         <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Le message contient (optionnel)", conditionValue(currentRule.conditions, "data.message", "contains"), "text", "full")}</div>
         ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(currentRule.conditions, "user.name", "equals"), "text", "full")}`,
         "game-interaction-trigger-section",
@@ -9605,6 +10053,118 @@ function openGameInteractionEditor(pack, effect, row = null) {
   });
 }
 
+async function refreshIrlDiscovery() {
+  irlBusy = true;
+  render();
+  try {
+    const result = await api.irl.scan({ timeoutMs: 1600 });
+    if (result.snapshot) acceptSnapshot(result.snapshot);
+    irlDiscovery = {
+      accessPoints: Array.isArray(result.accessPoints) ? result.accessPoints : [],
+      currentNetwork: result.currentNetwork || ""
+    };
+    return irlDiscovery;
+  } finally {
+    irlBusy = false;
+    render();
+  }
+}
+
+async function openIrlPairEditor() {
+  const discovery = await refreshIrlDiscovery();
+  if (!discovery.accessPoints.length) {
+    throw new Error(
+      "Aucun réseau Shelly n’a été détecté. Mettez la prise en mode association puis réessayez."
+    );
+  }
+  openEditor({
+    title: "Associer une prise Shelly",
+    kicker: "INTERACTIONS IRL · CONFIGURATION LOCALE",
+    submitLabel: "Associer la prise",
+    pendingLabel: "Association en cours…",
+    body: `<div class="irl-pair-dialog">
+      <section class="irl-pair-warning"><span>⌁</span><div><strong>Le Wi-Fi du PC va changer temporairement</strong><p>ShenPulse se connecte directement à la prise, lui transmet le réseau de la maison puis reconnecte le PC. Internet peut être coupé quelques secondes.</p></div></section>
+      <div class="form-grid">
+        <label class="field full"><span>Prise en mode association</span><select name="accessPointSsid" required>${discovery.accessPoints.map((network) => `<option value="${escapeHtml(network.ssid)}">${escapeHtml(network.ssid)}</option>`).join("")}</select></label>
+        ${field("wifiSsid", "Wi-Fi de la maison", discovery.currentNetwork, "text", "full required")}
+        <label class="field full"><span>Mot de passe du Wi-Fi</span><input name="wifiPassword" type="password" autocomplete="off"><small>Utilisé uniquement pendant l’association, jamais enregistré par ShenPulse.</small></label>
+      </div>
+    </div>`,
+    onSubmit: async (data) => {
+      const result = await api.irl.pair({
+        accessPointSsid: data.get("accessPointSsid"),
+        wifiSsid: data.get("wifiSsid"),
+        wifiPassword: data.get("wifiPassword")
+      });
+      if (result.snapshot) acceptSnapshot(result.snapshot);
+      toast(
+        result.pendingDiscovery ? "Prise associée" : "Prise Shelly prête",
+        result.pendingDiscovery
+          ? "Le Wi-Fi est configuré. Relancez la détection dans quelques secondes."
+          : "La prise est enregistrée et disponible dans les actions."
+      );
+    }
+  });
+}
+
+function openIrlManualEditor() {
+  openEditor({
+    title: "Ajouter une prise par adresse",
+    kicker: "INTERACTIONS IRL · RÉSEAU LOCAL",
+    submitLabel: "Détecter et ajouter",
+    body: `<div class="form-grid">
+      ${field("host", "Adresse IP locale", "192.168.1.", "text", "full required")}
+      ${field("name", "Nom personnalisé (optionnel)", "", "text", "full")}
+      <div class="field full"><small>Le PC et la prise doivent être connectés au même réseau local.</small></div>
+    </div>`,
+    onSubmit: async (data) => {
+      const result = await api.irl.add({
+        host: data.get("host"),
+        name: data.get("name")
+      });
+      if (result.snapshot) acceptSnapshot(result.snapshot);
+    }
+  });
+}
+
+function openIrlRenameEditor(device) {
+  openEditor({
+    title: "Renommer la prise",
+    kicker: "INTERACTIONS IRL",
+    submitLabel: "Enregistrer",
+    body: `<div class="form-grid">${field("name", "Nom affiché", device.name, "text", "full required autofocus")}</div>`,
+    onSubmit: async (data) => {
+      const result = await api.irl.rename(device.id, data.get("name"));
+      if (result.snapshot) acceptSnapshot(result.snapshot);
+    }
+  });
+}
+
+function openIrlActionEditor() {
+  const device = snapshot.state.settings.irl?.devices?.find(
+    isControllableIrlDevice
+  );
+  if (!device) throw new Error("Ajoutez d’abord une prise Shelly avec un relais pilotable.");
+  openActionEditor(null, {
+    rule: {
+      id: "",
+      name: `Interaction ${device.name}`,
+      enabled: true,
+      priority: 50,
+      trigger: { enabled: true, type: "gift", source: "*", threshold: 1 },
+      conditions: [],
+      cooldown: { globalMs: 5000, perUserMs: 5000 },
+      chance: 1,
+      actions: []
+    },
+    action: {
+      id: "",
+      type: "irl.shelly",
+      config: { deviceId: device.id, operation: "cycle", durationMs: 3000 }
+    }
+  });
+}
+
 function openActionEditor(row) {
   const preset = arguments[1] || {};
   const currentRule = row?.rule || preset.rule || {
@@ -9656,6 +10216,7 @@ function openActionEditor(row) {
   const configuredWheels = normalizeWheelConfig(
     overlayConfig("wheel")
   ).wheels;
+  const irlDevices = snapshot.state.settings.irl?.devices || [];
   const connectionOptions = [
     ["", "Source du déclencheur"],
     ...snapshot.state.connections.map((connection) => [
@@ -9753,6 +10314,23 @@ function openActionEditor(row) {
       </div>`
     ),
     conditionalFields(
+      "irl.shelly",
+      `<div class="form-grid">
+        <label class="field full"><span>Prise Shelly</span><select name="irlDeviceId" required>${irlDevices.map((device) => `<option value="${escapeHtml(device.id)}" ${(config.deviceId || irlDevices.find(isControllableIrlDevice)?.id) === device.id ? "selected" : ""} ${isControllableIrlDevice(device) ? "" : "disabled"}>${escapeHtml(device.name)} · ${escapeHtml(device.host || "adresse en attente")}${isControllableIrlDevice(device) ? "" : " · aucun relais"}</option>`).join("")}</select><small>Les compteurs d’énergie sans relais ne peuvent pas être sélectionnés.</small></label>
+        <label class="field"><span>Commande</span><select name="irlOperation">
+          ${[
+            ["on", "Allumer"],
+            ["off", "Éteindre"],
+            ["toggle", "Basculer ON / OFF"],
+            ["cycle", "Éteindre puis rallumer"],
+            ["pulse", "Allumer puis éteindre"]
+          ].map(([value, label]) => `<option value="${value}" ${(config.operation || "cycle") === value ? "selected" : ""}>${label}</option>`).join("")}
+        </select></label>
+        ${field("irlDurationMs", "Durée du cycle (ms)", config.durationMs || 3000, "number", 'min="500" max="60000" step="100"')}
+        <div class="field full"><small>1000 ms = 1 seconde. Le changement final est programmé dans la prise puis forcé par ShenPulse à la fin du délai.</small></div>
+      </div>`
+    ),
+    conditionalFields(
       "spotify.queue",
       `<div class="form-grid">
         <label class="field"><span>Commande Spotify</span><select name="spotifyOperation">${["request","queue","play","pause","next","now_playing","volume_up","volume_down"].map((operation) => `<option value="${operation}" ${(config.operation || "request") === operation ? "selected" : ""}>${operation}</option>`).join("")}</select></label>
@@ -9820,7 +10398,7 @@ function openActionEditor(row) {
         `<div class="trigger-editor-fields editor-conditional full" data-trigger-enabled>
           <label class="field"><span>Déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(currentRule.trigger?.type)}</select></label>
           ${field("threshold", "Seuil / quantité", currentRule.trigger?.threshold || 1, "number", 'min="1"')}
-          <div class="editor-conditional full" data-trigger-types="gift">${giftPickerField("giftNameCondition", "Cadeau précis (optionnel)", conditionValue(currentRule.conditions, "data.giftName", "equals"), "full")}</div>
+          <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions)}</div>
           <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Le message contient (optionnel)", conditionValue(currentRule.conditions, "data.message", "contains"), "text", "full")}</div>
           ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(currentRule.conditions, "user.name", "equals"), "text", "full")}
         </div>`,
@@ -9908,6 +10486,14 @@ function openActionEditor(row) {
           effectId: data.get("effectId"),
           duration: Number(data.get("effectDuration")),
           quantity: Number(data.get("quantity"))
+        });
+      } else if (type === "irl.shelly") {
+        const deviceId = data.get("irlDeviceId");
+        if (!deviceId) throw new Error("Choisissez une prise Shelly.");
+        Object.assign(nextConfig, {
+          deviceId,
+          operation: data.get("irlOperation") || "cycle",
+          durationMs: Number(data.get("irlDurationMs") || 3000)
         });
       } else if (type === "spotify.queue") {
         Object.assign(nextConfig, {
@@ -10136,7 +10722,7 @@ function openSoundEditor(row, preferredSoundId = "") {
         "Associez le son à une interaction du LIVE.",
         `<label class="field"><span>Déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(currentRule.trigger?.type)}</select></label>
         ${field("threshold", "Seuil", currentRule.trigger?.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftPickerField("giftNameCondition", "Cadeau précis (optionnel)", conditionValue(currentRule.conditions, "data.giftName", "equals"), "full")}</div>
+        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions)}</div>
         ${field("cooldown", "Cooldown (ms)", currentRule.cooldown?.globalMs || 1000, "number", 'min="0"')}`
       )}
     </div>`,
@@ -10301,7 +10887,7 @@ function openRuleEditor(rule) {
         <div class="trigger-editor-source-note full"><span>◎</span><div><strong>Toutes les sources</strong><small>Les événements LIVE et les tests sont toujours pris en compte automatiquement.</small></div></div>
         <label class="field"><span>Type de déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(current.trigger.type)}</select></label>
         ${field("threshold", "Seuil / quantité", current.trigger.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftPickerField("giftNameCondition", "Cadeau précis (optionnel)", conditionValue(current.conditions, "data.giftName", "equals"), "full")}</div>
+        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(current.conditions)}</div>
         <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Message contient (optionnel)", conditionValue(current.conditions, "data.message", "contains"), "text", "full")}</div>
         ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(current.conditions, "user.name", "equals"), "text", "full")}`,
         "dialog-section-accent"
@@ -10525,11 +11111,11 @@ async function duplicateActionRow(row) {
   if (!row) throw new Error("Action introuvable.");
   const nextAction = structuredClone(row.action);
   nextAction.id = `action_${cryptoId()}`;
-  const nextRule = {
-    ...row.rule,
-    actions: [...(row.rule.actions || []), nextAction]
-  };
+  const nextRule = structuredClone(row.rule);
+  nextRule.id = `rule_${cryptoId()}`;
+  nextRule.actions = [nextAction];
   await api.upsert("rules", nextRule);
+  await ensureRuleInActiveProfile(nextRule.id);
   snapshot = await api.getSnapshot();
   render();
 }
@@ -10560,6 +11146,80 @@ async function setSoundVolume(row, volume) {
   };
   await api.upsert("rules", { ...row.rule, actions });
   snapshot = await api.getSnapshot();
+}
+
+function liveScreenUrl(screen) {
+  const urls = Array.isArray(snapshot.overlayUrls?.mediaScreens)
+    ? snapshot.overlayUrls.mediaScreens
+    : [];
+  return urls[Math.min(8, Math.max(1, Number(screen) || 1)) - 1] || "";
+}
+
+async function updateAudioOutput(row, outputMode, liveScreen = 1) {
+  if (!row) throw new Error("Sortie audio introuvable.");
+  const actions = [...(row.rule.actions || [])];
+  actions[row.actionIndex] = {
+    ...row.action,
+    config: {
+      ...(row.action.config || {}),
+      outputMode: outputMode === "live" ? "live" : "local",
+      liveScreen: Math.min(8, Math.max(1, Math.round(Number(liveScreen) || 1)))
+    }
+  };
+  await api.upsert("rules", { ...row.rule, actions });
+  acceptSnapshot(await api.getSnapshot());
+}
+
+function syncLiveAudioScreenDialog() {
+  const picker = dialogBody.querySelector('[name="liveScreen"]');
+  const urlNode = dialogBody.querySelector("[data-live-output-url]");
+  const copyButton = dialogBody.querySelector("[data-live-output-copy]");
+  if (!picker || !urlNode || !copyButton) return;
+  const url = liveScreenUrl(picker.value);
+  urlNode.textContent = url || "URL indisponible";
+  urlNode.title = url;
+  copyButton.dataset.value = url;
+  copyButton.disabled = !url;
+}
+
+function openLiveAudioOutputEditor(row) {
+  if (!row) return;
+  const selectedScreen = normalizedLiveScreen(row.action.config);
+  openEditor({
+    title: "Diffuser le son pour tout le LIVE",
+    kicker: "SORTIE AUDIO · SOURCE NAVIGATEUR",
+    submitLabel: "Activer sur cet écran",
+    successMessage: "Sortie audio LIVE activée",
+    body: `<div class="live-audio-output-dialog">
+      <div class="live-audio-output-intro">
+        <span aria-hidden="true">◉</span>
+        <div><strong>Choisissez l’écran qui transportera le son</strong><p>Les sons et le TTS seront joués uniquement par l’URL de cet écran.</p></div>
+      </div>
+      <label class="field full"><span>Écran de diffusion</span><select name="liveScreen" required>
+        ${Array.from({ length: 8 }, (_value, index) => {
+          const screen = index + 1;
+          return `<option value="${screen}" ${screen === selectedScreen ? "selected" : ""}>Écran ${screen}</option>`;
+        }).join("")}
+      </select></label>
+      <div class="live-audio-output-url">
+        <span>URL à ajouter dans OBS ou TikTok LIVE Studio</span>
+        <code data-live-output-url></code>
+        <button type="button" class="button primary" data-action="copy" data-live-output-copy data-value="">Copier l’URL</button>
+      </div>
+      <div class="live-audio-output-warning">
+        <strong>Attention aux doublons</strong>
+        <p>Vérifiez si cette URL est déjà présente dans votre interface de LIVE avant de l’ajouter. Si la même URL est chargée dans deux sources, le son et le TTS seront entendus deux fois.</p>
+      </div>
+      <div class="live-audio-output-spotify">
+        <strong>Spotify</strong>
+        <p>Spotify continue de jouer sur l’appareil Spotify actif. Pour l’entendre en LIVE, capturez l’application Spotify séparément. Le flux Spotify et ses jetons ne sont jamais publiés dans cette URL.</p>
+      </div>
+    </div>`,
+    onSubmit: async (data) => {
+      await updateAudioOutput(row, "live", data.get("liveScreen"));
+    }
+  });
+  syncLiveAudioScreenDialog();
 }
 
 function likeGoalTestAmount() {
@@ -11038,7 +11698,15 @@ async function handleAction(target) {
     "export-data": "data.management",
     "import-data": "data.management",
     "clear-data": "data.management",
-    "restart-servers": "local.services"
+    "restart-servers": "local.services",
+    "irl-toggle": "irl.shelly",
+    "irl-scan": "irl.shelly",
+    "irl-pair": "irl.shelly",
+    "irl-add-manual": "irl.shelly",
+    "irl-add-action": "irl.shelly",
+    "irl-test": "irl.shelly",
+    "irl-rename": "irl.shelly",
+    "irl-remove": "irl.shelly"
   }[action];
   if (requiredFeature && !canAccessFeature(requiredFeature)) {
     return toast(
@@ -11046,6 +11714,67 @@ async function handleAction(target) {
       "Cette fonction est masquée par la configuration ShenPulse.",
       true
     );
+  }
+  if (action === "irl-toggle") {
+    return perform(async () => {
+      const result = await api.irl.setEnabled(target.checked === true);
+      if (result.snapshot) acceptSnapshot(result.snapshot);
+      render();
+    }, target.checked ? "Interactions IRL activées" : "Interactions IRL désactivées");
+  }
+  if (action === "irl-scan") {
+    return perform(async () => {
+      const result = await refreshIrlDiscovery();
+      const count = snapshot.state.settings.irl?.devices?.filter(
+        (device) => device.online
+      ).length || 0;
+      toast(
+        "Détection Shelly terminée",
+        `${count} prise${count > 1 ? "s" : ""} disponible${count > 1 ? "s" : ""} sur le réseau local${result.accessPoints.length ? ` · ${result.accessPoints.length} en mode association` : ""}.`
+      );
+    });
+  }
+  if (action === "irl-pair") {
+    return perform(() => openIrlPairEditor());
+  }
+  if (action === "irl-add-manual") return openIrlManualEditor();
+  if (action === "irl-add-action") return openIrlActionEditor();
+  if (action === "irl-test") {
+    return perform(async () => {
+      const result = await api.irl.test({
+        deviceId: id,
+        operation: target.dataset.operation || "toggle",
+        durationMs: 3000
+      });
+      if (result.snapshot) acceptSnapshot(result.snapshot);
+      render();
+    }, "Commande envoyée à la prise");
+  }
+  if (action === "irl-rename") {
+    const device = snapshot.state.settings.irl?.devices?.find(
+      (entry) => entry.id === id
+    );
+    if (!device) throw new Error("Prise Shelly introuvable.");
+    return openIrlRenameEditor(device);
+  }
+  if (action === "irl-remove") {
+    const device = snapshot.state.settings.irl?.devices?.find(
+      (entry) => entry.id === id
+    );
+    if (
+      !device ||
+      !(await confirmAction(
+        `Retirer la prise « ${device.name} » de ShenPulse ? Les actions existantes ne seront pas supprimées.`,
+        { title: "Retirer la prise", confirmLabel: "Retirer" }
+      ))
+    ) {
+      return;
+    }
+    return perform(async () => {
+      const result = await api.irl.remove(id);
+      if (result.snapshot) acceptSnapshot(result.snapshot);
+      render();
+    }, "Prise retirée");
   }
   if (action === "admin-login") return openAdminLogin();
   if (action === "open-admin") {
@@ -11598,6 +12327,26 @@ async function handleAction(target) {
       )
     );
   }
+  if (action === "set-audio-output") {
+    const row = findActionRow(
+      target.dataset.rule,
+      id,
+      target.dataset.index
+    );
+    if (!row) throw new Error("Sortie audio introuvable.");
+    if (target.checked) {
+      target.checked = false;
+      return openLiveAudioOutputEditor(row);
+    }
+    return perform(async () => {
+      await updateAudioOutput(
+        row,
+        "local",
+        normalizedLiveScreen(row.action.config)
+      );
+      render();
+    }, "Lecture réservée à ShenPulse");
+  }
   if (action === "preview-sound") {
     const sound = SOUND_LIBRARY.find((item) => item.id === id);
     if (!sound) throw new Error("Son introuvable dans le catalogue global.");
@@ -12035,6 +12784,7 @@ content.addEventListener("input", (event) => {
   if (key === "sounds" && soundSearch.trim()) soundCategory = "all";
   if (key === "games") gameSearch = input.value;
   if (key === "game-effects") gameEffectSearch = input.value;
+  if (key === "irl-actions") irlActionSearch = input.value;
   if (key === "admin-visibility") adminVisibilitySearch = input.value;
   if (key === "admin-commerce") adminCommerceSearch = input.value;
   const position = input.selectionStart;
@@ -12114,6 +12864,14 @@ document.addEventListener("focusin", (event) => {
 });
 
 dialogBody.addEventListener("change", (event) => {
+  if (event.target.matches("[data-gift-trigger-mode]")) {
+    syncGiftTriggerCondition(
+      event.target.closest("[data-gift-trigger-condition]")
+    );
+  }
+  if (event.target.matches('[name="liveScreen"]')) {
+    syncLiveAudioScreenDialog();
+  }
   if (
     event.target.matches('[name="wheelSegmentActionId"]') &&
     event.target.value
@@ -12201,6 +12959,12 @@ content.addEventListener("click", (event) => {
     return;
   }
   const action = event.target.closest("[data-action]");
+  if (
+    ["set-audio-output", "irl-toggle"].includes(action?.dataset.action) &&
+    action.matches('input[type="checkbox"]')
+  ) {
+    return;
+  }
   if (action) handleAction(action).catch(() => {});
 });
 
@@ -12819,6 +13583,7 @@ dialog.addEventListener("click", async (event) => {
       name: `Nouvelle roue ${config.wheels.length + 1}`,
       enabled: true,
       trigger: "",
+      giftValueFilter: null,
       design: "classic",
       settings: wheelDefaultSettings(),
       segments: wheelSeedSegments("classic")
@@ -13085,7 +13850,6 @@ content.addEventListener("submit", async (event) => {
       obs: { url: values.obsUrl },
       obsPassword: values.obsPassword,
       spotify: {
-        clientId: values.spotifyClientId,
         redirectPort: Number(values.spotifyRedirectPort)
       },
       backblaze: {

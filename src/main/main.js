@@ -23,6 +23,7 @@ const {
 } = require("./interaction-audit-plan");
 const { registerIpc } = require("./ipc");
 const { StateStore } = require("./store");
+const packageMetadata = require("../../package.json");
 const {
   shouldSuppressRendererChannel,
   snapshotForRenderer
@@ -36,6 +37,10 @@ let accountService = null;
 let ipcController = null;
 let activeInteractionAudit = null;
 let quitting = false;
+
+function getApplicationVersion() {
+  return String(packageMetadata.build?.buildVersion || app.getVersion()).trim();
+}
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
@@ -174,7 +179,7 @@ async function bootstrap() {
     store,
     resourcesDirectory: path.join(__dirname, "..", "..", "resources"),
     notifyRenderer,
-    appVersion: app.getVersion()
+    appVersion: getApplicationVersion()
   });
   gameRuntime = new GameRuntimeService({
     app,

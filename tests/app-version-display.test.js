@@ -15,7 +15,11 @@ test("affiche automatiquement la version de ShenPulse sous les ports locaux", ()
   const renderer = source("src/renderer/app.js");
   const html = source("src/renderer/index.html");
 
-  assert.match(main, /appVersion: app\.getVersion\(\)/);
+  assert.match(
+    main,
+    /packageMetadata\.build\?\.buildVersion \|\| app\.getVersion\(\)/
+  );
+  assert.match(main, /appVersion: getApplicationVersion\(\)/);
   assert.match(core, /this\.appVersion = String\(appVersion \|\| ""\)/);
   assert.match(core, /appVersion: this\.appVersion/);
   assert.match(html, /<small id="app-version">/);

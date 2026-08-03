@@ -255,7 +255,7 @@ test("utilise l’accès public vérifié si la synchronisation privée échoue"
   );
 });
 
-test("ouvre directement le checkout PayPal depuis le compte de l'application", async () => {
+test("ouvre le checkout PayPal même si l’e-mail du compte n’est pas vérifié", async () => {
   const store = createStore();
   const openedUrls = [];
   let checkoutRequest = null;
@@ -285,7 +285,7 @@ test("ouvre directement le checkout PayPal depuis le compte de l'application", a
           users: [{
             email: "sandbox-buyer@example.com",
             localId: "sandbox_buyer_uid",
-            emailVerified: true
+            emailVerified: false
           }]
         });
       }
@@ -470,7 +470,7 @@ test("annule immédiatement l’attente si la fenêtre PayPal a été fermée", 
   );
 });
 
-test("achète un jeu dans PayPal puis revient le valider dans l’application", async () => {
+test("achète un jeu sans imposer la vérification de l’e-mail Firebase", async () => {
   const store = createStore();
   const openedUrls = [];
   let createRequest = null;
@@ -497,7 +497,7 @@ test("achète un jeu dans PayPal puis revient le valider dans l’application", 
           users: [{
             email: "game-buyer@example.com",
             localId: "game_buyer_uid",
-            emailVerified: true
+            emailVerified: false
           }]
         });
       }
@@ -997,5 +997,9 @@ test("la carte latérale expose l’email et une vraie déconnexion", () => {
   assert.match(markup, /id="account-auth-cta"/);
   assert.match(renderer, /api\.account\.register/);
   assert.match(renderer, /api\.account\s*\.loginWithBrowser/);
+  assert.doesNotMatch(
+    renderer,
+    /vérifiez l’e-mail reçu avant tout paiement/
+  );
   assert.match(main, /screen\.getPrimaryDisplay\(\)\.workAreaSize/);
 });

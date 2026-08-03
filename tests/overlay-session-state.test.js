@@ -94,6 +94,49 @@ test("les cadeaux seuls ne modifient jamais le compteur WINS", () => {
   assert.equal(state.overlaySession.winCounterCurrent, 7);
 });
 
+test("un Like Goal simulé reste hydratable hors LIVE sans activer une session", () => {
+  const state = {
+    session: { running: false },
+    overlaySession: createDefaultOverlaySession()
+  };
+
+  for (let index = 0; index < 2; index += 1) {
+    recordOverlayEvent(state, {
+      id: `like-test-${index}`,
+      type: "like",
+      source: "simulator",
+      user: {
+        id: "test_viewer",
+        name: "test_viewer",
+        displayName: "Spectateur test"
+      },
+      data: { count: 2500 }
+    });
+  }
+
+  assert.equal(state.overlaySession.likeGoalCurrent, 5000);
+  assert.equal(state.overlaySession.hasData, true);
+  assert.equal(state.overlaySession.active, false);
+  assert.equal(state.session.running, false);
+});
+
+test("un événement TikTok hors LIVE ne modifie toujours pas l'état hydraté", () => {
+  const state = {
+    session: { running: false },
+    overlaySession: createDefaultOverlaySession()
+  };
+  recordOverlayEvent(state, {
+    id: "like-hors-live",
+    type: "like",
+    source: "source_tiktok",
+    user: { id: "alice", name: "alice", displayName: "Alice" },
+    data: { count: 2500 }
+  });
+
+  assert.equal(state.overlaySession.likeGoalCurrent, 0);
+  assert.equal(state.overlaySession.hasData, false);
+});
+
 test("les remises à zéro manuelles modifient aussi l'état hydraté", () => {
   const state = runtimeState();
   resetOverlaySession(state);

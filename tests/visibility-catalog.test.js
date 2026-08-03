@@ -19,6 +19,7 @@ const CURRENT_PAGE_IDS = [
   "rules",
   "overlays",
   "games",
+  "irl",
   "goals",
   "commands",
   "membership",
@@ -197,4 +198,22 @@ test("masqué reste invisible même pour le propriétaire", () => {
   assert.equal(canAccessScope("admin", true), true);
   assert.equal(canAccessScope("hidden", false), false);
   assert.equal(canAccessScope("hidden", true), false);
+});
+
+test("les interactions IRL sont réservées au propriétaire par défaut", () => {
+  const catalog = {
+    navigation: [{ id: "irl", defaultScope: "admin", ownerOnly: true }],
+    features: FEATURE_ITEMS,
+    actionTypes: [
+      {
+        id: "irl.shelly",
+        defaultScope: "admin",
+        ownerOnly: true
+      }
+    ]
+  };
+  const visibility = canonicalizeVisibility({}, catalog);
+  assert.deepEqual(visibility.navigation.irl, { scope: "admin" });
+  assert.deepEqual(visibility.features["irl:shelly"], { scope: "admin" });
+  assert.deepEqual(visibility.actionTypes["irl:shelly"], { scope: "admin" });
 });

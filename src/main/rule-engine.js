@@ -3,6 +3,7 @@
 const { EventEmitter } = require("node:events");
 const { getPath, id } = require("./utils");
 const { renderValue } = require("./template");
+const { compareGiftValue } = require("../shared/gift-value-filter");
 
 class RuleEngine extends EventEmitter {
   constructor({ store, actionRunner }) {
@@ -93,6 +94,22 @@ class RuleEngine extends EventEmitter {
     return (rule.conditions || []).every((condition) => {
       const left = getPath(event, condition.field);
       const right = condition.value;
+      if (
+        event.type === "gift" &&
+        condition.field === "data.value" &&
+        (!Number.isFinite(Number(left)) || Number(left) <= 0)
+      ) {
+        return false;
+      }
+      if (
+        event.type === "gift" &&
+        condition.field === "data.value" &&
+        ["greaterOrEqual", "greater", "less", "lessOrEqual"].includes(
+          condition.operator
+        )
+      ) {
+        return compareGiftValue(left, condition.operator, right);
+      }
       switch (condition.operator) {
         case "equals":
           return String(left).toLowerCase() === String(right).toLowerCase();
@@ -104,6 +121,10 @@ class RuleEngine extends EventEmitter {
           return String(left).toLowerCase().startsWith(String(right).toLowerCase());
         case "greaterOrEqual":
           return Number(left) >= Number(right);
+        case "greater":
+          return Number(left) > Number(right);
+        case "less":
+          return Number(left) < Number(right);
         case "lessOrEqual":
           return Number(left) <= Number(right);
         case "matches":

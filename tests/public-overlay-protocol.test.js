@@ -3,11 +3,50 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
+  createPublicOverlayConfigurations,
   createRelayState,
   publicMediaUrl,
   publicOverlayUrls,
   relayDatabaseUrl
 } = require("../src/shared/public-overlay-protocol");
+
+test("la configuration visuelle publique est stockée par overlay sans secrets locaux", () => {
+  const configurations = createPublicOverlayConfigurations({
+    settings: {
+      overlayToken: "secret-local",
+      overlayConfigs: {
+        likeGoal: {
+          theme: "naruto",
+          title: "PING-PONG",
+          target: 2500,
+          showGoal: false,
+          likeGoalTitleOffsetY: -6,
+          likeGoalTitleScale: 110,
+          likeGoalContentOffsetY: -25,
+          likeGoalContentScale: 200,
+          likeGoalPercentColor: "#4dff4f",
+          completionActionId: "action-privee"
+        }
+      }
+    }
+  });
+
+  assert.deepEqual(configurations.likeGoal, {
+    title: "PING-PONG",
+    target: 2500,
+    showGoal: false,
+    titleY: -6,
+    titleScale: 110,
+    contentY: -25,
+    contentScale: 200,
+    percentColor: "#4dff4f",
+    theme: "naruto"
+  });
+  assert.doesNotMatch(
+    JSON.stringify(configurations),
+    /secret-local|action-privee|completionActionId/
+  );
+});
 
 test("publicOverlayUrls crée des sources HTTPS stables sans jeton local", () => {
   const urls = publicOverlayUrls({

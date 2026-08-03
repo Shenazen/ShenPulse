@@ -62,13 +62,12 @@ identifiants nécessaires.
 
 ## Connexion Spotify
 
-Créez une application dans le tableau de bord Spotify Developer et ajoutez
-`http://127.0.0.1:21215/spotify/callback` à ses URI de redirection. Dans
-**Paramètres > Intégrations**, renseignez son Client ID public, enregistrez, puis
-ouvrez **Sons & voix > Connecter Spotify**. L'autorisation utilise PKCE : aucun
-Client Secret n'est embarqué. Les jetons reçus sont chiffrés localement avec le
+Ouvrez **Sons & voix > Connecter Spotify**, puis autorisez l'application
+ShenPulse avec votre compte Spotify. L'autorisation utilise PKCE : aucun Client
+Secret n'est embarqué. Les jetons reçus sont chiffrés localement avec le
 coffre-fort Windows. Le contrôle de lecture nécessite un compte Spotify Premium
-et un appareil Spotify actif.
+et un appareil Spotify actif. L'application Spotify ShenPulse doit déclarer
+`http://127.0.0.1:21215/spotify/callback` dans ses URI de redirection.
 
 ## Sécurité
 

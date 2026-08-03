@@ -241,6 +241,15 @@ test("la roue ne superpose plus de rayons jaunes aux secteurs", () => {
     finalWheelRules,
     /repeating-conic-gradient\(from -90deg,\s*rgba\(255,\s*221,\s*99/
   );
+  assert.doesNotMatch(overlayRuntime, /sectorSeparators|repeating-conic-gradient\(from -90deg/);
+});
+
+test("les textes, les couleurs et le gagnant de la roue utilisent le même angle", () => {
+  assert.match(overlayRuntime, /conic-gradient\(from 0deg/);
+  assert.match(
+    overlayRuntime,
+    /const stopAngle = 360 - \(winnerIndex \+ 0\.5\) \* segmentAngle/
+  );
 });
 
 test("les cartes montrent les aperçus Pro mais masquent leurs sources verrouillées", () => {

@@ -23,6 +23,104 @@ const PRO_PUBLIC_OVERLAY_KEYS = new Set([
   "matchEnigma"
 ]);
 
+const PUBLIC_OVERLAY_CONFIG_PARAMETER_MAPPINGS = Object.freeze({
+  accentColor: "accent",
+  secondaryColor: "secondary",
+  textColor: "textColor",
+  backgroundColor: "background",
+  backgroundOpacity: "backgroundOpacity",
+  shadowColor: "shadowColor",
+  showShadow: "showShadow",
+  showWhenIdle: "showWhenIdle",
+  font: "font",
+  fontSize: "fontSize",
+  layout: "layout",
+  animation: "animation",
+  displayTime: "displayTime",
+  pauseTime: "pauseTime",
+  soundEnabled: "soundEnabled",
+  soundVolume: "soundVolume",
+  saturation: "saturation",
+  hue: "hue",
+  rtl: "rtl",
+  scale: "scale",
+  xOffset: "x",
+  yOffset: "y",
+  title: "title",
+  current: "current",
+  target: "target",
+  seconds: "seconds",
+  multiplier: "multiplier",
+  fit: "fit",
+  autoplay: "autoplay",
+  loop: "loop",
+  showHeader: "showHeader",
+  showGoal: "showGoal",
+  showPercent: "showPercent",
+  likeGoalTitleOffsetX: "titleX",
+  likeGoalTitleOffsetY: "titleY",
+  likeGoalTitleScale: "titleScale",
+  likeGoalTitleColor: "titleColor",
+  likeGoalContentOffsetX: "contentX",
+  likeGoalContentOffsetY: "contentY",
+  likeGoalContentScale: "contentScale",
+  likeGoalContentColor: "contentColor",
+  likeGoalPercentColor: "percentColor",
+  showRank: "showRank",
+  showAvatars: "showAvatars",
+  showCrown: "showCrown",
+  showRankBadges: "showRankBadges",
+  showMetricLabel: "showMetricLabel",
+  showBase: "showBase",
+  showHours: "showHours",
+  timerTitleScale: "timerTitleScale",
+  timerValueScale: "timerValueScale",
+  timerAutoStart: "timerAutoStart",
+  allowNegative: "allowNegative",
+  minCoins: "minCoins",
+  goalBaseline: "goalBaseline",
+  progressLabel: "progressLabel",
+  whenReached: "whenReached",
+  winCounterLabelColorNegative: "negativeColor",
+  winCounterLabelColorNeutral: "neutralColor",
+  winCounterLabelColorPositive: "positiveColor",
+  winCounterLabelOffsetX: "labelX",
+  winCounterLabelOffsetY: "labelY",
+  maxRows: "maxRows",
+  enabled: "enabled",
+  nameColor: "nameColor",
+  scoreColor: "scoreColor",
+  rankColor: "rankColor",
+  rowOpacity: "rowOpacity",
+  theme: "theme",
+  model: "model",
+  design: "design",
+  variant: "variant",
+  textOrientation: "textOrientation",
+  textShadowColor: "textShadowColor",
+  textShadowStrength: "textShadowStrength",
+  textRadius: "textRadius",
+  textSegmentOffset: "textSegmentOffset",
+  textBoxWidth: "textBoxWidth",
+  textBoxHeight: "textBoxHeight",
+  textAngleOffset: "textAngleOffset",
+  textAlign: "textAlign",
+  textClamp: "textClamp",
+  textMaxLines: "textMaxLines",
+  lineSpacing: "lineSpacing",
+  letterSpacing: "letterSpacing",
+  soundActive: "soundActive",
+  spinDuration: "spinDuration",
+  waitDuration: "waitDuration",
+  glow: "glow",
+  showWinner: "showWinner",
+  pointerPosition: "pointerPosition",
+  alwaysVisible: "alwaysVisible",
+  entranceAnimation: "entranceAnimation",
+  exitAnimation: "exitAnimation",
+  resultDuration: "resultDuration"
+});
+
 function trimTrailingSlash(value) {
   return String(value || "").trim().replace(/\/+$/, "");
 }
@@ -154,6 +252,71 @@ function sanitizeRelayValue(
   return result;
 }
 
+function effectiveOverlayConfiguration(overlayKey, configuration = {}) {
+  if (
+    overlayKey !== "wheel" ||
+    !Array.isArray(configuration.wheels)
+  ) {
+    return configuration;
+  }
+  const selected =
+    configuration.wheels.find(
+      (wheel) => wheel?.id === configuration.selectedWheelId
+    ) || configuration.wheels[0];
+  if (!selected) return configuration;
+  return {
+    ...configuration,
+    ...(selected.settings || {}),
+    design: selected.design || configuration.design,
+    choices: Array.isArray(selected.segments)
+      ? selected.segments.map((segment) => segment?.label || "")
+      : configuration.choices,
+    colors: Array.isArray(selected.segments)
+      ? selected.segments.map((segment) => segment?.color || "")
+      : configuration.colors
+  };
+}
+
+function createPublicOverlayConfiguration(
+  overlayKey,
+  configuration = {},
+  options = {}
+) {
+  const effective = effectiveOverlayConfiguration(
+    String(overlayKey || ""),
+    configuration && typeof configuration === "object" ? configuration : {}
+  );
+  const result = {};
+  for (const [key, parameter] of Object.entries(
+    PUBLIC_OVERLAY_CONFIG_PARAMETER_MAPPINGS
+  )) {
+    if (effective[key] === undefined || effective[key] === "") continue;
+    result[parameter] = effective[key];
+  }
+  for (const key of ["choices", "colors"]) {
+    if (!Array.isArray(effective[key])) continue;
+    result[key] = effective[key]
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean)
+      .join("|");
+  }
+  return sanitizeRelayValue(result, options);
+}
+
+function createPublicOverlayConfigurations(state, options = {}) {
+  const configurations = state?.settings?.overlayConfigs || {};
+  const result = {};
+  for (const [overlayKey, configuration] of Object.entries(configurations)) {
+    result[String(overlayKey).slice(0, 80)] =
+      createPublicOverlayConfiguration(
+        overlayKey,
+        configuration,
+        options
+      );
+  }
+  return result;
+}
+
 function createRelayState(state, options = {}) {
   const statistics = state?.statistics || {};
   return sanitizeRelayValue(
@@ -207,6 +370,8 @@ module.exports = {
   PRO_PUBLIC_OVERLAY_KEYS,
   PUBLIC_OVERLAY_PROTOCOL_VERSION,
   PUBLIC_OVERLAY_RELAY_PATH,
+  createPublicOverlayConfiguration,
+  createPublicOverlayConfigurations,
   createRelayMessage,
   createRelayState,
   publicMediaUrl,

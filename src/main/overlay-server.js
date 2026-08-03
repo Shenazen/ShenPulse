@@ -38,13 +38,25 @@ const CHANNEL_OVERLAY_VIEWS = Object.freeze({
   "session-state": STATEFUL_OVERLAY_VIEWS
 });
 
-function overlayViewAcceptsChannel(view, channel, payload = {}) {
+function overlayViewAcceptsChannel(view, channel, payload = {}, screen = 0) {
   const normalizedView = String(view || "alerts").trim().toLowerCase();
   const normalizedChannel = String(channel || "").trim().toLowerCase();
 
-  // Standalone sound and TTS actions are played by the ShenPulse renderer.
-  // They must never be duplicated by every browser source loaded in OBS.
-  if (["audio", "tts"].includes(normalizedChannel)) return false;
+  // Live audio is deliberately scoped to one numbered Media screen. The
+  // generic Alerts source and every unrelated overlay must ignore it so a
+  // single action cannot be played by every browser source loaded in OBS.
+  if (["audio", "tts"].includes(normalizedChannel)) {
+    const targetScreen = Math.min(
+      8,
+      Math.max(1, Math.round(Number(payload?.screen) || 1))
+    );
+    return (
+      normalizedView === "alerts" &&
+      Number(screen) >= 1 &&
+      Number(screen) <= 8 &&
+      Number(screen) === targetScreen
+    );
+  }
   if (["configuration", "design"].includes(normalizedChannel)) return true;
   if (normalizedChannel === "event") {
     if (["feed", "my-actions"].includes(normalizedView)) return true;
@@ -254,7 +266,16 @@ class OverlayServer {
     };
     const encoded = `event: ${channel}\ndata: ${JSON.stringify(message)}\n\n`;
     for (const client of this.sseClients) {
-      if (!overlayViewAcceptsChannel(client.view, channel, payload)) continue;
+      if (
+        !overlayViewAcceptsChannel(
+          client.view,
+          channel,
+          payload,
+          client.screen
+        )
+      ) {
+        continue;
+      }
       try {
         client.response.write(encoded);
       } catch {
@@ -350,7 +371,8 @@ class OverlayServer {
         Connection: "keep-alive"
       });
       response.write(": ShenPulse connected\n\n");
-      const client = { response, view };
+      const screen = Math.round(Number(url.searchParams.get("screen")) || 0);
+      const client = { response, view, screen };
       this.sseClients.add(client);
       request.on("close", () => this.sseClients.delete(client));
       return;

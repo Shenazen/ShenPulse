@@ -145,6 +145,7 @@ function createGuestSnapshot(snapshot = {}) {
     ...(state.settings || {}),
     account: emptyAccount(),
     admin: emptyAccount(),
+    irl: { enabled: false, devices: [] },
     tiktok: {
       username: "",
       relayUrl: "",

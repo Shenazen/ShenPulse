@@ -1,7 +1,7 @@
 {
   "name": "shenpulse",
   "productName": "ShenPulse",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "description": "Plateforme locale d'interactions pour livestreams et jeux",
   "main": "src/main/main.js",
   "author": "Alexandre Leuridan",
@@ -41,10 +41,13 @@
   "build": {
     "appId": "ShenPulse.ShenPulse",
     "productName": "ShenPulse",
+    "buildVersion": "1.0.9.1",
+    "buildNumber": "1",
     "copyright": "Copyright © 2026 ShenPulse",
     "asar": true,
     "asarUnpack": [
-      "resources/packs/**"
+      "resources/packs/**",
+      "resources/irl-python/**"
     ],
     "files": [
       "src/**/*",
@@ -60,7 +63,7 @@
       "output": "dist",
       "buildResources": "build"
     },
-    "artifactName": "ShenPulse-${version}-${arch}.${ext}",
+    "artifactName": "ShenPulse-${buildVersion}-${arch}.${ext}",
     "win": {
       "target": [
         "appx"
@@ -91,10 +94,10 @@
         "en-US"
       ],
       "showNameOnTiles": true,
-      "setBuildNumber": false
+      "setBuildNumber": true
     },
     "nsis": {
-      "artifactName": "ShenPulseSetup-${version}-${arch}.${ext}",
+      "artifactName": "ShenPulseSetup-${buildVersion}-${arch}.${ext}",
       "oneClick": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
@@ -102,7 +105,7 @@
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "ShenPulse",
-      "uninstallDisplayName": "ShenPulse ${version}",
+      "uninstallDisplayName": "ShenPulse ${buildVersion}",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true
     }

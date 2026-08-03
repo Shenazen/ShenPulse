@@ -59,6 +59,14 @@
       icon: "⌘"
     },
     {
+      id: "irl.shelly",
+      label: "Interactions IRL Shelly",
+      detail: "Association et pilotage local des prises Shelly depuis les interactions LIVE",
+      icon: "⚡",
+      defaultScope: "admin",
+      ownerOnly: true
+    },
+    {
       id: "data.management",
       label: "Gestion des données locales",
       detail: "Import, export et suppression des données de l’application",
@@ -151,7 +159,13 @@
       );
   }
 
-  function scopeFor(source, section, id, aliases = LEGACY_ALIASES) {
+  function scopeFor(
+    source,
+    section,
+    id,
+    aliases = LEGACY_ALIASES,
+    fallback = "public"
+  ) {
     const direct =
       source?.[section]?.[storageKey(id)] ?? source?.[section]?.[id];
     if (direct !== undefined) return normalizeScope(direct);
@@ -159,7 +173,7 @@
       const legacy = valueAtPath(source, path);
       if (legacy !== undefined) return normalizeScope(legacy);
     }
-    return "public";
+    return normalizeScope(fallback);
   }
 
   function canonicalizeVisibility(
@@ -184,7 +198,13 @@
         const id = String(item?.id || "").trim();
         if (!id) continue;
         result[section][storageKey(id)] = {
-          scope: scopeFor(candidate, section, id, aliases)
+          scope: scopeFor(
+            candidate,
+            section,
+            id,
+            aliases,
+            item?.defaultScope || "public"
+          )
         };
       }
     }

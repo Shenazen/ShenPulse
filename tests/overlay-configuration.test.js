@@ -73,7 +73,10 @@ test("l'aperçu de configuration se met à jour sans recharger son iframe", () =
   assert.match(previewUpdate, /contentWindow\?\.postMessage/);
   assert.doesNotMatch(previewUpdate, /frame\.src\s*=/);
   assert.match(overlayRuntime, /function updatePreviewConfiguration\(payload = \{\}\)/);
-  assert.match(overlayRuntime, /function updateOverlayConfiguration\(payload = \{\}\)/);
+  assert.match(
+    overlayRuntime,
+    /function updateOverlayConfiguration\(\s*payload = \{\}/
+  );
   assert.match(
     overlayRuntime,
     /overlayKey && overlayKey !== activeOverlayConfigKey\(\)/
@@ -93,6 +96,70 @@ test("une configuration enregistrée atteint aussi les sources déjà ouvertes",
   assert.match(
     mainIpc,
     /core\.overlayServer\.publish\("configuration",\s*\{[\s\S]*overlayKey,[\s\S]*config:/
+  );
+});
+
+test("enregistrer un overlay actualise l'URL publique affichée sans remplacer l'URL locale", () => {
+  const editorStart = renderer.indexOf("function openOverlayConfig(item)");
+  const editorEnd = renderer.indexOf(
+    "function openOverlayConfigLegacy",
+    editorStart
+  );
+  const editor = renderer.slice(editorStart, editorEnd);
+  const cardUpdateStart = renderer.indexOf(
+    "function updateOverlayCardConfigUi"
+  );
+  const cardUpdateEnd = renderer.indexOf(
+    "function previewOverlayDesignSelection",
+    cardUpdateStart
+  );
+  const cardUpdate = renderer.slice(cardUpdateStart, cardUpdateEnd);
+
+  assert.match(
+    editor,
+    /saveOverlayConfig\(item\.key, next, \{[\s\S]*rerender:\s*false,[\s\S]*updateCard:\s*true/
+  );
+  assert.match(
+    cardUpdate,
+    /\.url-field \[data-action="copy"\], \[data-action="open-url"\]/
+  );
+  assert.doesNotMatch(
+    cardUpdate,
+    /querySelectorAll\('\[data-action="copy"\], \[data-action="open-url"\]'\)/
+  );
+});
+
+test("les sources publiques utilisent une URL courte et chargent leur configuration distante", () => {
+  assert.match(renderer, /function isPublicRelayOverlayUrl\(url\)/);
+  assert.match(
+    renderer,
+    /isPublicRelayOverlayUrl\(url\)[\s\S]*!includePublicConfiguration[\s\S]*return url\.toString\(\)/
+  );
+  assert.match(
+    renderer,
+    /includePublicConfiguration:\s*true/
+  );
+  assert.match(
+    overlayRuntime,
+    /function applyRelayConfiguration\(configurations = \{\}\)/
+  );
+  assert.match(
+    overlayRuntime,
+    /applyRelayConfiguration\(relayDocument\?\.configurations\)/
+  );
+  assert.match(
+    overlayRuntime,
+    /likeGoalInitialTarget = target;\s*likeGoalTarget = target;/
+  );
+  assert.match(
+    overlayRuntime,
+    /function configurationWithoutRuntimeReset\(configuration = \{\}\)/
+  );
+  assert.match(overlayRuntime, /delete next\.current;/);
+  assert.match(overlayRuntime, /delete next\.seconds;/);
+  assert.match(
+    overlayRuntime,
+    /relayDocument\?\.state\?\.overlaySession\?\.hasData !== true/
   );
 });
 
@@ -274,7 +341,8 @@ test("le cadeau déclencheur d'une roue est exécuté par le moteur", () => {
   assert.match(core, /event\.type !== "gift"/);
   assert.match(core, /event\.data\?\.giftName/);
   assert.match(core, /event\.data\?\.giftId/);
-  assert.match(core, /wheel\.enabled !== false/);
+  assert.match(core, /wheel\?\.enabled === false/);
+  assert.match(core, /wheel\?\.giftValueFilter/);
   assert.match(core, /type:\s*"wheel\.spin"/);
   assert.match(core, /const deliveryCount = giftEventCount\(event\)/);
   assert.match(core, /index < deliveryCount/);

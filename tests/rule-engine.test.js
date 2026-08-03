@@ -48,6 +48,41 @@ test("exécute une règle et hydrate son action", async () => {
   assert.equal(actions[0].config.title, "Alice");
 });
 
+test("filtre tous les cadeaux par valeur sans imposer un cadeau précis", async () => {
+  const executions = [];
+  const rule = {
+    id: "gift_value_filter",
+    name: "Cadeaux de 500 pièces ou plus",
+    enabled: true,
+    priority: 10,
+    chance: 1,
+    trigger: { type: "gift", source: "*", threshold: 1 },
+    conditions: [
+      { field: "data.value", operator: "greaterOrEqual", value: 500 }
+    ],
+    cooldown: { globalMs: 0, perUserMs: 0 },
+    actions: [{ id: "premium_gift", type: "test", config: {} }]
+  };
+  const engine = new RuleEngine({
+    store: createStore(rule),
+    actionRunner: {
+      async run(_action, context) {
+        executions.push(context.data.value);
+      }
+    }
+  });
+
+  for (const value of [499, 500, 1200, 0]) {
+    await engine.process({
+      type: "gift",
+      user: { id: `viewer_${value}` },
+      data: { giftName: `Cadeau ${value}`, count: 1, value }
+    });
+  }
+
+  assert.deepEqual(executions, [500, 1200]);
+});
+
 test("un déclencheur message du chat ignore tous les autres événements", async () => {
   const events = [];
   const rule = {

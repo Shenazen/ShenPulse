@@ -86,6 +86,62 @@ test("les sons autonomes restent dans le lecteur ShenPulse et pas dans les overl
   assert.equal(published[0].payload.type, "audio");
 });
 
+test("un son LIVE est routé uniquement vers l'écran navigateur choisi", async () => {
+  const published = [];
+  const runner = createRunner(published);
+
+  const result = await runner.run(
+    {
+      type: "audio.play",
+      config: {
+        url: "https://cdn.example.test/live.mp3",
+        volume: 0.65,
+        outputMode: "live",
+        liveScreen: 4
+      }
+    },
+    { event: { id: "gift_live", type: "gift", data: {} } }
+  );
+
+  assert.deepEqual(result, { queued: true, output: "live", screen: 4 });
+  assert.equal(published.length, 1);
+  assert.equal(published[0].transport, "overlay");
+  assert.equal(published[0].event, "audio");
+  assert.equal(published[0].payload.screen, 4);
+  assert.match(published[0].payload.playbackId, /\S/);
+});
+
+test("un TTS LIVE est routé vers l'écran choisi sans lecture locale", async () => {
+  const published = [];
+  const runner = createRunner(published);
+
+  const result = await runner.run(
+    {
+      type: "tts.speak",
+      config: {
+        outputMode: "live",
+        liveScreen: 7,
+        voice: "Voix choisie"
+      }
+    },
+    {
+      event: {
+        id: "chat_live",
+        type: "chat",
+        user: { id: "alice" },
+        data: { message: "Bonjour le LIVE" }
+      }
+    }
+  );
+
+  assert.deepEqual(result, { queued: true, output: "live", screen: 7 });
+  assert.equal(published.length, 1);
+  assert.equal(published[0].transport, "overlay");
+  assert.equal(published[0].event, "tts");
+  assert.equal(published[0].payload.text, "Bonjour le LIVE");
+  assert.equal(published[0].payload.screen, 7);
+});
+
 test("un événement chat sans commentaire ne lance aucune lecture", async () => {
   const published = [];
   const runner = createRunner(published);

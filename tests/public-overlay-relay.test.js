@@ -65,10 +65,24 @@ test("PublicOverlayRelay authentifie l'installation puis publie état et lots", 
   );
   assert.match(relay.urls().timer, /^https:\/\/shenpulse-overlays\.web\.app/);
 
+  store.mutate((state) => {
+    Object.assign(state.settings.overlayConfigs.likeGoal, {
+      theme: "naruto",
+      title: "PING-PONG",
+      target: 2500,
+      likeGoalContentOffsetY: -25,
+      likeGoalContentScale: 200
+    });
+  });
+
   relay.publish("timer", {
     operation: "set",
     seconds: 10,
     url: "http://127.0.0.1:17654/overlay/media/sounds/click.ogg?token=x"
+  });
+  relay.publish("configuration", {
+    overlayKey: "likeGoal",
+    config: { theme: "naruto", title: "PING-PONG", target: "2500" }
   });
   await new Promise((resolve) => setTimeout(resolve, 90));
 
@@ -87,6 +101,11 @@ test("PublicOverlayRelay authentifie l'installation puis publie état et lots", 
     /^https:\/\/shenpulse-overlays\.web\.app\/media\//
   );
   assert.doesNotMatch(JSON.stringify(batch), /token=x/);
+  assert.equal(batch.configurations.likeGoal.theme, "naruto");
+  assert.equal(batch.configurations.likeGoal.title, "PING-PONG");
+  assert.equal(batch.configurations.likeGoal.target, 2500);
+  assert.equal(batch.configurations.likeGoal.contentY, -25);
+  assert.equal(batch.configurations.likeGoal.contentScale, 200);
 
   await relay.stop();
   assert.equal(relay.status().status, "stopped");

@@ -216,6 +216,18 @@ test("chaque source OBS ne reçoit que les canaux qui lui appartiennent", () => 
   assert.equal(overlayViewAcceptsChannel("win-counter", "audio"), false);
   assert.equal(overlayViewAcceptsChannel("like-goal", "tts"), false);
   assert.equal(
+    overlayViewAcceptsChannel("alerts", "audio", { screen: 3 }, 3),
+    true
+  );
+  assert.equal(
+    overlayViewAcceptsChannel("alerts", "tts", { screen: 3 }, 2),
+    false
+  );
+  assert.equal(
+    overlayViewAcceptsChannel("alerts", "audio", { screen: 3 }),
+    false
+  );
+  assert.equal(
     overlayViewAcceptsChannel("coin-jar", "event", { type: "gift" }),
     true
   );

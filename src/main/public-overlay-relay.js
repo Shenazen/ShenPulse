@@ -7,6 +7,7 @@ const {
   DEFAULT_FIREBASE_DATABASE_URL,
   DEFAULT_PUBLIC_OVERLAY_BASE_URL,
   PUBLIC_OVERLAY_PROTOCOL_VERSION,
+  createPublicOverlayConfigurations,
   createRelayMessage,
   createRelayState,
   publicOverlayUrls,
@@ -208,10 +209,15 @@ class PublicOverlayRelay extends EventEmitter {
     const state = createRelayState(this.store.getState(), {
       baseUrl: this.configuration().publicBaseUrl
     });
+    const configurations = createPublicOverlayConfigurations(
+      this.store.getState(),
+      { baseUrl: this.configuration().publicBaseUrl }
+    );
     await this.#write({
       ownerUid: this.configuration().uid,
       protocolVersion: PUBLIC_OVERLAY_PROTOCOL_VERSION,
       state,
+      configurations,
       presence: this.#presence(true)
     });
     if (!this.running) return;
@@ -419,6 +425,9 @@ class PublicOverlayRelay extends EventEmitter {
     const id = `${Date.now().toString(36)}-${(++this.batchSequence).toString(
       36
     )}-${crypto.randomBytes(5).toString("base64url")}`;
+    const includesConfiguration = messages.some(
+      (message) => message?.channel === "configuration"
+    );
     try {
       await this.#write({
         lastBatch: {
@@ -426,6 +435,14 @@ class PublicOverlayRelay extends EventEmitter {
           createdAt: new Date().toISOString(),
           messages
         },
+        ...(includesConfiguration
+          ? {
+              configurations: createPublicOverlayConfigurations(
+                this.store.getState(),
+                { baseUrl: this.configuration().publicBaseUrl }
+              )
+            }
+          : {}),
         presence: this.#presence(true)
       });
     } catch (error) {

@@ -1,6 +1,7 @@
 "use strict";
 
 const { spawn } = require("node:child_process");
+const { randomUUID } = require("node:crypto");
 const { shell } = require("electron");
 const { clamp, safeString } = require("./utils");
 const { renderValue } = require("./template");
@@ -90,6 +91,7 @@ class ActionRunner {
     obsClient,
     sourceHub,
     spotifyService,
+    shellyService,
     notifyRenderer,
     onOverlayOperation = () => {},
     setTimeoutImpl = setTimeout,
@@ -101,6 +103,7 @@ class ActionRunner {
     this.obsClient = obsClient;
     this.sourceHub = sourceHub;
     this.spotifyService = spotifyService;
+    this.shellyService = shellyService;
     this.notifyRenderer = notifyRenderer;
     this.onOverlayOperation = onOverlayOperation;
     this.setTimeoutImpl = setTimeoutImpl;
@@ -225,8 +228,14 @@ class ActionRunner {
         const payload = {
           ...this.store.getState().settings.tts,
           ...config,
-          text
+          text,
+          playbackId: randomUUID(),
+          screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };
+        if (config.outputMode === "live") {
+          this.overlayServer.publish("tts", payload);
+          return { queued: true, output: "live", screen: payload.screen };
+        }
         this.notifyRenderer("playback", { type: "tts", ...payload });
         return { queued: true };
       }
@@ -234,8 +243,14 @@ class ActionRunner {
         const payload = {
           url: this.#localMediaUrl(config.url),
           volume: clamp(config.volume ?? 1, 0, 1),
-          previewScope: safeString(config.previewScope || "", 40)
+          previewScope: safeString(config.previewScope || "", 40),
+          playbackId: randomUUID(),
+          screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };
+        if (config.outputMode === "live") {
+          this.overlayServer.publish("audio", payload);
+          return { queued: true, output: "live", screen: payload.screen };
+        }
         this.notifyRenderer("playback", { type: "audio", ...payload });
         return { queued: true };
       }
@@ -547,6 +562,13 @@ class ActionRunner {
         });
       case "spotify.queue":
         return this.#spotify(config);
+      case "irl.shelly":
+        if (!this.shellyService) {
+          throw new Error("Service Interactions IRL indisponible.");
+        }
+        return this.shellyService.control(config, {
+          ignoreGlobalSwitch: context?.source === "manual-preview"
+        });
       case "system.keys":
         return this.#sendKeys(config);
       case "system.open":
