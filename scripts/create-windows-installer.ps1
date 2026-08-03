@@ -3,10 +3,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $packageJsonPath = Join-Path $projectRoot 'package.json'
 $packageJson = Get-Content -LiteralPath $packageJsonPath -Raw | ConvertFrom-Json
-$version = [string]$packageJson.build.buildVersion
-if ([string]::IsNullOrWhiteSpace($version)) {
-    $version = [string]$packageJson.version
-}
+$version = [string]$packageJson.version
 if ([string]::IsNullOrWhiteSpace($version)) {
     throw "Version de package absente : $packageJsonPath"
 }

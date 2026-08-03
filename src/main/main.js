@@ -23,7 +23,6 @@ const {
 } = require("./interaction-audit-plan");
 const { registerIpc } = require("./ipc");
 const { StateStore } = require("./store");
-const packageMetadata = require("../../package.json");
 const {
   shouldSuppressRendererChannel,
   snapshotForRenderer
@@ -39,7 +38,7 @@ let activeInteractionAudit = null;
 let quitting = false;
 
 function getApplicationVersion() {
-  return String(packageMetadata.build?.buildVersion || app.getVersion()).trim();
+  return String(app.getVersion()).trim();
 }
 
 const gotLock = app.requestSingleInstanceLock();

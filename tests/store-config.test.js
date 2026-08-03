@@ -11,9 +11,9 @@ const packageJson = JSON.parse(
 
 test("embarque l'identité Microsoft Store réservée", () => {
   assert.equal(packageJson.version, "1.0.9");
-  assert.equal(packageJson.build.buildVersion, "1.0.9.1");
-  assert.equal(packageJson.build.buildNumber, "1");
-  assert.equal(packageJson.build.appx.setBuildNumber, true);
+  assert.equal(packageJson.build.buildVersion, undefined);
+  assert.equal(packageJson.build.buildNumber, undefined);
+  assert.equal(packageJson.build.appx.setBuildNumber, false);
   assert.equal(packageJson.productName, "ShenPulse");
   assert.equal(packageJson.build.appx.identityName, "ShenPulse.ShenPulse");
   assert.equal(
@@ -38,7 +38,7 @@ test("fabrique un véritable installateur Windows versionné", () => {
   assert.equal(packageJson.build.nsis.allowToChangeInstallationDirectory, true);
   assert.equal(
     packageJson.build.nsis.artifactName,
-    "ShenPulseSetup-${buildVersion}-${arch}.${ext}"
+    "ShenPulseSetup-${version}-${arch}.${ext}"
   );
   const installerScript = fs.readFileSync(
     path.join(__dirname, "..", "scripts", "create-windows-installer.ps1"),

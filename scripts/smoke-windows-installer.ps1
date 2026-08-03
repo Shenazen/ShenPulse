@@ -3,10 +3,8 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $packageJson = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw |
     ConvertFrom-Json
-$version = [string]$packageJson.build.buildVersion
-if ([string]::IsNullOrWhiteSpace($version)) {
-    $version = [string]$packageJson.version
-}
+$version = [string]$packageJson.version
+$expectedWindowsVersion = if (($version -split '\.').Count -eq 3) { "$version.0" } else { $version }
 $installerPath = Join-Path $projectRoot "dist\ShenPulseSetup-$version-x64.exe"
 if (-not (Test-Path -LiteralPath $installerPath)) {
     throw "Installateur introuvable : $installerPath"
@@ -65,8 +63,8 @@ try {
     }
 
     $installedVersion = (Get-Item -LiteralPath $installedExecutable).VersionInfo.ProductVersion
-    if ($installedVersion -ne $version) {
-        throw "Version installée inattendue : $installedVersion au lieu de $version."
+    if ($installedVersion -ne $expectedWindowsVersion) {
+        throw "Version installée inattendue : $installedVersion au lieu de $expectedWindowsVersion."
     }
 
     Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue

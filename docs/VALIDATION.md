@@ -10,13 +10,13 @@ electron-builder 26.15.3, Windows SDK 10.0.26100.0.
 - 414 tests réussis, 0 échec ;
 - compilation Vite des jeux réussie ;
 - installation silencieuse de l’installeur NSIS dans un dossier isolé réussie ;
-- lancement du binaire installé 1.0.9.1 réussi ;
+- lancement du binaire installé 1.0.9 réussi ;
 - présence puis exécution du désinstalleur validées ;
 - création AppX réussie par electron-builder ;
-- identité `ShenPulse.ShenPulse`, version `1.0.9.1`, éditeur Store et architecture x64 contrôlés dans le manifeste ;
+- identité `ShenPulse.ShenPulse`, version technique `1.0.9.0`, éditeur Store et architecture x64 contrôlés dans le manifeste ;
 - AppXUpload ouvert et contenu contrôlé ;
 - le site public passe ses 17 contrôles de build et de routes ;
-- le téléchargement public 1.0.9.1 répond en HTTP 200 avec la taille attendue ;
+- le téléchargement public 1.0.9 répond en HTTP 200 avec la taille attendue ;
 - les overlays publics ont été validés puis publiés sur Firebase Hosting.
 
 ## Paiements de production
@@ -33,17 +33,17 @@ electron-builder 26.15.3, Windows SDK 10.0.26100.0.
 
 | Fichier | Taille | SHA-256 |
 |---|---:|---|
-| `ShenPulseSetup-1.0.9.1-x64.exe` | 502 718 928 octets | `43A3D72C3DA7A9C2A53C40EDE5E286A983752D36F965046A22D3F9B919D538ED` |
-| `ShenPulseSetup-1.0.9.1.exe` | 502 718 928 octets | `43A3D72C3DA7A9C2A53C40EDE5E286A983752D36F965046A22D3F9B919D538ED` |
-| `ShenPulse-1.0.9.1-x64.appx` | 553 917 687 octets | `B9E8AC2814B551EACF131DC321ECF7A2F01E46903294801F21D08C68472C3E1D` |
-| `ShenPulse-1.0.9.1-x64.appxupload` | 553 761 721 octets | `DAD31FFE53503584A3EE711184156B47CA63A45292B1FE00119DC229F4728EBC` |
+| `ShenPulseSetup-1.0.9-x64.exe` | 502 717 588 octets | `2BBB26543C8A723A68F8841CFF8111DEE375937F7B6BBAA42D27137545ED00C2` |
+| `ShenPulseSetup-1.0.9.exe` | 502 717 588 octets | `2BBB26543C8A723A68F8841CFF8111DEE375937F7B6BBAA42D27137545ED00C2` |
+| `ShenPulse-1.0.9-x64.appx` | 553 917 649 octets | `BF9675F6CE40D113EAF1162C12B22A12B42AFB9E78C849F9F42A58F01A68CCF2` |
+| `ShenPulse-1.0.9-x64.appxupload` | 553 761 445 octets | `44AB49E3A6DD25022ABC16A283580B821269D8FD80C93AA2B4436BE2103FED10` |
 
 Le fichier sans suffixe d’architecture est une copie binaire identique destinée
 au chemin de téléchargement public du site.
 
-Le site public pointe sur la 1.0.9.1 et le téléchargement répond en HTTP 200 avec
-une taille de 502 718 928 octets. Le déploiement conserve la 1.0.8.1 afin de ne
-pas casser un ancien lien direct.
+Le site public pointe sur la 1.0.9 et le téléchargement répond en HTTP 200 avec
+une taille de 502 717 588 octets. Les anciens fichiers restent disponibles afin
+de ne pas casser un ancien lien direct.
 
 Le package Store est volontairement non signé. Partner Center signe les packages
 AppX/MSIX après certification. Une signature de test est uniquement nécessaire
@@ -58,7 +58,7 @@ active avec droits administrateur. Exécuter :
 ```powershell
 appcert.exe reset
 appcert.exe test `
-  -appxpackagepath "C:\chemin\ShenPulse-1.0.9.1-x64.appx" `
+  -appxpackagepath "C:\chemin\ShenPulse-1.0.9-x64.appx" `
   -reportoutputpath "C:\chemin\ShenPulse-WACK.xml"
 ```
 
