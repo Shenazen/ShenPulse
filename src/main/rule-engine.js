@@ -269,7 +269,11 @@ class RuleEngine extends EventEmitter {
         event: executionEvent,
         jobId: job.id
       });
-      for (const action of job.rule.actions || []) {
+      const actions = selectRuleActions(
+        job.rule,
+        this.store.getState().rules
+      );
+      for (const action of actions) {
         const hydratedAction = {
           ...action,
           config: renderValue(action.config || {}, context)
@@ -298,6 +302,46 @@ class RuleEngine extends EventEmitter {
       }
     }
   }
+}
+
+function selectRuleActions(rule, rules, random = Math.random) {
+  const selection = rule?.actionSelection;
+  if (!selection || !Array.isArray(selection.actionIds)) {
+    return Array.isArray(rule?.actions) ? rule.actions : [];
+  }
+
+  const actionIds = [
+    ...new Set(selection.actionIds.map(String).filter(Boolean))
+  ];
+  const actionsById = new Map(
+    (Array.isArray(rules) ? rules : [])
+      .flatMap((entry) => entry.actions || [])
+      .filter((action) => action?.id)
+      .map((action) => [String(action.id), action])
+  );
+  const selected = actionIds
+    .map((actionId) => actionsById.get(actionId))
+    .filter(Boolean);
+  if (selection.mode !== "random" || selected.length < 2) {
+    return selected;
+  }
+
+  const shuffled = [...selected];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.min(
+      index,
+      Math.max(0, Math.floor(Number(random()) * (index + 1)))
+    );
+    [shuffled[index], shuffled[randomIndex]] = [
+      shuffled[randomIndex],
+      shuffled[index]
+    ];
+  }
+  const count = Math.min(
+    shuffled.length,
+    Math.max(1, Math.floor(Number(selection.randomCount) || 1))
+  );
+  return shuffled.slice(0, count);
 }
 
 function giftEventCount(event = {}) {
@@ -390,5 +434,6 @@ module.exports = {
   giftExecutionEvent,
   interactionEventCount,
   interactionExecutionEvent,
-  likeEventCount
+  likeEventCount,
+  selectRuleActions
 };

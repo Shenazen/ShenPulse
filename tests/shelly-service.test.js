@@ -8,7 +8,9 @@ const { createDefaultState } = require("../src/main/defaults");
 const { ActionRunner } = require("../src/main/action-runner");
 const {
   ShellyService,
+  hostsFromArpOutput,
   hostsFromMdnsRecords,
+  isPlugPlusDevice,
   normalizeHost
 } = require("../src/main/shelly-service");
 
@@ -388,6 +390,140 @@ test("détecte les prises mDNS et les points d’accès Shelly sans cloud", asyn
   assert.equal(result.devices[0].controllable, true);
 });
 
+test("retrouve une prise PlugPlus absente du mDNS grâce à la table réseau Windows", async () => {
+  const store = ownerStore();
+  const commandRunner = async (command, args) => {
+    if (command === "arp.exe") {
+      return [
+        "Interface : 192.168.1.65 --- 0x1f",
+        "  Adresse Internet      Adresse physique      Type",
+        "  192.168.1.82          e4-65-b8-f1-80-10     dynamique",
+        "  192.168.1.141         fc-b4-67-0d-9f-00     dynamique"
+      ].join("\r\n");
+    }
+    if (args.includes("interfaces")) {
+      return "    SSID                   : StudioWifi\r\n";
+    }
+    return "SSID 1 : StudioWifi";
+  };
+  const service = new ShellyService({
+    store,
+    platform: "win32",
+    commandRunner,
+    mdnsDiscoverer: async () => [],
+    fetchImpl: async (url) => {
+      if (url === "http://192.168.1.141/shelly") {
+        return jsonResponse({
+          id: "shellyplusplugs-fcb4670d9f00",
+          model: "SNPL-00112EU",
+          app: "PlusPlugS",
+          gen: 2
+        });
+      }
+      if (url === "http://192.168.1.82/shelly") {
+        return jsonResponse({
+          id: "shellyplus1pm-e465b8f18010",
+          model: "SNSW-001P16EU",
+          app: "Plus1PM",
+          gen: 2
+        });
+      }
+      if (url.endsWith("/rpc/Shelly.GetStatus")) {
+        return jsonResponse({ "switch:0": { output: false } });
+      }
+      throw new Error(`Requête inattendue : ${url}`);
+    }
+  });
+
+  const result = await service.scan();
+
+  assert.deepEqual(result.devices.map((device) => device.id), [
+    "shellyplusplugs-fcb4670d9f00"
+  ]);
+  assert.equal(result.devices[0].host, "192.168.1.141");
+  assert.equal(result.devices[0].online, true);
+});
+
+test("mémorise le nom personnalisé même après retrait et nouvelle détection", async () => {
+  const deviceId = "shellyplusplugs-fcb4670d9f00";
+  const store = ownerStore({
+    devices: [
+      {
+        id: deviceId,
+        name: "PlusPlugS",
+        host: "192.168.1.141",
+        generation: 2,
+        model: "SNPL-00112EU",
+        channel: 0
+      }
+    ]
+  });
+  const service = new ShellyService({
+    store,
+    platform: "win32",
+    commandRunner: async (command, args) => {
+      if (command === "arp.exe") {
+        return "  192.168.1.141         fc-b4-67-0d-9f-00     dynamique";
+      }
+      if (args.includes("interfaces")) return "SSID : StudioWifi";
+      return "SSID 1 : StudioWifi";
+    },
+    mdnsDiscoverer: async () => [],
+    fetchImpl: async (url) => {
+      if (url.endsWith("/shelly")) {
+        return jsonResponse({
+          id: deviceId,
+          model: "SNPL-00112EU",
+          app: "PlusPlugS",
+          gen: 2
+        });
+      }
+      return jsonResponse({ "switch:0": { output: false } });
+    }
+  });
+
+  service.renameDevice(deviceId, "Machine à fumée");
+  service.removeDevice(deviceId);
+  const result = await service.scan();
+
+  assert.equal(result.devices[0].name, "Machine à fumée");
+  assert.equal(store.state.settings.irl.deviceNames[deviceId], "Machine à fumée");
+});
+
+test("reconnaît uniquement la famille de prises PlugPlus", () => {
+  assert.equal(
+    isPlugPlusDevice({
+      id: "shellyplusplugs-fcb4670d9f00",
+      model: "SNPL-00112EU"
+    }),
+    true
+  );
+  assert.equal(
+    isPlugPlusDevice({
+      id: "shellyplus1pm-e465b8f18010",
+      model: "SNSW-001P16EU"
+    }),
+    false
+  );
+  assert.equal(
+    isPlugPlusDevice({
+      id: "shellypro3em-a0dd6ca0d230",
+      model: "SPEM-003CEBEU"
+    }),
+    false
+  );
+});
+
+test("extrait seulement les voisins locaux utilisables de la table ARP", () => {
+  const output = [
+    "Interface : 192.168.1.65 --- 0x1f",
+    "  192.168.1.141         fc-b4-67-0d-9f-00     dynamique",
+    "  192.168.1.255         ff-ff-ff-ff-ff-ff     statique",
+    "  224.0.0.251           01-00-5e-00-00-fb     statique"
+  ].join("\r\n");
+  assert.deepEqual(hostsFromArpOutput(output), ["192.168.1.141"]);
+});
+
 test("limite les commandes Shelly au réseau local", () => {
   assert.equal(normalizeHost("192.168.1.20"), "192.168.1.20");
   assert.equal(normalizeHost("shellyplusplug-aabbcc.local"), "shellyplusplug-aabbcc.local");
@@ -437,6 +573,9 @@ test("raccorde l’onglet, l’action et les IPC IRL au seul espace propriétair
 
   assert.match(renderer, /id: "irl"[\s\S]*ownerOnly: true/);
   assert.match(renderer, /function renderIrl\(/);
+  assert.match(renderer, /function isPlugPlusIrlDevice\(/);
+  assert.match(renderer, /irl\.devices\.filter\(isPlugPlusIrlDevice\)/);
+  assert.match(renderer, /Mes prises PlugPlus/);
   assert.ok(
     renderer.indexOf("irl-actions-panel") <
       renderer.indexOf('class="studio-panel panel-cyan irl-devices-panel"')
@@ -457,7 +596,7 @@ test("raccorde l’onglet, l’action et les IPC IRL au seul espace propriétair
   assert.match(renderer, /Mesure uniquement · aucun relais/);
   assert.match(renderer, /\["pulse", "Allumer puis éteindre"\]/);
   assert.match(renderer, /1000 ms = 1 seconde/);
-  assert.match(renderer, /"irl\.shelly": "Prise Shelly"/);
+  assert.match(renderer, /"irl\.shelly": "Prise PlugPlus"/);
   assert.match(renderer, /defaultScope: id === "irl\.shelly" \? "admin"/);
   assert.match(preload, /pair: \(options\) => invoke\("irl:pair"/);
   assert.match(runner, /case "irl\.shelly"/);

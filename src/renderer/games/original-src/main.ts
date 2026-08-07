@@ -78,7 +78,7 @@ async function boot() {
     api.on('live-event', (event) => handleLiveEvent(gameId, event))
     api.on('game-effect', (payload) => {
       if (payload?.packId !== gameId) return
-      handleGameEffect(gameId, String(payload?.effectId || ''))
+      handleGameEffect(gameId, payload)
     })
     api.on('state-changed', (payload) => {
       const updatedSettings = payload?.state?.game?.connectorOverrides?.[gameId]
@@ -166,7 +166,8 @@ function handleLiveEvent(id: GameId, event: any) {
   })
 }
 
-function handleGameEffect(id: GameId, effectId: string) {
+function handleGameEffect(id: GameId, payload: any) {
+  const effectId = String(payload?.effectId || payload || '')
   if (id === 'coin-pusher') {
     if (effectId === 'reinitialiser-la-manche') {
       pushCoinPusherRoundCommand('reset')
@@ -175,13 +176,20 @@ function handleGameEffect(id: GameId, effectId: string) {
     if (effectId === 'ralentir-le-poussoir') {
       const current = loadCoinPusherSettings()
       saveCoinPusherSettings({ pusherSpeed: Math.max(0.35, current.pusherSpeed * 0.65) })
-      window.setTimeout(() => saveCoinPusherSettings({ pusherSpeed: current.pusherSpeed }), 12_000)
+      const durationSeconds = Math.max(
+        1,
+        Math.min(120, Number(payload?.duration || payload?.parameters?.durationSeconds || 12)),
+      )
+      window.setTimeout(
+        () => saveCoinPusherSettings({ pusherSpeed: current.pusherSpeed }),
+        durationSeconds * 1_000,
+      )
       return
     }
     const count = effectId === 'pluie-de-pieces'
-      ? 20
+      ? Math.max(1, Math.min(500, Number(payload?.quantity || 20)))
       : effectId === 'piece-mystere'
-        ? 5
+        ? Math.max(1, Math.min(500, Number(payload?.quantity || 5)))
         : 1
     pushManualCoinDrop(count, effectId)
     return

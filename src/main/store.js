@@ -692,7 +692,7 @@ class StateStore {
       const index = entries.findIndex((entry) => entry.id === copy.id);
       if (index >= 0) entries[index] = { ...entries[index], ...copy };
       else entries.push(copy);
-    });
+    }, true);
   }
 
   removeGameInteraction(packId, ruleId) {
@@ -705,7 +705,7 @@ class StateStore {
       state.game.interactionRulesByPack[targetPackId] = entries.filter(
         (entry) => entry.id !== targetRuleId
       );
-    });
+    }, true);
   }
 
   remove(collection, itemId) {
@@ -1439,11 +1439,15 @@ function normalizeRules(rules) {
   if (!Array.isArray(rules)) return [];
   return clone(rules).map((rule) => {
     const actions = Array.isArray(rule.actions) ? rule.actions : [];
+    const actionSelection = normalizeRuleActionSelection(
+      rule.actionSelection
+    );
     const isTtsOnly =
       actions.length > 0 &&
       actions.every((action) => action?.type === "tts.speak");
     return {
       ...rule,
+      ...(actionSelection ? { actionSelection } : {}),
       trigger: isTtsOnly
         ? {
             ...(rule.trigger || {}),
@@ -1466,8 +1470,34 @@ function normalizeRules(rules) {
   });
 }
 
+function normalizeRuleActionSelection(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const actionIds = [
+    ...new Set(
+      (Array.isArray(value.actionIds) ? value.actionIds : [])
+        .map(String)
+        .filter(Boolean)
+    )
+  ];
+  const mode = value.mode === "random" ? "random" : "all";
+  return {
+    mode,
+    actionIds,
+    randomCount:
+      mode === "random"
+        ? Math.min(
+            Math.max(1, actionIds.length),
+            Math.max(1, Math.floor(Number(value.randomCount) || 1))
+          )
+        : actionIds.length
+  };
+}
+
 module.exports = {
   StateStore,
+  normalizeRuleActionSelection,
   normalizeRules,
   normalizeWheelSegmentActions
 };

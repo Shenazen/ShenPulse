@@ -2,7 +2,10 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { RuleEngine } = require("../src/main/rule-engine");
+const {
+  RuleEngine,
+  selectRuleActions
+} = require("../src/main/rule-engine");
 
 function createStore(rule) {
   return {
@@ -46,6 +49,92 @@ test("exécute une règle et hydrate son action", async () => {
   });
   assert.equal(actions.length, 1);
   assert.equal(actions[0].config.title, "Alice");
+});
+
+test("un déclencheur réutilise plusieurs actions existantes", async () => {
+  const calls = [];
+  const trigger = {
+    id: "trigger_group",
+    name: "Groupe cadeau",
+    enabled: true,
+    priority: 10,
+    chance: 1,
+    trigger: { enabled: true, type: "gift", source: "*", threshold: 1 },
+    conditions: [],
+    cooldown: { globalMs: 0, perUserMs: 0 },
+    actions: [],
+    actionSelection: {
+      mode: "all",
+      actionIds: ["action_first", "action_second"],
+      randomCount: 2
+    }
+  };
+  const rules = [
+    trigger,
+    {
+      id: "owner_first",
+      enabled: false,
+      trigger: { enabled: false },
+      actions: [{ id: "action_first", type: "test", config: {} }]
+    },
+    {
+      id: "owner_second",
+      enabled: false,
+      trigger: { enabled: false },
+      actions: [{ id: "action_second", type: "test", config: {} }]
+    }
+  ];
+  const engine = new RuleEngine({
+    store: {
+      getState() {
+        return {
+          session: { profileId: "p" },
+          profiles: [{ id: "p", enabledRuleIds: [trigger.id] }],
+          rules
+        };
+      }
+    },
+    actionRunner: {
+      async run(action) {
+        calls.push(action.id);
+      }
+    }
+  });
+
+  await engine.process({
+    type: "gift",
+    source: "demo",
+    user: { id: "viewer" },
+    data: { giftName: "Rose", count: 1 }
+  });
+
+  assert.deepEqual(calls, ["action_first", "action_second"]);
+});
+
+test("le mode aléatoire tire exactement le nombre obligatoire sans doublon", () => {
+  const rules = Array.from({ length: 5 }, (_value, index) => ({
+    id: `owner_${index + 1}`,
+    actions: [
+      { id: `action_${index + 1}`, type: "test", config: {} }
+    ]
+  }));
+  const selected = selectRuleActions(
+    {
+      actionSelection: {
+        mode: "random",
+        actionIds: rules.map((rule) => rule.actions[0].id),
+        randomCount: 3
+      }
+    },
+    rules,
+    () => 0.25
+  );
+
+  assert.equal(selected.length, 3);
+  assert.equal(new Set(selected.map((action) => action.id)).size, 3);
+  assert.ok(
+    selected.every((action) => /^action_[1-5]$/.test(action.id))
+  );
 });
 
 test("filtre tous les cadeaux par valeur sans imposer un cadeau précis", async () => {

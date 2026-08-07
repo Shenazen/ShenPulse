@@ -89,7 +89,19 @@ test("les jeux intégrés ont leurs réglages et leur fenêtre de jeu dédiée",
   assert.match(gameHost, /function renderDeal/);
 });
 
-test("Coin Pusher et DealOrNoDeal exposent tous leurs réglages historiques", () => {
+test("Coin Pusher retrouve ses deux cartes de design et l’import local de photos", () => {
+  assert.match(renderer, /coin-pusher-theme-selector/);
+  assert.match(renderer, /SECOND MODÈLE/);
+  assert.match(renderer, /Palais galactique/);
+  assert.match(renderer, /data-coin-pusher-artwork-file/);
+  assert.match(renderer, /function optimizeCoinPusherArtwork/);
+  assert.match(renderer, /canvas\.toDataURL\("image\/webp"/);
+  assert.match(renderer, /Importer une photo/);
+  assert.match(rendererCss, /\.coin-pusher-theme-choice--galactic-palace/);
+  assert.match(rendererCss, /\.coin-pusher-artwork-grid/);
+});
+
+test("Coin Pusher présente son barème cadeau et ses bonus dans l’étape Interactions", () => {
   for (const field of [
     "guardGiftDurationSeconds",
     "mysterySpawnChance",
@@ -97,12 +109,24 @@ test("Coin Pusher et DealOrNoDeal exposent tous leurs réglages historiques", ()
     "mysteryCoinRainMax",
     "mysteryMultiplierDurationSeconds",
     "ticketsCountPerGift",
-    "diamondCoinTiers",
+    "coinPusherTierDiamonds",
+    "coinPusherTierCoinCount",
+    "coinPusherGiftRuleName",
+    "coinPusherGiftRuleCoinCount",
     "winnerPrizePercents",
-    "giftRules"
+    "data-coin-pusher-interactions"
   ]) {
     assert.match(renderer, new RegExp(field));
   }
+  assert.match(renderer, /Valeur du cadeau → nombre de pièces/);
+  assert.match(renderer, /Exceptions par cadeau précis/);
+  assert.match(renderer, /ACTIONS ÉVÉNEMENTIELLES/);
+  assert.match(rendererCss, /\.coin-pusher-reward-layout/);
+  assert.match(rendererCss, /\.coin-pusher-gift-rule-row/);
+  assert.match(rendererCss, /\.coin-pusher-special-grid/);
+});
+
+test("DealOrNoDeal expose tous ses réglages historiques", () => {
   for (const field of [
     "bankerRequestCount",
     "spendPremiumEntryCost",
@@ -122,7 +146,6 @@ test("Coin Pusher et DealOrNoDeal exposent tous leurs réglages historiques", ()
   assert.match(renderer, /api\.on\("deal-host-state"/);
   assert.match(renderer, /function canUseDealCheatSettings/);
   assert.match(rendererCss, /#deal-settings-cheat:checked/);
-  assert.match(rendererCss, /\[data-integrated-panel="bonus"\]/);
   assert.match(rendererCss, /\.deal-private-box-grid/);
   assert.match(rendererCss, /\.integrated-box-values-grid/);
   assert.match(rendererCss, /grid-template-columns:\s*minmax\(215px,\s*245px\)/);

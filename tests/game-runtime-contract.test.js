@@ -19,10 +19,33 @@ const {
   stageGtaEnhancedSave
 } = require("../src/main/game-runtime");
 const {
+  sanitizeGameConfiguration,
   sanitizeDealOrNoDealHostState
 } = require("../src/main/ipc");
 
 const root = path.join(__dirname, "..");
+
+test("conserve les photos locales optimisées du Coin Pusher dans la configuration", () => {
+  const artwork = `data:image/webp;base64,${"A".repeat(60000)}`;
+  const sanitized = sanitizeGameConfiguration("coin-pusher", {
+    platformImageUrl: artwork,
+    plinkoImageUrl: "https://cdn.example.test/plinko.webp",
+    theme: "galactic-palace"
+  });
+
+  assert.equal(sanitized.platformImageUrl, artwork);
+  assert.equal(
+    sanitized.plinkoImageUrl,
+    "https://cdn.example.test/plinko.webp"
+  );
+  assert.equal(sanitized.theme, "galactic-palace");
+  assert.equal(
+    sanitizeGameConfiguration("coin-pusher", {
+      platformImageUrl: "javascript:alert(1)"
+    }).platformImageUrl,
+    ""
+  );
+});
 
 test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
   assert.deepEqual(

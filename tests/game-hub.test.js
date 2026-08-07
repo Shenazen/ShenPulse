@@ -188,6 +188,56 @@ test("initialise une seule fois les interactions GTA prévues pour le profil", (
   assert.equal(interactions.length, 30);
 });
 
+test("initialise les six actions Coin Pusher en mode manuel sans doubler les cadeaux LIVE", () => {
+  const state = {
+    session: { activeGamePackId: "coin-pusher" },
+    commerce: {
+      subscription: {
+        tier: "pro",
+        source: "subscription",
+        status: "active"
+      },
+      gameEntitlements: ["coin-pusher"]
+    },
+    game: {
+      recentPacks: [],
+      interactionCatalogVersions: {},
+      interactionRulesByPack: {}
+    },
+    rules: []
+  };
+  const store = {
+    getState: () => state,
+    mutate: (callback) => callback(state)
+  };
+  const resourcesDirectory = path.join(__dirname, "..", "resources");
+  const hub = new GameHub({
+    store,
+    resourcesDirectory,
+    packsDirectory: path.join(resourcesDirectory, "packs")
+  });
+  hub.loadPacks();
+
+  const pack = hub.listPacks().find((entry) => entry.id === "coin-pusher");
+  assert.equal(pack.effects.length, 6);
+  assert.equal(
+    pack.effects.find((effect) => effect.id === "pluie-de-pieces")
+      .quantityParameter,
+    "coinCount"
+  );
+  assert.equal(hub.initializeDefaultInteractions("coin-pusher").added, 6);
+  const interactions = state.game.interactionRulesByPack["coin-pusher"];
+  assert.equal(interactions.length, 6);
+  assert.ok(interactions.every((rule) => rule.trigger.enabled === false));
+  assert.ok(
+    interactions.some(
+      (rule) =>
+        rule.actions[0]?.config?.effectId === "pluie-de-pieces" &&
+        rule.actions[0]?.config?.parameters?.coinCount === 20
+    )
+  );
+});
+
 test("initialise les associations TikTok Bedrock Box et SandBox", () => {
   const state = {
     session: { activeGamePackId: "minecraft-bedrock-box" },

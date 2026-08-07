@@ -950,11 +950,14 @@ class ShenPulseCore extends EventEmitter {
       }
       this.#changed(true);
     });
-    this.gameHub.on("effect-start", ({ pack, effect, context }) => {
+    this.gameHub.on("effect-start", ({ pack, effect, payload: effectPayload, context }) => {
       const payload = {
         packId: pack.id,
         effectName: effect.name,
         effectId: effect.id,
+        quantity: Math.max(1, Number(effectPayload?.effect?.quantity || 1)),
+        duration: Math.max(0, Number(effectPayload?.effect?.duration || 0)),
+        parameters: { ...(effectPayload?.effect?.parameters || {}) },
         viewer: context.user?.displayName || "Viewer",
         status: "running"
       };

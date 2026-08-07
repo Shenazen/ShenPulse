@@ -84,6 +84,8 @@ let confirmationResolver = null;
 let actionsSearch = "";
 let actionsSection = "actions";
 let onlyEnabledActions = false;
+const COPIED_MEDIA_SCREEN_URLS_KEY = "shenpulse.copiedMediaScreenUrls";
+let copiedMediaScreenUrls = readCopiedMediaScreenUrls();
 let simulatorType = "gift";
 let overlaySearch = "";
 let overlayCategory = "all";
@@ -97,6 +99,8 @@ let gamePageMode = "catalog";
 let gameWorkspaceStep = "installation";
 let gameEffectSearch = "";
 let gameEffectCategory = "all";
+let gameInteractionEditorContext = null;
+let gameInteractionCatalogContext = null;
 let gameInstallProgress = null;
 let gameInstallBusyId = "";
 let gameLaunchProgress = null;
@@ -104,6 +108,11 @@ let gameLaunchBusyId = "";
 let dealOrNoDealHostState = null;
 const integratedSettingsPanels = new Map();
 const gamePageMessages = new Map();
+const COIN_PUSHER_ARTWORK_MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+const COIN_PUSHER_ARTWORK_MAX_DIMENSION = 1600;
+const COIN_PUSHER_ARTWORK_TARGET_LENGTH = 750000;
+const COIN_PUSHER_DEFAULT_PREVIEW_IMAGE =
+  "games/original-src/assets/games/coin-pusher/platform-default.webp";
 const GTA_INTERACTION_OVERLAY_BACKGROUNDS = [
   ["#082b63", "Bleu nuit"],
   ["#312e81", "Indigo"],
@@ -265,7 +274,7 @@ const ACTION_TYPE_LABELS = {
   "websocket.send": "Message WebSocket",
   "chat.reply": "Réponse chat",
   "spotify.queue": "Spotify",
-  "irl.shelly": "Prise Shelly",
+  "irl.shelly": "Prise PlugPlus",
   "system.keys": "Raccourci clavier",
   "system.open": "Ouvrir une URL",
   delay: "Délai"
@@ -385,7 +394,9 @@ const pages = [
     icon: "⚡",
     title: "Interactions IRL",
     kicker: "APPAREILS CONNECTÉS",
-    count: () => snapshot?.state.settings.irl?.devices?.length || null,
+    count: () =>
+      snapshot?.state.settings.irl?.devices?.filter(isPlugPlusIrlDevice)
+        .length || null,
     ownerOnly: true,
     defaultScope: "admin"
   },
@@ -1514,10 +1525,10 @@ async function uploadMediaFromLibrary() {
     mediaLibrarySource = "custom";
     mediaLibraryKind = "all";
     mediaLibrarySearchInput.value = "";
-    renderMediaLibrary();
+    confirmMediaLibrarySelection();
     toast(
-      "Média importé",
-      `${item.name} est disponible dans votre bibliothèque Backblaze.`
+      "Média ajouté à l’action",
+      `${item.name} est sélectionné. Enregistrez l’action pour conserver ce choix.`
     );
   } catch (error) {
     toast("Import impossible", error.message || String(error), true);
@@ -2552,6 +2563,35 @@ function normalizedLiveScreen(config = {}) {
   );
 }
 
+function readCopiedMediaScreenUrls() {
+  try {
+    const stored = JSON.parse(
+      window.localStorage.getItem(COPIED_MEDIA_SCREEN_URLS_KEY) || "[]"
+    );
+    return new Set(Array.isArray(stored) ? stored.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberCopiedMediaScreenUrl(url) {
+  const value = String(url || "").trim();
+  if (!value) return;
+  copiedMediaScreenUrls.add(value);
+  try {
+    window.localStorage.setItem(
+      COPIED_MEDIA_SCREEN_URLS_KEY,
+      JSON.stringify([...copiedMediaScreenUrls].slice(-32))
+    );
+  } catch {
+    // L’état reste valable pour la session si le stockage local est indisponible.
+  }
+}
+
+function isCopiedMediaScreenUrl(url) {
+  return Boolean(url && copiedMediaScreenUrls.has(String(url)));
+}
+
 function isLiveAudioOutput(config = {}) {
   return config.outputMode === "live";
 }
@@ -2590,12 +2630,13 @@ function renderMediaScreensTable(rows) {
           const screen = index + 1;
           const url = urls[index] || "";
           const actionCount = usage[index];
+          const ready = isCopiedMediaScreenUrl(url);
           return `<tr>
             <td><strong>Écran ${screen}</strong></td>
             <td><code title="${escapeHtml(url)}">${escapeHtml(url || "Serveur d’overlay indisponible")}</code></td>
             <td><span class="media-screen-count">${actionCount} action${actionCount > 1 ? "s" : ""}</span></td>
-            <td><span class="media-screen-status ${url ? "ready" : "offline"}"><i></i>${url ? "Prêt" : "Hors ligne"}</span></td>
-            <td><button class="button small ${url ? "primary" : ""}" data-action="copy" data-value="${escapeHtml(url)}" ${url ? "" : "disabled"}>Copier</button></td>
+            <td><span class="media-screen-status ${ready ? "ready" : "offline"}" title="${ready ? "URL copiée depuis ShenPulse" : "Copiez cette URL pour préparer la source navigateur"}"><i></i>${ready ? "Prêt" : "Hors ligne"}</span></td>
+            <td><button class="button small ${url ? "primary" : ""}" data-action="copy" data-media-screen-url="true" data-value="${escapeHtml(url)}" ${url ? "" : "disabled"}>${ready ? "Recopier" : "Copier"}</button></td>
           </tr>`;
         }).join("")}
       </tbody>
@@ -2620,16 +2661,102 @@ function renderMediaScreensPanel(rows, { context = "actions" } = {}) {
   }
   return `<section class="studio-panel panel-cyan media-screens-panel">
     <header class="studio-panel-heading">
-      <div><span class="panel-accent"></span><div><h3>${title}</h3><p>Une source navigateur indépendante par écran, avec sa propre file d’attente.</p></div></div>
+      <div><span class="panel-accent"></span><div><h3>${title}</h3><p>${audioContext ? "Ces champs d’URL servent à préécouter dans ShenPulse et à faire entendre les sons et le TTS sur vos LIVE." : "Ces champs d’URL servent à visualiser les médias dans ShenPulse et à les afficher sur vos LIVE."}</p></div></div>
       <span class="badge cyan">TIKTOK LIVE STUDIO · OBS</span>
     </header>
     <div class="media-screens-intro">
-      <strong>${audioContext ? "Diffusez les sons et le TTS dans le logiciel de LIVE" : "Affichez vos médias dans le logiciel de LIVE"}</strong>
+      <strong>${audioContext ? "Écoutez dans l’interface, diffusez le son dans le LIVE" : "Visualisez dans l’interface, diffusez l’image dans le LIVE"}</strong>
       <p>${audioContext
-        ? "Copiez l’URL HTTPS de l’écran choisi dans TikTok LIVE Studio ou OBS. Vérifiez d’abord qu’elle n’est pas déjà présente : deux sources avec la même URL joueraient le son deux fois. Spotify reste lu par l’appareil Spotify actif et doit être capturé séparément, sans exposer vos jetons dans une URL publique."
-        : "Copiez cette URL HTTPS dans TikTok LIVE Studio ou OBS en 1920 × 1080, puis choisissez le même écran dans la configuration de l’action Media."}</p>
+        ? "Chaque ligne est un champ de source navigateur : copiez l’URL HTTPS de l’écran choisi dans TikTok LIVE Studio ou OBS pour que les spectateurs entendent les sons. Vérifiez d’abord qu’elle n’est pas déjà présente : deux sources avec la même URL joueraient le son deux fois. Spotify reste lu par l’appareil Spotify actif et doit être capturé séparément."
+        : "Chaque ligne est un champ de source navigateur : copiez son URL HTTPS dans TikTok LIVE Studio ou OBS en 1920 × 1080, puis choisissez le même écran dans l’action Media pour le visualiser dans ShenPulse et sur le LIVE."}</p>
     </div>
     ${renderMediaScreensTable(rows)}
+  </section>`;
+}
+
+function automaticTriggerRules() {
+  return (snapshot?.state?.rules || []).filter(
+    (rule) =>
+      hasAutomaticTrigger(rule) &&
+      (rule.actionSelection ||
+        !(rule.actions || []).length ||
+        !(rule.actions || []).every(
+          (action) => action.type === "tts.speak"
+        ))
+  );
+}
+
+function triggerActionIds(rule) {
+  const configuredIds = rule?.actionSelection?.actionIds;
+  const values = Array.isArray(configuredIds)
+    ? configuredIds
+    : (rule?.actions || []).map((action) => action.id);
+  return [...new Set(values.map(String).filter(Boolean))];
+}
+
+function triggerActionRows(rule) {
+  const rowsById = new Map(
+    flattenActions().map((row) => [String(row.action.id || ""), row])
+  );
+  return triggerActionIds(rule)
+    .map((actionId) => rowsById.get(actionId))
+    .filter(Boolean);
+}
+
+function triggerExecutionLabel(rule) {
+  const actionCount = triggerActionIds(rule).length;
+  if (rule?.actionSelection?.mode !== "random") {
+    return `Toutes · ${actionCount}`;
+  }
+  const randomCount = Math.min(
+    actionCount,
+    Math.max(1, Math.floor(Number(rule.actionSelection.randomCount) || 1))
+  );
+  return `${randomCount} au hasard sur ${actionCount}`;
+}
+
+function renderTriggerActionChips(rule) {
+  const actionIds = triggerActionIds(rule);
+  const rows = triggerActionRows(rule);
+  const missingCount = Math.max(0, actionIds.length - rows.length);
+  return `<div class="timer-action-chips trigger-action-chips">
+    ${rows.slice(0, 3).map(({ rule: ownerRule, action }) => `<span title="${escapeHtml(`${actionTypeLabel(action.type)} · ${actionDescription(action)}`)}">${escapeHtml(ownerRule.name)}</span>`).join("")}
+    ${rows.length > 3 ? `<span>＋ ${rows.length - 3}</span>` : ""}
+    ${missingCount ? `<em>${missingCount} action${missingCount > 1 ? "s" : ""} manquante${missingCount > 1 ? "s" : ""}</em>` : ""}
+    ${actionIds.length ? "" : "<em>Aucune action</em>"}
+  </div>`;
+}
+
+function renderTriggersPanel() {
+  const rules = automaticTriggerRules();
+  return `<section class="studio-panel panel-cyan triggers-panel">
+    <header class="studio-panel-heading">
+      <div><span class="panel-accent"></span><div><h3>Déclencheurs</h3><p>Associez un événement à plusieurs actions existantes, toutes ensemble ou selon un tirage aléatoire.</p></div></div>
+      <span class="count-pill">${rules.length}</span>
+    </header>
+    <div class="catalog-toolbar">
+      <button class="button primary" data-action="add-trigger" ${flattenActions().length ? "" : "disabled"}>＋ Créer un déclencheur</button>
+      <span class="table-subline">En mode aléatoire, ShenPulse tire obligatoirement le nombre indiqué parmi les actions sélectionnées.</span>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table triggers-data-table">
+        <thead><tr><th>OUTILS</th><th>ACTIF</th><th>NOM</th><th>ÉVÉNEMENT</th><th>EXÉCUTION</th><th>ACTIONS EXISTANTES</th><th>COOLDOWN</th></tr></thead>
+        <tbody>${rules.length ? rules.map((rule) => `
+          <tr>
+            <td class="table-tools">
+              <button title="Tester le déclencheur" data-action="run-rule" data-id="${escapeHtml(rule.id)}">▶</button>
+              <button title="Modifier" data-action="edit-trigger" data-id="${escapeHtml(rule.id)}">✎</button>
+              <button title="Supprimer le déclencheur" data-action="delete-trigger" data-id="${escapeHtml(rule.id)}">×</button>
+            </td>
+            <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
+            <td><strong>${escapeHtml(rule.name)}</strong></td>
+            <td>${triggerPill(rule)}</td>
+            <td><span class="trigger-execution-pill ${rule.actionSelection?.mode === "random" ? "random" : "all"}">${escapeHtml(triggerExecutionLabel(rule))}</span></td>
+            <td>${renderTriggerActionChips(rule)}</td>
+            <td>${Math.round(Number(rule.cooldown?.globalMs || 0) / 1000)}s</td>
+          </tr>`).join("") : `<tr><td colspan="7">${emptyInline("Aucun déclencheur. Sélectionnez plusieurs actions existantes pour créer votre premier scénario.")}</td></tr>`}</tbody>
+      </table>
+    </div>
   </section>`;
 }
 
@@ -2651,6 +2778,7 @@ function renderActions() {
   });
   const tabs = [
     ["actions", "Actions", rows.length],
+    ["triggers", "Déclencheurs", automaticTriggerRules().length],
     ["timers", "Timers", scheduledTimers().length],
     ["simulator", "Simulateur", 8]
   ];
@@ -2660,7 +2788,7 @@ function renderActions() {
         <div>
           <span class="hero-chip">WORKFLOW SHENPULSE</span>
           <h2>Actions & déclencheurs</h2>
-          <p>Configurez ce que ShenPulse doit faire et, directement dans chaque action, l’événement qui doit la lancer.</p>
+          <p>Créez vos actions, puis associez-les seules ou par groupes à un événement depuis l’onglet Déclencheurs.</p>
         </div>
       </section>
       <nav class="module-tabs" aria-label="Sections des actions">
@@ -2701,6 +2829,7 @@ function renderActions() {
           </div>
         </section>
         ${renderMediaScreensPanel(flattenActions())}` : ""}
+      ${actionsSection === "triggers" ? renderTriggersPanel() : ""}
       ${actionsSection === "simulator" ? `
         <section class="studio-panel panel-pink">
           <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Simulateur</h3><p>Injectez des déclencheurs de test dans le même pipeline que le live.</p></div></div><span class="badge success">LOCAL</span></header>
@@ -2732,7 +2861,15 @@ function renderActions() {
     </div>`;
 }
 
+function isPlugPlusIrlDevice(device = {}) {
+  const identity = `${device.id || ""} ${device.model || ""}`;
+  return /(?:shellyplusplugs|plusplugs|snpl-00112eu|shelly\s+plus\s+plug\s+s)/i.test(
+    identity
+  );
+}
+
 function isControllableIrlDevice(device = {}) {
+  if (!isPlugPlusIrlDevice(device)) return false;
   if (typeof device.controllable === "boolean") return device.controllable;
   const identity = `${device.id || ""} ${device.model || ""}`;
   return !/(?:shellypro3em|spem-003|shellyem3|shem-3)/i.test(identity);
@@ -2740,7 +2877,9 @@ function isControllableIrlDevice(device = {}) {
 
 function renderIrl() {
   const irl = snapshot.state.settings.irl || { enabled: false, devices: [] };
-  const devices = Array.isArray(irl.devices) ? irl.devices : [];
+  const devices = Array.isArray(irl.devices)
+    ? irl.devices.filter(isPlugPlusIrlDevice)
+    : [];
   const controllableDevices = devices.filter(isControllableIrlDevice);
   const actions = flattenActions().filter(
     ({ action }) => action.type === "irl.shelly"
@@ -2755,9 +2894,9 @@ function renderIrl() {
   return `<div class="irl-page">
     <section class="irl-hero ${irl.enabled ? "is-enabled" : "is-disabled"}">
       <div class="irl-hero-copy">
-        <span class="hero-chip">SHENPULSE · SHELLY LOCAL</span>
+        <span class="hero-chip">SHENPULSE · PLUGPLUS LOCAL</span>
         <h2>Interactions IRL</h2>
-        <p>Pilotez les prises enregistrées depuis un cadeau, une commande ou une automatisation, sans cloud Shelly.</p>
+        <p>Pilotez vos prises PlugPlus enregistrées depuis un cadeau, une commande ou une automatisation, sans cloud.</p>
       </div>
       <label class="irl-master-switch">
         <span><strong>${irl.enabled ? "Interactions activées" : "Interactions désactivées"}</strong><small>${irl.enabled ? "Les déclencheurs LIVE peuvent piloter les prises." : "Les règles restent enregistrées mais aucune prise ne sera commandée."}</small></span>
@@ -2816,7 +2955,7 @@ function renderIrl() {
     </section>
     <section class="studio-panel panel-cyan irl-devices-panel">
       <header class="studio-panel-heading">
-        <div><span class="panel-accent"></span><div><h3>Mes prises Shelly</h3><p>Association, détection locale et commandes de test.</p></div></div>
+        <div><span class="panel-accent"></span><div><h3>Mes prises PlugPlus</h3><p>Association, détection locale et commandes de test.</p></div></div>
         <div class="button-row">
           <button class="button" data-action="irl-scan" ${irlBusy ? "disabled" : ""}>↻ Détecter</button>
           <button class="button" data-action="irl-add-manual" ${irlBusy ? "disabled" : ""}>＋ Ajouter par IP</button>
@@ -2827,7 +2966,7 @@ function renderIrl() {
         ${devices.length ? devices.map((device) => {
           const controllable = isControllableIrlDevice(device);
           return `<article class="irl-device-card ${device.online ? "online" : "offline"}">
-          <header><span class="irl-device-icon">⌁</span><div><strong>${escapeHtml(device.name)}</strong><small>${escapeHtml(device.model || "Shelly")} · ${controllable ? `Gen ${escapeHtml(device.generation || 1)}` : "Mesure uniquement · aucun relais"}</small></div><i title="${device.online ? "Détectée sur le réseau" : "Non détectée lors de la dernière recherche"}"></i></header>
+          <header><span class="irl-device-icon">⌁</span><div><strong>${escapeHtml(device.name)}</strong><small>${escapeHtml(device.model || "PlugPlus")} · ${controllable ? `Gen ${escapeHtml(device.generation || 1)}` : "Mesure uniquement · aucun relais"}</small></div><i title="${device.online ? "Détectée sur le réseau" : "Non détectée lors de la dernière recherche"}"></i></header>
           <dl><div><dt>Adresse locale</dt><dd>${escapeHtml(device.host || "En attente de détection")}</dd></div><div><dt>Identifiant</dt><dd>${escapeHtml(device.id)}</dd></div></dl>
           <div class="irl-device-tests">
             <button data-action="irl-test" data-id="${escapeHtml(device.id)}" data-operation="on" title="Allumer" ${controllable ? "" : "disabled"}>ON</button>
@@ -2838,7 +2977,7 @@ function renderIrl() {
           </div>
           <footer><button class="button small ghost" data-action="irl-rename" data-id="${escapeHtml(device.id)}">Renommer</button><button class="button small danger" data-action="irl-remove" data-id="${escapeHtml(device.id)}">Retirer</button></footer>
         </article>`;
-        }).join("") : `<div class="irl-empty"><span>⌁</span><strong>Aucune prise enregistrée</strong><p>Mettez une prise Shelly neuve en mode association puis lancez l’assistant.</p><button class="button primary" data-action="irl-pair">Associer ma première prise</button></div>`}
+        }).join("") : `<div class="irl-empty"><span>⌁</span><strong>Aucune prise enregistrée</strong><p>Mettez une prise PlugPlus neuve en mode association puis lancez l’assistant.</p><button class="button primary" data-action="irl-pair">Associer ma première prise</button></div>`}
       </div>
     </section>
     <aside class="irl-safety-note"><span>!</span><div><strong>Ne branchez pas le PC ShenPulse ni votre routeur sans protection.</strong><p>Le mode « éteindre puis rallumer » programme le retour directement dans la prise quand son API le permet.</p></div></aside>
@@ -2856,7 +2995,7 @@ function renderRules() {
       ${rules.map((rule) => `
         <article class="card entity-card">
           <div class="entity-top">
-            <div><h3>${escapeHtml(rule.name)}</h3><p>${escapeHtml(rule.actions?.length || 0)} action(s) · priorité ${escapeHtml(rule.priority || 0)}</p></div>
+            <div><h3>${escapeHtml(rule.name)}</h3><p>${escapeHtml(triggerActionIds(rule).length)} action(s) · ${escapeHtml(triggerExecutionLabel(rule))} · priorité ${escapeHtml(rule.priority || 0)}</p></div>
             <label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label>
           </div>
           <div class="entity-meta">
@@ -5622,6 +5761,13 @@ function gameJourneyFor(pack) {
     .filter(Boolean);
   const journey = custom.length ? custom : DEFAULT_GAME_JOURNEY;
   if (!CONFIGURABLE_INTEGRATED_GAMES.has(pack.id)) return journey;
+  if (pack.id === "coin-pusher") {
+    return journey.map((step) =>
+      step.id === "installation"
+        ? { ...step, label: "Réglages", icon: "⚙" }
+        : step
+    );
+  }
   return journey
     .filter((step) => step.id === "installation" || step.id === "launch")
     .map((step) =>
@@ -5866,14 +6012,6 @@ function integratedToggle(name, title, detail, checked) {
   </label>`;
 }
 
-function integratedGiftField(name, label, value, detail = "") {
-  return `<label class="integrated-setting-field">
-    <span>${escapeHtml(label)}</span>
-    <input name="${escapeHtml(name)}" value="${escapeHtml(value || "")}" list="gift-catalog-options" autocomplete="off">
-    ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
-  </label>`;
-}
-
 function integratedSettingsTabLabel(id, icon, title, detail, className = "") {
   return `<label for="${escapeHtml(id)}" class="${escapeHtml(className)}">
     <span class="integrated-tab-icon" aria-hidden="true">${escapeHtml(icon)}</span>
@@ -6037,24 +6175,6 @@ function syncDealPrivateMonitor() {
   current.outerHTML = renderDealPrivateMonitor();
 }
 
-function coinPusherGiftRulesText(rules) {
-  return (Array.isArray(rules) ? rules : [])
-    .map((rule) =>
-      [
-        rule.name || rule.giftId || "",
-        Math.max(1, Math.round(Number(rule.coinCount) || 1)),
-        rule.enabled === false ? "non" : "oui"
-      ].join(" | ")
-    )
-    .join("\n");
-}
-
-function coinPusherDiamondTiersText(tiers) {
-  return (Array.isArray(tiers) ? tiers : [])
-    .map((tier) => `${Number(tier.diamonds) || 0} = ${Number(tier.coinCount) || 0}`)
-    .join("\n");
-}
-
 function renderDealBankerRequest(request, index, total) {
   const type = ["cashOffer", "swapBox", "buyBox"].includes(request.type)
     ? request.type
@@ -6117,26 +6237,299 @@ function renderDealMusicFields(config) {
     .join("");
 }
 
+function isCoinPusherLocalArtwork(value) {
+  return /^data:image\/(?:avif|gif|jpe?g|png|webp);base64,/i.test(
+    String(value || "").trim()
+  );
+}
+
+function coinPusherArtworkPreviewUrl(value, target) {
+  const url = String(value || "").trim();
+  if (
+    target === "platform" &&
+    (!url || url === "/overlay-assets/coin-pusher/platform-default.webp")
+  ) {
+    return COIN_PUSHER_DEFAULT_PREVIEW_IMAGE;
+  }
+  if (!url) return "";
+  if (isCoinPusherLocalArtwork(url)) return url;
+  if (/^https?:\/\//i.test(url)) return url.slice(0, 4000);
+  if (/^(?:\.\/|\/)[a-z0-9_./-]+$/i.test(url)) return url.slice(0, 4000);
+  return "";
+}
+
+function renderCoinPusherThemeChoice({
+  checked,
+  description,
+  features,
+  kicker,
+  label,
+  theme
+}) {
+  return `<label class="coin-pusher-theme-choice coin-pusher-theme-choice--${theme}">
+    <input type="radio" name="theme" value="${theme}" ${checked ? "checked" : ""}>
+    <span class="coin-pusher-theme-preview" aria-hidden="true">
+      <span class="coin-pusher-mini-machine">
+        <i class="coin-pusher-mini-crown"></i>
+        <i class="coin-pusher-mini-board"></i>
+        <i class="coin-pusher-mini-pusher"></i>
+        <i class="coin-pusher-mini-bed"></i>
+        <i class="coin-pusher-mini-gem"></i>
+      </span>
+    </span>
+    <span class="coin-pusher-theme-copy">
+      <small>${escapeHtml(kicker)}</small>
+      <strong>${escapeHtml(label)}</strong>
+      <span>${escapeHtml(description)}</span>
+      <em>${features.map((feature) => `<i>${escapeHtml(feature)}</i>`).join("")}</em>
+    </span>
+    <span class="coin-pusher-theme-radio" aria-hidden="true"></span>
+  </label>`;
+}
+
+function renderCoinPusherArtworkPanel(target, config) {
+  const platform = target === "platform";
+  const fieldName = platform ? "platformImageUrl" : "plinkoImageUrl";
+  const value = String(config[fieldName] || "").trim();
+  const previewUrl = coinPusherArtworkPreviewUrl(value, target);
+  const local = isCoinPusherLocalArtwork(value);
+  const title = platform ? "Plateforme principale" : "Fond vertical Plinko";
+  const help = platform
+    ? "Cette image habille le plateau sur lequel les pièces sont poussées."
+    : "Cette image apparaît derrière les plots de la zone de chute.";
+  return `<article class="coin-pusher-artwork-panel" data-coin-pusher-artwork-panel="${target}">
+    <header>
+      <span><small>${platform ? "PLATEAU" : "PLINKO"}</small><strong>${title}</strong></span>
+      <em data-coin-pusher-artwork-status>${local ? "WEBP LOCAL OPTIMISÉ" : value ? "IMAGE PAR URL" : "VISUEL PAR DÉFAUT"}</em>
+    </header>
+    <div class="coin-pusher-artwork-preview ${platform ? "is-platform" : "is-plinko"}" data-coin-pusher-artwork-preview="${target}">
+      <img ${previewUrl ? `src="${escapeHtml(previewUrl)}"` : ""} alt="" ${previewUrl ? "" : "hidden"}>
+      ${platform
+        ? '<span class="coin-pusher-preview-pusher"></span><span class="coin-pusher-preview-coins">● ● ● ● ●</span>'
+        : '<span class="coin-pusher-preview-pegs"></span><span class="coin-pusher-preview-drop">SP</span>'}
+      <small>APERÇU DANS LA MACHINE</small>
+    </div>
+    <p>${help}</p>
+    <input type="hidden" name="${fieldName}" value="${escapeHtml(value)}" data-coin-pusher-artwork-value="${target}">
+    <label class="coin-pusher-artwork-url">
+      <span>URL de l’image <small>facultatif</small></span>
+      <input type="url" maxlength="4000" value="${local ? "" : escapeHtml(value)}" data-coin-pusher-artwork-url="${target}" placeholder="${local ? "Image WebP locale enregistrée" : "https://…"}">
+    </label>
+    <div class="coin-pusher-artwork-actions">
+      <label class="coin-pusher-artwork-import">
+        <span>↥</span> Importer une photo
+        <input type="file" accept="image/avif,image/gif,image/jpeg,image/png,image/webp" data-coin-pusher-artwork-file="${target}">
+      </label>
+      <button type="button" class="button ghost" data-action="reset-coin-pusher-artwork" data-artwork-target="${target}">↻ Défaut</button>
+    </div>
+  </article>`;
+}
+
+function updateCoinPusherArtworkDraft(source, value, { syncUrl = true } = {}) {
+  const target = source?.dataset.artworkTarget ||
+    source?.dataset.coinPusherArtworkUrl ||
+    source?.dataset.coinPusherArtworkFile;
+  if (!target) return;
+  const form = source.closest('[data-integrated-game-settings="coin-pusher"]');
+  const panel = form?.querySelector(
+    `[data-coin-pusher-artwork-panel="${target}"]`
+  );
+  if (!panel) return;
+  const cleanValue = String(value || "").trim();
+  const storedInput = panel.querySelector(
+    `[data-coin-pusher-artwork-value="${target}"]`
+  );
+  const urlInput = panel.querySelector(
+    `[data-coin-pusher-artwork-url="${target}"]`
+  );
+  const preview = panel.querySelector(
+    `[data-coin-pusher-artwork-preview="${target}"]`
+  );
+  const image = preview?.querySelector("img");
+  const status = panel.querySelector("[data-coin-pusher-artwork-status]");
+  const local = isCoinPusherLocalArtwork(cleanValue);
+  const previewUrl = coinPusherArtworkPreviewUrl(cleanValue, target);
+
+  if (storedInput) storedInput.value = cleanValue;
+  if (urlInput && syncUrl) {
+    urlInput.value = local ? "" : cleanValue;
+    urlInput.placeholder = local
+      ? "Image WebP locale enregistrée"
+      : "https://…";
+  }
+  if (image) {
+    image.hidden = !previewUrl;
+    if (previewUrl) image.src = previewUrl;
+    else image.removeAttribute("src");
+  }
+  if (status) {
+    status.textContent = local
+      ? "WEBP LOCAL OPTIMISÉ"
+      : cleanValue
+        ? "IMAGE PAR URL"
+        : "VISUEL PAR DÉFAUT";
+  }
+}
+
+function resetCoinPusherArtwork(button) {
+  updateCoinPusherArtworkDraft(button, "");
+  toast(
+    "Visuel par défaut restauré",
+    "Enregistrez les réglages pour appliquer ce changement."
+  );
+}
+
+async function importCoinPusherArtwork(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const panel = input.closest("[data-coin-pusher-artwork-panel]");
+  const importLabel = input.closest(".coin-pusher-artwork-import");
+  const validType = /^image\/(?:avif|gif|jpe?g|png|webp)$/i.test(file.type) ||
+    /\.(?:avif|gif|jpe?g|png|webp)$/i.test(file.name);
+  if (!validType) {
+    input.value = "";
+    return toast(
+      "Format non pris en charge",
+      "Choisissez une photo PNG, JPG, GIF, AVIF ou WebP.",
+      true
+    );
+  }
+  if (file.size > COIN_PUSHER_ARTWORK_MAX_SOURCE_BYTES) {
+    input.value = "";
+    return toast(
+      "Photo trop lourde",
+      "Le fichier doit peser moins de 20 Mo.",
+      true
+    );
+  }
+
+  input.disabled = true;
+  importLabel?.classList.add("busy");
+  panel?.setAttribute("aria-busy", "true");
+  try {
+    const dataUrl = await optimizeCoinPusherArtwork(file);
+    updateCoinPusherArtworkDraft(input, dataUrl);
+    toast(
+      "Photo prête",
+      "Elle a été optimisée en WebP. Enregistrez les réglages pour l’utiliser dans le jeu."
+    );
+  } catch (error) {
+    toast(
+      "Import impossible",
+      error.message || String(error),
+      true
+    );
+  } finally {
+    input.disabled = false;
+    input.value = "";
+    importLabel?.classList.remove("busy");
+    panel?.removeAttribute("aria-busy");
+  }
+}
+
+async function optimizeCoinPusherArtwork(file) {
+  const decoded = await decodeCoinPusherArtwork(file);
+  let smallestDataUrl = "";
+  try {
+    const initialScale = Math.min(
+      1,
+      COIN_PUSHER_ARTWORK_MAX_DIMENSION /
+        Math.max(decoded.width, decoded.height)
+    );
+    const qualities = [0.84, 0.76, 0.68, 0.6, 0.52, 0.46];
+    for (let pass = 0; pass < 5; pass += 1) {
+      const scale = initialScale * Math.pow(0.82, pass);
+      const width = Math.max(1, Math.round(decoded.width * scale));
+      const height = Math.max(1, Math.round(decoded.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { alpha: true });
+      if (!context) {
+        throw new Error("ShenPulse ne peut pas optimiser cette image.");
+      }
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(decoded.source, 0, 0, width, height);
+      for (const quality of qualities) {
+        const dataUrl = canvas.toDataURL("image/webp", quality);
+        if (!/^data:image\/webp;base64,/i.test(dataUrl)) {
+          throw new Error("L’export WebP est indisponible sur cet appareil.");
+        }
+        if (!smallestDataUrl || dataUrl.length < smallestDataUrl.length) {
+          smallestDataUrl = dataUrl;
+        }
+        if (dataUrl.length <= COIN_PUSHER_ARTWORK_TARGET_LENGTH) {
+          return dataUrl;
+        }
+      }
+    }
+  } finally {
+    decoded.dispose();
+  }
+  if (
+    smallestDataUrl &&
+    smallestDataUrl.length <= COIN_PUSHER_ARTWORK_TARGET_LENGTH * 1.15
+  ) {
+    return smallestDataUrl;
+  }
+  throw new Error(
+    "La photo reste trop complexe après optimisation. Choisissez un visuel plus simple."
+  );
+}
+
+async function decodeCoinPusherArtwork(file) {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file, {
+        imageOrientation: "from-image"
+      });
+      return {
+        dispose: () => bitmap.close(),
+        height: bitmap.height,
+        source: bitmap,
+        width: bitmap.width
+      };
+    } catch {
+      // Les formats non pris en charge passent par une image HTML.
+    }
+  }
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const candidate = new Image();
+      candidate.decoding = "async";
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () =>
+        reject(new Error("Le fichier image ne peut pas être décodé."));
+      candidate.src = objectUrl;
+    });
+    return {
+      dispose: () => URL.revokeObjectURL(objectUrl),
+      height: image.naturalHeight,
+      source: image,
+      width: image.naturalWidth
+    };
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
+  }
+}
+
 function renderIntegratedGameFields(pack, config) {
   if (pack.id === "coin-pusher") {
     const activePanel = [
       "general",
-      "board",
-      "gifts",
-      "bonus"
+      "board"
     ].includes(integratedSettingsPanels.get(pack.id))
       ? integratedSettingsPanels.get(pack.id)
       : "general";
     return `<div class="integrated-settings-tabs coin-pusher-settings-tabs">
       <input id="coin-settings-general" type="radio" name="integratedSettingsPanel" value="general" ${activePanel === "general" ? "checked" : ""}>
       <input id="coin-settings-board" type="radio" name="integratedSettingsPanel" value="board" ${activePanel === "board" ? "checked" : ""}>
-      <input id="coin-settings-gifts" type="radio" name="integratedSettingsPanel" value="gifts" ${activePanel === "gifts" ? "checked" : ""}>
-      <input id="coin-settings-bonus" type="radio" name="integratedSettingsPanel" value="bonus" ${activePanel === "bonus" ? "checked" : ""}>
       <nav class="integrated-settings-tab-nav" aria-label="Réglages Coin Pusher">
         ${integratedSettingsTabLabel("coin-settings-general", "01", "Général", "Manche, classement et physique")}
         ${integratedSettingsTabLabel("coin-settings-board", "02", "Plateau & scores", "Design, cases et dotations")}
-        ${integratedSettingsTabLabel("coin-settings-gifts", "03", "Cadeaux & gains", "Diamants et règles spéciales")}
-        ${integratedSettingsTabLabel("coin-settings-bonus", "04", "Bonus spéciaux", "Barrières, dé mystère et tickets")}
       </nav>
       <div class="integrated-settings-tab-panels">
         <section data-integrated-panel="general" class="integrated-settings-sections">
@@ -6159,75 +6552,40 @@ function renderIntegratedGameFields(pack, config) {
           </article>
         </section>
         <section data-integrated-panel="board" class="integrated-settings-sections">
-          <article class="integrated-settings-card">
-            <header><span>03</span><div><h4>Direction artistique</h4><p>Les deux designs et les images personnalisables de ShenazenOverlay.</p></div></header>
-            <div class="integrated-settings-grid">
-              <label class="integrated-setting-field"><span>Thème du plateau</span><select name="theme"><option value="arcade" ${config.theme === "arcade" ? "selected" : ""}>Arcade ShenPulse</option><option value="galactic-palace" ${config.theme === "galactic-palace" ? "selected" : ""}>Palais galactique</option></select></label>
-              <label class="integrated-setting-field"><span>Image de plateforme</span><input name="platformImageUrl" value="${escapeHtml(config.platformImageUrl || "")}" placeholder="Image intégrée par défaut"><small>URL HTTPS ou data URL courte ; vide conserve la plateforme originale.</small></label>
-              <label class="integrated-setting-field full"><span>Fond du Plinko</span><input name="plinkoImageUrl" value="${escapeHtml(config.plinkoImageUrl || "")}" placeholder="Fond intégré par défaut"><small>URL facultative utilisée derrière les plots.</small></label>
+          <article class="integrated-settings-card integrated-settings-card-wide coin-pusher-design-card">
+            <header><span>03</span><div><h4>Direction artistique</h4><p>Retrouvez les deux modèles graphiques complets de ShenazenOverlay.</p></div></header>
+            <div class="coin-pusher-theme-selector" role="radiogroup" aria-label="Modèle graphique du Coin Pusher">
+              ${renderCoinPusherThemeChoice({
+                checked: config.theme !== "galactic-palace",
+                description: "Cyan électrique, or brossé et ambiance live arcade.",
+                features: ["Lumineux", "Signature", "Dynamique"],
+                kicker: "DESIGN ORIGINAL",
+                label: "Arcade ShenPulse",
+                theme: "arcade"
+              })}
+              ${renderCoinPusherThemeChoice({
+                checked: config.theme === "galactic-palace",
+                description: "Obsidienne, joaillerie impériale et néons cosmiques.",
+                features: ["Prestige", "Cinématique", "Immersif"],
+                kicker: "SECOND MODÈLE",
+                label: "Palais galactique",
+                theme: "galactic-palace"
+              })}
             </div>
           </article>
+          <article class="integrated-settings-card integrated-settings-card-wide coin-pusher-artwork-card">
+            <header><span>04</span><div><h4>Photos personnalisées</h4><p>Importez directement une photo depuis le PC, comme auparavant. ShenPulse la redimensionne et l’enregistre localement en WebP.</p></div></header>
+            <div class="coin-pusher-artwork-grid">
+              ${renderCoinPusherArtworkPanel("platform", config)}
+              ${renderCoinPusherArtworkPanel("plinko", config)}
+            </div>
+            <small class="coin-pusher-artwork-help">PNG, JPG, GIF, AVIF ou WebP · 20 Mo maximum. L’image optimisée reste attachée au profil actif et ne dépend d’aucun hébergeur externe.</small>
+          </article>
           <article class="integrated-settings-card">
-            <header><span>04</span><div><h4>Cases et dotations</h4><p>Valeurs des cases et pourcentage attribué à chaque rang.</p></div></header>
+            <header><span>05</span><div><h4>Cases et dotations</h4><p>Valeurs des cases et pourcentage attribué à chaque rang.</p></div></header>
             <div class="integrated-settings-grid">
               ${integratedTextArea("scoreSlots", "Cases de points", config.scoreSlots.join(", "), "De 3 à 12 valeurs, négatives ou positives.")}
               ${integratedTextArea("winnerPrizePercents", "Dotations du classement (%)", config.winnerPrizePercents.join(", "), "Un pourcentage par rang, jusqu’au Top 10.")}
-            </div>
-          </article>
-        </section>
-        <section data-integrated-panel="gifts" class="integrated-settings-sections">
-          <article class="integrated-settings-card">
-            <header><span>05</span><div><h4>Diamants → pièces</h4><p>Barème exact utilisé pour décomposer le coût total d’un combo.</p></div></header>
-            <div class="integrated-settings-grid">
-              ${integratedTextArea("diamondCoinTiers", "Paliers", coinPusherDiamondTiersText(config.diamondCoinTiers), "Une ligne par palier : diamants = pièces. Exemple : 1000 = 80.")}
-            </div>
-          </article>
-          <article class="integrated-settings-card">
-            <header><span>06</span><div><h4>Exceptions par cadeau</h4><p>Un cadeau précis peut remplacer le barème automatique.</p></div></header>
-            <div class="integrated-settings-grid">
-              ${integratedTextArea("giftRules", "Règles personnalisées", coinPusherGiftRulesText(config.giftRules), "Une ligne : nom du cadeau | nombre de pièces | oui/non.")}
-            </div>
-          </article>
-        </section>
-        <section data-integrated-panel="bonus" class="integrated-settings-sections">
-          <article class="integrated-settings-card">
-            <header><span>07</span><div><h4>Barrières latérales</h4><p>Un cadeau désigné relève temporairement les protections.</p></div></header>
-            <div class="integrated-settings-grid">
-              ${integratedGiftField("guardGiftName", "Cadeau des barrières", config.guardGift.name, "Laissez vide pour désactiver ce déclencheur dédié.")}
-              ${integratedNumberField("guardGiftDurationSeconds", "Durée (secondes)", config.guardGift.durationSeconds, 1, 300)}
-              ${integratedToggle("guardGiftIncludeCoinDrop", "Ajouter aussi les pièces normales", "Le cadeau conserve sa pluie de pièces en plus des barrières.", config.guardGift.includeCoinDrop)}
-            </div>
-          </article>
-          <article class="integrated-settings-card">
-            <header><span>08</span><div><h4>Dé mystère</h4><p>Toutes les probabilités et récompenses du cube bonus original.</p></div></header>
-            <div class="integrated-settings-grid">
-              ${integratedToggle("mysteryEnabled", "Activer le dé mystère", "Autorise le cadeau désigné et les apparitions aléatoires.", config.mysteryCube.enabled)}
-              ${integratedGiftField("mysteryGiftName", "Cadeau du dé", config.mysteryCube.name)}
-              ${integratedNumberField("mysterySpawnChance", "Chance sur les autres cadeaux (%)", config.mysteryCube.spawnChance, 0, 100, 0.5)}
-              ${integratedToggle("mysteryIncludeCoinDrop", "Ajouter les pièces normales", "Le cadeau spécial génère également ses pièces habituelles.", config.mysteryCube.includeCoinDrop)}
-              ${integratedToggle("mysteryPointsEnabled", "Bonus de points", "Ajoute un montant aléatoire au score.", config.mysteryCube.pointsBonusEnabled)}
-              ${integratedNumberField("mysteryPointsMin", "Points minimum", config.mysteryCube.pointsBonusMin, 1, 1000000)}
-              ${integratedNumberField("mysteryPointsMax", "Points maximum", config.mysteryCube.pointsBonusMax, 1, 1000000)}
-              ${integratedToggle("mysteryCoinRainEnabled", "Pluie de pièces", "Fait tomber une quantité aléatoire de pièces.", config.mysteryCube.coinRainEnabled)}
-              ${integratedNumberField("mysteryCoinRainMin", "Pièces minimum", config.mysteryCube.coinRainMin, 1, 10000)}
-              ${integratedNumberField("mysteryCoinRainMax", "Pièces maximum", config.mysteryCube.coinRainMax, 1, 10000)}
-              ${integratedToggle("mysteryMultiplierEnabled", "Multiplicateur de score", "Active temporairement un multiplicateur.", config.mysteryCube.multiplierEnabled)}
-              ${integratedNumberField("mysteryMultiplierValue", "Multiplicateur", config.mysteryCube.multiplierValue, 1.1, 10, 0.1)}
-              ${integratedNumberField("mysteryMultiplierDurationSeconds", "Durée du multiplicateur", config.mysteryCube.multiplierDurationSeconds, 1, 300)}
-              ${integratedToggle("mysteryBarriersEnabled", "Barrières bonus", "Relève aussi les protections latérales.", config.mysteryCube.barriersEnabled)}
-              ${integratedNumberField("mysteryBarriersDurationSeconds", "Durée des barrières", config.mysteryCube.barriersDurationSeconds, 1, 300)}
-            </div>
-          </article>
-          <article class="integrated-settings-card">
-            <header><span>09</span><div><h4>Tickets de points</h4><p>Des tickets physiques tombent sur le plateau et révèlent leur valeur.</p></div></header>
-            <div class="integrated-settings-grid">
-              ${integratedToggle("ticketsEnabled", "Activer les tickets", "Autorise le cadeau désigné et les tickets aléatoires.", config.tickets.enabled)}
-              ${integratedGiftField("ticketsGiftName", "Cadeau des tickets", config.tickets.name)}
-              ${integratedNumberField("ticketsSpawnChance", "Chance sur les autres cadeaux (%)", config.tickets.spawnChance, 0, 100, 0.5)}
-              ${integratedNumberField("ticketsCountPerGift", "Tickets par cadeau", config.tickets.countPerGift, 1, 50)}
-              ${integratedNumberField("ticketsMinPoints", "Valeur minimale", config.tickets.minPoints, 1, 1000000)}
-              ${integratedNumberField("ticketsMaxPoints", "Valeur maximale", config.tickets.maxPoints, 1, 1000000)}
-              ${integratedToggle("ticketsIncludeCoinDrop", "Ajouter les pièces normales", "Les tickets s’ajoutent au nombre normal de pièces.", config.tickets.includeCoinDrop)}
             </div>
           </article>
         </section>
@@ -6360,6 +6718,7 @@ function renderIntegratedGameFields(pack, config) {
 
 function renderIntegratedGameSettings(pack, unlocked) {
   const config = integratedGameSettings(pack.id);
+  const coinPusher = pack.id === "coin-pusher";
   return `<div class="integrated-game-config-page">
     ${pack.id === "deal-or-no-deal" ? renderDealPrivateMonitor() : ""}
     <form class="integrated-game-settings" data-integrated-game-settings="${escapeHtml(pack.id)}">
@@ -6372,8 +6731,10 @@ function renderIntegratedGameSettings(pack, unlocked) {
     <footer class="game-step-footer integrated-settings-actions">
       <div><strong>Jeu local prêt</strong><small>Aucune installation externe n’est nécessaire.</small></div>
       <button class="button" type="submit" ${unlocked ? "" : "disabled"}>Enregistrer</button>
-      <button class="button primary game-launch-button" type="submit" data-launch-after-save="true" ${unlocked ? "" : "disabled"}>▶ Enregistrer et ouvrir le jeu</button>
-      <button class="button ghost" type="button" data-action="game-step" data-value="launch" ${unlocked ? "" : "disabled"}>Voir le démarrage →</button>
+      ${coinPusher
+        ? `<button class="button primary" type="button" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Continuer vers les interactions →</button>`
+        : `<button class="button primary game-launch-button" type="submit" data-launch-after-save="true" ${unlocked ? "" : "disabled"}>▶ Enregistrer et ouvrir le jeu</button>
+          <button class="button ghost" type="button" data-action="game-step" data-value="launch" ${unlocked ? "" : "disabled"}>Voir le démarrage →</button>`}
     </footer>
     </form>
   </div>`;
@@ -6404,48 +6765,6 @@ function integratedGiftDefinition(name, fallback = {}) {
   };
 }
 
-function parseCoinPusherDiamondTiers(value, fallback) {
-  const tiers = String(value || "")
-    .split(/\r?\n/)
-    .map((line) => line.split(/\s*(?:=|:|\|)\s*/))
-    .map(([diamonds, coinCount]) => ({
-      diamonds: Math.round(Number(diamonds)),
-      coinCount: Math.round(Number(coinCount))
-    }))
-    .filter(
-      (tier) =>
-        Number.isFinite(tier.diamonds) &&
-        tier.diamonds > 0 &&
-        Number.isFinite(tier.coinCount) &&
-        tier.coinCount > 0
-    )
-    .slice(0, 20);
-  return tiers.length ? tiers : structuredClone(fallback);
-}
-
-function parseCoinPusherGiftRules(value) {
-  return String(value || "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name = "", coinCount = "1", enabled = "oui"] = line
-        .split(/\s*\|\s*/)
-        .map((part) => part.trim());
-      const gift = giftForName(name);
-      return {
-        giftId: String(gift?.id || "").trim(),
-        name,
-        image: String(gift?.imageUrl || "").trim(),
-        cost: Math.max(0, Math.round(Number(gift?.cost) || 0)),
-        coinCount: Math.max(1, Math.round(Number(coinCount) || 1)),
-        enabled: !/^(?:0|false|non|no|off)$/i.test(enabled)
-      };
-    })
-    .filter((rule) => rule.name || rule.giftId)
-    .slice(0, 100);
-}
-
 function integratedSettingsFromForm(gameId, data) {
   const current = integratedGameSettings(gameId);
   const number = (name, fallback, minimum, maximum) => {
@@ -6455,18 +6774,6 @@ function integratedSettingsFromForm(gameId, data) {
       : fallback;
   };
   if (gameId === "coin-pusher") {
-    const pointsRange = [
-      Math.round(number("mysteryPointsMin", current.mysteryCube.pointsBonusMin, 1, 1000000)),
-      Math.round(number("mysteryPointsMax", current.mysteryCube.pointsBonusMax, 1, 1000000))
-    ].sort((left, right) => left - right);
-    const rainRange = [
-      Math.round(number("mysteryCoinRainMin", current.mysteryCube.coinRainMin, 1, 10000)),
-      Math.round(number("mysteryCoinRainMax", current.mysteryCube.coinRainMax, 1, 10000))
-    ].sort((left, right) => left - right);
-    const ticketRange = [
-      Math.round(number("ticketsMinPoints", current.tickets.minPoints, 1, 1000000)),
-      Math.round(number("ticketsMaxPoints", current.tickets.maxPoints, 1, 1000000))
-    ].sort((left, right) => left - right);
     const scoreSlots = integratedNumberList(data.get("scoreSlots"))
       .map((value) => Math.max(-9999, Math.min(9999, Math.round(value))))
       .slice(0, 12);
@@ -6476,6 +6783,7 @@ function integratedSettingsFromForm(gameId, data) {
       .map((value) => Math.max(0, Math.min(100, value)))
       .slice(0, 10);
     return {
+      ...current,
       capacityModelVersion: 2,
       theme: data.get("theme") === "galactic-palace" ? "galactic-palace" : "arcade",
       roundDurationMinutes: Math.round(
@@ -6489,89 +6797,12 @@ function integratedSettingsFromForm(gameId, data) {
       coinScale: number("coinScale", current.coinScale, 0.6, 2.2),
       volume: number("volume", current.volume, 0, 1),
       sideLossEnabled: data.has("sideLossEnabled"),
-      guardGift: {
-        ...integratedGiftDefinition(
-          data.get("guardGiftName"),
-          current.guardGift
-        ),
-        durationSeconds: number(
-          "guardGiftDurationSeconds",
-          current.guardGift.durationSeconds,
-          1,
-          300
-        ),
-        includeCoinDrop: data.has("guardGiftIncludeCoinDrop")
-      },
-      mysteryCube: {
-        ...integratedGiftDefinition(
-          data.get("mysteryGiftName"),
-          current.mysteryCube
-        ),
-        enabled: data.has("mysteryEnabled"),
-        spawnChance: number(
-          "mysterySpawnChance",
-          current.mysteryCube.spawnChance,
-          0,
-          100
-        ),
-        includeCoinDrop: data.has("mysteryIncludeCoinDrop"),
-        pointsBonusEnabled: data.has("mysteryPointsEnabled"),
-        pointsBonusMin: pointsRange[0],
-        pointsBonusMax: pointsRange[1],
-        coinRainEnabled: data.has("mysteryCoinRainEnabled"),
-        coinRainMin: rainRange[0],
-        coinRainMax: rainRange[1],
-        multiplierEnabled: data.has("mysteryMultiplierEnabled"),
-        multiplierValue: number(
-          "mysteryMultiplierValue",
-          current.mysteryCube.multiplierValue,
-          1.1,
-          10
-        ),
-        multiplierDurationSeconds: number(
-          "mysteryMultiplierDurationSeconds",
-          current.mysteryCube.multiplierDurationSeconds,
-          1,
-          300
-        ),
-        barriersEnabled: data.has("mysteryBarriersEnabled"),
-        barriersDurationSeconds: number(
-          "mysteryBarriersDurationSeconds",
-          current.mysteryCube.barriersDurationSeconds,
-          1,
-          300
-        )
-      },
-      tickets: {
-        ...integratedGiftDefinition(
-          data.get("ticketsGiftName"),
-          current.tickets
-        ),
-        enabled: data.has("ticketsEnabled"),
-        spawnChance: number(
-          "ticketsSpawnChance",
-          current.tickets.spawnChance,
-          0,
-          100
-        ),
-        includeCoinDrop: data.has("ticketsIncludeCoinDrop"),
-        countPerGift: Math.round(
-          number("ticketsCountPerGift", current.tickets.countPerGift, 1, 50)
-        ),
-        minPoints: ticketRange[0],
-        maxPoints: ticketRange[1]
-      },
       platformImageUrl: String(data.get("platformImageUrl") || "").trim(),
       plinkoImageUrl: String(data.get("plinkoImageUrl") || "").trim(),
       scoreSlots: scoreSlots.length >= 3 ? scoreSlots : current.scoreSlots,
-      diamondCoinTiers: parseCoinPusherDiamondTiers(
-        data.get("diamondCoinTiers"),
-        current.diamondCoinTiers
-      ),
       winnerPrizePercents: winnerPrizePercents.length
         ? winnerPrizePercents
-        : current.winnerPrizePercents,
-      giftRules: parseCoinPusherGiftRules(data.get("giftRules"))
+        : current.winnerPrizePercents
     };
   }
   if (gameId === "connect-four") {
@@ -7013,7 +7244,7 @@ function gameOverlayTriggerType(rule) {
 }
 
 function gameInteractionOverlayEntries(pack) {
-  return gameMappedEffects(pack)
+  const mappedEntries = gameMappedEffects(pack)
     .filter((row) => row.rule.enabled !== false)
     .map((row) => {
       const effect = pack.effects.find(
@@ -7044,8 +7275,69 @@ function gameInteractionOverlayEntries(pack) {
         giftLabel: giftName || triggerLabel(row.rule)
       };
     })
+    .filter(Boolean);
+  if (pack.id !== "coin-pusher") return mappedEntries.slice(0, 42);
+
+  const config = integratedGameSettings("coin-pusher");
+  const giftEntries = config.giftRules
+    .filter((rule) => rule.enabled !== false && (rule.name || rule.giftId))
+    .map((rule) => ({
+      effectId: `coin-pusher-gift-${rule.giftId || normalizeGiftName(rule.name)}`,
+      isWinEffect: false,
+      title: `${Math.max(1, Math.round(Number(rule.coinCount) || 1))} PIÈCE${Number(rule.coinCount) > 1 ? "S" : ""}`,
+      trigger: rule.name || "Cadeau TikTok",
+      triggerType: "gift",
+      triggerKey: rule.name || rule.giftId,
+      likeAmount: 0,
+      groupKey: `coin-pusher-gift:${rule.giftId || normalizeGiftName(rule.name)}:${rule.coinCount}`,
+      effectImageUrl: "",
+      giftImageUrl: rule.image || giftForName(rule.name)?.imageUrl || "",
+      giftLabel: rule.name || "Cadeau TikTok"
+    }));
+  const specialEntries = [
+    config.guardGift?.name
+      ? [config.guardGift, "BARRIÈRES", "coin-pusher-guards"]
+      : null,
+    config.mysteryCube?.enabled && config.mysteryCube?.name
+      ? [config.mysteryCube, "DÉ MYSTÈRE", "coin-pusher-mystery"]
+      : null,
+    config.tickets?.enabled && config.tickets?.name
+      ? [config.tickets, "TICKETS BONUS", "coin-pusher-tickets"]
+      : null
+  ]
     .filter(Boolean)
-    .slice(0, 42);
+    .map(([gift, title, effectId]) => ({
+      effectId,
+      isWinEffect: false,
+      title,
+      trigger: gift.name,
+      triggerType: "gift",
+      triggerKey: gift.name,
+      likeAmount: 0,
+      groupKey: `${effectId}:${gift.giftId || normalizeGiftName(gift.name)}`,
+      effectImageUrl: "",
+      giftImageUrl: gift.image || giftForName(gift.name)?.imageUrl || "",
+      giftLabel: gift.name
+    }));
+  const tierEntries = config.diamondCoinTiers.map((tier) => ({
+    effectId: `coin-pusher-tier-${tier.diamonds}`,
+    isWinEffect: false,
+    title: `${Math.max(1, Math.round(Number(tier.coinCount) || 1))} PIÈCE${Number(tier.coinCount) > 1 ? "S" : ""}`,
+    trigger: `${Math.max(1, Math.round(Number(tier.diamonds) || 1))} diamant${Number(tier.diamonds) > 1 ? "s" : ""}`,
+    triggerType: "gift",
+    triggerKey: `value:${tier.diamonds}`,
+    likeAmount: 0,
+    groupKey: `coin-pusher-tier:${tier.diamonds}:${tier.coinCount}`,
+    effectImageUrl: "",
+    giftImageUrl: "",
+    giftLabel: `${tier.diamonds} diamants`
+  }));
+  return [
+    ...giftEntries,
+    ...specialEntries,
+    ...tierEntries,
+    ...mappedEntries
+  ].slice(0, 42);
 }
 
 function gtaInteractionOverlayEntries(pack) {
@@ -7575,7 +7867,298 @@ async function downloadGtaInteractionOverlay(packId, model = 1) {
   setTimeout(() => URL.revokeObjectURL(downloadUrl), 1500);
 }
 
+function renderCoinPusherTierRow(tier = { diamonds: 1, coinCount: 1 }) {
+  return `<div class="coin-pusher-tier-row" data-coin-pusher-tier-row>
+    <label>
+      <span>Valeur du cadeau</span>
+      <div><input name="coinPusherTierDiamonds" type="number" min="1" max="999999999" step="1" value="${escapeHtml(Math.max(1, Math.round(Number(tier.diamonds) || 1)))}" required><small>diamants</small></div>
+    </label>
+    <span class="coin-pusher-tier-arrow" aria-hidden="true">→</span>
+    <label>
+      <span>Pièces générées</span>
+      <div><input name="coinPusherTierCoinCount" type="number" min="1" max="999999999" step="1" value="${escapeHtml(Math.max(1, Math.round(Number(tier.coinCount) || 1)))}" required><small>pièces</small></div>
+    </label>
+    <button type="button" class="coin-pusher-row-remove" data-action="remove-coin-pusher-tier" title="Supprimer ce palier" aria-label="Supprimer ce palier">×</button>
+  </div>`;
+}
+
+function renderCoinPusherGiftRuleRow(rule = {}) {
+  return `<div class="coin-pusher-gift-rule-row" data-coin-pusher-gift-rule-row>
+    ${giftPickerField(
+      "coinPusherGiftRuleName",
+      "Cadeau TikTok",
+      rule.name || ""
+    )}
+    <label class="coin-pusher-compact-field">
+      <span>Pièces générées</span>
+      <div><input name="coinPusherGiftRuleCoinCount" type="number" min="1" max="999999999" step="1" value="${escapeHtml(Math.max(1, Math.round(Number(rule.coinCount) || 1)))}" required><small>pièces</small></div>
+    </label>
+    <label class="coin-pusher-compact-field">
+      <span>État</span>
+      <select name="coinPusherGiftRuleEnabled">
+        <option value="true" ${rule.enabled !== false ? "selected" : ""}>Active</option>
+        <option value="false" ${rule.enabled === false ? "selected" : ""}>Inactive</option>
+      </select>
+    </label>
+    <button type="button" class="coin-pusher-row-remove" data-action="remove-coin-pusher-gift-rule" title="Supprimer cette exception" aria-label="Supprimer cette exception">×</button>
+  </div>`;
+}
+
+function coinPusherInteractionSettingsFromForm(data) {
+  const current = integratedGameSettings("coin-pusher");
+  const number = (name, fallback, minimum, maximum) => {
+    const value = Number(data.get(name));
+    return Number.isFinite(value)
+      ? Math.min(maximum, Math.max(minimum, value))
+      : fallback;
+  };
+  const sortedRange = (minimumName, maximumName, fallbackMinimum, fallbackMaximum, limit) => [
+    Math.round(number(minimumName, fallbackMinimum, 1, limit)),
+    Math.round(number(maximumName, fallbackMaximum, 1, limit))
+  ].sort((left, right) => left - right);
+  const diamonds = data.getAll("coinPusherTierDiamonds");
+  const coinCounts = data.getAll("coinPusherTierCoinCount");
+  const tierByValue = new Map();
+  diamonds.slice(0, 20).forEach((value, index) => {
+    const diamondValue = Math.round(Number(value));
+    const coinCount = Math.round(Number(coinCounts[index]));
+    if (diamondValue > 0 && coinCount > 0) {
+      tierByValue.set(diamondValue, { diamonds: diamondValue, coinCount });
+    }
+  });
+  if (!tierByValue.has(1)) {
+    tierByValue.set(1, {
+      diamonds: 1,
+      coinCount:
+        current.diamondCoinTiers.find((tier) => Number(tier.diamonds) === 1)
+          ?.coinCount || 1
+    });
+  }
+  const oneDiamondTier = tierByValue.get(1);
+  const diamondCoinTiers = [
+    ...[...tierByValue.values()]
+      .filter((tier) => tier.diamonds !== 1)
+      .sort((left, right) => right.diamonds - left.diamonds)
+      .slice(0, 19),
+    oneDiamondTier
+  ].sort((left, right) => right.diamonds - left.diamonds);
+
+  const giftNames = data.getAll("coinPusherGiftRuleName");
+  const giftCoinCounts = data.getAll("coinPusherGiftRuleCoinCount");
+  const giftEnabledValues = data.getAll("coinPusherGiftRuleEnabled");
+  const giftRules = giftNames
+    .slice(0, 100)
+    .map((name, index) => {
+      const cleanName = String(name || "").trim();
+      const fallback = current.giftRules.find(
+        (rule) => normalizeGiftName(rule.name) === normalizeGiftName(cleanName)
+      ) || current.giftRules[index] || {};
+      return {
+        ...integratedGiftDefinition(cleanName, fallback),
+        coinCount: Math.max(1, Math.round(Number(giftCoinCounts[index]) || 1)),
+        enabled: giftEnabledValues[index] !== "false"
+      };
+    })
+    .filter((rule) => rule.name || rule.giftId);
+  const giftRuleByKey = new Map();
+  for (const rule of giftRules) {
+    const key = rule.giftId || normalizeGiftName(rule.name);
+    if (key) giftRuleByKey.set(key, rule);
+  }
+  const pointsRange = sortedRange(
+    "mysteryPointsMin",
+    "mysteryPointsMax",
+    current.mysteryCube.pointsBonusMin,
+    current.mysteryCube.pointsBonusMax,
+    1000000
+  );
+  const rainRange = sortedRange(
+    "mysteryCoinRainMin",
+    "mysteryCoinRainMax",
+    current.mysteryCube.coinRainMin,
+    current.mysteryCube.coinRainMax,
+    10000
+  );
+  const ticketRange = sortedRange(
+    "ticketsMinPoints",
+    "ticketsMaxPoints",
+    current.tickets.minPoints,
+    current.tickets.maxPoints,
+    1000000
+  );
+
+  return {
+    ...current,
+    capacityModelVersion: 2,
+    diamondCoinTiers,
+    giftRules: [...giftRuleByKey.values()],
+    guardGift: {
+      ...integratedGiftDefinition(data.get("guardGiftName"), current.guardGift),
+      durationSeconds: number(
+        "guardGiftDurationSeconds",
+        current.guardGift.durationSeconds,
+        1,
+        300
+      ),
+      includeCoinDrop: data.has("guardGiftIncludeCoinDrop")
+    },
+    mysteryCube: {
+      ...integratedGiftDefinition(data.get("mysteryGiftName"), current.mysteryCube),
+      enabled: data.has("mysteryEnabled"),
+      spawnChance: number(
+        "mysterySpawnChance",
+        current.mysteryCube.spawnChance,
+        0,
+        100
+      ),
+      includeCoinDrop: data.has("mysteryIncludeCoinDrop"),
+      pointsBonusEnabled: data.has("mysteryPointsEnabled"),
+      pointsBonusMin: pointsRange[0],
+      pointsBonusMax: pointsRange[1],
+      coinRainEnabled: data.has("mysteryCoinRainEnabled"),
+      coinRainMin: rainRange[0],
+      coinRainMax: rainRange[1],
+      multiplierEnabled: data.has("mysteryMultiplierEnabled"),
+      multiplierValue: number(
+        "mysteryMultiplierValue",
+        current.mysteryCube.multiplierValue,
+        1.1,
+        10
+      ),
+      multiplierDurationSeconds: number(
+        "mysteryMultiplierDurationSeconds",
+        current.mysteryCube.multiplierDurationSeconds,
+        1,
+        300
+      ),
+      barriersEnabled: data.has("mysteryBarriersEnabled"),
+      barriersDurationSeconds: number(
+        "mysteryBarriersDurationSeconds",
+        current.mysteryCube.barriersDurationSeconds,
+        1,
+        300
+      )
+    },
+    tickets: {
+      ...integratedGiftDefinition(data.get("ticketsGiftName"), current.tickets),
+      enabled: data.has("ticketsEnabled"),
+      spawnChance: number(
+        "ticketsSpawnChance",
+        current.tickets.spawnChance,
+        0,
+        100
+      ),
+      includeCoinDrop: data.has("ticketsIncludeCoinDrop"),
+      countPerGift: Math.round(
+        number("ticketsCountPerGift", current.tickets.countPerGift, 1, 50)
+      ),
+      minPoints: ticketRange[0],
+      maxPoints: ticketRange[1]
+    }
+  };
+}
+
+function renderCoinPusherInteractions(pack, unlocked) {
+  const config = integratedGameSettings(pack.id);
+  const activeSpecialCount = [
+    Boolean(config.guardGift?.name),
+    Boolean(config.mysteryCube?.enabled),
+    Boolean(config.tickets?.enabled)
+  ].filter(Boolean).length;
+  return `<div class="coin-pusher-interactions-page">
+    <form class="coin-pusher-reward-form" data-coin-pusher-interactions>
+      <section class="game-interaction-toolbar coin-pusher-interaction-heading">
+        <div><span>🎁 CADEAUX → PIÈCES</span><h3>Construire les interactions du Coin Pusher</h3><p>Choisissez combien de pièces tombe selon la valeur du cadeau, puis ajoutez des exceptions pour les cadeaux qui doivent avoir leur propre gain.</p></div>
+        <span class="game-step-count">PROFIL ${escapeHtml(overlayProfileName())}</span>
+      </section>
+      ${renderGamePageMessage(pack, "interactions")}
+      <section class="coin-pusher-reward-stats" aria-label="Résumé des interactions Coin Pusher">
+        <article><span>◈</span><div><strong>${config.diamondCoinTiers.length}</strong><small>paliers de valeur</small></div></article>
+        <article><span>🎁</span><div><strong>${config.giftRules.length}</strong><small>cadeaux personnalisés</small></div></article>
+        <article><span>✦</span><div><strong>${activeSpecialCount}/3</strong><small>bonus spéciaux actifs</small></div></article>
+      </section>
+      <section class="coin-pusher-reward-layout">
+        <article class="coin-pusher-reward-card coin-pusher-reward-card--tiers">
+          <header><span class="coin-pusher-card-icon">◈</span><div><small>RÈGLE AUTOMATIQUE</small><h4>Valeur du cadeau → nombre de pièces</h4><p>Un cadeau est décomposé du plus grand palier au plus petit. Le palier 1 diamant garantit toujours le calcul du reste.</p></div></header>
+          <div class="coin-pusher-tier-list" data-coin-pusher-tier-list>
+            ${config.diamondCoinTiers.map(renderCoinPusherTierRow).join("")}
+          </div>
+          <footer><span>Exemple : avec les paliers 10 → 5 et 1 → 1, un cadeau de 23 diamants génère 13 pièces.</span><button type="button" class="button small" data-action="add-coin-pusher-tier" ${config.diamondCoinTiers.length >= 20 ? "disabled" : ""}>＋ Ajouter un palier</button></footer>
+        </article>
+        <article class="coin-pusher-reward-card coin-pusher-reward-card--gifts">
+          <header><span class="coin-pusher-card-icon">🎁</span><div><small>PRIORITÉ HAUTE</small><h4>Exceptions par cadeau précis</h4><p>Si un cadeau figure ici et que sa règle est active, son nombre de pièces remplace entièrement le calcul par valeur.</p></div></header>
+          <div class="coin-pusher-gift-rule-list" data-coin-pusher-gift-rule-list>
+            ${config.giftRules.length
+              ? config.giftRules.map(renderCoinPusherGiftRuleRow).join("")
+              : '<div class="coin-pusher-empty-rules" data-coin-pusher-empty-rules><span>＋</span><strong>Aucune exception</strong><small>Tous les cadeaux utilisent actuellement leur valeur.</small></div>'}
+          </div>
+          <footer><span>Le catalogue TikTok affiche le visuel et le prix du cadeau pendant la recherche.</span><button type="button" class="button small" data-action="add-coin-pusher-gift-rule" ${config.giftRules.length >= 100 ? "disabled" : ""}>＋ Choisir un cadeau</button></footer>
+        </article>
+      </section>
+      <section class="coin-pusher-special-heading">
+        <div><span>✦ BONUS SPÉCIAUX</span><h3>Donner un rôle unique à certains cadeaux</h3><p>Ces cadeaux peuvent conserver leur pluie de pièces normale ou la remplacer par leur bonus.</p></div>
+      </section>
+      <section class="coin-pusher-special-grid">
+        <article class="coin-pusher-special-card coin-pusher-special-card--guards">
+          <header><span>▥</span><div><small>PROTECTION</small><h4>Barrières latérales</h4><p>Relève temporairement les protections du plateau.</p></div></header>
+          <div class="integrated-settings-grid">
+            ${giftPickerField("guardGiftName", "Cadeau des barrières", config.guardGift.name)}
+            ${integratedNumberField("guardGiftDurationSeconds", "Durée (secondes)", config.guardGift.durationSeconds, 1, 300)}
+            ${integratedToggle("guardGiftIncludeCoinDrop", "Ajouter aussi les pièces normales", "Le bonus et la pluie de pièces sont cumulés.", config.guardGift.includeCoinDrop)}
+          </div>
+        </article>
+        <article class="coin-pusher-special-card coin-pusher-special-card--mystery">
+          <header><span>?</span><div><small>SURPRISE</small><h4>Dé mystère</h4><p>Fait tomber un cube qui choisit un bonus aléatoire.</p></div></header>
+          <div class="integrated-settings-grid">
+            ${integratedToggle("mysteryEnabled", "Activer le dé mystère", "Autorise le cadeau et les apparitions aléatoires.", config.mysteryCube.enabled)}
+            ${giftPickerField("mysteryGiftName", "Cadeau du dé", config.mysteryCube.name)}
+            ${integratedNumberField("mysterySpawnChance", "Chance sur les autres cadeaux (%)", config.mysteryCube.spawnChance, 0, 100, 0.5)}
+            ${integratedToggle("mysteryIncludeCoinDrop", "Ajouter les pièces normales", "Le cadeau conserve aussi son gain habituel.", config.mysteryCube.includeCoinDrop)}
+            ${integratedToggle("mysteryPointsEnabled", "Bonus de points", "Ajoute un score aléatoire.", config.mysteryCube.pointsBonusEnabled)}
+            ${integratedNumberField("mysteryPointsMin", "Points minimum", config.mysteryCube.pointsBonusMin, 1, 1000000)}
+            ${integratedNumberField("mysteryPointsMax", "Points maximum", config.mysteryCube.pointsBonusMax, 1, 1000000)}
+            ${integratedToggle("mysteryCoinRainEnabled", "Pluie de pièces", "Ajoute une quantité aléatoire de pièces.", config.mysteryCube.coinRainEnabled)}
+            ${integratedNumberField("mysteryCoinRainMin", "Pièces minimum", config.mysteryCube.coinRainMin, 1, 10000)}
+            ${integratedNumberField("mysteryCoinRainMax", "Pièces maximum", config.mysteryCube.coinRainMax, 1, 10000)}
+            ${integratedToggle("mysteryMultiplierEnabled", "Multiplicateur de score", "Multiplie temporairement les cases.", config.mysteryCube.multiplierEnabled)}
+            ${integratedNumberField("mysteryMultiplierValue", "Multiplicateur", config.mysteryCube.multiplierValue, 1.1, 10, 0.1)}
+            ${integratedNumberField("mysteryMultiplierDurationSeconds", "Durée du multiplicateur", config.mysteryCube.multiplierDurationSeconds, 1, 300)}
+            ${integratedToggle("mysteryBarriersEnabled", "Barrières bonus", "Relève aussi les protections latérales.", config.mysteryCube.barriersEnabled)}
+            ${integratedNumberField("mysteryBarriersDurationSeconds", "Durée des barrières", config.mysteryCube.barriersDurationSeconds, 1, 300)}
+          </div>
+        </article>
+        <article class="coin-pusher-special-card coin-pusher-special-card--tickets">
+          <header><span>票</span><div><small>POINTS</small><h4>Tickets bonus</h4><p>Fait tomber des tickets physiques à valeur variable.</p></div></header>
+          <div class="integrated-settings-grid">
+            ${integratedToggle("ticketsEnabled", "Activer les tickets", "Autorise le cadeau et les tickets aléatoires.", config.tickets.enabled)}
+            ${giftPickerField("ticketsGiftName", "Cadeau des tickets", config.tickets.name)}
+            ${integratedNumberField("ticketsSpawnChance", "Chance sur les autres cadeaux (%)", config.tickets.spawnChance, 0, 100, 0.5)}
+            ${integratedNumberField("ticketsCountPerGift", "Tickets par cadeau", config.tickets.countPerGift, 1, 50)}
+            ${integratedNumberField("ticketsMinPoints", "Valeur minimale", config.tickets.minPoints, 1, 1000000)}
+            ${integratedNumberField("ticketsMaxPoints", "Valeur maximale", config.tickets.maxPoints, 1, 1000000)}
+            ${integratedToggle("ticketsIncludeCoinDrop", "Ajouter les pièces normales", "Les tickets s’ajoutent au gain habituel.", config.tickets.includeCoinDrop)}
+          </div>
+        </article>
+      </section>
+      <footer class="game-step-footer coin-pusher-reward-actions">
+        <div><strong>Priorité claire et sans doublon</strong><small>Cadeau précis → valeur du cadeau → bonus spécial selon vos options.</small></div>
+        <button class="button primary" type="submit" ${unlocked ? "" : "disabled"}>Enregistrer les cadeaux</button>
+      </footer>
+    </form>
+    <section class="coin-pusher-event-actions">
+      <header><span>⚡ ACTIONS ÉVÉNEMENTIELLES</span><h3>Déclencheurs complémentaires</h3><p>Comme sur GTA et Minecraft, associez un cadeau, une valeur, des likes, un follow ou un message aux actions natives du jeu.</p></header>
+      ${renderStandardGameInteractions(pack, unlocked)}
+    </section>
+  </div>`;
+}
+
 function renderGameInteractions(pack, unlocked) {
+  return pack.id === "coin-pusher"
+    ? renderCoinPusherInteractions(pack, unlocked)
+    : renderStandardGameInteractions(pack, unlocked);
+}
+
+function renderStandardGameInteractions(pack, unlocked) {
   const query = gameEffectSearch.trim().toLocaleLowerCase();
   const rows = gameMappedEffects(pack)
     .map((row) => ({
@@ -9676,7 +10259,40 @@ function syncActionEditorVisibility() {
   }
 }
 
+function syncTriggerSelectionEditor() {
+  const mode = dialogBody.querySelector(
+    '[name="actionSelectionMode"]'
+  )?.value;
+  if (!mode) return;
+  const randomCountField = dialogBody.querySelector(
+    "[data-trigger-random-count]"
+  );
+  setEditorConditionalVisibility(randomCountField, mode === "random");
+  const selectedCount = dialogBody.querySelectorAll(
+    '[name="actionIds"]:checked'
+  ).length;
+  const randomCountInput = randomCountField?.querySelector(
+    '[name="randomCount"]'
+  );
+  if (!randomCountInput) return;
+  const maximum = Math.max(1, selectedCount);
+  randomCountInput.max = String(maximum);
+  if (Number(randomCountInput.value) > maximum) {
+    randomCountInput.value = String(maximum);
+  }
+  const count = Math.max(1, Number(randomCountInput.value) || 1);
+  const help = randomCountField.querySelector(
+    "[data-trigger-random-count-help]"
+  );
+  if (help) {
+    help.textContent = selectedCount
+      ? `Exactement ${count} action${count > 1 ? "s" : ""} sera${count > 1 ? "ont" : ""} tirée${count > 1 ? "s" : ""} parmi ${selectedCount} à chaque déclenchement.`
+      : "Sélectionnez d’abord les actions disponibles pour le tirage.";
+  }
+}
+
 function setEditorConditionalVisibility(element, visible) {
+  if (!element) return;
   element.hidden = !visible;
   element
     .querySelectorAll("input, select, textarea, button")
@@ -9802,6 +10418,11 @@ function gameInteractionRowData(row) {
 }
 
 function openGameInteractionCatalog(pack, row = null) {
+  gameInteractionEditorContext = null;
+  gameInteractionCatalogContext = {
+    packId: pack.id,
+    row
+  };
   const groups = [
     ...new Set(
       (pack.effects || []).map(
@@ -9901,6 +10522,82 @@ function gameEffectParametersFromForm(effect, data) {
   );
 }
 
+function gameInteractionDraftFromForm(
+  pack,
+  effect,
+  { currentRule, currentAction, row },
+  data
+) {
+  const config = currentAction.config || {};
+  const nextAction = {
+    ...currentAction,
+    id: currentAction.id || `action_${cryptoId()}`,
+    type: effect.actionType || "game.effect",
+    config: {
+      ...config,
+      packId: pack.id,
+      effectId: effect.id,
+      quantity: Math.max(
+        1,
+        Number(data.get("quantity")) || Number(effect.quantity || 1)
+      ),
+      duration: Math.max(
+        0,
+        Number(data.get("effectDuration")) || Number(effect.duration || 0)
+      ),
+      parameters: gameEffectParametersFromForm(effect, data),
+      ...(effect.winCounter
+        ? {
+            amount: Number(effect.winCounter.amount || 0),
+            operation: effect.winCounter.operation || "adjust"
+          }
+        : {})
+    }
+  };
+  const actions = [...(currentRule.actions || [])];
+  const actionIndex = row ? Number(row.actionIndex) : actions.length;
+  if (row) actions[actionIndex] = nextAction;
+  else actions.push(nextAction);
+  const automatic = data.get("triggerEnabled") === "true";
+  const nextTitle =
+    String(data.get("interactionTitle") || "").trim() || effect.name;
+  const rule = {
+    ...currentRule,
+    id: currentRule.id || `rule_${cryptoId()}`,
+    name: `${pack.name} · ${nextTitle}`,
+    enabled: data.get("effectEnabled") === "true",
+    gameInteraction: {
+      ...(currentRule.gameInteraction || {}),
+      title: nextTitle
+    },
+    trigger: {
+      ...(currentRule.trigger || {}),
+      enabled: automatic,
+      type: data.get("triggerType") || "gift",
+      source: "*",
+      threshold: Math.max(1, Number(data.get("threshold")) || 1)
+    },
+    conditions: automatic
+      ? buildTriggerConditions(currentRule.conditions, data)
+      : currentRule.conditions || [],
+    cooldown: {
+      globalMs: Math.round(
+        Math.max(0, Number(data.get("globalCooldownSeconds")) || 0) * 1000
+      ),
+      perUserMs: Math.round(
+        Math.max(0, Number(data.get("userCooldownSeconds")) || 0) * 1000
+      )
+    },
+    actions
+  };
+  return {
+    rule,
+    action: nextAction,
+    actionIndex,
+    isNew: !row || row.isNew === true
+  };
+}
+
 function openGameInteractionEditor(pack, effect, row = null) {
   const currentRule = row?.rule || {
     id: "",
@@ -9948,14 +10645,27 @@ function openGameInteractionEditor(pack, effect, row = null) {
   const rowData = gameInteractionRowData(row);
   const interactionTitle =
     currentRule.gameInteraction?.title || effect.name;
+  gameInteractionCatalogContext = null;
+  gameInteractionEditorContext = {
+    packId: pack.id,
+    effectId: effect.id,
+    pack,
+    effect,
+    currentRule,
+    currentAction,
+    row
+  };
   openEditor({
-    title: row ? "Modifier l’interaction" : "Configurer l’interaction",
+    title:
+      row && row.isNew !== true
+        ? "Modifier l’interaction"
+        : "Configurer l’interaction",
     kicker: "INTERACTION DE JEU",
     variant: "effect",
     body: `<div class="game-interaction-editor">
       <section class="game-interaction-editor-hero">
         <div class="game-interaction-editor-art">${image}</div>
-        <div><small>${escapeHtml(effect.category || "Interaction")}</small><h3>${escapeHtml(effect.name)}</h3><p>${escapeHtml(effect.description || "Interaction de jeu ShenPulse.")}</p><button type="button" class="button small ghost game-interaction-change" data-open-game-effect-library data-pack="${escapeHtml(pack.id)}" ${rowData}>Changer l’interaction</button></div>
+        <div><small>${escapeHtml(effect.category || "Interaction")}</small><h3>${escapeHtml(effect.name)}</h3><p>${escapeHtml(effect.description || "Interaction de jeu ShenPulse.")}</p><button type="button" class="button small ghost game-interaction-change" data-open-game-effect-library data-pack="${escapeHtml(pack.id)}" data-effect="${escapeHtml(effect.id)}" ${rowData}>Changer l’interaction</button></div>
       </section>
       <label class="game-interaction-enabled">
         <span class="switch"><input type="checkbox" name="effectEnabled" value="true" ${currentRule.enabled !== false ? "checked" : ""}><span></span></span>
@@ -9982,73 +10692,16 @@ function openGameInteractionEditor(pack, effect, row = null) {
       )}
     </div>`,
     onSubmit: async (data) => {
-      const nextAction = {
-        ...currentAction,
-        id: currentAction.id || `action_${cryptoId()}`,
-        type: effect.actionType || "game.effect",
-        config: {
-          ...config,
-          packId: pack.id,
-          effectId: effect.id,
-          quantity: Math.max(
-            1,
-            Number(data.get("quantity")) ||
-              Number(effect.quantity || 1)
-          ),
-          duration: Math.max(
-            0,
-            Number(data.get("effectDuration")) ||
-              Number(effect.duration || 0)
-          ),
-          parameters: gameEffectParametersFromForm(effect, data),
-          ...(effect.winCounter
-            ? {
-                amount: Number(effect.winCounter.amount || 0),
-                operation: effect.winCounter.operation || "adjust"
-              }
-            : {})
-        }
-      };
-      const actions = [...(currentRule.actions || [])];
-      if (row) actions[row.actionIndex] = nextAction;
-      else actions.push(nextAction);
-      const automatic = data.get("triggerEnabled") === "true";
-      const ruleId = currentRule.id || `rule_${cryptoId()}`;
-      const nextTitle =
-        String(data.get("interactionTitle") || "").trim() || effect.name;
-      await api.saveGameInteraction(pack.id, {
-        ...currentRule,
-        id: ruleId,
-        name: `${pack.name} · ${nextTitle}`,
-        enabled: data.get("effectEnabled") === "true",
-        gameInteraction: {
-          ...(currentRule.gameInteraction || {}),
-          title: nextTitle
-        },
-        trigger: {
-          ...(currentRule.trigger || {}),
-          enabled: automatic,
-          type: data.get("triggerType") || "gift",
-          source: "*",
-          threshold: Math.max(1, Number(data.get("threshold")) || 1)
-        },
-        conditions: automatic
-          ? buildTriggerConditions(currentRule.conditions, data)
-          : currentRule.conditions || [],
-        cooldown: {
-          globalMs: Math.round(
-            Math.max(0, Number(data.get("globalCooldownSeconds")) || 0) *
-              1000
-          ),
-          perUserMs: Math.round(
-            Math.max(0, Number(data.get("userCooldownSeconds")) || 0) *
-              1000
-          )
-        },
-        actions
-      });
-      await ensureRuleInActiveProfile(ruleId);
-      snapshot = await api.getSnapshot();
+      const draft = gameInteractionDraftFromForm(
+        pack,
+        effect,
+        { currentRule, currentAction, row },
+        data
+      );
+      acceptSnapshot(
+        (await api.saveGameInteraction(pack.id, draft.rule)) ||
+          (await api.getSnapshot())
+      );
     }
   });
 }
@@ -10074,11 +10727,11 @@ async function openIrlPairEditor() {
   const discovery = await refreshIrlDiscovery();
   if (!discovery.accessPoints.length) {
     throw new Error(
-      "Aucun réseau Shelly n’a été détecté. Mettez la prise en mode association puis réessayez."
+      "Aucun réseau PlugPlus n’a été détecté. Mettez la prise en mode association puis réessayez."
     );
   }
   openEditor({
-    title: "Associer une prise Shelly",
+    title: "Associer une prise PlugPlus",
     kicker: "INTERACTIONS IRL · CONFIGURATION LOCALE",
     submitLabel: "Associer la prise",
     pendingLabel: "Association en cours…",
@@ -10098,7 +10751,7 @@ async function openIrlPairEditor() {
       });
       if (result.snapshot) acceptSnapshot(result.snapshot);
       toast(
-        result.pendingDiscovery ? "Prise associée" : "Prise Shelly prête",
+        result.pendingDiscovery ? "Prise associée" : "Prise PlugPlus prête",
         result.pendingDiscovery
           ? "Le Wi-Fi est configuré. Relancez la détection dans quelques secondes."
           : "La prise est enregistrée et disponible dans les actions."
@@ -10144,7 +10797,7 @@ function openIrlActionEditor() {
   const device = snapshot.state.settings.irl?.devices?.find(
     isControllableIrlDevice
   );
-  if (!device) throw new Error("Ajoutez d’abord une prise Shelly avec un relais pilotable.");
+  if (!device) throw new Error("Ajoutez d’abord une prise PlugPlus avec un relais pilotable.");
   openActionEditor(null, {
     rule: {
       id: "",
@@ -10216,7 +10869,9 @@ function openActionEditor(row) {
   const configuredWheels = normalizeWheelConfig(
     overlayConfig("wheel")
   ).wheels;
-  const irlDevices = snapshot.state.settings.irl?.devices || [];
+  const irlDevices = (snapshot.state.settings.irl?.devices || []).filter(
+    isPlugPlusIrlDevice
+  );
   const connectionOptions = [
     ["", "Source du déclencheur"],
     ...snapshot.state.connections.map((connection) => [
@@ -10316,7 +10971,7 @@ function openActionEditor(row) {
     conditionalFields(
       "irl.shelly",
       `<div class="form-grid">
-        <label class="field full"><span>Prise Shelly</span><select name="irlDeviceId" required>${irlDevices.map((device) => `<option value="${escapeHtml(device.id)}" ${(config.deviceId || irlDevices.find(isControllableIrlDevice)?.id) === device.id ? "selected" : ""} ${isControllableIrlDevice(device) ? "" : "disabled"}>${escapeHtml(device.name)} · ${escapeHtml(device.host || "adresse en attente")}${isControllableIrlDevice(device) ? "" : " · aucun relais"}</option>`).join("")}</select><small>Les compteurs d’énergie sans relais ne peuvent pas être sélectionnés.</small></label>
+        <label class="field full"><span>Prise PlugPlus</span><select name="irlDeviceId" required>${irlDevices.map((device) => `<option value="${escapeHtml(device.id)}" ${(config.deviceId || irlDevices.find(isControllableIrlDevice)?.id) === device.id ? "selected" : ""} ${isControllableIrlDevice(device) ? "" : "disabled"}>${escapeHtml(device.name)} · ${escapeHtml(device.host || "adresse en attente")}${isControllableIrlDevice(device) ? "" : " · aucun relais"}</option>`).join("")}</select></label>
         <label class="field"><span>Commande</span><select name="irlOperation">
           ${[
             ["on", "Allumer"],
@@ -10489,7 +11144,7 @@ function openActionEditor(row) {
         });
       } else if (type === "irl.shelly") {
         const deviceId = data.get("irlDeviceId");
-        if (!deviceId) throw new Error("Choisissez une prise Shelly.");
+        if (!deviceId) throw new Error("Choisissez une prise PlugPlus.");
         Object.assign(nextConfig, {
           deviceId,
           operation: data.get("irlOperation") || "cycle",
@@ -10870,49 +11525,128 @@ function openRuleEditor(rule) {
     name: "",
     enabled: true,
     priority: 50,
-    trigger: { type: "gift", source: "*", threshold: 1 },
+    trigger: { enabled: true, type: "gift", source: "*", threshold: 1 },
     conditions: [],
     cooldown: { globalMs: 1000, perUserMs: 2000 },
     chance: 1,
-    actions: []
+    actions: [],
+    actionSelection: {
+      mode: "all",
+      actionIds: [],
+      randomCount: 1
+    }
   };
+  const selectedActionIds = new Set(triggerActionIds(current));
+  const selectionMode =
+    current.actionSelection?.mode === "random" ? "random" : "all";
+  const selectedCount = Math.max(1, selectedActionIds.size);
+  const randomCount = Math.min(
+    selectedCount,
+    Math.max(
+      1,
+      Math.floor(Number(current.actionSelection?.randomCount) || 1)
+    )
+  );
+  const actionRows = flattenActions();
+  const actionPicker = actionRows.length
+    ? actionRows.map(({ rule: ownerRule, action }) => `
+      <label class="timer-action-option trigger-action-option" data-trigger-action-option data-searchable="${escapeHtml(`${ownerRule.name} ${actionTypeLabel(action.type)} ${actionDescription(action)}`.toLowerCase())}">
+        <input type="checkbox" name="actionIds" value="${escapeHtml(action.id)}" ${selectedActionIds.has(String(action.id)) ? "checked" : ""}>
+        <span class="timer-action-check">✓</span>
+        <span><strong>${escapeHtml(ownerRule.name)}</strong><small>${escapeHtml(actionTypeLabel(action.type))} · ${escapeHtml(actionDescription(action))}</small></span>
+      </label>`).join("")
+    : `<div class="timer-actions-empty">Créez d’abord au moins une action dans le sous-onglet Actions.</div>`;
   openEditor({
     title: rule ? "Modifier le déclencheur" : "Nouveau déclencheur",
     kicker: "MOTEUR DE DÉCLENCHEURS",
-    body: `<div class="trigger-editor">
+    variant: "wide",
+    body: `<div class="trigger-editor action-editor">
       ${dialogSection(
-        "Configuration",
+        "1. Événement",
         "Choisissez l’événement qui doit lancer ce déclencheur.",
         `${field("name", "Nom du déclencheur", current.name, "text", "required full autofocus")}
+        <div class="timer-editor-enabled full">
+          <span><strong>Déclencheur actif</strong><small>Vous pouvez le désactiver sans perdre la sélection d’actions.</small></span>
+          <span class="switch"><input type="checkbox" name="enabled" value="true" ${current.enabled !== false ? "checked" : ""}><span></span></span>
+        </div>
         <div class="trigger-editor-source-note full"><span>◎</span><div><strong>Toutes les sources</strong><small>Les événements LIVE et les tests sont toujours pris en compte automatiquement.</small></div></div>
         <label class="field"><span>Type de déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(current.trigger.type)}</select></label>
         ${field("threshold", "Seuil / quantité", current.trigger.threshold || 1, "number", 'min="1"')}
         <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(current.conditions)}</div>
         <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Message contient (optionnel)", conditionValue(current.conditions, "data.message", "contains"), "text", "full")}</div>
-        ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(current.conditions, "user.name", "equals"), "text", "full")}`,
+        ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(current.conditions, "user.name", "equals"), "text", "full")}
+        ${field("globalCooldown", "Cooldown global (ms)", current.cooldown?.globalMs || 0, "number", 'min="0"')}
+        ${field("userCooldown", "Cooldown viewer (ms)", current.cooldown?.perUserMs || 0, "number", 'min="0"')}`,
         "dialog-section-accent"
+      )}
+      ${dialogSection(
+        "2. Actions existantes",
+        "Sélectionnez plusieurs actions à lancer ensemble ou à tirer au hasard.",
+        `<label class="field"><span>Mode d’exécution</span><select name="actionSelectionMode" data-trigger-selection-mode>
+          <option value="all" ${selectionMode === "all" ? "selected" : ""}>Toutes les actions sélectionnées</option>
+          <option value="random" ${selectionMode === "random" ? "selected" : ""}>Un nombre obligatoire au hasard</option>
+        </select></label>
+        <label class="field" data-trigger-random-count><span>Nombre obligatoire à tirer</span><input name="randomCount" type="number" min="1" max="${selectedCount}" value="${randomCount}"><small data-trigger-random-count-help>Exactement ${randomCount} action${randomCount > 1 ? "s" : ""} sera${randomCount > 1 ? "ont" : ""} tirée${randomCount > 1 ? "s" : ""} à chaque déclenchement.</small></label>
+        <label class="field full"><span>Rechercher une action</span><input type="search" data-trigger-action-search placeholder="Nom, type ou configuration…"></label>
+        <div class="timer-action-picker trigger-action-picker full">${actionPicker}</div>`
       )}
     </div>`,
     onSubmit: async (data) => {
+      const actionIds = [
+        ...new Set(data.getAll("actionIds").map(String).filter(Boolean))
+      ];
+      if (!actionIds.length) {
+        throw new Error("Sélectionnez au moins une action existante à exécuter.");
+      }
+      const actionSelectionMode =
+        data.get("actionSelectionMode") === "random" ? "random" : "all";
+      const requestedRandomCount = Math.max(
+        1,
+        Math.floor(Number(data.get("randomCount")) || 1)
+      );
+      if (
+        actionSelectionMode === "random" &&
+        requestedRandomCount > actionIds.length
+      ) {
+        throw new Error(
+          `Sélectionnez au moins ${requestedRandomCount} actions pour ce tirage.`
+        );
+      }
       const updated = {
         ...current,
         id: current.id || `rule_${cryptoId()}`,
         name: data.get("name"),
-        trigger: { ...current.trigger, type: data.get("triggerType"), source: "*", threshold: Number(data.get("threshold")) },
+        enabled: data.get("enabled") === "true",
+        trigger: {
+          ...current.trigger,
+          enabled: true,
+          type: data.get("triggerType"),
+          source: "*",
+          threshold: Number(data.get("threshold"))
+        },
         priority: Number(current.priority ?? 50),
         chance: Number(current.chance ?? 1),
         cooldown: {
-          globalMs: Number(current.cooldown?.globalMs || 0),
-          perUserMs: Number(current.cooldown?.perUserMs || 0)
+          globalMs: Number(data.get("globalCooldown")),
+          perUserMs: Number(data.get("userCooldown"))
         },
         conditions: buildTriggerConditions(current.conditions, data),
-        actions: current.actions || []
+        actions: current.actions || [],
+        actionSelection: {
+          mode: actionSelectionMode,
+          actionIds,
+          randomCount:
+            actionSelectionMode === "random"
+              ? requestedRandomCount
+              : actionIds.length
+        }
       };
       await api.upsert("rules", updated);
       await ensureRuleInActiveProfile(updated.id);
       snapshot = await api.getSnapshot();
     }
   });
+  syncTriggerSelectionEditor();
 }
 
 function openConnectionEditor(connection) {
@@ -11137,6 +11871,31 @@ async function deleteActionRow(row) {
   render();
 }
 
+async function deleteTriggerRule(rule) {
+  if (!rule) throw new Error("Déclencheur introuvable.");
+  if (
+    !(await confirmAction(
+      `Supprimer le déclencheur « ${rule.name} » ? Les actions existantes seront conservées.`,
+      { title: "Supprimer ce déclencheur", confirmLabel: "Supprimer" }
+    ))
+  ) {
+    return;
+  }
+  if ((rule.actions || []).length) {
+    const nextRule = structuredClone(rule);
+    nextRule.trigger = {
+      ...(nextRule.trigger || {}),
+      enabled: false
+    };
+    delete nextRule.actionSelection;
+    await api.upsert("rules", nextRule);
+  } else {
+    await api.remove("rules", rule.id);
+  }
+  acceptSnapshot(await api.getSnapshot());
+  render();
+}
+
 async function setSoundVolume(row, volume) {
   if (!row) throw new Error("Son introuvable.");
   const actions = [...(row.rule.actions || [])];
@@ -11204,7 +11963,7 @@ function openLiveAudioOutputEditor(row) {
       <div class="live-audio-output-url">
         <span>URL à ajouter dans OBS ou TikTok LIVE Studio</span>
         <code data-live-output-url></code>
-        <button type="button" class="button primary" data-action="copy" data-live-output-copy data-value="">Copier l’URL</button>
+        <button type="button" class="button primary" data-action="copy" data-media-screen-url="true" data-live-output-copy data-value="">Copier l’URL</button>
       </div>
       <div class="live-audio-output-warning">
         <strong>Attention aux doublons</strong>
@@ -11715,6 +12474,9 @@ async function handleAction(target) {
       true
     );
   }
+  if (action === "reset-coin-pusher-artwork") {
+    return resetCoinPusherArtwork(target);
+  }
   if (action === "irl-toggle") {
     return perform(async () => {
       const result = await api.irl.setEnabled(target.checked === true);
@@ -11726,10 +12488,10 @@ async function handleAction(target) {
     return perform(async () => {
       const result = await refreshIrlDiscovery();
       const count = snapshot.state.settings.irl?.devices?.filter(
-        (device) => device.online
+        (device) => isPlugPlusIrlDevice(device) && device.online
       ).length || 0;
       toast(
-        "Détection Shelly terminée",
+        "Détection PlugPlus terminée",
         `${count} prise${count > 1 ? "s" : ""} disponible${count > 1 ? "s" : ""} sur le réseau local${result.accessPoints.length ? ` · ${result.accessPoints.length} en mode association` : ""}.`
       );
     });
@@ -11754,7 +12516,7 @@ async function handleAction(target) {
     const device = snapshot.state.settings.irl?.devices?.find(
       (entry) => entry.id === id
     );
-    if (!device) throw new Error("Prise Shelly introuvable.");
+    if (!device) throw new Error("Prise PlugPlus introuvable.");
     return openIrlRenameEditor(device);
   }
   if (action === "irl-remove") {
@@ -12039,6 +12801,75 @@ async function handleAction(target) {
     return;
   }
   if (
+    action === "add-coin-pusher-tier" ||
+    action === "remove-coin-pusher-tier" ||
+    action === "add-coin-pusher-gift-rule" ||
+    action === "remove-coin-pusher-gift-rule"
+  ) {
+    const form = target.closest("[data-coin-pusher-interactions]");
+    const pack = snapshot.packs.find((item) => item.id === "coin-pusher");
+    if (!form || !pack || !requireGameAccess(pack)) return;
+    if (action === "add-coin-pusher-tier") {
+      const list = form.querySelector("[data-coin-pusher-tier-list]");
+      const rows = [...list.querySelectorAll("[data-coin-pusher-tier-row]")];
+      if (rows.length >= 20) return;
+      const usedValues = new Set(
+        rows.map((row) => Number(row.querySelector('[name="coinPusherTierDiamonds"]')?.value))
+      );
+      const suggested = [5, 25, 50, 250, 500, 2500, 10000].find(
+        (value) => !usedValues.has(value)
+      ) || Math.max(2, ...usedValues) + 1;
+      list.insertAdjacentHTML(
+        "beforeend",
+        renderCoinPusherTierRow({ diamonds: suggested, coinCount: 1 })
+      );
+      list.lastElementChild
+        ?.querySelector('[name="coinPusherTierDiamonds"]')
+        ?.focus();
+      target.disabled = rows.length + 1 >= 20;
+      return;
+    }
+    if (action === "remove-coin-pusher-tier") {
+      const row = target.closest("[data-coin-pusher-tier-row]");
+      const value = Number(
+        row?.querySelector('[name="coinPusherTierDiamonds"]')?.value
+      );
+      if (value === 1) {
+        return toast(
+          "Palier indispensable",
+          "Conservez un palier de 1 diamant pour calculer toutes les valeurs.",
+          true
+        );
+      }
+      row?.remove();
+      const addButton = form.querySelector('[data-action="add-coin-pusher-tier"]');
+      if (addButton) addButton.disabled = false;
+      return;
+    }
+    if (action === "add-coin-pusher-gift-rule") {
+      const list = form.querySelector("[data-coin-pusher-gift-rule-list]");
+      const rows = list.querySelectorAll("[data-coin-pusher-gift-rule-row]");
+      if (rows.length >= 100) return;
+      list.querySelector("[data-coin-pusher-empty-rules]")?.remove();
+      list.insertAdjacentHTML("beforeend", renderCoinPusherGiftRuleRow());
+      list.lastElementChild
+        ?.querySelector('[name="coinPusherGiftRuleName"]')
+        ?.focus();
+      target.disabled = rows.length + 1 >= 100;
+      return;
+    }
+    target.closest("[data-coin-pusher-gift-rule-row]")?.remove();
+    const list = form.querySelector("[data-coin-pusher-gift-rule-list]");
+    if (!list.querySelector("[data-coin-pusher-gift-rule-row]")) {
+      list.innerHTML = '<div class="coin-pusher-empty-rules" data-coin-pusher-empty-rules><span>＋</span><strong>Aucune exception</strong><small>Tous les cadeaux utilisent actuellement leur valeur.</small></div>';
+    }
+    const addButton = form.querySelector(
+      '[data-action="add-coin-pusher-gift-rule"]'
+    );
+    if (addButton) addButton.disabled = false;
+    return;
+  }
+  if (
     action === "add-deal-banker-request" ||
     action === "remove-deal-banker-request"
   ) {
@@ -12261,6 +13092,17 @@ async function handleAction(target) {
     return openGameInteractionEditor(pack, effect);
   }
   if (action === "add-action") return openActionEditor();
+  if (action === "add-trigger") return openRuleEditor();
+  if (action === "edit-trigger") {
+    return openRuleEditor(
+      snapshot.state.rules.find((item) => item.id === id)
+    );
+  }
+  if (action === "delete-trigger") {
+    return deleteTriggerRule(
+      snapshot.state.rules.find((item) => item.id === id)
+    );
+  }
   if (action === "edit-action") {
     const row = findActionRow(
       target.dataset.rule,
@@ -12478,7 +13320,15 @@ async function handleAction(target) {
     }
   }
   if (action === "test-event") return perform(() => api.testEvent(target.dataset.type), "Événement de test envoyé");
-  if (action === "copy") return perform(() => api.copy(target.dataset.value), "URL copiée");
+  if (action === "copy") {
+    return perform(async () => {
+      await api.copy(target.dataset.value);
+      if (target.dataset.mediaScreenUrl === "true") {
+        rememberCopiedMediaScreenUrl(target.dataset.value);
+        render();
+      }
+    }, "URL copiée");
+  }
   if (action === "open-url") return perform(() => api.openExternal(target.dataset.value));
   if (action === "restart-servers") return perform(async () => { await api.restartServers(); snapshot = await api.getSnapshot(); render(); }, "Services redémarrés");
   if (action === "rotate-public-overlay-urls") {
@@ -12772,6 +13622,15 @@ async function toggleSession() {
 }
 
 content.addEventListener("input", (event) => {
+  const artworkUrlInput = event.target.closest(
+    "[data-coin-pusher-artwork-url]"
+  );
+  if (artworkUrlInput) {
+    updateCoinPusherArtworkDraft(artworkUrlInput, artworkUrlInput.value, {
+      syncUrl: false
+    });
+    return;
+  }
   if (event.target.matches("[data-gift-picker]")) {
     scheduleGiftCatalog(event.target);
   }
@@ -12797,6 +13656,15 @@ content.addEventListener("input", (event) => {
 });
 
 content.addEventListener("change", (event) => {
+  const artworkFileInput = event.target.closest(
+    "[data-coin-pusher-artwork-file]"
+  );
+  if (artworkFileInput) {
+    importCoinPusherArtwork(artworkFileInput).catch((error) =>
+      toast("Import impossible", error.message || String(error), true)
+    );
+    return;
+  }
   if (event.target.matches('[name="integratedSettingsPanel"]')) {
     const form = event.target.closest("[data-integrated-game-settings]");
     if (form?.dataset.integratedGameSettings) {
@@ -12852,6 +13720,19 @@ dialogBody.addEventListener("input", (event) => {
         !String(item.dataset.searchable || "").includes(query);
     });
   }
+  if (event.target.matches("[data-trigger-action-search]")) {
+    const query = event.target.value.trim().toLowerCase();
+    dialogBody
+      .querySelectorAll("[data-trigger-action-option]")
+      .forEach((item) => {
+        item.hidden =
+          Boolean(query) &&
+          !String(item.dataset.searchable || "").includes(query);
+      });
+  }
+  if (event.target.matches('[name="randomCount"]')) {
+    syncTriggerSelectionEditor();
+  }
   if (event.target.closest("[data-overlay-config-editor]")) {
     scheduleOverlayLivePreview();
   }
@@ -12864,6 +13745,12 @@ document.addEventListener("focusin", (event) => {
 });
 
 dialogBody.addEventListener("change", (event) => {
+  if (
+    event.target.matches('[name="actionIds"]') ||
+    event.target.matches("[data-trigger-selection-mode]")
+  ) {
+    syncTriggerSelectionEditor();
+  }
   if (event.target.matches("[data-gift-trigger-mode]")) {
     syncGiftTriggerCondition(
       event.target.closest("[data-gift-trigger-condition]")
@@ -13367,15 +14254,30 @@ dialog.addEventListener("click", (event) => {
     return;
   }
   const row = target.dataset.rule
-    ? findGameInteractionRow(
-        pack.id,
-        target.dataset.rule,
-        target.dataset.rowAction,
-        target.dataset.index
-      )
-    : null;
+    ? gameInteractionCatalogContext?.packId === pack.id &&
+      gameInteractionCatalogContext.row?.rule?.id === target.dataset.rule
+      ? gameInteractionCatalogContext.row
+      : findGameInteractionRow(
+          pack.id,
+          target.dataset.rule,
+          target.dataset.rowAction,
+          target.dataset.index
+        )
+    : gameInteractionCatalogContext?.packId === pack.id
+      ? gameInteractionCatalogContext.row
+      : null;
   if (openLibrary) {
-    return openGameInteractionCatalog(pack, row);
+    const context = gameInteractionEditorContext;
+    const draftRow =
+      context?.packId === pack.id && context.effectId === target.dataset.effect
+        ? gameInteractionDraftFromForm(
+            context.pack,
+            context.effect,
+            context,
+            new FormData(dialogForm)
+          )
+        : row;
+    return openGameInteractionCatalog(pack, draftRow);
   }
 
   const effect = pack.effects.find(
@@ -13384,7 +14286,6 @@ dialog.addEventListener("click", (event) => {
   if (!effect) {
     return showDialogError("Cette interaction n’existe plus.");
   }
-  dialog.close();
   openGameInteractionEditor(pack, effect, row);
 });
 
@@ -13721,6 +14622,30 @@ content.addEventListener("submit", async (event) => {
       if (response?.snapshot) acceptSnapshot(response.snapshot);
       render();
     }, "Accès Pro offert");
+    return;
+  }
+  const coinPusherInteractionsForm = event.target.closest(
+    "[data-coin-pusher-interactions]"
+  );
+  if (coinPusherInteractionsForm) {
+    event.preventDefault();
+    const pack = snapshot.packs.find((item) => item.id === "coin-pusher");
+    if (!requireGameAccess(pack)) return;
+    const data = new FormData(coinPusherInteractionsForm);
+    await perform(async () => {
+      snapshot = await api.configureGame(
+        "coin-pusher",
+        coinPusherInteractionSettingsFromForm(data)
+      );
+      gamePageMessages.set("coin-pusher", {
+        type: "success",
+        scope: "interactions",
+        title: "Interactions enregistrées",
+        detail:
+          "Le barème, les cadeaux précis et les bonus spéciaux sont prêts pour le prochain LIVE."
+      });
+      render();
+    }, "Interactions Coin Pusher enregistrées");
     return;
   }
   const integratedSettingsForm = event.target.closest(

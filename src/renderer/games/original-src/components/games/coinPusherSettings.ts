@@ -679,12 +679,25 @@ export function normalizeCoinPusherDiamondTiers(value: unknown): CoinPusherDiamo
     coinCountByDiamonds.set(diamonds, coinCount)
   }
 
-  // Denominations stay canonical so the creator only adjusts their output and
-  // can never accidentally remove the exact one-diamond remainder.
-  return defaultCoinPusherDiamondTiers().map((tier) => ({
-    ...tier,
-    coinCount: coinCountByDiamonds.get(tier.diamonds) || tier.coinCount,
-  }))
+  if (!coinCountByDiamonds.size) return defaultCoinPusherDiamondTiers()
+
+  // Custom denominations are supported from the ShenPulse interaction page.
+  // The one-diamond tier is kept as a safe remainder so every gift value can
+  // always be decomposed without silently losing diamonds.
+  if (!coinCountByDiamonds.has(1)) {
+    coinCountByDiamonds.set(1, 1)
+  }
+  const normalized = [...coinCountByDiamonds.entries()]
+    .map(([diamonds, coinCount]) => ({ diamonds, coinCount }))
+    .sort((left, right) => right.diamonds - left.diamonds)
+  if (normalized.length <= COIN_PUSHER_MAX_DIAMOND_TIERS) return normalized
+  const oneDiamondTier = normalized.find((tier) => tier.diamonds === 1)!
+  return [
+    ...normalized
+      .filter((tier) => tier.diamonds !== 1)
+      .slice(0, COIN_PUSHER_MAX_DIAMOND_TIERS - 1),
+    oneDiamondTier,
+  ]
 }
 
 export function normalizeCoinPusherWinnerPrizePercents(

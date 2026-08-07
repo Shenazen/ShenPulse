@@ -391,25 +391,50 @@ class GiftCatalog {
   }
 }
 
-async function fetchFrenchTikTokGifts(username = "tiktok") {
-  const { TikTokLiveConnection } = require("tiktok-live-connector");
-  const connection = new TikTokLiveConnection(username, {
+async function fetchFrenchTikTokGifts(
+  username = "tiktok",
+  { createConnection } = {}
+) {
+  const connectionOptions = {
     processInitialData: false,
+    fetchRoomInfoOnConnect: false,
     webClientParams: {
-      app_language: "fr-FR",
+      app_language: "fr",
       browser_language: "fr-FR",
       priority_region: "FR",
-      region: "FR"
+      region: "FR",
+      tz_name: "Europe/Paris",
+      webcast_language: "fr"
+    },
+    webClientHeaders: {
+      "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"
     },
     webClientOptions: {
       timeout: 10000
     }
-  });
+  };
+  const connection = createConnection
+    ? createConnection(username, connectionOptions)
+    : new (require("tiktok-live-connector").TikTokLiveConnection)(
+        username,
+        connectionOptions
+      );
+  const roomId = await connection.fetchRoomId();
+  if (!roomId) {
+    throw new Error("La salle TikTok du créateur est introuvable.");
+  }
+  // fetchAvailableGifts() n'associe pas la salle tout seul dans la version
+  // embarquée du connecteur. Sans room_id, TikTok renvoie son catalogue
+  // mondial générique au lieu des cadeaux rattachés au créateur.
+  connection.clientParams.room_id = String(roomId);
   return connection.fetchAvailableGifts();
 }
 
 function dedupeLocalizedGifts(values = []) {
-  const gifts = new Map();
+  const gifts = [];
+  const seenIds = new Set();
+  const seenNamesAndCosts = new Set();
+  const seenImagesAndCosts = new Set();
   for (const value of Array.isArray(values) ? values : []) {
     const gift = normalizeGift({
       cost: value?.cost ?? value?.diamondCount ?? value?.diamond_count,
@@ -427,9 +452,27 @@ function dedupeLocalizedGifts(values = []) {
     if (!gift.id || !gift.name || containsUnsupportedGiftScript(gift.name)) {
       continue;
     }
-    gifts.set(gift.id, gift);
+    const nameAndCostKey = [
+      normalizeSearch(gift.name).replace(/\s+/g, " "),
+      gift.cost
+    ].join("|");
+    const imageIdentity = giftImageIdentity(gift.imageUrl);
+    const imageAndCostKey = imageIdentity
+      ? `${imageIdentity}|${gift.cost}`
+      : "";
+    if (
+      seenIds.has(gift.id) ||
+      seenNamesAndCosts.has(nameAndCostKey) ||
+      (imageAndCostKey && seenImagesAndCosts.has(imageAndCostKey))
+    ) {
+      continue;
+    }
+    seenIds.add(gift.id);
+    seenNamesAndCosts.add(nameAndCostKey);
+    if (imageAndCostKey) seenImagesAndCosts.add(imageAndCostKey);
+    gifts.push(gift);
   }
-  return [...gifts.values()].sort(
+  return gifts.sort(
     (left, right) =>
       left.cost - right.cost ||
       left.name.localeCompare(right.name, "fr", {
@@ -437,6 +480,15 @@ function dedupeLocalizedGifts(values = []) {
         numeric: true
       })
   );
+}
+
+function giftImageIdentity(value = "") {
+  return String(value || "")
+    .replace(/^https:\/\/[^/]+\//i, "")
+    .replace(/~.*$/, "")
+    .split("/")
+    .pop()
+    .toLowerCase();
 }
 
 function containsUnsupportedGiftScript(value = "") {

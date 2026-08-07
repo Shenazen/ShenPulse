@@ -666,7 +666,7 @@ function registerIpc({
   handle("game:configure", (_event, packId, config) => {
     const targetId = safeString(packId, 160);
     requireGameAccess(targetId);
-    const next = sanitizeEntity(config);
+    const next = sanitizeGameConfiguration(targetId, config);
     if (next.secret) {
       const current =
         store.getState().game.connectorOverrides?.[targetId]?.secretId || "";
@@ -1040,6 +1040,42 @@ function sanitizeEntity(value, depth = 0) {
   return undefined;
 }
 
+function sanitizeGameConfiguration(packId, value) {
+  const input =
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const sanitized = sanitizeEntity(input);
+  const next =
+    sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)
+      ? sanitized
+      : {};
+  if (safeString(packId, 160) !== "coin-pusher") return next;
+  for (const field of ["platformImageUrl", "plinkoImageUrl"]) {
+    if (Object.prototype.hasOwnProperty.call(input, field)) {
+      next[field] = sanitizeCoinPusherArtworkUrl(input[field]);
+    }
+  }
+  return next;
+}
+
+function sanitizeCoinPusherArtworkUrl(value) {
+  const url = typeof value === "string" ? value.trim() : "";
+  if (!url || /^javascript:/i.test(url)) return "";
+  if (!/^data:/i.test(url)) return safeString(url, 4000);
+  if (
+    !/^data:image\/(?:avif|gif|jpe?g|png|webp);base64,[a-z0-9+/=]+$/i.test(
+      url
+    )
+  ) {
+    return "";
+  }
+  if (url.length > 1000000) {
+    throw new Error(
+      "L’image Coin Pusher est trop volumineuse après optimisation."
+    );
+  }
+  return url;
+}
+
 function sanitizeDealOrNoDealHostState(value) {
   const payload =
     value && typeof value === "object" && !Array.isArray(value)
@@ -1107,6 +1143,7 @@ function cleanTikTokUsername(value) {
 module.exports = {
   registerIpc,
   sanitizeEntity,
+  sanitizeGameConfiguration,
   sanitizeDealOrNoDealHostState,
   cleanTikTokUsername
 };

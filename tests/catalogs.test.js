@@ -10,6 +10,7 @@ const {
   createMediaCatalog,
   dedupeLocalizedGifts,
   extractMyInstantsSounds,
+  fetchFrenchTikTokGifts,
   normalizeWikimediaMediaPayload
 } = require("../src/main/catalogs");
 
@@ -184,4 +185,94 @@ test("remplace le secours par la liste TikTok localisée en fr-FR", async () => 
       .length,
     1
   );
+});
+
+test("déduplique les variantes TikTok qui ont le même visuel", () => {
+  const gifts = dedupeLocalizedGifts([
+    {
+      id: 17667,
+      name: "Côte à côte",
+      diamond_count: 199,
+      image: {
+        url_list: [
+          "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/side-by-side.png~tplv-obj.webp"
+        ]
+      }
+    },
+    {
+      id: 17589,
+      name: "Côte à côte",
+      diamond_count: 199,
+      image: {
+        url_list: [
+          "https://p19-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/side-by-side.png~tplv-obj.png"
+        ]
+      }
+    },
+    {
+      id: 5655,
+      name: "Rose",
+      diamond_count: 1,
+      image: {
+        url_list: [
+          "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/rose.png~tplv-obj.webp"
+        ]
+      }
+    },
+    {
+      id: 10716,
+      name: "Le bisou",
+      diamond_count: 1,
+      image: {
+        url_list: [
+          "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/kiss.png~tplv-obj.webp"
+        ]
+      }
+    },
+    {
+      id: 7832,
+      name: "Le bisou",
+      diamond_count: 1,
+      image: {
+        url_list: [
+          "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/legacy-kiss.png~tplv-obj.webp"
+        ]
+      }
+    }
+  ]);
+
+  assert.deepEqual(
+    gifts.map((gift) => gift.name),
+    ["Le bisou", "Rose", "Côte à côte"]
+  );
+});
+
+test("demande le catalogue français de la salle du créateur", async () => {
+  let receivedUsername = "";
+  let receivedOptions = null;
+  const connection = {
+    clientParams: {},
+    async fetchRoomId() {
+      return "room-shenazen";
+    },
+    async fetchAvailableGifts() {
+      assert.equal(this.clientParams.room_id, "room-shenazen");
+      return [{ id: 5655, name: "Rose", diamond_count: 1 }];
+    }
+  };
+
+  const gifts = await fetchFrenchTikTokGifts("shenazen", {
+    createConnection(username, options) {
+      receivedUsername = username;
+      receivedOptions = options;
+      return connection;
+    }
+  });
+
+  assert.equal(receivedUsername, "shenazen");
+  assert.equal(receivedOptions.webClientParams.app_language, "fr");
+  assert.equal(receivedOptions.webClientParams.browser_language, "fr-FR");
+  assert.equal(receivedOptions.webClientParams.region, "FR");
+  assert.match(receivedOptions.webClientHeaders["Accept-Language"], /^fr-FR/);
+  assert.equal(gifts[0].name, "Rose");
 });

@@ -11,6 +11,7 @@ const {
 } = require("../src/main/defaults");
 const {
   StateStore,
+  normalizeRuleActionSelection,
   normalizeRules,
   normalizeWheelSegmentActions
 } = require("../src/main/store");
@@ -123,6 +124,67 @@ test("une règle mixte conserve le déclencheur de ses autres actions", () => {
   assert.equal(rule.trigger.type, "gift");
   assert.equal(rule.trigger.threshold, 2);
   assert.equal(rule.conditions.length, 1);
+});
+
+test("la sélection aléatoire d’actions est dédupliquée et bornée", () => {
+  assert.deepEqual(
+    normalizeRuleActionSelection({
+      mode: "random",
+      actionIds: ["a", "b", "a", "c"],
+      randomCount: 8
+    }),
+    {
+      mode: "random",
+      actionIds: ["a", "b", "c"],
+      randomCount: 3
+    }
+  );
+});
+
+test("une interaction de jeu est persistée sur disque avant le retour de sauvegarde", () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-game-interaction-save-")
+  );
+  const store = createStore(directory);
+
+  try {
+    const initial = store.load();
+    const profileId = initial.session.profileId;
+    store.upsertGameInteraction("game-test", {
+      id: "game_rule_saved",
+      name: "Interaction persistée",
+      enabled: true,
+      gameInteraction: { title: "Nouvel effet" },
+      trigger: { enabled: true, type: "gift" },
+      conditions: [
+        { field: "data.giftName", operator: "equals", value: "Rose" }
+      ],
+      actions: [
+        {
+          id: "game_action_saved",
+          type: "game.effect",
+          config: { packId: "game-test", effectId: "new-effect" }
+        }
+      ]
+    });
+
+    const persisted = JSON.parse(
+      fs.readFileSync(path.join(directory, "shenpulse-state.json"), "utf8")
+    );
+    const activeProfile = persisted.profiles.find(
+      (profile) => profile.id === profileId
+    );
+    const savedRule =
+      persisted.game.interactionRulesByPack["game-test"][0];
+    const profileRule =
+      activeProfile.workspace.game.interactionRulesByPack["game-test"][0];
+
+    assert.equal(savedRule.actions[0].config.effectId, "new-effect");
+    assert.equal(savedRule.conditions[0].value, "Rose");
+    assert.deepEqual(profileRule, savedRule);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("une action choisie suffit à activer le secteur de roue", () => {

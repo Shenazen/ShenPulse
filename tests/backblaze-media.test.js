@@ -175,6 +175,38 @@ test("téléverse aussi une image personnalisée dans la bibliothèque globale",
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 });
 
+test("conserve le format GIF lors du téléversement d'un média personnalisé", async () => {
+  const store = createStore({
+    keyIdSecretId: "key-id",
+    applicationKeySecretId: "application-key"
+  });
+  store.secrets.set("key-id", "test-key-id");
+  store.secrets.set("application-key", "test-application-key");
+  const calls = [];
+  const service = new BackblazeMediaService({
+    store,
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200 };
+    }
+  });
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-media-gif-")
+  );
+  const gifPath = path.join(temporaryDirectory, "Alerte_Animee.gif");
+  fs.writeFileSync(gifPath, Buffer.from("GIF89a"));
+
+  const media = await service.uploadMedia(gifPath, "visual");
+
+  assert.equal(media.name, "Alerte Animee");
+  assert.equal(media.kind, "gif");
+  assert.equal(media.contentType, "image/gif");
+  assert.match(media.key, /^mediauploads\/desktop\/gif\/.+\.gif$/);
+  assert.match(media.url, /\.gif$/);
+  assert.equal(calls[0].options.headers["Content-Type"], "image/gif");
+  fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+});
+
 test("le parseur et la signature B2 restent déterministes", () => {
   assert.deepEqual(parseEnvironmentFile('A="un"\nB=deux\n# C=trois'), {
     A: "un",

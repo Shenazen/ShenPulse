@@ -56,7 +56,7 @@ class ShellyService {
       this.#discoverHosts(timeoutMs),
       this.#scanWifiNetworks()
     ]);
-    const devices = await this.#probeHosts(hosts);
+    const devices = (await this.#probeHosts(hosts)).filter(isPlugPlusDevice);
     const onlineIds = new Set(devices.map((device) => device.id));
     this.store.mutate((state) => {
       for (const device of ensureIrlSettings(state.settings).devices) {
@@ -67,7 +67,7 @@ class ShellyService {
     return {
       currentNetwork: wifi.currentNetwork,
       accessPoints: wifi.networks.filter((network) =>
-        /^shelly/i.test(network.ssid)
+        isPlugPlusAccessPoint(network.ssid)
       ),
       devices: this.#settings().devices.map((device) => ({ ...device }))
     };
@@ -79,6 +79,11 @@ class ShellyService {
     if (!device) {
       throw new Error(
         "Aucune prise Shelly n’a répondu à cette adresse sur le réseau local."
+      );
+    }
+    if (!isPlugPlusDevice(device)) {
+      throw new Error(
+        "Cette adresse ne correspond pas à une prise PlugPlus compatible."
       );
     }
     if (name) device.name = cleanLabel(name, 80);
@@ -102,11 +107,13 @@ class ShellyService {
     const nextName = cleanLabel(name, 80);
     if (!nextName) throw new Error("Le nom de la prise est requis.");
     this.store.mutate((state) => {
-      const device = ensureIrlSettings(state.settings).devices.find(
+      const irl = ensureIrlSettings(state.settings);
+      const device = irl.devices.find(
         (entry) => entry.id === targetId
       );
       if (!device) throw new Error("Prise Shelly introuvable.");
       device.name = nextName;
+      irl.deviceNames[targetId] = nextName;
     }, true);
     return this.status();
   }
@@ -128,8 +135,8 @@ class ShellyService {
     }
     const shellySsid = cleanWifiName(accessPointSsid);
     const targetWifi = cleanWifiName(wifiSsid);
-    if (!/^shelly/i.test(shellySsid)) {
-      throw new Error("Choisissez le réseau Wi-Fi créé par la prise Shelly.");
+    if (!isPlugPlusAccessPoint(shellySsid)) {
+      throw new Error("Choisissez le réseau Wi-Fi créé par la prise PlugPlus.");
     }
     if (!targetWifi) throw new Error("Le réseau Wi-Fi de la maison est requis.");
 
@@ -146,6 +153,9 @@ class ShellyService {
         throw new Error(
           "La prise n’a pas répondu. Rapprochez-la du PC et relancez son mode association."
         );
+      }
+      if (!isPlugPlusDevice(identified)) {
+        throw new Error("Seules les prises PlugPlus peuvent être associées.");
       }
       await this.#provisionWifi(
         identified,
@@ -236,8 +246,20 @@ class ShellyService {
 
   async #discoverHosts(timeoutMs) {
     const saved = this.#settings().devices.map((device) => device.host);
-    const discovered = await this.mdnsDiscoverer({ timeoutMs }).catch(() => []);
-    return [...new Set([...saved, ...discovered].map(normalizeHost).filter(Boolean))];
+    const [discovered, arpOutput] = await Promise.all([
+      this.mdnsDiscoverer({ timeoutMs }).catch(() => []),
+      this.platform === "win32"
+        ? this.commandRunner("arp.exe", ["-a"]).catch(() => "")
+        : Promise.resolve("")
+    ]);
+    const neighbors = hostsFromArpOutput(arpOutput);
+    return [
+      ...new Set(
+        [...saved, ...discovered, ...neighbors]
+          .map(normalizeHost)
+          .filter(Boolean)
+      )
+    ];
   }
 
   async #probeHosts(hosts) {
@@ -485,15 +507,19 @@ class ShellyService {
     this.store.mutate((state) => {
       const irl = ensureIrlSettings(state.settings);
       const index = irl.devices.findIndex((device) => device.id === normalized.id);
+      const current = index >= 0 ? irl.devices[index] : null;
+      const rememberedName =
+        irl.deviceNames[normalized.id] || current?.name || normalized.name;
       if (index >= 0) {
         irl.devices[index] = {
-          ...irl.devices[index],
+          ...current,
           ...normalized,
-          name: irl.devices[index].name || normalized.name
+          name: rememberedName
         };
       } else {
-        irl.devices.push(normalized);
+        irl.devices.push({ ...normalized, name: rememberedName });
       }
+      irl.deviceNames[normalized.id] = rememberedName;
     });
   }
 
@@ -605,10 +631,29 @@ function ensureIrlSettings(settings = {}) {
 
 function normalizeIrlSettings(value) {
   const source = value && typeof value === "object" ? value : {};
+  const deviceNames = normalizeDeviceNames(source.deviceNames);
   const devices = Array.isArray(source.devices)
-    ? source.devices.map(normalizeDevice).filter((device) => device.id)
+    ? source.devices
+        .map(normalizeDevice)
+        .filter((device) => device.id)
+        .map((device) => {
+          const rememberedName = deviceNames[device.id] || device.name;
+          deviceNames[device.id] = rememberedName;
+          return { ...device, name: rememberedName };
+        })
     : [];
-  return { enabled: source.enabled === true, devices };
+  return { enabled: source.enabled === true, devices, deviceNames };
+}
+
+function normalizeDeviceNames(value) {
+  const source =
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(
+    Object.entries(source)
+      .slice(0, 200)
+      .map(([id, name]) => [cleanIdentifier(id), cleanLabel(name, 80)])
+      .filter(([id, name]) => id && name)
+  );
 }
 
 function normalizeDevice(value = {}) {
@@ -631,6 +676,17 @@ function normalizeDevice(value = {}) {
 function inferDeviceControllable(value = {}) {
   const identity = `${value.id || ""} ${value.model || ""} ${value.type || ""}`;
   return !/(?:shellypro3em|spem-003|shellyem3|shem-3)/i.test(identity);
+}
+
+function isPlugPlusDevice(value = {}) {
+  const identity = `${value.id || ""} ${value.model || ""} ${value.type || ""} ${value.app || ""}`;
+  return /(?:shellyplusplugs|plusplugs|snpl-00112eu|shelly\s+plus\s+plug\s+s)/i.test(
+    identity
+  );
+}
+
+function isPlugPlusAccessPoint(value) {
+  return /^shellyplusplugs(?:-|$)/i.test(cleanWifiName(value));
 }
 
 function normalizeHost(value) {
@@ -668,6 +724,26 @@ function cleanLabel(value, maxLength = 120) {
 
 function cleanWifiName(value) {
   return cleanLabel(value, 32);
+}
+
+function hostsFromArpOutput(output) {
+  const hosts = [];
+  for (const match of String(output || "").matchAll(
+    /^\s*((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f]{2}(?:[:-][0-9a-f]{2}){5})\s+/gim
+  )) {
+    const host = normalizeHost(match[1]);
+    const mac = match[2].replaceAll("-", ":").toLowerCase();
+    if (
+      host &&
+      !host.endsWith(".0") &&
+      !host.endsWith(".255") &&
+      mac !== "ff:ff:ff:ff:ff:ff" &&
+      !hosts.includes(host)
+    ) {
+      hosts.push(host);
+    }
+  }
+  return hosts;
 }
 
 function normalizeOperation(value) {
@@ -891,7 +967,9 @@ function discoverMdnsHosts({ timeoutMs = 1400 } = {}) {
 module.exports = {
   ShellyService,
   discoverMdnsHosts,
+  hostsFromArpOutput,
   hostsFromMdnsRecords,
+  isPlugPlusDevice,
   mdnsQueryPacket,
   normalizeDevice,
   normalizeHost,

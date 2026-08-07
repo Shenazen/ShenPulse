@@ -386,7 +386,7 @@ test("l'éditeur d'action reste progressif et parle de déclencheurs", () => {
   assert.match(styles, /\.dialog-error/);
 });
 
-test("la page Actions et l'éditeur de déclencheur restent simples et sans doublons", () => {
+test("la page Actions possède un mini-onglet de déclencheurs groupés ou aléatoires", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
   const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
   const styles = fs.readFileSync(
@@ -406,14 +406,22 @@ test("la page Actions et l'éditeur de déclencheur restent simples et sans doub
   assert.doesNotMatch(actionsPage, /actionsSection === "events"/);
   assert.match(
     actionsPage,
-    /directement dans chaque action, l’événement qui doit la lancer/
+    /\["triggers", "Déclencheurs", automaticTriggerRules\(\)\.length\]/
   );
-  assert.doesNotMatch(editor, /Actions liées|Actions JSON/);
+  assert.match(actionsPage, /actionsSection === "triggers" \? renderTriggersPanel\(\)/);
+  assert.match(app, /function renderTriggersPanel\(\)/);
+  assert.match(app, /data-action="add-trigger"/);
+  assert.match(editor, /2\. Actions existantes/);
+  assert.match(editor, /name="actionIds"/);
+  assert.match(editor, /name="actionSelectionMode"/);
+  assert.match(editor, /name="randomCount"/);
+  assert.match(editor, /Nombre obligatoire à tirer/);
   assert.doesNotMatch(editor, /Conditions et exécution avancées|dialog-advanced/);
-  assert.doesNotMatch(editor, /variant:\s*"wide"/);
-  assert.match(editor, /class="trigger-editor"/);
+  assert.match(editor, /variant:\s*"wide"/);
+  assert.match(editor, /class="trigger-editor action-editor"/);
   assert.match(editor, /trigger-editor-source-note/);
   assert.match(editor, /actions:\s*current\.actions \|\| \[\]/);
+  assert.match(editor, /actionSelection:\s*\{/);
   assert.match(
     editor,
     /conditions:\s*buildTriggerConditions\(current\.conditions, data\)/
@@ -448,6 +456,15 @@ test("les médias, sons et cadeaux utilisent des bibliothèques recherchables", 
   assert.match(renderer, /api\.searchSounds/);
   assert.match(renderer, /api\.searchMedia/);
   assert.match(renderer, /api\.uploadCustomMedia/);
+  const uploadMediaFlow = renderer.slice(
+    renderer.indexOf("async function uploadMediaFromLibrary"),
+    renderer.indexOf("const globalMediaLibrary")
+  );
+  assert.match(
+    uploadMediaFlow,
+    /mediaLibrarySelected = item;[\s\S]*confirmMediaLibrarySelection\(\);/
+  );
+  assert.match(uploadMediaFlow, /Enregistrez l’action pour conserver ce choix/);
   assert.match(renderer, /window\.ShenPulseMediaLibrary = globalMediaLibrary/);
   assert.match(renderer, /data-media-preview-url/);
   assert.match(renderer, /mediaName:\s*data\.get\("urlName"\)/);
@@ -596,7 +613,7 @@ test("un tarif de jeu accepte la virgule et est publié en production", () => {
   );
 });
 
-test("les pages de jeu utilisent le parcours commun, réduit à deux étapes pour les jeux intégrés", () => {
+test("Coin Pusher utilise les quatre étapes de GTA et Minecraft, les autres jeux intégrés restent compacts", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
     "utf8"
@@ -617,6 +634,10 @@ test("les pages de jeu utilisent le parcours commun, réduit à deux étapes pou
   assert.ok(journey.indexOf('id: "overlays"') < journey.indexOf('id: "launch"'));
   assert.doesNotMatch(journey, /Test & LIVE|id: "live"/);
   assert.match(workspace, /function gameJourneyFor/);
+  assert.match(
+    workspace,
+    /if \(pack\.id === "coin-pusher"\)[\s\S]*return journey\.map/
+  );
   assert.match(
     workspace,
     /\.filter\(\(step\) => step\.id === "installation" \|\| step\.id === "launch"\)/
@@ -640,10 +661,16 @@ test("les pages de jeu utilisent le parcours commun, réduit à deux étapes pou
   assert.match(workspace, /game-effect-trigger/);
   assert.match(workspace, /toggle-game-interaction/);
   assert.match(workspace, /edit-game-interaction/);
+  assert.match(workspace, /function renderCoinPusherInteractions/);
+  assert.match(workspace, /data-coin-pusher-interactions/);
+  assert.match(workspace, /coinPusherTierDiamonds/);
+  assert.match(workspace, /coinPusherGiftRuleName/);
   assert.match(app, /function openGameInteractionEditor/);
   assert.match(app, /giftTriggerConditionFields\(currentRule\.conditions/);
   assert.match(styles, /dialog\[data-variant="effect"\]/);
   assert.match(styles, /\.game-interaction-editor-hero/);
+  assert.match(styles, /\.coin-pusher-reward-layout/);
+  assert.match(styles, /\.coin-pusher-special-grid/);
 });
 
 test("les interactions de jeu disposent d'une bibliothèque visuelle complète", () => {
@@ -668,6 +695,34 @@ test("les interactions de jeu disposent d'une bibliothèque visuelle complète",
   assert.match(styles, /dialog\[data-variant="effect-library"\]/);
   assert.match(styles, /\.game-effect-library-option/);
   assert.match(styles, /\.game-effect-library-search/);
+});
+
+test("changer l'effet conserve le brouillon complet de l'interaction", () => {
+  const app = fs.readFileSync(
+    path.join(__dirname, "..", "src", "renderer", "app.js"),
+    "utf8"
+  );
+  const draftBuilder = app.slice(
+    app.indexOf("function gameInteractionDraftFromForm"),
+    app.indexOf("function openGameInteractionEditor")
+  );
+  const catalogHandler = app.slice(
+    app.indexOf('const openLibrary = event.target.closest('),
+    app.indexOf('dialog.addEventListener("click", (event) => {',
+      app.indexOf('const openLibrary = event.target.closest(') + 1)
+  );
+
+  assert.match(draftBuilder, /buildTriggerConditions\(currentRule\.conditions, data\)/);
+  assert.match(draftBuilder, /conditions:\s*automatic/);
+  assert.match(draftBuilder, /effectId:\s*effect\.id/);
+  assert.match(catalogHandler, /new FormData\(dialogForm\)/);
+  assert.match(catalogHandler, /openGameInteractionCatalog\(pack, draftRow\)/);
+  assert.match(catalogHandler, /gameInteractionCatalogContext\.row/);
+  assert.match(catalogHandler, /openGameInteractionEditor\(pack, effect, row\)/);
+  assert.doesNotMatch(
+    catalogHandler,
+    /dialog\.close\(\);\s*openGameInteractionEditor\(pack, effect, row\)/
+  );
 });
 
 test("un ancien pack GTA propose explicitement la mise à jour du retournement", () => {
@@ -752,6 +807,11 @@ test("les actions visuelles sont fusionnees en Media et proposent huit ecrans OB
   assert.match(app, /function canonicalActionType/);
   assert.match(app, /function renderMediaScreensPanel/);
   assert.match(app, /snapshot\.overlayUrls\?\.mediaScreens/);
+  assert.match(app, /function isCopiedMediaScreenUrl/);
+  assert.match(app, /data-media-screen-url="true"/);
+  assert.match(app, /ready \? "Prêt" : "Hors ligne"/);
+  assert.match(app, /Ces champs d’URL servent à visualiser les médias/);
+  assert.match(app, /faire entendre les sons et le TTS sur vos LIVE/);
   assert.match(app, /name="mediaScreen"/);
   assert.match(app, /Écrans Media/);
   assert.match(styles, /\.media-screens-panel/);

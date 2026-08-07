@@ -61,7 +61,7 @@
     {
       id: "irl.shelly",
       label: "Interactions IRL Shelly",
-      detail: "Association et pilotage local des prises Shelly depuis les interactions LIVE",
+      detail: "Association et pilotage local des prises PlugPlus depuis les interactions LIVE",
       icon: "⚡",
       defaultScope: "admin",
       ownerOnly: true
