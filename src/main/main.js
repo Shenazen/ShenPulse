@@ -23,6 +23,7 @@ const {
 } = require("./interaction-audit-plan");
 const { registerIpc } = require("./ipc");
 const { StateStore } = require("./store");
+const { StoreUpdateService } = require("./store-update-service");
 const {
   shouldSuppressRendererChannel,
   snapshotForRenderer
@@ -33,6 +34,7 @@ let core = null;
 let gameRuntime = null;
 let store = null;
 let accountService = null;
+let storeUpdateService = null;
 let ipcController = null;
 let activeInteractionAudit = null;
 let quitting = false;
@@ -172,6 +174,7 @@ async function bootstrap() {
     store,
     openExternal: (url) => shell.openExternal(url)
   });
+  storeUpdateService = new StoreUpdateService({ app, shell });
   const adminService = new AdminService({ store, accountService });
   createWindow();
   core = new ShenPulseCore({
@@ -197,6 +200,7 @@ async function bootstrap() {
     accountService,
     adminService,
     gameRuntime,
+    storeUpdateService,
     getWindow: () => mainWindow
   });
   await core.initialize();

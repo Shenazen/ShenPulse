@@ -45,6 +45,53 @@ class GameHub extends EventEmitter {
     return structuredClone(this.packs);
   }
 
+  repairMinecraftWinCounterInteractions() {
+    let repaired = 0;
+    this.store.mutate((state) => {
+      const rulesByPack = state.game?.interactionRulesByPack || {};
+      for (const packId of [
+        "minecraft-bedrock-box",
+        "minecraft-sandbox-3"
+      ]) {
+        const pack = this.packs.find((entry) => entry.id === packId);
+        const mappings = Array.isArray(pack?.defaultMappings)
+          ? pack.defaultMappings
+          : [];
+        const rules = rulesByPack[packId];
+        if (!pack || !mappings.length || !Array.isArray(rules)) continue;
+
+        const existingRulesById = new Map(
+          rules.map((rule) => [rule.id, rule])
+        );
+        for (const mapping of mappings) {
+          const effect = pack.effects.find(
+            (entry) => entry.id === mapping.effectId
+          );
+          if (!effect?.winCounter) continue;
+          const expectedRule = defaultGameInteractionRule(
+            pack,
+            effect,
+            mapping,
+            Number(pack.interactionCatalogVersion || 0)
+          );
+          const existingRule = existingRulesById.get(expectedRule.id);
+          if (
+            existingRule &&
+            repairDefaultWinCounterInteraction(
+              packId,
+              existingRule,
+              effect,
+              mapping
+            )
+          ) {
+            repaired += 1;
+          }
+        }
+      }
+    }, true);
+    return { repaired };
+  }
+
   assertAccess(packId) {
     return assertGameAccess(this.store.getState(), this.#pack(packId));
   }
@@ -63,18 +110,19 @@ class GameHub extends EventEmitter {
     }
 
     let added = 0;
+    let repaired = 0;
     this.store.mutate((state) => {
       state.game.interactionCatalogVersions ||= {};
       const currentVersion = Number(
         state.game.interactionCatalogVersions[pack.id] || 0
       );
-      if (currentVersion >= version) return;
+      const canAddDefaults = currentVersion < version;
 
       state.game.interactionRulesByPack ||= {};
       const interactionRules =
         state.game.interactionRulesByPack[pack.id] ||= [];
-      const existingRuleIds = new Set(
-        interactionRules.map((rule) => rule.id)
+      const existingRulesById = new Map(
+        interactionRules.map((rule) => [rule.id, rule])
       );
       for (const mapping of mappings) {
         const effect = pack.effects.find(
@@ -87,14 +135,30 @@ class GameHub extends EventEmitter {
           mapping,
           version
         );
-        if (existingRuleIds.has(rule.id)) continue;
+        const existingRule = existingRulesById.get(rule.id);
+        if (existingRule) {
+          if (
+            repairDefaultWinCounterInteraction(
+              pack.id,
+              existingRule,
+              effect,
+              mapping
+            )
+          ) {
+            repaired += 1;
+          }
+          continue;
+        }
+        if (!canAddDefaults) continue;
         interactionRules.push(rule);
-        existingRuleIds.add(rule.id);
+        existingRulesById.set(rule.id, rule);
         added += 1;
       }
-      state.game.interactionCatalogVersions[pack.id] = version;
+      if (canAddDefaults) {
+        state.game.interactionCatalogVersions[pack.id] = version;
+      }
     }, true);
-    return { added, version };
+    return { added, repaired, version };
   }
 
   async testConnection(packId) {
@@ -562,6 +626,46 @@ function defaultGameInteractionRule(pack, effect, mapping, version) {
       }
     ]
   };
+}
+
+function repairDefaultWinCounterInteraction(
+  packId,
+  rule,
+  effect,
+  mapping
+) {
+  if (
+    !["minecraft-bedrock-box", "minecraft-sandbox-3"].includes(packId) ||
+    !effect.winCounter ||
+    rule?.gameInteraction?.default !== true ||
+    String(rule.gameInteraction.presetId || "") !== String(mapping.id || "")
+  ) {
+    return false;
+  }
+  const action = (rule.actions || []).find(
+    (entry) =>
+      entry?.type === "overlay.win-counter" &&
+      entry.config?.effectId === effect.id
+  );
+  if (!action?.config) return false;
+
+  const expectedAmount = Number(
+    mapping.amount ?? effect.winCounter.amount ?? 0
+  );
+  const genericAmount = Number(effect.winCounter.amount ?? 0);
+  const currentAmount = Number(action.config.amount);
+  if (
+    !Number.isFinite(expectedAmount) ||
+    expectedAmount === genericAmount ||
+    (Number.isFinite(currentAmount) && currentAmount !== genericAmount)
+  ) {
+    return false;
+  }
+
+  action.config.amount = expectedAmount;
+  action.config.operation =
+    mapping.operation || effect.winCounter.operation || "adjust";
+  return true;
 }
 
 function validatePack(pack) {

@@ -482,9 +482,67 @@ nav {
 .workspace {
   position: relative;
   display: grid;
-  grid-template-rows: 82px 1fr;
+  grid-template-rows: 82px auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
+}
+
+.store-update-banner {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  margin: 14px 32px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(34, 211, 238, 0.34);
+  border-radius: 10px;
+  background:
+    linear-gradient(110deg, rgba(139, 92, 246, 0.22), rgba(34, 211, 238, 0.1)),
+    rgba(11, 14, 27, 0.98);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+.store-update-banner[hidden] {
+  display: none;
+}
+
+.store-update-banner.mandatory {
+  border-color: rgba(251, 191, 36, 0.48);
+}
+
+.store-update-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--cyan);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.store-update-copy,
+.store-update-copy strong,
+.store-update-copy small {
+  display: block;
+  min-width: 0;
+}
+
+.store-update-copy strong {
+  font-size: 12px;
+}
+
+.store-update-copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.store-update-banner .button {
+  min-width: 122px;
 }
 
 .titlebar {
@@ -8554,6 +8612,39 @@ dialog[data-variant="overlay-preview"] {
 
 .commerce-note {
   margin-top: 15px;
+}
+
+.membership-stop-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+}
+
+.membership-stop-notice > div {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.membership-stop-notice h3,
+.membership-stop-notice p {
+  margin: 0;
+}
+
+.membership-stop-notice h3 {
+  color: #f9a8d4;
+  font-size: 13px;
+}
+
+.membership-stop-notice p {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.membership-stop-notice p strong {
+  color: var(--text);
 }
 
 .premium-seat-panel {

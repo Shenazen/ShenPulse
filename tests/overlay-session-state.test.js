@@ -159,6 +159,24 @@ test("les remises à zéro manuelles modifient aussi l'état hydraté", () => {
   assert.equal(state.overlaySession.winCounterCurrent, 3);
 });
 
+test("le compteur WINS applique toute la variation demandée", () => {
+  const state = runtimeState();
+  resetOverlaySession(state);
+  state.overlaySession.winCounterCurrent = 50;
+
+  applyOverlayOperation(state, "win-counter", {
+    operation: "adjust",
+    amount: -20
+  });
+  assert.equal(state.overlaySession.winCounterCurrent, 30);
+
+  applyOverlayOperation(state, "win-counter", {
+    operation: "adjust",
+    amount: 45
+  });
+  assert.equal(state.overlaySession.winCounterCurrent, 75);
+});
+
 test("le multiplicateur WINS s'applique aux gains et aux pertes jusqu'à son expiration", () => {
   const state = {
     session: { running: false },

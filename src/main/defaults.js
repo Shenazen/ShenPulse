@@ -404,7 +404,8 @@ function createDefaultState() {
         source: "free",
         status: "free",
         priceMonthly: 0,
-        renewalDate: ""
+        renewalDate: "",
+        pendingChange: null
       },
       premiumSeat: {
         beneficiaryEmail: "",

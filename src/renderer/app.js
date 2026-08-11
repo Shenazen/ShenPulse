@@ -70,6 +70,10 @@ const mediaLibraryConfirmButton = document.getElementById(
   "media-library-confirm"
 );
 const toastRegion = document.getElementById("toast-region");
+const storeUpdateBanner = document.getElementById("store-update-banner");
+const storeUpdateTitle = document.getElementById("store-update-title");
+const storeUpdateDetail = document.getElementById("store-update-detail");
+const storeUpdateButton = document.getElementById("store-update-button");
 
 let snapshot = null;
 let currentPage = "dashboard";
@@ -94,6 +98,7 @@ let soundCategory = "all";
 let gameSearch = "";
 let gameFilter = "all";
 let subscriptionCheckoutBusyTier = "";
+let subscriptionStopBusy = false;
 let selectedGameId = "";
 let gamePageMode = "catalog";
 let gameWorkspaceStep = "installation";
@@ -180,6 +185,10 @@ let overlayPreviewRefreshTimer = 0;
 let entitlementSyncPromise = null;
 let pendingAccountLogoutPromise = null;
 const ENTITLEMENT_SYNC_INTERVAL_MS = 30 * 1000;
+const STORE_UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+let storeUpdateStatus = null;
+let storeUpdateCheckPromise = null;
+let storeUpdateInstalling = false;
 const locallyHandledOverlayConfigs = new Map();
 let spotifyStatus = {
   configured: false,
@@ -637,6 +646,95 @@ function toast(title, detail = "", isError = false) {
   node.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span>`;
   toastRegion.appendChild(node);
   setTimeout(() => node.remove(), 4200);
+}
+
+function storePackageVersionLabel(value) {
+  const parts = String(value || "").split(".").filter(Boolean);
+  while (parts.length > 3 && parts.at(-1) === "0") parts.pop();
+  return parts.join(".");
+}
+
+function renderStoreUpdateBanner() {
+  const available = storeUpdateStatus?.available === true;
+  storeUpdateBanner.hidden = !available;
+  if (!available) return;
+
+  const version = storePackageVersionLabel(
+    storeUpdateStatus.packageVersion
+  );
+  storeUpdateBanner.classList.toggle(
+    "mandatory",
+    storeUpdateStatus.mandatory === true
+  );
+  storeUpdateTitle.textContent = storeUpdateStatus.mandatory
+    ? "Mise à jour ShenPulse requise"
+    : "Une mise à jour ShenPulse est disponible";
+  storeUpdateDetail.textContent = version
+    ? `La version ${version} est disponible sur Microsoft Store.`
+    : "Microsoft Store propose une nouvelle version de l’application.";
+  storeUpdateButton.disabled = storeUpdateInstalling;
+  storeUpdateButton.textContent = storeUpdateInstalling
+    ? "Mise à jour…"
+    : "Mettre à jour";
+}
+
+function refreshStoreUpdate({ force = false } = {}) {
+  if (storeUpdateCheckPromise) return storeUpdateCheckPromise;
+  storeUpdateCheckPromise = api.updates
+    .check({ force })
+    .then((status) => {
+      storeUpdateStatus = status;
+      renderStoreUpdateBanner();
+      return status;
+    })
+    .catch(() => null)
+    .finally(() => {
+      storeUpdateCheckPromise = null;
+    });
+  return storeUpdateCheckPromise;
+}
+
+async function installStoreUpdate() {
+  if (storeUpdateInstalling || !storeUpdateStatus?.available) return;
+  const confirmed = await confirmAction(
+    "ShenPulse va demander au Microsoft Store d’installer la nouvelle version. L’application peut se fermer pendant l’installation.",
+    {
+      title: "Installer la mise à jour ?",
+      confirmLabel: "Mettre à jour",
+      danger: false
+    }
+  );
+  if (!confirmed) return;
+
+  storeUpdateInstalling = true;
+  renderStoreUpdateBanner();
+  try {
+    const result = await api.updates.install();
+    if (result?.installed || result?.state === "completed") {
+      toast(
+        "Mise à jour installée",
+        "Relancez ShenPulse si l’application ne redémarre pas automatiquement."
+      );
+      storeUpdateStatus = { ...storeUpdateStatus, available: false };
+    } else if (result?.openedStore) {
+      toast(
+        "Microsoft Store ouvert",
+        "Terminez la mise à jour de ShenPulse depuis la page affichée."
+      );
+    } else if (result?.available === false) {
+      toast("ShenPulse est à jour");
+      storeUpdateStatus = { ...storeUpdateStatus, available: false };
+    }
+  } catch (error) {
+    toast(
+      "Mise à jour impossible",
+      error?.message || "Microsoft Store n’a pas pu être ouvert.",
+      true
+    );
+  } finally {
+    storeUpdateInstalling = false;
+    renderStoreUpdateBanner();
+  }
 }
 
 function finishConfirmation(confirmed) {
@@ -8613,6 +8711,21 @@ function findGameInteractionRow(
   );
 }
 
+function pendingSubscriptionStop(subscription = currentSubscription()) {
+  const pending = subscription?.pendingChange;
+  return pending && pending.targetTier === "free" ? pending : null;
+}
+
+function membershipDateLabel(value) {
+  const date = new Date(String(value || ""));
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
 function renderMembership() {
   const subscription = currentSubscription();
   const activeSubscriptionTier = hasProAccess()
@@ -8623,6 +8736,15 @@ function renderMembership() {
     ["active", "paid"].includes(String(subscription.status || ""))
       ? subscription.tier
       : "";
+  const pendingStop = paidSubscriptionTier
+    ? pendingSubscriptionStop(subscription)
+    : null;
+  const pendingStopDate = membershipDateLabel(
+    pendingStop?.effectiveAt || subscription.renewalDate
+  );
+  const paidPlanName =
+    SUBSCRIPTION_PLANS.find((plan) => plan.tier === paidSubscriptionTier)
+      ?.name || paidSubscriptionTier;
   const membershipSummary =
     subscription.source === "trial"
       ? `${subscription.tier} · essai`
@@ -8650,6 +8772,12 @@ function renderMembership() {
         <div><span class="hero-chip">ACCÈS SHENPULSE</span><h2>Tarifs & abonnements</h2><p>Les droits sont synchronisés par le compte ShenPulse. Premium comprend toujours l’intégralité de Pro.</p></div>
         <span class="membership-current">${escapeHtml(membershipSummary || "free")}</span>
       </section>
+      ${pendingStop ? `
+        <section class="studio-panel commerce-note panel-pink membership-stop-notice">
+          <div><span class="panel-accent"></span><div><h3>Arrêt programmé</h3><p>Votre abonnement ${escapeHtml(paidPlanName)} s’arrêtera le <strong>${escapeHtml(pendingStopDate || "dernier jour de la période payée")}</strong>. Il reste actif avec tous ses avantages jusqu’à cette date.</p></div></div>
+          <span class="badge warning">RENOUVELLEMENT ARRÊTÉ</span>
+        </section>
+      ` : ""}
       <div class="subscription-grid">
         ${SUBSCRIPTION_PLANS.map((plan) => `
           <article class="subscription-card ${activeSubscriptionTier === plan.tier ? "current" : ""} ${plan.tier === "premium" ? "premium" : ""}" ${activeSubscriptionTier === plan.tier ? 'aria-current="true"' : ""}>
@@ -8660,7 +8788,13 @@ function renderMembership() {
             ${activeSubscriptionTier === plan.tier && plan.tier !== "free"
               ? `<button class="button" type="button" disabled>Offre active</button>`
               : plan.tier === "free"
-                ? `<button class="button primary" type="button" data-action="open-url" data-value="https://shenpulse.leuridan.fr/setup">Gérer l’abonnement</button>`
+                ? paidSubscriptionTier
+                  ? pendingStop
+                    ? `<button class="button" type="button" disabled>Arrêt programmé</button>`
+                    : subscriptionStopBusy
+                      ? `<button class="button danger" type="button" disabled>Arrêt en cours…</button>`
+                      : `<button class="button danger" type="button" data-action="subscription-stop">Arrêter l’abonnement</button>`
+                  : `<button class="button" type="button" disabled>${activeSubscriptionTier === "free" ? "Offre active" : "Offre gratuite"}</button>`
                 : subscriptionCheckoutBusyTier === plan.tier
                   ? `<button class="button primary" type="button" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}">Annuler PayPal</button>`
                   : `<button class="button primary" type="button" data-action="subscription-checkout" data-tier="${escapeHtml(plan.tier)}" ${subscriptionCheckoutBusyTier ? "disabled" : ""}>Choisir ${plan.name}</button>`}
@@ -10417,6 +10551,12 @@ function gameInteractionRowData(row) {
   ].join(" ");
 }
 
+function isMinecraftWinCounterPack(packId) {
+  return ["minecraft-bedrock-box", "minecraft-sandbox-3"].includes(
+    String(packId || "")
+  );
+}
+
 function openGameInteractionCatalog(pack, row = null) {
   gameInteractionEditorContext = null;
   gameInteractionCatalogContext = {
@@ -10475,6 +10615,29 @@ function openGameInteractionCatalog(pack, row = null) {
 }
 
 function gameEffectParameterFields(effect, config) {
+  if (effect.winCounter && isMinecraftWinCounterPack(config.packId)) {
+    const sameEffect = config.effectId === effect.id;
+    const operation = sameEffect
+      ? config.operation || effect.winCounter.operation || "adjust"
+      : effect.winCounter.operation || "adjust";
+    const amount = Number(
+      sameEffect
+        ? config.amount ?? effect.winCounter.amount ?? 0
+        : effect.winCounter.amount ?? 0
+    );
+    const amountLabel =
+      operation === "multiplier"
+        ? "Multiplicateur WINS"
+        : operation === "random"
+          ? "Amplitude WINS (+/-)"
+          : "Variation du compteur WINS";
+    const amountLimits =
+      operation === "multiplier" || operation === "random"
+        ? 'min="1" max="100000" step="1"'
+        : 'min="-100000" max="100000" step="1"';
+    return `${field("winCounterAmount", amountLabel, amount, "number", amountLimits)}
+      ${operation === "multiplier" ? field("effectDuration", "Durée de l’effet (secondes)", config.duration ?? effect.duration ?? 60, "number", 'min="1" max="3600"') : ""}`;
+  }
   const parameters = Array.isArray(effect.parameters)
     ? effect.parameters
     : [];
@@ -10522,6 +10685,33 @@ function gameEffectParametersFromForm(effect, data) {
   );
 }
 
+function gameWinCounterConfigFromForm(effect, config, data) {
+  if (!effect.winCounter) return {};
+  if (!isMinecraftWinCounterPack(config.packId)) {
+    return {
+      amount: Number(effect.winCounter.amount || 0),
+      operation: effect.winCounter.operation || "adjust"
+    };
+  }
+  const sameEffect = config.effectId === effect.id;
+  const fallbackAmount = Number(
+    sameEffect
+      ? config.amount ?? effect.winCounter.amount ?? 0
+      : effect.winCounter.amount ?? 0
+  );
+  const rawAmount = data.get("winCounterAmount");
+  const parsedAmount =
+    rawAmount === null || String(rawAmount).trim() === ""
+      ? fallbackAmount
+      : Number(rawAmount);
+  return {
+    amount: Number.isFinite(parsedAmount) ? parsedAmount : fallbackAmount,
+    operation: sameEffect
+      ? config.operation || effect.winCounter.operation || "adjust"
+      : effect.winCounter.operation || "adjust"
+  };
+}
+
 function gameInteractionDraftFromForm(
   pack,
   effect,
@@ -10546,12 +10736,7 @@ function gameInteractionDraftFromForm(
         Number(data.get("effectDuration")) || Number(effect.duration || 0)
       ),
       parameters: gameEffectParametersFromForm(effect, data),
-      ...(effect.winCounter
-        ? {
-            amount: Number(effect.winCounter.amount || 0),
-            operation: effect.winCounter.operation || "adjust"
-          }
-        : {})
+      ...gameWinCounterConfigFromForm(effect, config, data)
     }
   };
   const actions = [...(currentRule.actions || [])];
@@ -13281,6 +13466,66 @@ async function handleAction(target) {
       api.account.cancelCheckout({ type: "subscription" })
     );
   }
+  if (action === "subscription-stop") {
+    if (subscriptionStopBusy || pendingSubscriptionStop()) return;
+    const subscription = currentSubscription();
+    if (
+      subscription.source !== "own" ||
+      !["pro", "premium"].includes(subscription.tier) ||
+      !["active", "paid"].includes(String(subscription.status || ""))
+    ) {
+      return;
+    }
+    const planName =
+      SUBSCRIPTION_PLANS.find((plan) => plan.tier === subscription.tier)
+        ?.name || subscription.tier;
+    const endDate = membershipDateLabel(subscription.renewalDate);
+    if (
+      !(await confirmAction(
+        `Arrêter le renouvellement de l’abonnement ${planName} ? ` +
+          (endDate
+            ? `Il restera actif jusqu’au ${endDate}, sans nouveau renouvellement.`
+            : "Il restera actif jusqu’à la fin de la période déjà payée."),
+        {
+          title: "Arrêter l’abonnement ?",
+          confirmLabel: "Arrêter le renouvellement"
+        }
+      ))
+    ) {
+      return;
+    }
+    subscriptionStopBusy = true;
+    render();
+    try {
+      return await perform(async () => {
+        const response = await api.account.stopSubscription();
+        const result = response?.result || response;
+        if (response?.snapshot) {
+          acceptSnapshot(response.snapshot);
+          currentPage = "membership";
+          render();
+        }
+        if (result?.scheduled) {
+          const date = membershipDateLabel(result.effectiveAt);
+          toast(
+            "Arrêt programmé",
+            date
+              ? `Votre abonnement reste actif jusqu’au ${date}.`
+              : "Votre abonnement reste actif jusqu’à la fin de la période déjà payée."
+          );
+        } else {
+          toast(
+            "Abonnement arrêté",
+            "Votre compte utilise maintenant l’offre Free."
+          );
+        }
+        return response;
+      });
+    } finally {
+      subscriptionStopBusy = false;
+      render();
+    }
+  }
   if (action === "subscription-checkout") {
     const tier = target.dataset.tier;
     const plan = SUBSCRIPTION_PLANS.find((item) => item.tier === tier);
@@ -15143,6 +15388,7 @@ function refreshAccountEntitlements() {
 
 window.addEventListener("focus", () => {
   refreshAccountEntitlements();
+  refreshStoreUpdate();
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -15154,6 +15400,14 @@ document.addEventListener("visibilitychange", () => {
 setInterval(() => {
   refreshAccountEntitlements();
 }, ENTITLEMENT_SYNC_INTERVAL_MS);
+
+setInterval(() => {
+  refreshStoreUpdate();
+}, STORE_UPDATE_CHECK_INTERVAL_MS);
+
+storeUpdateButton.addEventListener("click", () => {
+  installStoreUpdate().catch(() => {});
+});
 
 setInterval(() => {
   if (
@@ -15203,6 +15457,9 @@ api.getSnapshot()
       renderWhenFound: false
     });
     render();
+    setTimeout(() => {
+      refreshStoreUpdate();
+    }, 1500);
 
     const [accountStatus, visibility] = await Promise.all([
       api.account

@@ -470,6 +470,91 @@ test("annule immédiatement l’attente si la fenêtre PayPal a été fermée", 
   );
 });
 
+test("programme l’arrêt PayPal et conserve l’abonnement jusqu’à l’échéance", async () => {
+  const store = createStore();
+  const effectiveAt = "2026-09-15T10:00:00.000Z";
+  let cancelRequest = null;
+  const service = new AccountService({
+    store,
+    fetchImpl: async (url, options = {}) => {
+      if (String(url).includes("accounts:lookup")) {
+        return jsonResponse({
+          users: [{
+            email: "subscriber@example.com",
+            localId: "subscriber_uid",
+            emailVerified: true
+          }]
+        });
+      }
+      if (String(url).includes("/api/payments/subscriptions/cancel")) {
+        cancelRequest = {
+          authorization: options.headers.Authorization,
+          body: JSON.parse(options.body)
+        };
+        return jsonResponse({
+          effectiveAt,
+          ok: true,
+          scheduled: true,
+          targetTier: "free",
+          tier: "pro"
+        });
+      }
+      if (String(url).includes("/api/account/entitlements")) {
+        return jsonResponse({
+          checkedAt: "2026-08-11T10:00:00.000Z",
+          gameEntitlements: [],
+          pendingChange: {
+            effectiveAt,
+            effectiveAtMs: Date.parse(effectiveAt),
+            fromTier: "pro",
+            targetTier: "free",
+            type: "cancel"
+          },
+          priceMonthly: 9.99,
+          renewalDate: effectiveAt,
+          source: "own",
+          tier: "pro"
+        });
+      }
+      if (String(url).includes("/api/entitlements/subscription")) {
+        return jsonResponse({
+          checkedAt: "2026-08-11T10:00:00.000Z",
+          gameEntitlements: [],
+          priceMonthly: 9.99,
+          source: "own",
+          tier: "pro"
+        });
+      }
+      return jsonResponse({
+        email: "subscriber@example.com",
+        localId: "subscriber_uid",
+        idToken: "id-token",
+        refreshToken: "refresh-token",
+        expiresIn: "3600"
+      });
+    }
+  });
+
+  await service.login({
+    email: "subscriber@example.com",
+    password: "mot-de-passe"
+  });
+  const result = await service.stopSubscription();
+
+  assert.equal(cancelRequest.authorization, "Bearer id-token");
+  assert.deepEqual(cancelRequest.body, { ownerId: "subscriber_uid" });
+  assert.equal(result.scheduled, true);
+  assert.equal(store.state.commerce.subscription.tier, "pro");
+  assert.equal(store.state.commerce.subscription.status, "active");
+  assert.deepEqual(store.state.commerce.subscription.pendingChange, {
+    effectiveAt,
+    effectiveAtMs: Date.parse(effectiveAt),
+    fromTier: "pro",
+    targetTier: "free",
+    type: "cancel"
+  });
+});
+
 test("achète un jeu sans imposer la vérification de l’e-mail Firebase", async () => {
   const store = createStore();
   const openedUrls = [];

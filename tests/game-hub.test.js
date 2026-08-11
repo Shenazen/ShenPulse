@@ -314,6 +314,52 @@ test("initialise les associations TikTok Bedrock Box et SandBox", () => {
         rule.actions[0].config.parameters.rows === 2
     )
   );
+
+  const plusTwenty = bedrock.find(
+    (rule) =>
+      rule.gameInteraction?.presetId ===
+      "bedrock-ellie-elephant-win-plus-20"
+  );
+  const minusTwenty = bedrock.find(
+    (rule) =>
+      rule.gameInteraction?.presetId ===
+      "bedrock-leon-kitten-win-minus-20"
+  );
+  const minusThree = bedrock.find(
+    (rule) =>
+      rule.gameInteraction?.presetId ===
+      "bedrock-girafa-win-minus-3"
+  );
+  const plusThree = bedrock.find(
+    (rule) =>
+      rule.gameInteraction?.presetId ===
+      "bedrock-galaxy-win-plus-3"
+  );
+  const plusFortyFive = bedrock.find(
+    (rule) =>
+      rule.gameInteraction?.presetId ===
+      "bedrock-interstellar-win-plus-45"
+  );
+  const customMinusFifty = bedrock.find(
+    (rule) =>
+      rule.gameInteraction?.presetId ===
+      "bedrock-voiture-course-win-minus-50"
+  );
+  plusTwenty.actions[0].config.amount = 1;
+  minusThree.actions[0].config.amount = -1;
+  minusTwenty.actions[0].config.amount = -1;
+  plusThree.actions[0].config.amount = 1;
+  plusFortyFive.actions[0].config.amount = 1;
+  customMinusFifty.actions[0].config.amount = -17;
+
+  const repair = hub.repairMinecraftWinCounterInteractions();
+  assert.equal(repair.repaired, 5);
+  assert.equal(plusTwenty.actions[0].config.amount, 20);
+  assert.equal(minusThree.actions[0].config.amount, -3);
+  assert.equal(minusTwenty.actions[0].config.amount, -20);
+  assert.equal(plusThree.actions[0].config.amount, 3);
+  assert.equal(plusFortyFive.actions[0].config.amount, 45);
+  assert.equal(customMinusFifty.actions[0].config.amount, -17);
 });
 
 test("initialise le catalogue Cult of the Lamb et parle au bridge BepInEx", async () => {

@@ -197,6 +197,46 @@ class AccountService {
     return this.subscriptionCheckoutPromise;
   }
 
+  async stopSubscription() {
+    const token = await this.#token();
+    await this.#synchronizeIdentity(token);
+    const uid = cleanUid(this.#session().uid);
+    if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
+
+    const response = await this.fetch(
+      `${this.webOrigin}/api/payments/subscriptions/cancel`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ownerId: uid }),
+        signal: AbortSignal.timeout(20000)
+      }
+    );
+    const payload = await readPayload(response);
+    if (!response.ok) throw apiError(payload, response.status);
+
+    await this.syncEntitlements();
+    const pendingChange = normalizeSubscriptionPendingChange({
+      effectiveAt: payload.effectiveAt,
+      fromTier: payload.tier,
+      targetTier: payload.targetTier,
+      type: payload.scheduled ? "cancel" : ""
+    });
+    if (pendingChange) {
+      this.store.mutate((state) => {
+        const subscription = state.commerce?.subscription;
+        if (!subscription || !["pro", "premium"].includes(subscription.tier)) {
+          return;
+        }
+        subscription.pendingChange = pendingChange;
+      }, true);
+    }
+    return payload;
+  }
+
   async startGameCheckout(incoming = {}) {
     if (this.gameCheckoutPromise) {
       return this.gameCheckoutPromise;
@@ -981,6 +1021,10 @@ class AccountService {
         priceMonthly:
           source === "own" ? Math.max(0, Number(payload.priceMonthly) || 0) : 0,
         renewalDate: String(payload.renewalDate || ""),
+        pendingChange:
+          source === "own"
+            ? normalizeSubscriptionPendingChange(payload.pendingChange)
+            : null,
         expiresAt: trialExpiresAt,
         expiresAtMs: trialExpiresAtMs,
         syncedAt: String(payload.checkedAt || new Date().toISOString())
@@ -1039,6 +1083,7 @@ class AccountService {
         status: "free",
         priceMonthly: 0,
         renewalDate: "",
+        pendingChange: null,
         syncedAt: ""
       };
       state.commerce.premiumSeat = {
@@ -1207,6 +1252,33 @@ function normalizedGameEntitlementStatus(entry) {
   const status = String(entry?.status || "").trim().toLowerCase();
   if (entry?.source === "trial" || status === "trial") return "trial";
   return status || "active";
+}
+
+function normalizeSubscriptionPendingChange(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const targetTier = ["free", "pro", "premium"].includes(
+    String(value.targetTier || "")
+  )
+    ? String(value.targetTier)
+    : "";
+  const effectiveAt = String(value.effectiveAt || "").trim();
+  const effectiveAtMs = Number(value.effectiveAtMs || Date.parse(effectiveAt));
+  if (!targetTier || !effectiveAt || !Number.isFinite(effectiveAtMs)) {
+    return null;
+  }
+  return {
+    effectiveAt,
+    effectiveAtMs,
+    fromTier: ["free", "pro", "premium"].includes(
+      String(value.fromTier || "")
+    )
+      ? String(value.fromTier)
+      : "free",
+    targetTier,
+    type: String(value.type || "").trim()
+  };
 }
 
 function validEntitlementPayload(payload) {

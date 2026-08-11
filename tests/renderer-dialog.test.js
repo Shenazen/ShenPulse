@@ -932,7 +932,7 @@ test("les jeux payants ouvrent une fenêtre d’achat illustrée avant PayPal", 
   assert.match(styles, /\.game-purchase-visual > img/);
 });
 
-test("les boutons d’abonnement restent cliquables et signalent l’ouverture de PayPal", () => {
+test("les boutons d’abonnement gèrent le paiement et l’arrêt à échéance", () => {
   const app = fs.readFileSync(
     path.join(__dirname, "..", "src", "renderer", "app.js"),
     "utf8"
@@ -960,12 +960,21 @@ test("les boutons d’abonnement restent cliquables et signalent l’ouverture d
   );
   assert.match(membership, /subscriptionCheckoutBusyTier/);
   assert.match(membership, /Annuler PayPal/);
+  assert.match(membership, /Arrêter l’abonnement/);
+  assert.match(membership, /Votre abonnement .* s’arrêtera le/);
+  assert.match(membership, /data-action="subscription-stop"/);
+  assert.match(membership, /pendingSubscriptionStop/);
   assert.match(handler, /api\.account\.cancelCheckout/);
+  assert.match(handler, /api\.account\.stopSubscription/);
+  assert.match(handler, /Arrêter le renouvellement/);
+  assert.match(handler, /confirmAction/);
   assert.match(handler, /api\.account\.startSubscriptionCheckout/);
   assert.match(handler, /subscriptionCheckoutBusyTier = tier/);
   assert.match(handler, /finally \{/);
   assert.match(ipc, /handle\("account:checkout-cancel"/);
+  assert.match(ipc, /handle\("account:subscription-stop"/);
   assert.match(preload, /cancelCheckout: \(payload\)/);
+  assert.match(preload, /stopSubscription: \(\)/);
 });
 
 test("toutes les cartes du tableau de bord affichent la session active", () => {

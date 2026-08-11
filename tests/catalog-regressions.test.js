@@ -532,6 +532,22 @@ test("les WINS natifs actualisent les aperçus sans reconstruire la page du jeu"
   assert.match(renderer, /postOverlayPreviewEvent\(\s*"session-state"/);
 });
 
+test("l'éditeur d'interaction conserve la variation WINS configurée", () => {
+  assert.match(
+    renderer,
+    /effect\.winCounter && isMinecraftWinCounterPack\(config\.packId\)/
+  );
+  assert.match(renderer, /field\("winCounterAmount", amountLabel, amount/);
+  assert.match(
+    renderer,
+    /function gameWinCounterConfigFromForm\(effect, config, data\)[\s\S]*const sameEffect = config\.effectId === effect\.id[\s\S]*config\.amount \?\? effect\.winCounter\.amount/
+  );
+  assert.match(
+    renderer,
+    /\.\.\.gameWinCounterConfigFromForm\(effect, config, data\)/
+  );
+});
+
 test("les actions rapides mettent a jour une seule carte sans reconstruire la galerie", () => {
   const quickActions =
     renderer.match(

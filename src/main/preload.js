@@ -7,6 +7,10 @@ const listeners = new Map();
 
 contextBridge.exposeInMainWorld("shenPulse", {
   getSnapshot: () => invoke("snapshot:get"),
+  updates: {
+    check: (options) => invoke("updates:check", options),
+    install: () => invoke("updates:install")
+  },
   account: {
     status: () => invoke("account:status"),
     login: (credentials) => invoke("account:login", credentials),
@@ -21,6 +25,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
       invoke("account:game-checkout", payload),
     startSubscriptionCheckout: (payload) =>
       invoke("account:subscription-checkout", payload),
+    stopSubscription: () =>
+      invoke("account:subscription-stop"),
     gameCheatAccess: () =>
       invoke("account:game-cheat-access"),
     syncEntitlements: () =>

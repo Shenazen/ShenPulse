@@ -1,7 +1,7 @@
 {
   "name": "shenpulse",
   "productName": "ShenPulse",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Plateforme locale d'interactions pour livestreams et jeux",
   "main": "src/main/main.js",
   "author": "Alexandre Leuridan",
@@ -19,11 +19,12 @@
     "verify": "npm run lint && npm test",
     "games:build": "vite build --config vite.games.config.mjs",
     "assets": "node scripts/generate-assets.js",
-    "build:dir": "npm run games:build && npm run assets && electron-builder --win dir --x64",
+    "native:store-update": "node scripts/build-store-update-addon.js",
+    "build:dir": "npm run games:build && npm run assets && npm run native:store-update && electron-builder --win dir --x64",
     "package:upload": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-appxupload.ps1",
-    "build:store": "npm run verify && npm run games:build && npm run assets && electron-builder --win appx --x64 && npm run package:upload",
+    "build:store": "npm run verify && npm run games:build && npm run assets && npm run native:store-update && electron-builder --win appx --x64 && npm run package:upload",
     "package:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-windows-installer.ps1",
-    "build:installer": "npm run verify && npm run games:build && npm run assets && npm run package:installer",
+    "build:installer": "npm run verify && npm run games:build && npm run assets && npm run native:store-update && npm run package:installer",
     "build:exe": "npm run build:installer",
     "dist": "npm run build:store"
   },
@@ -32,6 +33,7 @@
     "electron": "43.2.0",
     "electron-builder": "26.15.3",
     "lucide-vue-next": "0.468.0",
+    "node-gyp": "12.4.0",
     "three": "0.185.1",
     "typescript": "6.0.3",
     "vite": "6.4.3",
@@ -45,7 +47,8 @@
     "asar": true,
     "asarUnpack": [
       "resources/packs/**",
-      "resources/irl-python/**"
+      "resources/irl-python/**",
+      "resources/store-update/**"
     ],
     "files": [
       "src/**/*",

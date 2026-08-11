@@ -28,6 +28,7 @@ const {
 const { SpotifyService } = require("./spotify-service");
 const { IrlPythonBridge } = require("./irl-python-bridge");
 const { ShellyService } = require("./shelly-service");
+const { FollowSessionGuard } = require("./follow-session-guard");
 const {
   OverlayCompletionController
 } = require("./overlay-completion-controller");
@@ -145,6 +146,7 @@ class ShenPulseCore extends EventEmitter {
     });
     this.commandCooldowns = new Map();
     this.gameCounterCursors = new Map();
+    this.followSessionGuard = new FollowSessionGuard();
     this.deferredChangeTimer = null;
     this.publicOverlayRelay.on("status", (status) => {
       this.notifyRenderer("public-overlay-relay-status", status);
@@ -178,6 +180,7 @@ class ShenPulseCore extends EventEmitter {
       }
     }, true);
     this.gameHub.loadPacks();
+    this.gameHub.repairMinecraftWinCounterInteractions();
     this.timerScheduler.start();
     if (this.store.getState().settings.startOverlayServer) {
       try {
@@ -510,6 +513,9 @@ class ShenPulseCore extends EventEmitter {
 
   async ingest(raw, source = "manual") {
     const event = raw?.type && raw?.user && raw?.data ? raw : normalizeEvent(raw, source);
+    if (!this.followSessionGuard.accept(this.store.getState(), event)) {
+      return null;
+    }
     const overlayChange = this.#recordEvent(event);
     const completionChange = resolveLikeGoalCompletionChange(
       event,

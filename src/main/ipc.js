@@ -35,6 +35,7 @@ function registerIpc({
   accountService,
   adminService,
   gameRuntime,
+  storeUpdateService,
   getWindow
 }) {
   const guestAllowedChannels = new Set([
@@ -51,6 +52,8 @@ function registerIpc({
     "catalog:sounds",
     "external:open",
     "snapshot:get",
+    "updates:check",
+    "updates:install",
     "window:close",
     "window:maximize",
     "window:minimize"
@@ -103,6 +106,10 @@ function registerIpc({
   handle("snapshot:get", () =>
     snapshotForRenderer(core.snapshot(), store)
   );
+  handle("updates:check", (_event, incoming) =>
+    storeUpdateService.check({ force: incoming?.force === true })
+  );
+  handle("updates:install", () => storeUpdateService.install());
   handle("account:status", async () => {
     const previousUid = store.getActiveAccountUid?.() || "";
     const result = await accountService.status();
@@ -166,6 +173,14 @@ function registerIpc({
       owner?.show?.();
       owner?.focus?.();
     }
+  });
+  handle("account:subscription-stop", async () => {
+    const result = await accountService.stopSubscription();
+    notify(core, "state-changed", core.snapshot());
+    return {
+      result,
+      snapshot: snapshotForRenderer(core.snapshot(), store)
+    };
   });
   handle("account:game-checkout", async (_event, incoming) => {
     try {
