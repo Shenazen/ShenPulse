@@ -123,6 +123,12 @@ test("le catalogue de secours reste limité aux cadeaux français/anglais", () =
   assert.equal(all.gifts.length, 27);
   assert.equal(all.gifts[0].cost, 1);
   assert.equal(
+    all.gifts.some((gift) => gift.name === "Cœur sur moi"),
+    true
+  );
+  assert.equal(catalog.search("Heart Me", 10).gifts[0].name, "Cœur sur moi");
+  assert.equal(catalog.search("Coeur sur moi", 10).gifts[0].name, "Cœur sur moi");
+  assert.equal(
     all.gifts.some((gift) =>
       /[\u0370-\u052f\u0590-\u08ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u.test(
         gift.name
@@ -187,7 +193,7 @@ test("remplace le secours par la liste TikTok localisée en fr-FR", async () => 
   );
 });
 
-test("déduplique les variantes TikTok qui ont le même visuel", () => {
+test("conserve les cadeaux distincts et déduplique seulement leur ID", () => {
   const gifts = dedupeLocalizedGifts([
     {
       id: 17667,
@@ -238,13 +244,39 @@ test("déduplique les variantes TikTok qui ont le même visuel", () => {
           "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/legacy-kiss.png~tplv-obj.webp"
         ]
       }
+    },
+    {
+      id: 5655,
+      name: "Rose dupliquée",
+      diamond_count: 1
     }
   ]);
 
   assert.deepEqual(
     gifts.map((gift) => gift.name),
-    ["Le bisou", "Rose", "Côte à côte"]
+    ["Le bisou", "Le bisou", "Rose", "Côte à côte", "Côte à côte"]
   );
+});
+
+test("classe le cœur de communauté personnalisé sans utiliser son visuel", () => {
+  const [gift] = dedupeLocalizedGifts([
+    {
+      id: 601333,
+      name: "Nom du créateur",
+      diamond_count: 1,
+      combo: true,
+      type: 1,
+      image: {
+        uri: "webcast-sg/resource/saliency_seg_custom.png",
+        url_list: ["https://example.com/design-variable.png"]
+      }
+    }
+  ]);
+
+  assert.equal(gift.giftFamily, "community-heart");
+  assert.equal(gift.id, "601333");
+  assert.equal(gift.name, "Cœur sur moi");
+  assert.equal(gift.originalName, "Nom du créateur");
 });
 
 test("demande le catalogue français de la salle du créateur", async () => {

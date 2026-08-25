@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -11,10 +18,7 @@ test("les boutons d'annulation ferment le dialogue sans valider le formulaire", 
     path.join(rendererDirectory, "index.html"),
     "utf8"
   );
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
 
   const closeButtons = html.match(
     /<button[^>]+type="button"[^>]+data-dialog-close[^>]*>/g
@@ -25,14 +29,8 @@ test("les boutons d'annulation ferment le dialogue sans valider le formulaire", 
 
 test("Minecraft utilise une seule jaquette puis propose Bedrock Box et SandBox", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
 
   assert.match(app, /const MINECRAFT_LAUNCHER_ID = "minecraft"/);
   assert.match(
@@ -58,14 +56,8 @@ test("Minecraft utilise une seule jaquette puis propose Bedrock Box et SandBox",
 
 test("Minecraft affiche les réglages de manche et bloque un second jeu actif", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const preload = fs.readFileSync(
     path.join(__dirname, "..", "src", "main", "preload.js"),
     "utf8"
@@ -84,10 +76,7 @@ test("Minecraft affiche les réglages de manche et bloque un second jeu actif", 
 });
 
 test("Cult of the Lamb ne propose aucun overlay OBS inutile", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const renderStart = app.indexOf("function renderGameOverlays(pack, unlocked)");
   const renderEnd = app.indexOf(
     "function renderGameOverlaysLegacy",
@@ -110,14 +99,8 @@ test("le compte ShenPulse remplace les commandes LIVE avant authentification", (
     path.join(rendererDirectory, "index.html"),
     "utf8"
   );
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
 
   assert.match(html, /id="account-auth-cta"/);
   assert.match(app, /Créer votre compte ShenPulse/);
@@ -132,14 +115,8 @@ test("le compte ShenPulse remplace les commandes LIVE avant authentification", (
 
 test("la reconnexion admin place réellement le focus dans le mot de passe", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const loginStart = app.indexOf("function openAdminLogin()");
   const loginEnd = app.indexOf("async function saveAdminVisibilityScope", loginStart);
   const login = app.slice(loginStart, loginEnd);
@@ -157,10 +134,7 @@ test("la reconnexion admin place réellement le focus dans le mot de passe", () 
 });
 
 test("la configuration TikTok ne demande que le @ et lance la détection", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const start = app.indexOf("function openTikTokEditor()");
   const end = app.indexOf("function openGoalEditor", start);
   const editor = app.slice(start, end);
@@ -177,10 +151,7 @@ test("la barre supérieure permet de créer, modifier et supprimer les profils",
     path.join(rendererDirectory, "index.html"),
     "utf8"
   );
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
 
   assert.match(html, /id="profile-manage-button"/);
   assert.match(app, /function openProfileManager\(\)/);
@@ -194,7 +165,7 @@ test("la barre supérieure permet de créer, modifier et supprimer les profils",
 test("les sons, le TTS, Spotify et les cadeaux utilisent les services globaux", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
   const html = fs.readFileSync(path.join(rendererDirectory, "index.html"), "utf8");
-  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
+  const app = readRendererSource();
 
   assert.match(html, /id="gift-catalog-options"/);
   assert.match(app, /value\.soundCatalog/);
@@ -207,11 +178,8 @@ test("les sons, le TTS, Spotify et les cadeaux utilisent les services globaux", 
 
 test("les sons et le TTS choisissent une sortie locale ou un écran LIVE", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
 
   assert.match(app, /function audioOutputSwitchMarkup/);
   assert.match(app, /data-action="set-audio-output"/);
@@ -225,10 +193,7 @@ test("les sons et le TTS choisissent une sortie locale ou un écran LIVE", () =>
 });
 
 test("les sons et le TTS restent uniquement dans leur atelier dédié", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const actionsStart = app.indexOf("function renderActions()");
   const actionsEnd = app.indexOf("function renderRules()", actionsStart);
   const actionsPage = app.slice(actionsStart, actionsEnd);
@@ -244,10 +209,7 @@ test("les sons et le TTS restent uniquement dans leur atelier dédié", () => {
 });
 
 test("fermer l'éditeur arrête uniquement le son testé dans cette fenêtre", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const dialogPreviewStart = app.indexOf(
     'const mediaPreview = event.target.closest("[data-media-preview-url]")'
   );
@@ -274,7 +236,7 @@ test("fermer l'éditeur arrête uniquement le son testé dans cette fenêtre", (
 
 test("le TTS propose les voix Windows et démarre sur les commentaires du chat", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
+  const app = readRendererSource();
   const editorStart = app.indexOf("function openTtsEditor(row)");
   const editorEnd = app.indexOf("function openSoundEditor", editorStart);
   const editor = app.slice(editorStart, editorEnd);
@@ -331,11 +293,8 @@ test("le TTS propose les voix Windows et démarre sur les commentaires du chat",
 
 test("l'éditeur d'action reste progressif et parle de déclencheurs", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const start = app.indexOf("function openActionEditor(row)");
   const end = app.indexOf("function openTtsEditor", start);
   const editor = app.slice(start, end);
@@ -388,11 +347,8 @@ test("l'éditeur d'action reste progressif et parle de déclencheurs", () => {
 
 test("la page Actions possède un mini-onglet de déclencheurs groupés ou aléatoires", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const actionsStart = app.indexOf("function renderActions()");
   const actionsEnd = app.indexOf("function renderTimersPanel", actionsStart);
   const actionsPage = app.slice(actionsStart, actionsEnd);
@@ -431,10 +387,7 @@ test("la page Actions possède un mini-onglet de déclencheurs groupés ou aléa
 });
 
 test("les médias, sons et cadeaux utilisent des bibliothèques recherchables", () => {
-  const renderer = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const main = fs.readFileSync(
     path.join(__dirname, "..", "src", "main", "main.js"),
     "utf8"
@@ -443,10 +396,7 @@ test("les médias, sons et cadeaux utilisent des bibliothèques recherchables", 
     path.join(__dirname, "..", "src", "renderer", "index.html"),
     "utf8"
   );
-  const styles = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "styles.css"),
-    "utf8"
-  );
+  const styles = readRendererStyles();
 
   assert.match(renderer, /function soundPickerField/);
   assert.match(renderer, /function mediaPickerField/);
@@ -498,10 +448,7 @@ test("les médias, sons et cadeaux utilisent des bibliothèques recherchables", 
 });
 
 test("le mini-onglet Timers planifie une ou plusieurs actions à intervalle régulier", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
 
   assert.doesNotMatch(app, /id: "timers",\s*label: "Timers"/);
   assert.match(app, /\["timers", "Timers", scheduledTimers\(\)\.length\]/);
@@ -517,14 +464,8 @@ test("le mini-onglet Timers planifie une ou plusieurs actions à intervalle rég
 });
 
 test("le formulaire d'essai garde l'adresse e-mail saisissable après un envoi", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const formStart = app.indexOf("function renderAdminTrials()");
   const formEnd = app.indexOf("function renderAdminCommerce", formStart);
   const form = app.slice(formStart, formEnd);
@@ -576,10 +517,7 @@ test("le formulaire d'essai garde l'adresse e-mail saisissable après un envoi",
 });
 
 test("une session propriétaire resynchronise les accès offerts au démarrage", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const startup = app.slice(app.indexOf("api.getSnapshot()"));
 
   assert.match(startup, /if \(isVerifiedAdminSession\(\)\)/);
@@ -591,10 +529,7 @@ test("une session propriétaire resynchronise les accès offerts au démarrage",
 });
 
 test("un tarif de jeu accepte la virgule et est publié en production", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const editorStart = app.indexOf("function openAdminProductEditor");
   const editorEnd = app.indexOf(
     "function openAdminPromotionEditor",
@@ -614,14 +549,8 @@ test("un tarif de jeu accepte la virgule et est publié en production", () => {
 });
 
 test("Coin Pusher utilise les quatre étapes de GTA et Minecraft, les autres jeux intégrés restent compacts", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const workspaceStart = app.indexOf("function renderGameWorkspace(pack)");
   const workspaceEnd = app.indexOf("function renderMembership()", workspaceStart);
   const workspace = app.slice(workspaceStart, workspaceEnd);
@@ -636,7 +565,7 @@ test("Coin Pusher utilise les quatre étapes de GTA et Minecraft, les autres jeu
   assert.match(workspace, /function gameJourneyFor/);
   assert.match(
     workspace,
-    /if \(pack\.id === "coin-pusher"\)[\s\S]*return journey\.map/
+    /if \(pack\.id === "coin-pusher"\)[\s\S]*step\.id !== "overlays"/
   );
   assert.match(
     workspace,
@@ -675,14 +604,8 @@ test("Coin Pusher utilise les quatre étapes de GTA et Minecraft, les autres jeu
 
 test("les interactions de jeu disposent d'une bibliothèque visuelle complète", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
 
   assert.match(app, /function openGameInteractionCatalog/);
   assert.match(app, /data-action="add-game-interaction"/);
@@ -698,10 +621,7 @@ test("les interactions de jeu disposent d'une bibliothèque visuelle complète",
 });
 
 test("changer l'effet conserve le brouillon complet de l'interaction", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const draftBuilder = app.slice(
     app.indexOf("function gameInteractionDraftFromForm"),
     app.indexOf("function openGameInteractionEditor")
@@ -726,10 +646,7 @@ test("changer l'effet conserve le brouillon complet de l'interaction", () => {
 });
 
 test("un ancien pack GTA propose explicitement la mise à jour du retournement", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   assert.match(app, /pack\.installerVersion/);
   assert.match(app, /installation\.installerVersion/);
   assert.match(app, /tonneau complet corrigé/);
@@ -740,18 +657,12 @@ test("un ancien pack GTA propose explicitement la mise à jour du retournement",
 test("les interactions restent dans leur jeu et la session active reste visible partout", () => {
   const root = path.join(__dirname, "..");
   const rendererDirectory = path.join(root, "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const html = fs.readFileSync(
     path.join(rendererDirectory, "index.html"),
     "utf8"
   );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const styles = readRendererStyles();
   const gameEditor = app.slice(
     app.indexOf("function openGameInteractionEditor"),
     app.indexOf("function openActionEditor")
@@ -774,10 +685,7 @@ test("les interactions restent dans leur jeu et la session active reste visible 
 });
 
 test("une erreur d’installation de jeu n’est affichée qu’une seule fois", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const start = app.indexOf('if (action === "install-game")');
   const end = app.indexOf('if (action === "launch-game")', start);
   const handler = app.slice(start, end);
@@ -787,11 +695,8 @@ test("une erreur d’installation de jeu n’est affichée qu’une seule fois",
 
 test("les actions visuelles sont fusionnees en Media et proposent huit ecrans OBS", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(path.join(rendererDirectory, "app.js"), "utf8");
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const labels = app.slice(
     app.indexOf("const ACTION_TYPE_LABELS"),
     app.indexOf("const EVENT_LABELS")
@@ -819,10 +724,7 @@ test("les actions visuelles sont fusionnees en Media et proposent huit ecrans OB
 });
 
 test("l'administration conserve son scroll et ignore les rafraîchissements du LIVE", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const stateChangedHandler = app.slice(
     app.indexOf('api.on("state-changed"'),
     app.indexOf('api.on("live-event"')
@@ -835,10 +737,7 @@ test("l'administration conserve son scroll et ignore les rafraîchissements du L
 });
 
 test("les pages compactes utilisent une typographie secondaire plus lisible", () => {
-  const styles = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "styles.css"),
-    "utf8"
-  );
+  const styles = readRendererStyles();
   const readability = styles.slice(
     styles.indexOf("Readability pass for the compact creator pages")
   );
@@ -852,10 +751,7 @@ test("les pages compactes utilisent une typographie secondaire plus lisible", ()
 });
 
 test("un essai Pro sélectionne la carte et affiche Offre active", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const membership = app.slice(
     app.indexOf("function renderMembership"),
     app.indexOf("function renderSettings")
@@ -880,10 +776,7 @@ test("un essai Pro sélectionne la carte et affiche Offre active", () => {
 });
 
 test("un accès Pro offert par Premium sélectionne aussi Pro avec Offre active", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const membership = app.slice(
     app.indexOf("function renderMembership"),
     app.indexOf("function renderSettings")
@@ -901,14 +794,8 @@ test("un accès Pro offert par Premium sélectionne aussi Pro avec Offre active"
 
 test("les jeux payants ouvrent une fenêtre d’achat illustrée avant PayPal", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const purchaseStart = app.indexOf(
     "function openGamePurchaseDialog(pack)"
   );
@@ -933,10 +820,7 @@ test("les jeux payants ouvrent une fenêtre d’achat illustrée avant PayPal", 
 });
 
 test("les boutons d’abonnement gèrent le paiement et l’arrêt à échéance", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const ipc = fs.readFileSync(
     path.join(__dirname, "..", "src", "main", "ipc.js"),
     "utf8"
@@ -978,10 +862,7 @@ test("les boutons d’abonnement gèrent le paiement et l’arrêt à échéance
 });
 
 test("toutes les cartes du tableau de bord affichent la session active", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const dashboard = app.slice(
     app.indexOf("function renderDashboard"),
     app.indexOf("function renderLive")
@@ -994,10 +875,7 @@ test("toutes les cartes du tableau de bord affichent la session active", () => {
 });
 
 test("la vue d’ensemble résume les sources et ouvre leur page seulement si elle est visible", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const dashboard = app.slice(
     app.indexOf("function renderDashboard"),
     app.indexOf("function statCard")
@@ -1017,10 +895,7 @@ test("la vue d’ensemble résume les sources et ouvre leur page seulement si el
 });
 
 test("la page Connexions explique chaque source et le mode Démo manuel", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const connections = app.slice(
     app.indexOf("function renderConnections"),
     app.indexOf("function renderActivity")
@@ -1039,10 +914,7 @@ test("la page Connexions explique chaque source et le mode Démo manuel", () => 
 });
 
 test("les déclencheurs proposés excluent Raid et Tous les déclencheurs", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const options = app.slice(
     app.indexOf("function triggerTypeOptions"),
     app.indexOf("function syncActionEditorVisibility")
@@ -1069,10 +941,7 @@ test("les déclencheurs proposés excluent Raid et Tous les déclencheurs", () =
 });
 
 test("les listes d'actions et de déclencheurs affichent une icône à gauche", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const actionIcons = app.slice(
     app.indexOf("const ACTION_TYPE_ICONS"),
     app.indexOf("const NAVIGATION_ICONS")
@@ -1097,10 +966,7 @@ test("les listes d'actions et de déclencheurs affichent une icône à gauche", 
 });
 
 test("les pictogrammes et cadeaux ne sont plus enfermés dans un carré coloré", () => {
-  const styles = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "styles.css"),
-    "utf8"
-  );
+  const styles = readRendererStyles();
   const unframedIcons = styles.slice(
     styles.indexOf("/* Les pictogrammes et miniatures"),
     styles.length
@@ -1122,10 +988,7 @@ test("les pictogrammes et cadeaux ne sont plus enfermés dans un carré coloré"
 });
 
 test("les mises à jour conservent les éléments du menu sous la souris", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const navigationRenderer = app.slice(
     app.indexOf("function renderNavigation"),
     app.indexOf("function tiktokMeta")
@@ -1151,14 +1014,8 @@ test("les mises à jour conservent les éléments du menu sous la souris", () =>
 
 test("le lancement Minecraft affiche une attente bloquante jusqu’au serveur prêt", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(rendererDirectory, "styles.css"),
-    "utf8"
-  );
+  const app = readRendererSource();
+  const styles = readRendererStyles();
   const handlerStart = app.indexOf('if (action === "launch-game")');
   const handlerEnd = app.indexOf(
     'if (action === "start-game-session")',
@@ -1179,10 +1036,7 @@ test("le lancement Minecraft affiche une attente bloquante jusqu’au serveur pr
 
 test("les interactions incomplètes sont signalées avant overlay et lancement", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = fs.readFileSync(
-    path.join(rendererDirectory, "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
 
   assert.match(app, /function gameInteractionReadinessIssues\(pack\)/);
   assert.match(app, /aucun cadeau TikTok ni filtre de valeur n’est configuré/);
@@ -1199,10 +1053,7 @@ test("les interactions incomplètes sont signalées avant overlay et lancement",
 });
 
 test("le simulateur utilise le cout catalogue du cadeau selectionne", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const start = app.indexOf('if (event.target.id === "simulator-form")');
   const end = app.indexOf('if (event.target.id !== "settings-form")', start);
   const submit = app.slice(start, end);
@@ -1213,10 +1064,7 @@ test("le simulateur utilise le cout catalogue du cadeau selectionne", () => {
 });
 
 test("dupliquer une action cree une regle independante", () => {
-  const app = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const app = readRendererSource();
   const start = app.indexOf("async function duplicateActionRow(row)");
   const end = app.indexOf("async function deleteActionRow(row)", start);
   const duplicateAction = app.slice(start, end);

@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -30,10 +37,7 @@ const CURRENT_PAGE_IDS = [
 ];
 
 test("l’inventaire admin reprend exactement les pages déclarées par ShenPulseNew", () => {
-  const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const source = readRendererSource();
   const pagesSource = source.slice(
     source.indexOf("const pages ="),
     source.indexOf("const eventIcons")
@@ -57,10 +61,7 @@ test("l’inventaire admin reprend exactement les pages déclarées par ShenPuls
 });
 
 test("les listes de visibilité attendent un vrai changement avant d’enregistrer", () => {
-  const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const source = readRendererSource();
   const actionHandler = source.slice(
     source.indexOf("async function handleAction"),
     source.indexOf('content.addEventListener("input"')
@@ -75,10 +76,7 @@ test("les listes de visibilité attendent un vrai changement avant d’enregistr
 });
 
 test("la visibilité s’applique aux contenus et fonctions, pas seulement aux pages", () => {
-  const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const source = readRendererSource();
   assert.match(source, /overlayDefinitions\(\)\.filter\(canAccessOverlay\)/);
   assert.match(source, /function visibleGamePacks\(\)/);
   assert.match(source, /canAccessActionType\(action\.type\)/);

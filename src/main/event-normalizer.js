@@ -1,6 +1,7 @@
 "use strict";
 
 const { id, preferredImageUrl, safeString } = require("./utils");
+const { giftFamily } = require("../shared/gift-identity");
 
 const EVENT_ALIASES = {
   member: "join",
@@ -70,7 +71,11 @@ function normalizeEvent(raw, source = "unknown") {
   const payload =
     wrapper.data && typeof wrapper.data === "object" ? wrapper.data : wrapper;
   const type = normalizeType(wrapper.event || wrapper.type || payload.eventType);
-  const gift = payload.gift || payload.giftDetails || {};
+  const gift = {
+    ...(payload.extendedGiftInfo || {}),
+    ...(payload.giftDetails || {}),
+    ...(payload.gift || {})
+  };
   const count = eventCount(type, payload);
 
   return {
@@ -89,6 +94,7 @@ function normalizeEvent(raw, source = "unknown") {
         payload.giftName || payload.gift_name || gift.name || "Cadeau",
         160
       ),
+      giftFamily: giftFamily(payload),
       giftImageUrl: preferredImageUrl(
         payload.giftImageUrl,
         payload.giftPictureUrl,

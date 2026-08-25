@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -139,10 +146,7 @@ test("les essais expirés sont refusés et les essais actifs acceptés", () => {
 });
 
 test("le renderer et les IPC appliquent le verrou avant d’entrer", () => {
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const ipc = fs.readFileSync(
     path.join(root, "src", "main", "ipc.js"),
     "utf8"

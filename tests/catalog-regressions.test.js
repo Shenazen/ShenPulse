@@ -1,35 +1,31 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const overlayCatalog = require("../resources/overlays/overlay-catalog");
 
 const root = path.resolve(__dirname, "..");
-const renderer = fs.readFileSync(
-  path.join(root, "src", "renderer", "app.js"),
-  "utf8"
-);
+const renderer = readRendererSource();
 const rendererHtml = fs.readFileSync(
   path.join(root, "src", "renderer", "index.html"),
   "utf8"
 );
-const rendererCss = fs.readFileSync(
-  path.join(root, "src", "renderer", "styles.css"),
-  "utf8"
-);
+const rendererCss = readRendererStyles();
 const gameOverlayGenerator = fs.readFileSync(
   path.join(root, "src", "renderer", "game-overlay-generator.js"),
   "utf8"
 );
-const overlayCss = fs.readFileSync(
-  path.join(root, "resources", "overlays", "overlay.css"),
-  "utf8"
-);
-const overlayRuntime = fs.readFileSync(
-  path.join(root, "resources", "overlays", "overlay.js"),
-  "utf8"
-);
+const overlayCss = readOverlayStyles();
+const overlayRuntime = readOverlayRuntimeSource();
 const coinJarPhysics = fs.readFileSync(
   path.join(root, "resources", "overlays", "coin-jar-physics.js"),
   "utf8"
@@ -126,6 +122,17 @@ test("Coin Pusher présente son barème cadeau et ses bonus dans l’étape Inte
   assert.match(rendererCss, /\.coin-pusher-special-grid/);
 });
 
+test("Coin Pusher passe directement des interactions au démarrage sans onglet Overlays", () => {
+  assert.match(
+    renderer,
+    /if \(pack\.id === "coin-pusher"\) \{[\s\S]*\.filter\(\(step\) => step\.id !== "overlays"\)/
+  );
+  assert.match(
+    renderer,
+    /const nextStep = journey\[currentStepIndex \+ 1\][\s\S]*data-value="\$\{escapeHtml\(nextStep\.id\)\}"/
+  );
+});
+
 test("DealOrNoDeal expose tous ses réglages historiques", () => {
   for (const field of [
     "bankerRequestCount",
@@ -156,10 +163,8 @@ test("le Like Goal classique garde son ratio et remplit le cadre intérieur", ()
   assert.match(rendererCss, /aspect-ratio:\s*6\.5\s*\/\s*1/);
   assert.match(overlayCss, /\[data-theme="classic"\] \.like-goal-bar/);
   assert.match(overlayCss, /inset:\s*21% 8\.5% 19%/);
-  assert.match(
-    renderer,
-    /likeGoal:\s*\{[\s\S]*schemaVersion:\s*2[\s\S]*scale:\s*100/
-  );
+  assert.equal(overlayCatalog.defaultConfig("likeGoal").schemaVersion, 2);
+  assert.equal(overlayCatalog.defaultConfig("likeGoal").scale, 100);
   assert.match(
     overlayDefaults,
     /likeGoal:\s*\{[\s\S]*schemaVersion:\s*2[\s\S]*scale:\s*100/
@@ -206,7 +211,7 @@ test("tous les apercus reutilisent la source OBS reelle", () => {
   assert.match(renderer, /function overlayRuntimeFrame\(/);
   assert.match(
     renderer,
-    /function overlayPreview\(item, config = null\) \{\s*return overlayRuntimeFrame\(item, config, \{ context: "card" \}\);\s*\}/
+    /function overlayPreview\(item, config = null\)[\s\S]*placeholder: overlayCardPlaceholder\(item, effectiveConfig\)/
   );
   assert.match(
     renderer,
@@ -215,6 +220,55 @@ test("tous les apercus reutilisent la source OBS reelle", () => {
   assert.match(renderer, /class="overlay-runtime-frame overlay-runtime-frame--/);
   assert.doesNotMatch(renderer, /function themedOverlayPreview\(/);
   assert.doesNotMatch(renderer, /function wheelEditorMachine\(/);
+});
+
+test("les aperçus différés gardent immédiatement le vrai design sélectionné", () => {
+  const rendererHtml = fs.readFileSync(
+    path.join(root, "src", "renderer", "index.html"),
+    "utf8"
+  );
+
+  assert.match(
+    rendererHtml,
+    /overlays\/catalog\.js[\s\S]*overlays\/placeholders\.js[\s\S]*overlays\/cards\.js/
+  );
+  assert.match(
+    renderer,
+    /\.\.\/\.\.\/resources\/overlays\/media\/\$\{encodedPath\}/
+  );
+  assert.match(renderer, /overlayPlaceholderThemePath\("like-goal", design\)/);
+  assert.match(renderer, /overlayPlaceholderThemePath\("timer", design\)/);
+  assert.match(renderer, /overlayPlaceholderThemePath\("leaderboard", design\)/);
+  assert.match(renderer, /overlayPlaceholderThemePath\("win-counter", design\)/);
+  assert.match(renderer, /widgets\/coin-jar\/\$\{backName\}/);
+  assert.match(
+    renderer,
+    /video\/posters\/\$\{item\.match\}-\$\{variant\}\.webp/
+  );
+  assert.match(renderer, /decoding="sync"/);
+  assert.match(
+    rendererCss,
+    /\.overlay-runtime-placeholder > div\s*\{[\s\S]*position:\s*absolute;[\s\S]*inset:\s*0;/
+  );
+  assert.match(
+    rendererCss,
+    /\.overlay-placeholder-like-goal\[data-placeholder-theme="naruto"\]/
+  );
+  const videoDirectory = path.join(
+    root,
+    "resources",
+    "overlays",
+    "media",
+    "video"
+  );
+  const videos = fs.readdirSync(videoDirectory)
+    .filter((name) => name.endsWith(".webm"))
+    .map((name) => name.replace(/\.webm$/, ".webp"))
+    .sort();
+  const posters = fs.readdirSync(path.join(videoDirectory, "posters"))
+    .filter((name) => name.endsWith(".webp"))
+    .sort();
+  assert.deepEqual(posters, videos);
 });
 
 test("les zones d'apercu des overlays restent visuellement transparentes", () => {
@@ -350,7 +404,40 @@ test("les cartes séparent la source HTTPS LIVE Studio de la source OBS locale",
   assert.match(renderer, /snapshot\?\.localOverlayUrls\?\.\[item\?\.key\]/);
   assert.match(card, /OBS local/);
   assert.match(card, /localOverlayUrl\(item\)/);
-  assert.match(renderer, /Sources HTTPS pour TikTok LIVE Studio/);
+  assert.match(renderer, /Sources pour TikTok LIVE Studio et OBS/);
+});
+
+test("les vidéos Match utilisent un lecteur local unique avec une file d’attente", () => {
+  const firebaseConfig = fs.readFileSync(
+    path.join(root, "firebase.json"),
+    "utf8"
+  );
+
+  const definitions = overlayCatalog.definitionsWithUrls({
+    publicUrls: { matchX2: "https://public.invalid/match" },
+    localUrls: { matchPlayer: "http://127.0.0.1/match-player" }
+  });
+  const matchDefinitions = definitions.filter(
+    (definition) => definition.previewKind === "match"
+  );
+  assert.equal(matchDefinitions.length, overlayCatalog.matches.length);
+  assert.ok(
+    matchDefinitions.every(
+      (definition) =>
+        definition.delivery === "local" &&
+        definition.url === "http://127.0.0.1/match-player"
+    )
+  );
+  assert.match(renderer, /Toujours garder actif/);
+  assert.match(renderer, /Source Lien protégée/);
+  assert.match(renderer, /vidéos Match restent locales dans ShenPulse/);
+  assert.match(renderer, /ShenPulse doit rester ouvert avec un abonnement Pro actif/);
+  assert.match(renderer, /Chaque nouvel appui attend la fin réelle/);
+  assert.match(renderer, /type: "overlay\.match"/);
+  assert.match(overlayRuntime, /matchPlaybackQueue\?\.enqueue\(request\)/);
+  assert.match(overlayRuntime, /video\.addEventListener\("ended", finishMatchPlayback\)/);
+  assert.doesNotMatch(renderer, /download-match-video|exportMatchVideo/);
+  assert.match(firebaseConfig, /media\/video\/\*\*/);
 });
 
 test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
@@ -367,7 +454,10 @@ test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
   assert.doesNotMatch(overlayRuntime, /classList\.add\("packing"\)/);
   assert.match(overlayRuntime, /runtime\.recentEvents[\s\S]*spawnCoinJarDrop\(event\)/);
   assert.doesNotMatch(overlayRuntime, /setTimeout\(\(\) => node\.remove\(\), 8000\)/);
-  assert.match(overlayHtml, /coin-jar-physics\.js[\s\S]*overlay\.js/);
+  assert.match(
+    overlayHtml,
+    /coin-jar-physics\.js[\s\S]*runtime\/configuration\.js[\s\S]*runtime\/widgets\.js/
+  );
   assert.match(
     overlayCss,
     /\.coin-jar-widget\s*\{[\s\S]*width:\s*min\(69\.444444vw,\s*96\.153846vh\)[\s\S]*aspect-ratio:\s*1/
@@ -383,8 +473,10 @@ test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
   assert.match(overlayCss, /\.coin-jar-contained-drops\s*\{[\s\S]*clip-path:\s*url\("#coin-jar-glass-clip"\)/);
   assert.match(overlayRuntime, /gift\.y - visualRadius >= coinJarGeometry\.mouthTop/);
   assert.match(overlayRuntime, /jar-test-back-clean-localized\.png/);
-  assert.doesNotMatch(overlayHtml, /coin-jar-meter/);
-  assert.doesNotMatch(overlayCss, /\.coin-jar-meter/);
+  assert.match(overlayHtml, /id="coin-jar-level"/);
+  assert.match(overlayHtml, /id="coin-jar-current"[\s\S]*id="coin-jar-target"/);
+  assert.match(overlayHtml, /coin-jar-meter/);
+  assert.match(overlayCss, /\.coin-jar-meter/);
   assert.doesNotMatch(overlayRuntime, /packContainedBodies/);
   assert.doesNotMatch(coinJarPhysics, /packContainedBodies/);
   assert.doesNotMatch(overlayCss, /rgba\(255,\s*213,\s*82/);
@@ -407,13 +499,14 @@ test("les objectifs gardent leur cadre devant la progression et les timers n'ont
   assert.doesNotMatch(overlayCss, /\.timer-line/);
 });
 
-test("les matchs expliquent leur installation OBS et les super fans ne deviennent pas des abonnements", () => {
+test("les matchs expliquent leur source Lien protégée et les super fans ne deviennent pas des abonnements", () => {
   assert.match(renderer, /function renderMatchOverlayGuide\(\)/);
   assert.match(renderer, /Largeur<\/strong> · 1080 px/);
   assert.match(renderer, /Hauteur<\/strong> · 1920 px/);
-  assert.match(renderer, /Rafraîchir le navigateur lorsque la scène devient active/);
+  assert.match(renderer, /Toujours garder actif<\/strong> · activé/);
   assert.doesNotMatch(sourceHub, /WebcastEvent\.SUPER_FAN/);
-  assert.match(sourceHub, /messageType === "WebcastSubNotifyMessage"/);
+  assert.match(sourceHub, /WebcastSubNotifyMessage: "subscribe"/);
+  assert.match(sourceHub, /tiktokDecodedEventType\(messageType, event\)/);
 });
 
 test("la roue et son son démarrent immédiatement puis le son s'arrête avec la rotation", () => {
@@ -549,10 +642,14 @@ test("l'éditeur d'interaction conserve la variation WINS configurée", () => {
 });
 
 test("les actions rapides mettent a jour une seule carte sans reconstruire la galerie", () => {
-  const quickActions =
-    renderer.match(
-      /async function performOverlayQuickAction\([\s\S]*?\n\}\n\nasync function handleAction/
-    )?.[0] || "";
+  const quickActionStart = renderer.indexOf(
+    "async function performOverlayQuickAction"
+  );
+  const quickActionEnd = renderer.indexOf(
+    "async function handleAction",
+    quickActionStart
+  );
+  const quickActions = renderer.slice(quickActionStart, quickActionEnd);
 
   assert.match(quickActions, /rerender:\s*false,\s*updateCard:\s*true/);
   assert.match(quickActions, /postOverlayCardEvent\(key,/);
@@ -731,8 +828,14 @@ test("les cartes ne saturent pas les connexions réservées aux aperçus live", 
   );
   assert.match(
     overlayRuntime,
-    /setupOverlayDesign\(\);\s*renderTimer\(\);[\s\S]*fetch\(`\/api\/state[\s\S]*if \(isCatalogPreview\) return;/
+    /setupOverlayDesign\(\);\s*renderTimer\(\);[\s\S]*if \(isCatalogPreview\) return;[\s\S]*fetch\(`\/api\/state/
   );
+  assert.match(renderer, /data-overlay-src="\$\{escapeHtml\(runtimeUrl\)\}"/);
+  assert.match(renderer, /new IntersectionObserver\([\s\S]*queueDeferredOverlayPreview/);
+  assert.match(renderer, /OVERLAY_PREVIEW_LOAD_CONCURRENCY = 2/);
+  assert.match(renderer, /function overlayCardPlaceholder\(item, config = \{\}\)/);
+  assert.match(overlayHtml, /runtime\/dependencies\.js/);
+  assert.doesNotMatch(overlayHtml, /<script src="vendor\/lottie-player\.js"/);
   assert.match(
     renderer,
     /context:\s*"live",[\s\S]*editable:\s*true,[\s\S]*loading:\s*"eager"/

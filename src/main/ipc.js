@@ -142,9 +142,11 @@ function registerIpc({
       })
     )
   );
-  handle("account:login-browser", () =>
+  handle("account:login-browser", (_event, incoming) =>
     switchAccountWorkspace(() =>
-      accountService.loginWithBrowser()
+      accountService.loginWithBrowser({
+        email: safeString(incoming?.email, 254)
+      })
     )
   );
   handle("account:password-reset", (_event, incoming) =>
@@ -407,6 +409,7 @@ function registerIpc({
       "goal.add",
       "timer.add",
       "wheel.spin",
+      "overlay.match",
       "game.effect",
       "overlay.like-goal",
       "overlay.coin-jar",

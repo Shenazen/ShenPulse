@@ -434,6 +434,12 @@ class ActionRunner {
         queueTimer.unref?.();
         return payload;
       }
+      case "overlay.match":
+        return this.overlayServer.playMatch({
+          match: safeString(config.match, 40),
+          variant: safeString(config.variant || "tikcontrol", 40),
+          fit: config.fit === "cover" ? "cover" : "contain"
+        });
       case "game.effect":
         return this.gameHub.trigger(
           safeString(config.effectId, 120),

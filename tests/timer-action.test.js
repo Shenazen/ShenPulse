@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -16,7 +23,12 @@ function createRunner(
   return new ActionRunner({
     store: { getState: () => state },
     overlayServer: {
-      publish: (event, payload) => published.push({ event, payload })
+      publish: (event, payload) => published.push({ event, payload }),
+      playMatch: (payload) => {
+        const queued = { requestId: "match-request", ...payload };
+        published.push({ event: "match", payload: queued });
+        return queued;
+      }
     },
     gameHub: {
       trigger: async (...args) => {
@@ -60,11 +72,28 @@ test("le runner transmet toutes les commandes du timer à l'overlay", async () =
   );
 });
 
-test("l'overlay gère le réglage, la pause, la reprise et la remise à zéro", () => {
-  const overlayScript = fs.readFileSync(
-    path.join(__dirname, "..", "resources", "overlays", "overlay.js"),
-    "utf8"
+test("les actions Match transmettent une lecture sérialisable au lecteur unique", async () => {
+  const published = [];
+  const runner = createRunner(published);
+  const result = await runner.run(
+    {
+      type: "overlay.match",
+      config: { match: "cofre", variant: "gladiador", fit: "cover" }
+    },
+    {}
   );
+
+  assert.deepEqual(result, {
+    requestId: "match-request",
+    match: "cofre",
+    variant: "gladiador",
+    fit: "cover"
+  });
+  assert.equal(published[0].event, "match");
+});
+
+test("l'overlay gère le réglage, la pause, la reprise et la remise à zéro", () => {
+  const overlayScript = readOverlayRuntimeSource();
 
   assert.match(overlayScript, /operation === "set"/);
   assert.match(overlayScript, /operation === "pause"/);
@@ -147,10 +176,7 @@ test("les interactions WINS pilotent réellement le compteur Mont Chiliad", asyn
   assert.equal(result.viewer, "Viewer");
   assert.equal(published[0].event, "win-counter");
 
-  const overlayScript = fs.readFileSync(
-    path.join(__dirname, "..", "resources", "overlays", "overlay.js"),
-    "utf8"
-  );
+  const overlayScript = readOverlayRuntimeSource();
   assert.match(overlayScript, /function updateWinCounter/);
   assert.match(overlayScript, /"win-counter": updateWinCounter/);
   assert.match(overlayScript, /winCounterMultiplier/);
@@ -527,10 +553,7 @@ test("les actions Media ciblent une file d'ecran et conservent l'ancien alias", 
     false
   );
 
-  const overlayScript = fs.readFileSync(
-    path.join(__dirname, "..", "resources", "overlays", "overlay.js"),
-    "utf8"
-  );
+  const overlayScript = readOverlayRuntimeSource();
   assert.match(overlayScript, /parameters\.has\("screen"\)/);
   assert.match(overlayScript, /payloadScreen !== mediaScreen/);
   assert.match(overlayScript, /payload\.displayMode === "media-only"/);

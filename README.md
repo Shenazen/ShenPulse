@@ -82,3 +82,12 @@ et un appareil Spotify actif. L'application Spotify ShenPulse doit déclarer
 
 L'architecture et les procédures du relais sont détaillées dans
 [`docs/PUBLIC_OVERLAYS.md`](docs/PUBLIC_OVERLAYS.md).
+
+## Maintenance
+
+Le renderer et le runtime des overlays sont découpés par domaine. Le guide
+[`docs/MAINTENANCE.md`](docs/MAINTENANCE.md) décrit les frontières, les limites
+de taille et la procédure de modification. Le catalogue central
+`resources/overlays/overlay-catalog.js` assemble les manifestes autonomes de
+`resources/overlays/catalog/` : chaque overlay y conserve ensemble sa fiche,
+sa route, ses valeurs par défaut et ses paramètres.

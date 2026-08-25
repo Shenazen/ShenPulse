@@ -1,0 +1,313 @@
+/* Ajustements de lisibilité et pictogrammes. */
+
+/* Readability pass for the compact creator pages (headings intentionally unchanged). */
+:is(
+  .actions-workspace,
+  .sounds-page,
+  .overlay-catalog-page,
+  .membership-page
+) .page-hero p {
+  font-size: 12px;
+}
+
+:is(
+  .actions-workspace,
+  .sounds-page,
+  .overlay-catalog-page,
+  .membership-page
+) .hero-chip {
+  font-size: 10px;
+}
+
+:is(
+  .actions-workspace,
+  .sounds-page,
+  .overlay-catalog-page,
+  .membership-page
+) .button {
+  font-size: 12px;
+}
+
+:is(
+  .actions-workspace,
+  .sounds-page,
+  .overlay-catalog-page,
+  .membership-page
+) :is(.button.small, .button.tiny) {
+  font-size: 11px;
+}
+
+:is(
+  .actions-workspace,
+  .sounds-page,
+  .overlay-catalog-page,
+  .membership-page
+) :is(.badge, .count-pill, .type-pill, .trigger-pill) {
+  font-size: 9.5px;
+}
+
+:is(
+  .actions-workspace,
+  .sounds-page,
+  .overlay-catalog-page
+) .search-control input {
+  font-size: 11px;
+}
+
+.actions-workspace .module-tabs button {
+  font-size: 11px;
+}
+
+.actions-workspace .module-tabs button span {
+  font-size: 9.5px;
+}
+
+:is(.actions-workspace, .sounds-page) .studio-panel-heading p {
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+:is(.actions-workspace, .sounds-page) .data-table {
+  font-size: 10.5px;
+}
+
+:is(.actions-workspace, .sounds-page) .data-table th {
+  font-size: 9.5px;
+}
+
+.actions-workspace .filter-check {
+  font-size: 10px;
+}
+
+.actions-workspace .media-screens-intro p {
+  font-size: 10.5px;
+}
+
+.actions-workspace .media-screens-table {
+  font-size: 10.5px;
+}
+
+.actions-workspace .media-screens-table th {
+  font-size: 9.5px;
+}
+
+.actions-workspace .media-screens-table code {
+  font-size: 10px;
+}
+
+.actions-workspace .simulator-card strong {
+  font-size: 11px;
+}
+
+.actions-workspace .simulator-card small {
+  font-size: 9.5px;
+}
+
+.actions-workspace .simulator-form .field > span {
+  font-size: 11px;
+}
+
+.actions-workspace .simulator-form .field :is(input, select, textarea) {
+  font-size: 12px;
+}
+
+.actions-workspace .simulator-form .field small,
+.actions-workspace .simulator-submit > span {
+  font-size: 10px;
+}
+
+.actions-workspace .timer-scheduler-summary span,
+.actions-workspace .timer-scheduler-summary small,
+.actions-workspace .table-subline,
+.actions-workspace .timer-frequency-pill,
+.actions-workspace .timer-action-chips :is(span, em) {
+  font-size: 9.5px;
+}
+
+.sounds-page .spotify-summary span,
+.sounds-page .spotify-summary small,
+.sounds-page .spotify-controls > span {
+  font-size: 9.5px;
+}
+
+.sounds-page .spotify-summary strong {
+  font-size: 12px;
+}
+
+.overlay-catalog-page .filter-pills button {
+  font-size: 11px;
+}
+
+.overlay-catalog-page .overlay-category-heading small {
+  font-size: 10px;
+}
+
+.overlay-catalog-page .overlay-card-copy > p {
+  font-size: 10.5px;
+}
+
+.overlay-catalog-page .overlay-card-title small,
+.overlay-catalog-page .overlay-design-picker > span {
+  font-size: 9.5px;
+}
+
+.overlay-catalog-page .overlay-design-picker select,
+.overlay-catalog-page .url-field code {
+  font-size: 10px;
+}
+
+.overlay-catalog-page .overlay-card-meta small,
+.overlay-catalog-page .overlay-quick-actions > span,
+.overlay-catalog-page .overlay-locked-actions > span {
+  font-size: 10px;
+}
+
+.membership-page .membership-current {
+  font-size: 11px;
+}
+
+.membership-page .subscription-card header small {
+  font-size: 9.5px;
+}
+
+.membership-page .subscription-card > strong small {
+  font-size: 10.5px;
+}
+
+.membership-page .subscription-card > p,
+.membership-page .subscription-card ul {
+  font-size: 11px;
+}
+
+.membership-page .commerce-note p {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.membership-page .commerce-games p {
+  font-size: 10px;
+}
+
+.membership-page .commerce-games article strong,
+.membership-page .commerce-games article b {
+  font-size: 11px;
+}
+
+.membership-page .commerce-games article small {
+  font-size: 9.5px;
+}
+
+/* Les pictogrammes et miniatures restent lisibles sans carré décoratif imbriqué. */
+.stat-icon,
+.event-icon,
+.connector-icon,
+.effect-icon,
+.empty-icon,
+.profile-manager-icon,
+.event-visual,
+.compact-media-icon,
+.compact-media-thumb,
+.media-import-icon,
+.gift-picker-selection,
+.gift-result-fallback,
+.admin-item-icon,
+.gta-overlay-download-icon,
+.game-readiness-icon,
+.game-live-help > span {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.game-effect-trigger .event-visual,
+.game-live-item.blocked > span,
+.game-live-checklist article:not(.ready) > span {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.guest-access-notice {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.11), transparent 42%),
+    linear-gradient(315deg, rgba(217, 70, 239, 0.1), transparent 48%),
+    var(--surface);
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  border-radius: 14px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+}
+
+.guest-access-notice > span {
+  align-items: center;
+  background: linear-gradient(135deg, var(--violet), var(--pink));
+  border-radius: 12px;
+  color: white;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.guest-access-notice strong {
+  color: var(--text);
+  display: block;
+  font-size: 14px;
+}
+
+.guest-access-notice p,
+.guest-settings-overview p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+  margin: 4px 0 0;
+}
+
+.guest-private-placeholder {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 320px;
+  padding: 42px;
+  text-align: center;
+}
+
+.guest-private-placeholder > span {
+  color: var(--cyan);
+  font-size: 42px;
+}
+
+.guest-private-placeholder h2 {
+  margin: 12px 0 4px;
+}
+
+.guest-private-placeholder p {
+  color: var(--muted);
+  margin: 0 0 20px;
+  max-width: 620px;
+}
+
+[data-guest-locked="true"] {
+  cursor: not-allowed !important;
+}
+
+.guest-media-screens .media-screens-intro {
+  min-height: 96px;
+}
+
+@media (max-width: 900px) {
+  .guest-access-notice {
+    grid-template-columns: auto 1fr;
+  }
+
+  .guest-access-notice > .button {
+    grid-column: 1 / -1;
+  }
+}

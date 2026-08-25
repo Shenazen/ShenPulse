@@ -1,0 +1,812 @@
+/* Parcours commun d'installation et d'utilisation des jeux. */
+
+/* Parcours de jeu commun : Installation → Interactions → Overlays → Démarrage. */
+.game-simple-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 310px);
+  gap: 18px;
+}
+
+.game-install-simple,
+.game-start-panel {
+  min-height: 350px;
+}
+
+.game-install-state {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 17px;
+  align-items: center;
+  min-height: 132px;
+  padding: 20px;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(168, 85, 247, 0.13), transparent 45%),
+    rgba(15, 23, 42, 0.55);
+}
+
+.game-install-state > span,
+.game-novice-note > span {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.2), rgba(168, 85, 247, 0.22));
+  color: var(--cyan);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.game-install-state.ready {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.055);
+}
+
+.game-install-state.ready > span {
+  background: rgba(52, 211, 153, 0.14);
+  color: #34d399;
+}
+
+.game-install-state strong,
+.game-install-state p {
+  display: block;
+}
+
+.game-install-state strong {
+  margin-bottom: 7px;
+  font-size: 16px;
+}
+
+.game-install-state p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.game-novice-note {
+  align-self: start;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 20% 0, rgba(34, 211, 238, 0.1), transparent 42%),
+    rgba(5, 8, 20, 0.62);
+}
+
+.game-novice-note > span {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 17px;
+  font-size: 18px;
+}
+
+.game-novice-note strong,
+.game-novice-note p,
+.game-novice-note small {
+  display: block;
+}
+
+.game-novice-note strong {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.game-novice-note p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.game-novice-note small {
+  margin-top: 15px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  color: #34d399;
+}
+
+.game-launch-side {
+  display: grid;
+  align-self: start;
+  gap: 14px;
+}
+
+.minecraft-round-settings {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(34, 211, 238, 0.11), transparent 46%),
+    rgba(5, 8, 20, 0.72);
+}
+
+.minecraft-round-settings > header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
+}
+
+.minecraft-round-settings > header > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  background: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.18),
+    rgba(168, 85, 247, 0.2)
+  );
+  color: var(--cyan);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.minecraft-round-settings > header strong,
+.minecraft-round-settings > header small {
+  display: block;
+}
+
+.minecraft-round-settings > header strong {
+  margin-bottom: 3px;
+  font-size: 14px;
+}
+
+.minecraft-round-settings > header small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.minecraft-round-settings > label:not(.minecraft-round-toggle) {
+  display: grid;
+  gap: 7px;
+}
+
+.minecraft-round-settings > label:not(.minecraft-round-toggle) > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.minecraft-round-settings > label:not(.minecraft-round-toggle) > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(5, 7, 15, 0.82);
+}
+
+.minecraft-round-settings input[type="number"] {
+  min-width: 0;
+  padding: 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.minecraft-round-settings > label:not(.minecraft-round-toggle) b {
+  padding: 0 12px;
+  color: var(--cyan);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.minecraft-round-toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 11px;
+  border: 1px solid rgba(168, 85, 247, 0.23);
+  border-radius: 12px;
+  background: rgba(168, 85, 247, 0.055);
+  cursor: pointer;
+}
+
+.minecraft-round-toggle input {
+  margin-top: 3px;
+  accent-color: var(--cyan);
+}
+
+.minecraft-round-toggle strong,
+.minecraft-round-toggle small {
+  display: block;
+}
+
+.minecraft-round-toggle strong {
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.minecraft-round-toggle small {
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.minecraft-round-runtime {
+  display: grid;
+  gap: 3px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.minecraft-round-runtime.running {
+  border-color: rgba(52, 211, 153, 0.34);
+  background: rgba(52, 211, 153, 0.065);
+}
+
+.minecraft-round-runtime > span {
+  color: #34d399;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+
+.minecraft-round-runtime > strong {
+  color: var(--text);
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+
+.minecraft-round-runtime > small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.game-session-blocked-dialog {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid rgba(251, 113, 133, 0.36);
+  border-radius: 16px;
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.game-session-blocked-dialog > span {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 17px;
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  font-size: 19px;
+}
+
+.game-session-blocked-dialog strong {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 15px;
+}
+
+.game-session-blocked-dialog p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.game-page-message {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 13px 15px;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  border-radius: 14px;
+  background: rgba(52, 211, 153, 0.07);
+}
+
+.game-page-message.error {
+  border-color: rgba(251, 113, 133, 0.42);
+  background: rgba(244, 63, 94, 0.09);
+}
+
+.game-page-message > span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.13);
+  color: #34d399;
+  font-weight: 900;
+}
+
+.game-page-message.error > span {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+}
+
+.game-page-message strong,
+.game-page-message p {
+  display: block;
+}
+
+.game-page-message p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.game-page-message > button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.game-start-readiness {
+  display: grid;
+  gap: 10px;
+}
+
+.game-start-readiness article {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 13px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.game-start-readiness article > span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.game-start-readiness article.ready > span {
+  background: rgba(52, 211, 153, 0.13);
+  color: #34d399;
+}
+
+.game-start-readiness strong,
+.game-start-readiness small {
+  display: block;
+}
+
+.game-start-readiness small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.game-trigger-choice {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid rgba(34, 211, 238, 0.14);
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.045);
+}
+
+.game-trigger-choice > small {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.game-no-trigger {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.game-interaction-card.configured {
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+.game-interaction-card.unavailable {
+  opacity: 0.55;
+}
+
+.game-step-footer {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(5, 8, 20, 0.58);
+}
+
+.game-step-footer strong,
+.game-step-footer small {
+  display: block;
+}
+
+.game-step-footer small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.game-overlay-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 14px;
+}
+
+.game-overlay-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: rgba(5, 8, 20, 0.68);
+}
+
+.game-overlay-card.locked {
+  opacity: 0.6;
+}
+
+.game-overlay-card-preview {
+  display: grid;
+  min-height: 190px;
+  padding: 18px;
+  place-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(34, 211, 238, 0.11), transparent 45%),
+    #080b18;
+}
+
+.game-overlay-card-preview > * {
+  max-width: 100%;
+}
+
+.game-overlay-card-copy {
+  padding: 16px;
+}
+
+.game-overlay-card-copy > header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
+}
+
+.game-overlay-card-copy > header > span {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--cyan);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.game-overlay-card-copy h4 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.game-overlay-card-copy header small {
+  color: var(--cyan);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.game-overlay-card-copy > p {
+  min-height: 42px;
+  margin: 13px 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.game-overlay-card-copy > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.preview-game-effect {
+  width: min(100%, 360px);
+}
+
+.game-progress-backdrop {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  padding: 24px;
+  place-items: center;
+  background: rgba(2, 4, 12, 0.78);
+  backdrop-filter: blur(12px);
+}
+
+.game-progress-modal {
+  width: min(640px, 100%);
+  padding: 24px;
+  border: 1px solid rgba(34, 211, 238, 0.31);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 80% 0, rgba(168, 85, 247, 0.16), transparent 42%),
+    #0b0e1c;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.58);
+}
+
+.game-progress-modal > header {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.game-progress-modal header span {
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.game-progress-modal h3 {
+  margin: 6px 0 0;
+  font-size: 21px;
+}
+
+.game-progress-modal header > strong {
+  color: var(--cyan);
+  font-size: 22px;
+}
+
+.game-launch-progress-modal header > strong {
+  padding: 7px 10px;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.08);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-launch-progress-modal .game-progress-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.game-progress-visual {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  margin: 25px 0 18px;
+}
+
+.game-progress-visual > span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  color: #050816;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.game-progress-visual.complete > span {
+  background: #34d399;
+}
+
+.game-progress-visual.failed > span {
+  background: #fb7185;
+}
+
+.game-progress-visual > div {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.game-progress-visual i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--pink));
+  transition: width 220ms ease;
+}
+
+.game-progress-track.indeterminate {
+  position: relative;
+}
+
+.game-progress-track.indeterminate i {
+  position: absolute;
+  width: 34% !important;
+  animation: game-progress-slide 1.15s ease-in-out infinite;
+}
+
+.game-progress-visual.is-indeterminate > span {
+  animation: game-progress-icon-pulse 1.1s ease-in-out infinite;
+}
+
+.game-progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0 13px;
+}
+
+.game-progress-stats > span {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 11px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.game-progress-stats small,
+.game-progress-stats strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-progress-stats small {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.game-progress-stats strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.game-progress-activity {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  min-height: 34px;
+  margin: 8px 0 9px;
+  padding: 8px 11px;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.055);
+  color: #6ee7b7;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.game-progress-activity > i {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.8);
+  animation: game-activity-pulse 1s ease-in-out infinite;
+}
+
+.game-progress-activity.waiting {
+  border-color: rgba(251, 191, 36, 0.25);
+  background: rgba(251, 191, 36, 0.055);
+  color: #fcd34d;
+}
+
+.game-progress-activity.failed {
+  border-color: rgba(251, 113, 133, 0.25);
+  background: rgba(251, 113, 133, 0.055);
+  color: #fda4af;
+}
+
+.game-progress-activity.failed > i {
+  background: #fb7185;
+  box-shadow: 0 0 12px rgba(251, 113, 133, 0.75);
+  animation: none;
+}
+
+.game-progress-activity.waiting > i {
+  background: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.75);
+}
+
+@keyframes game-progress-slide {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(310%);
+  }
+}
+
+@keyframes game-progress-icon-pulse {
+  0%,
+  100% {
+    filter: brightness(0.9);
+    transform: scale(0.94);
+  }
+  50% {
+    filter: brightness(1.2);
+    transform: scale(1.04);
+  }
+}
+
+@keyframes game-activity-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.game-progress-modal > p {
+  margin: 0 0 7px;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.game-progress-modal > small {
+  color: var(--muted);
+}
+
+.game-progress-modal > footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+@media (max-width: 760px) {
+  .game-simple-step {
+    grid-template-columns: 1fr;
+  }
+
+  .game-step-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .game-step-footer .button {
+    width: 100%;
+  }
+
+  .game-progress-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,685 @@
+/*
+ * Aperçus instantanés du catalogue.
+ *
+ * Ils reprennent les vrais médias et la géométrie des sources OBS. Le
+ * chargement différé de l'iframe peut donc se terminer sans changement visuel.
+ */
+
+.overlay-runtime-placeholder > div {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  width: auto;
+  height: auto;
+  place-items: center;
+  color: #fff;
+}
+
+.overlay-placeholder-frame {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+/* Like Goal ------------------------------------------------------------- */
+
+.overlay-placeholder-like-goal {
+  --placeholder-inner-top: 44%;
+  --placeholder-inner-right: 12%;
+  --placeholder-inner-bottom: 21%;
+  --placeholder-inner-left: 12%;
+  --placeholder-inner-radius: 20px;
+  --placeholder-value-top: 68%;
+  overflow: visible;
+  isolation: isolate;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .78), 0 0 8px rgba(0, 0, 0, .82);
+}
+
+.overlay-placeholder-like-goal[data-placeholder-theme="gta"] { --placeholder-inner-top: 44%; --placeholder-inner-right: 9%; --placeholder-inner-bottom: 26%; --placeholder-inner-left: 9%; --placeholder-inner-radius: 26px; --placeholder-value-top: 72%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="minecraft"] { --placeholder-inner-top: 52%; --placeholder-inner-right: 14%; --placeholder-inner-bottom: 22%; --placeholder-inner-left: 14%; --placeholder-inner-radius: 3px; --placeholder-value-top: 76%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="akatsuki"] { --placeholder-inner-top: 43%; --placeholder-inner-right: 17.5%; --placeholder-inner-bottom: 34%; --placeholder-inner-left: 18%; --placeholder-inner-radius: 23px; --placeholder-value-top: 67%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="assassination-classroom"] { --placeholder-inner-top: 45%; --placeholder-inner-right: 24%; --placeholder-inner-bottom: 36%; --placeholder-inner-left: 24%; --placeholder-inner-radius: 6px; --placeholder-value-top: 66%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="cult-of-the-lamb"] { --placeholder-inner-top: 58%; --placeholder-inner-right: 17%; --placeholder-inner-bottom: 22%; --placeholder-inner-left: 18%; --placeholder-inner-radius: 22px; --placeholder-value-top: 79%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="demon-slayer"] { --placeholder-inner-top: 42%; --placeholder-inner-right: 18%; --placeholder-inner-bottom: 34%; --placeholder-inner-left: 18%; --placeholder-inner-radius: 22px; --placeholder-value-top: 66%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="dragon-ball"] { --placeholder-inner-top: 42%; --placeholder-inner-right: 18.5%; --placeholder-inner-bottom: 31%; --placeholder-inner-left: 18.5%; --placeholder-inner-radius: 24px; --placeholder-value-top: 68%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="fairy-tail"] { --placeholder-inner-top: 41%; --placeholder-inner-right: 17%; --placeholder-inner-bottom: 34%; --placeholder-inner-left: 17%; --placeholder-inner-radius: 22px; --placeholder-value-top: 65%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="harry-potter"] { --placeholder-inner-top: 52%; --placeholder-inner-right: 13%; --placeholder-inner-bottom: 35%; --placeholder-inner-left: 13%; --placeholder-inner-radius: 13px; --placeholder-value-top: 70%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="naruto"] { --placeholder-inner-top: 44%; --placeholder-inner-right: 16%; --placeholder-inner-bottom: 29%; --placeholder-inner-left: 16%; --placeholder-inner-radius: 24px; --placeholder-value-top: 69%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="one-piece"] { --placeholder-inner-top: 51%; --placeholder-inner-right: 16%; --placeholder-inner-bottom: 30%; --placeholder-inner-left: 16%; --placeholder-inner-radius: 12px; --placeholder-value-top: 71%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="stardew-valley"] { --placeholder-inner-top: 41%; --placeholder-inner-right: 12%; --placeholder-inner-bottom: 45%; --placeholder-inner-left: 12%; --placeholder-inner-radius: 12px; --placeholder-value-top: 58%; }
+.overlay-placeholder-like-goal[data-placeholder-theme="terraria"] { --placeholder-inner-top: 44%; --placeholder-inner-right: 10%; --placeholder-inner-bottom: 28%; --placeholder-inner-left: 10%; --placeholder-inner-radius: 12px; --placeholder-value-top: 70%; }
+
+.overlay-placeholder-like-bar {
+  position: absolute;
+  z-index: 2;
+  top: var(--placeholder-inner-top);
+  right: var(--placeholder-inner-right);
+  bottom: var(--placeholder-inner-bottom);
+  left: var(--placeholder-inner-left);
+  overflow: hidden;
+  border-radius: var(--placeholder-inner-radius);
+  background: rgba(2, 6, 14, .62);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, .12);
+}
+
+.overlay-placeholder-like-bar i {
+  display: block;
+  width: var(--placeholder-progress, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1de8ff, #8d5cfa, #ec4899);
+  box-shadow: 0 0 12px rgba(236, 72, 153, .7);
+}
+
+.overlay-placeholder-like-copy {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: block;
+}
+
+.overlay-placeholder-like-copy > strong,
+.overlay-placeholder-like-copy > small {
+  position: absolute;
+  right: 0;
+  left: 0;
+  display: block;
+  line-height: 1;
+}
+
+.overlay-placeholder-like-copy > strong {
+  top: 26%;
+  transform: translate(var(--placeholder-title-x, 0), calc(-50% + var(--placeholder-title-y, 0px))) scale(var(--placeholder-title-scale, 1));
+  color: var(--placeholder-title-color, #fff);
+  font-size: clamp(8px, 1.7vw, 18px);
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.overlay-placeholder-like-copy > small {
+  top: var(--placeholder-value-top);
+  transform: translate(var(--placeholder-content-x, 0), calc(-50% + var(--placeholder-content-y, 0px))) scale(var(--placeholder-content-scale, 1));
+  color: var(--placeholder-content-color, #fff);
+  font-size: clamp(7px, 1.3vw, 14px);
+  font-weight: 900;
+}
+
+.overlay-placeholder-like-copy > small b {
+  color: var(--placeholder-percent-color, #ff4f86);
+}
+
+.overlay-placeholder-like-foreground,
+.overlay-placeholder-frame-slice {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.overlay-placeholder-frame-slice--top { clip-path: inset(0 0 calc(100% - var(--placeholder-inner-top)) 0); }
+.overlay-placeholder-frame-slice--bottom { clip-path: inset(calc(100% - var(--placeholder-inner-bottom)) 0 0 0); }
+.overlay-placeholder-frame-slice--left { clip-path: inset(var(--placeholder-inner-top) calc(100% - var(--placeholder-inner-left)) var(--placeholder-inner-bottom) 0); }
+.overlay-placeholder-frame-slice--right { clip-path: inset(var(--placeholder-inner-top) 0 var(--placeholder-inner-bottom) calc(100% - var(--placeholder-inner-right))); }
+
+.overlay-placeholder-like-goal.is-classic .overlay-placeholder-like-bar {
+  inset: 21% 8.5% 19%;
+  border: 1px solid rgba(255, 255, 255, .26);
+  border-radius: 34px;
+  background: rgba(2, 6, 14, .72);
+}
+
+.overlay-placeholder-like-goal.is-classic .overlay-placeholder-like-copy > strong { top: 31%; }
+.overlay-placeholder-like-goal.is-classic .overlay-placeholder-like-copy > small { top: 67%; }
+
+/* Timer ---------------------------------------------------------------- */
+
+.overlay-placeholder-timer {
+  isolation: isolate;
+}
+
+.overlay-placeholder-timer.is-themed .overlay-placeholder-frame {
+  inset: 50% auto auto 50%;
+  width: min(92%, 390px);
+  height: auto;
+  aspect-ratio: 1.825;
+  transform: translate(-50%, -50%);
+  object-fit: fill;
+}
+
+.overlay-placeholder-timer-copy {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: min(54%, 220px);
+  justify-items: center;
+  text-align: center;
+}
+
+.overlay-placeholder-timer-copy small {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  width: 135%;
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: clamp(7px, 1.2vw, 12px);
+  font-weight: 950;
+  letter-spacing: .04em;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .82);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.overlay-placeholder-timer-copy strong {
+  width: 100%;
+  padding: 7px 12px 8px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .02)), rgba(2, 6, 12, .7);
+  color: #fff;
+  font-family: "JetBrains Mono", monospace;
+  font-size: clamp(17px, 3.3vw, 40px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 950;
+  line-height: .9;
+  letter-spacing: .02em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09);
+}
+
+.overlay-placeholder-timer > b {
+  position: absolute;
+  z-index: 3;
+  top: 25%;
+  right: 22%;
+  display: grid;
+  width: 30px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid #ffe575;
+  border-radius: 50%;
+  background: rgba(7, 9, 20, .86);
+  color: #ffe575;
+  font-size: 10px;
+}
+
+.overlay-placeholder-timer.is-classic {
+  align-content: center;
+}
+
+.overlay-placeholder-timer.is-classic .overlay-placeholder-timer-copy {
+  width: auto;
+  min-width: 150px;
+  padding: 12px 16px;
+  border: 1px solid rgba(184, 142, 255, .24);
+  border-radius: 12px;
+  background: rgba(9, 10, 20, .93);
+}
+
+.overlay-placeholder-timer.is-classic .overlay-placeholder-timer-copy small {
+  position: static;
+  width: auto;
+  margin-bottom: 4px;
+  color: #1de8ff;
+}
+
+.overlay-placeholder-timer.is-classic .overlay-placeholder-timer-copy strong {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* Classements ---------------------------------------------------------- */
+
+.overlay-placeholder-leaderboard {
+  isolation: isolate;
+}
+
+.overlay-placeholder-leaderboard.is-themed .overlay-placeholder-frame {
+  object-fit: contain;
+}
+
+.overlay-placeholder-leaderboard-copy {
+  position: absolute;
+  z-index: 2;
+  inset: 20% 12% 11%;
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-placeholder-leaderboard-copy > strong {
+  position: absolute;
+  top: -14%;
+  right: 4%;
+  left: 4%;
+  overflow: hidden;
+  color: #fff4ba;
+  font-size: clamp(7px, 1.25vw, 13px);
+  font-weight: 950;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .78);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.overlay-placeholder-leaderboard-rows {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.overlay-placeholder-leaderboard-row {
+  display: grid;
+  grid-template-columns: 20px 25px minmax(0, 1fr);
+  align-items: center;
+  min-height: 27px;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(2, 6, 13, .61);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .045);
+  text-align: left;
+}
+
+.overlay-placeholder-leaderboard-row:first-child { min-height: 31px; }
+.overlay-placeholder-leaderboard-row.is-empty { opacity: .45; }
+
+.overlay-placeholder-rank,
+.overlay-placeholder-avatar {
+  position: relative;
+  display: grid;
+  width: 20px;
+  aspect-ratio: 1;
+  place-items: center;
+  color: #ffe575;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.overlay-placeholder-medal,
+.overlay-placeholder-ring,
+.overlay-placeholder-crown {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.overlay-placeholder-rank > i {
+  position: relative;
+  z-index: 2;
+  font-style: normal;
+}
+
+.overlay-placeholder-avatar {
+  width: 22px;
+  border: 1px solid rgba(255, 229, 117, .55);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #8d63d8, #1dd4ff);
+  color: #fff;
+}
+
+.overlay-placeholder-avatar .overlay-placeholder-ring {
+  inset: -16%;
+  width: 132%;
+  height: 132%;
+}
+
+.overlay-placeholder-avatar .overlay-placeholder-crown {
+  inset: -50% 0 auto;
+  width: 100%;
+  height: 62%;
+}
+
+.overlay-placeholder-leaderboard-row > span {
+  display: block;
+  min-width: 0;
+}
+
+.overlay-placeholder-leaderboard-row strong,
+.overlay-placeholder-leaderboard-row em {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-placeholder-leaderboard-row strong { color: #fff; font-size: 7px; }
+
+.overlay-placeholder-leaderboard-row em {
+  margin-top: 1px;
+  color: #f9a8d4;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.overlay-placeholder-leaderboard.is-classic {
+  border: 1px solid rgba(184, 142, 255, .24);
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, .24), transparent 45%), rgba(9, 10, 20, .93);
+}
+
+.overlay-placeholder-leaderboard.is-classic .overlay-placeholder-leaderboard-copy { inset: 12% 11% 11%; }
+
+.overlay-placeholder-leaderboard.is-classic .overlay-placeholder-leaderboard-copy > strong {
+  position: static;
+  min-height: 28px;
+  color: #ffe575;
+}
+
+/* Coin Jar ------------------------------------------------------------- */
+
+.overlay-placeholder-coin-jar {
+  width: min(100%, 220px) !important;
+  aspect-ratio: 1;
+  height: auto !important;
+  isolation: isolate;
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, .4));
+}
+
+.overlay-placeholder-jar-back,
+.overlay-placeholder-jar-front {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.overlay-placeholder-jar-back { z-index: 1; }
+.overlay-placeholder-jar-front { z-index: 3; }
+
+/* Compteur de wins ----------------------------------------------------- */
+
+.overlay-placeholder-wins {
+  width: min(100%, 220px) !important;
+  height: auto !important;
+  aspect-ratio: 706 / 517;
+  isolation: isolate;
+}
+
+.overlay-placeholder-wins .overlay-placeholder-frame { object-fit: contain; }
+
+.overlay-placeholder-win-backdrop {
+  position: absolute;
+  z-index: 0;
+  inset: 26.4% 16.7% 14.5%;
+  border-radius: 14px;
+  background: rgba(2, 6, 13, .86);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, .62);
+}
+
+.overlay-placeholder-win-copy {
+  position: absolute;
+  z-index: 2;
+  inset: 14% 16% 13%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .68);
+}
+
+.overlay-placeholder-win-copy > small {
+  position: absolute;
+  top: 0;
+  color: var(--placeholder-win-color, #f8fafc);
+  font-size: clamp(8px, 1.8vw, 16px);
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.overlay-placeholder-win-copy > strong {
+  margin-top: 15px;
+  color: #fff;
+  font-size: clamp(31px, 7vw, 70px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 950;
+  line-height: .86;
+}
+
+.overlay-placeholder-win-copy > span {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, .84);
+  font-size: clamp(6px, 1vw, 10px);
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+
+.overlay-placeholder-wins.is-classic {
+  width: min(76%, 180px) !important;
+  aspect-ratio: 1.45;
+  border: 1px solid rgba(184, 142, 255, .24);
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, .24), transparent 45%), rgba(9, 10, 20, .93);
+}
+
+.overlay-placeholder-wins.is-classic .overlay-placeholder-win-backdrop { display: none; }
+
+/* Roue ----------------------------------------------------------------- */
+
+.overlay-placeholder-wheel { isolation: isolate; }
+
+.overlay-placeholder-wheel-machine {
+  position: relative;
+  display: grid;
+  width: min(82%, 170px);
+  aspect-ratio: 1 / 1.22;
+  place-items: center;
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, .62));
+}
+
+.overlay-placeholder-wheel-frame {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 82%;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -5deg, #fff0a8 0deg 3deg, #ffad28 3deg 7deg, #d64500 7deg 10deg, #541400 10deg 13deg);
+  box-shadow: inset 0 0 0 4px #2b0c03, inset 0 0 0 8px #ffb736, inset 0 0 0 12px #8b2500, 0 0 0 3px rgba(63, 17, 0, .94);
+}
+
+.overlay-placeholder-wheel-disc {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow: inset 0 0 14px rgba(255, 255, 255, .22);
+}
+
+.overlay-placeholder-wheel-disc > span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 42%;
+  transform: translate(-50%, -50%) rotate(calc((360deg / var(--placeholder-segments)) * (var(--placeholder-segment) + .5))) translateX(67%) rotate(90deg);
+  overflow: hidden;
+  color: #fff;
+  font-size: 5px;
+  font-weight: 900;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px #000;
+  white-space: nowrap;
+}
+
+.overlay-placeholder-wheel-cap {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  width: 18%;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid #ffd08a;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff0b8, #ff9f1c 42%, #8c3200 72%);
+  color: #2a1005;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.overlay-placeholder-wheel-pointer {
+  position: absolute;
+  z-index: 7;
+  top: 7.5%;
+  left: 50%;
+  display: grid;
+  width: 24px;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  place-items: center;
+  border: 1px solid #ffe0a3;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff4d5, #ffb347 42%, #c24700 74%);
+}
+
+.overlay-placeholder-wheel-pointer::after {
+  position: absolute;
+  top: 20px;
+  border-top: 10px solid #ffd08a;
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  content: "";
+}
+
+.overlay-placeholder-wheel-stand {
+  position: absolute;
+  z-index: 1;
+  bottom: 5.5%;
+  width: 44%;
+  height: 18%;
+  border-radius: 15px 15px 5px 5px;
+  background: linear-gradient(180deg, #1b120e, #050403);
+}
+
+.overlay-placeholder-wheel.is-royal .overlay-placeholder-wheel-frame {
+  width: 86%;
+  background: repeating-conic-gradient(from -90deg, #ffeeb0 0deg 2deg, #c27612 2deg 5deg, #2d1607 5deg 10deg, #99600f 10deg 13deg, #ffe177 13deg 15deg);
+  box-shadow: inset 0 0 0 3px #fff0ac, inset 0 0 0 7px #7a3d05, inset 0 0 0 12px #1c0d07, 0 0 0 4px rgba(69, 35, 7, .96);
+}
+
+/* Matchs et My Actions ------------------------------------------------- */
+
+.overlay-placeholder-match { align-content: center; }
+
+.overlay-placeholder-match-poster {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.overlay-placeholder-match.has-poster::before,
+.overlay-placeholder-match.has-poster::after {
+  display: none;
+}
+
+.overlay-placeholder-match::before {
+  position: absolute;
+  width: min(70%, 95px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(34, 211, 238, .46);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(236, 72, 153, .28), transparent 55%), conic-gradient(from 25deg, #111827, #22d3ee, #111827, #ec4899, #111827);
+  box-shadow: 0 0 22px rgba(34, 211, 238, .28);
+  content: "";
+}
+
+.overlay-placeholder-match::after {
+  position: absolute;
+  width: min(calc(70% - 8px), 87px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #070910;
+  content: "";
+}
+
+.overlay-placeholder-match span,
+.overlay-placeholder-match strong {
+  position: relative;
+  z-index: 2;
+}
+
+.overlay-placeholder-match span {
+  color: #22d3ee;
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: .22em;
+}
+
+.overlay-placeholder-match strong {
+  color: #fff;
+  font-size: clamp(16px, 4vw, 30px);
+  text-shadow: 0 0 10px rgba(236, 72, 153, .84);
+}
+
+.overlay-placeholder-my-actions {
+  align-items: end !important;
+  justify-items: end !important;
+  padding: 7px;
+}
+
+.overlay-placeholder-my-actions > span {
+  display: flex;
+  width: 66%;
+  min-height: 40%;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid rgba(184, 142, 255, .24);
+  border-radius: 9px;
+  background: rgba(10, 12, 24, .92);
+}
+
+.overlay-placeholder-my-actions i {
+  width: 5px;
+  aspect-ratio: 1;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: #39e6b0;
+  box-shadow: 0 0 7px #39e6b0;
+}
+
+.overlay-placeholder-my-actions strong {
+  color: #1de8ff;
+  font-size: 7px;
+  letter-spacing: .16em;
+}
+
+.overlay-placeholder-generic {
+  align-content: center;
+  gap: 6px;
+}
+
+.overlay-placeholder-generic .overlay-placeholder-icon {
+  color: #1de8ff;
+  font-size: clamp(20px, 4vw, 40px);
+  font-weight: 900;
+}
+
+.overlay-placeholder-generic strong {
+  font-size: 11px;
+  text-transform: uppercase;
+}

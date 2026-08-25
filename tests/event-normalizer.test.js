@@ -100,6 +100,21 @@ test("conserve le cout TikTok fourni dans l'objet cadeau", () => {
   assert.equal(event.data.value, 44999);
 });
 
+test("normalise la famille du cœur personnalisé indépendamment de son nom", () => {
+  const event = normalizeEvent({
+    event: "gift",
+    data: {
+      giftId: "601333",
+      giftName: "Nom personnalisé",
+      giftCombo: true,
+      giftImageUri: "webcast-sg/resource/saliency_seg_creator.png",
+      diamondCount: 1
+    }
+  });
+
+  assert.equal(event.data.giftFamily, "community-heart");
+});
+
 test("normalise les alias d'événements", () => {
   assert.equal(normalizeType("member"), "join");
   assert.equal(normalizeType("roomUser"), "roomUser");

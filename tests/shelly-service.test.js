@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -558,10 +565,7 @@ test("résout les hôtes Shelly annoncés dans une réponse mDNS", () => {
 
 test("raccorde l’onglet, l’action et les IPC IRL au seul espace propriétaire", () => {
   const root = path.join(__dirname, "..");
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const preload = fs.readFileSync(
     path.join(root, "src", "main", "preload.js"),
     "utf8"
@@ -586,10 +590,7 @@ test("raccorde l’onglet, l’action et les IPC IRL au seul espace propriétair
   );
   assert.match(renderer, /game-effect-trigger">\$\{triggerPill\(rule\)\}/);
   assert.match(renderer, /data-search="irl-actions"/);
-  const styles = fs.readFileSync(
-    path.join(root, "src", "renderer", "styles.css"),
-    "utf8"
-  );
+  const styles = readRendererStyles();
   assert.match(styles, /\.irl-interaction-card\s*\{/);
   assert.match(styles, /\.irl-interaction-art svg\s*\{/);
   assert.match(renderer, /data-action="irl-toggle"/);

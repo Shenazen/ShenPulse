@@ -1,14 +1,19 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const overlayCatalog = require("../resources/overlays/overlay-catalog");
 
-const overlayScript = fs.readFileSync(
-  path.join(__dirname, "..", "resources", "overlays", "overlay.js"),
-  "utf8"
-);
+const overlayScript = readOverlayRuntimeSource();
 
 test("le runtime OBS réserve TTS/audio à l'écran numéroté et ne transforme plus un cadeau en WIN", () => {
   const interactiveWidgets = overlayScript.slice(
@@ -23,8 +28,26 @@ test("le runtime OBS réserve TTS/audio à l'écran numéroté et ne transforme 
   assert.doesNotMatch(interactiveWidgets, /winCounter\s*\+=/);
   assert.match(channels, /audio:\s*\(payload\) => queueLivePlayback\("audio", payload\)/);
   assert.match(channels, /tts:\s*\(payload\) => queueLivePlayback\("tts", payload\)/);
-  assert.match(channels, /\["audio", "tts"\]\.includes\(normalizedChannel\)/);
-  assert.match(channels, /viewName === "alerts" && hasMediaScreen/);
+  assert.equal(
+    overlayCatalog.acceptsChannel({
+      view: "alerts",
+      channel: "audio",
+      payload: { screen: 2 },
+      screen: 2,
+      hasMediaScreen: true
+    }),
+    true
+  );
+  assert.equal(
+    overlayCatalog.acceptsChannel({
+      view: "alerts",
+      channel: "audio",
+      payload: { screen: 2 },
+      screen: 1,
+      hasMediaScreen: true
+    }),
+    false
+  );
   assert.match(overlayScript, /const handledPlaybackIds = new Set\(\)/);
 });
 

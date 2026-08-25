@@ -1,7 +1,7 @@
 {
   "name": "shenpulse",
   "productName": "ShenPulse",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Plateforme locale d'interactions pour livestreams et jeux",
   "main": "src/main/main.js",
   "author": "Alexandre Leuridan",
@@ -13,6 +13,7 @@
   "scripts": {
     "prestart": "npm run games:build && npm run assets && npm run brand:dev",
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-packaged-dev.ps1",
+    "preview:codex": "node scripts/start-codex-preview.js",
     "brand:dev": "node scripts/brand-dev-executable.js",
     "test": "node --test --test-isolation=none tests/*.test.js",
     "lint": "node scripts/lint.js",
@@ -32,6 +33,7 @@
     "@vitejs/plugin-vue": "5.2.4",
     "electron": "43.2.0",
     "electron-builder": "26.15.3",
+    "jsdom": "^29.1.1",
     "lucide-vue-next": "0.468.0",
     "node-gyp": "12.4.0",
     "three": "0.185.1",

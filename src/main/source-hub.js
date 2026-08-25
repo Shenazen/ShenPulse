@@ -12,6 +12,16 @@ const { preferredImageUrl, safeString, serializeError } = require("./utils");
 
 const TIKTOK_REQUEST_POLLING_INTERVAL_MS = 250;
 const MAX_TIKTOK_LIKE_EVENT_IDS = 2000;
+const MAX_TIKTOK_EVENT_IDS = 4000;
+const DEDUPLICATED_TIKTOK_EVENT_TYPES = new Set([
+  "chat",
+  "follow",
+  "gift",
+  "join",
+  "like",
+  "share",
+  "subscribe"
+]);
 
 class SourceHub extends EventEmitter {
   constructor({ store }) {
@@ -118,6 +128,8 @@ class SourceHub extends EventEmitter {
       lastEventStatusAt: 0,
       lastTotalLikes: 0,
       seenLikeEventIds: new Set(),
+      seenTikTokEventIds: new Set(),
+      seenTikTokEventObjects: new WeakMap(),
       reconnectTimer: null,
       stop: async () => {
         const connector = runtime.connector;
@@ -129,6 +141,7 @@ class SourceHub extends EventEmitter {
 
     const emitEvent = (type, event) => {
       if (runtime.closed) return;
+      if (!shouldEmitTikTokEvent(runtime, type, event)) return;
       const now = Date.now();
       if (now - runtime.lastEventStatusAt >= 1000) {
         runtime.lastEventStatusAt = now;
@@ -185,11 +198,18 @@ class SourceHub extends EventEmitter {
       connector.on(WebcastEvent.CHAT, (event) => emitEvent("chat", event));
       connector.on(WebcastEvent.FOLLOW, (event) => emitEvent("follow", event));
       connector.on(WebcastEvent.SHARE, (event) => emitEvent("share", event));
+      connector.on(WebcastEvent.SOCIAL, (event) => {
+        const type = tiktokSocialEventType(event);
+        if (type) emitEvent(type, event);
+      });
       connector.on(WebcastEvent.MEMBER, (event) => emitEvent("join", event));
-      connector.on(ControlEvent.DECODED_DATA, (messageType, event) => {
-        if (messageType === "WebcastSubNotifyMessage") {
-          emitEvent("subscribe", event);
-        }
+      connector.on(ControlEvent.DECODED_DATA, (messageType, decoded) => {
+        const event = tiktokDecodedPayload(decoded);
+        queueMicrotask(() => {
+          const type = tiktokDecodedEventType(messageType, event);
+          if (!type || (type === "gift" && !tiktokGiftIsFinal(event))) return;
+          emitEvent(type, event);
+        });
       });
       connector.on(WebcastEvent.STREAM_END, () =>
         connectionDropped(connector, "Le LIVE est terminé.")
@@ -216,11 +236,10 @@ class SourceHub extends EventEmitter {
       );
       this.#tiktokStatus(connection.id, "checking");
 
-      const connector = new TikTokLiveConnection(username, {
-        enableExtendedGiftInfo: false,
-        processInitialData: false,
-        requestPollingIntervalMs: TIKTOK_REQUEST_POLLING_INTERVAL_MS
-      });
+      const connector = new TikTokLiveConnection(
+        username,
+        tiktokDirectConnectionOptions()
+      );
       runtime.connector = connector;
       bind(connector);
 
@@ -579,7 +598,11 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
       uniqueId,
     160
   );
-  const gift = event.gift || event.giftDetails || event.extendedGiftInfo || {};
+  const gift = {
+    ...(event.extendedGiftInfo || {}),
+    ...(event.giftDetails || {}),
+    ...(event.gift || {})
+  };
   return {
     id: safeString(
       event.common?.msgId || event.msgId || event.id || "",
@@ -611,6 +634,36 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
     giftName: safeString(
       event.giftName || gift.giftName || gift.name || "Cadeau",
       160
+    ),
+    giftType: Math.max(
+      0,
+      Number(event.giftType || gift.giftType || gift.type || 0)
+    ),
+    giftCombo: Boolean(event.combo ?? gift.combo ?? gift.isCombo),
+    giftImageUri: safeString(
+      event.giftImageUri ||
+        gift.imageUri ||
+        gift.image?.uri ||
+        gift.icon?.uri ||
+        "",
+      1000
+    ),
+    giftPrimaryEffectId: Math.max(
+      0,
+      Number(
+        event.primaryEffectId ||
+          gift.primaryEffectId ||
+          gift.primary_effect_id ||
+          0
+      )
+    ),
+    giftIsGlobal: Boolean(
+      event.isGlobalGift ?? gift.isGlobalGift ?? gift.is_global_gift
+    ),
+    giftIsDisplayedOnPanel: Boolean(
+      event.isDisplayedOnPanel ??
+        gift.isDisplayedOnPanel ??
+        gift.is_displayed_on_panel
     ),
     giftImageUrl: preferredImageUrl(
       event.giftImageUrl,
@@ -656,6 +709,102 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
     ),
     eventType: type
   };
+}
+
+function tiktokDirectConnectionOptions() {
+  return {
+    enableExtendedGiftInfo: true,
+    processInitialData: false,
+    requestPollingIntervalMs: TIKTOK_REQUEST_POLLING_INTERVAL_MS,
+    webClientParams: {
+      app_language: "fr",
+      browser_language: "fr-FR",
+      priority_region: "FR",
+      region: "FR",
+      tz_name: "Europe/Paris",
+      webcast_language: "fr"
+    },
+    webClientHeaders: {
+      "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"
+    }
+  };
+}
+
+function tiktokSocialEventType(event = {}) {
+  event = tiktokDecodedPayload(event);
+  const display = event.common?.displayText || event.displayText || {};
+  const marker = [
+    display.displayType,
+    display.defaultPattern,
+    display.key,
+    event.actionDescription,
+    event.eventType
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (marker.includes("follow")) return "follow";
+  if (marker.includes("share")) return "share";
+  if (Number(event.followCount || event.follow_count || 0) > 0) {
+    return "follow";
+  }
+  if (
+    Number(event.shareCount || event.share_count || 0) > 0 ||
+    event.shareType != null ||
+    event.shareTarget != null
+  ) {
+    return "share";
+  }
+  return "";
+}
+
+function tiktokDecodedPayload(decoded = {}) {
+  return decoded?.data && typeof decoded.data === "object"
+    ? decoded.data
+    : decoded || {};
+}
+
+function tiktokDecodedEventType(messageType, event = {}) {
+  const type = String(messageType || "");
+  const mapped = {
+    WebcastChatMessage: "chat",
+    WebcastGiftMessage: "gift",
+    WebcastLikeMessage: "like",
+    WebcastMemberMessage: "join",
+    WebcastSubNotifyMessage: "subscribe"
+  }[type];
+  if (mapped) return mapped;
+  return type === "WebcastSocialMessage"
+    ? tiktokSocialEventType(event)
+    : "";
+}
+
+function shouldEmitTikTokEvent(runtime = {}, type, event) {
+  if (!DEDUPLICATED_TIKTOK_EVENT_TYPES.has(type)) return true;
+
+  if (event && typeof event === "object") {
+    runtime.seenTikTokEventObjects ||= new WeakMap();
+    const types = runtime.seenTikTokEventObjects.get(event) || new Set();
+    if (types.has(type)) return false;
+    types.add(type);
+    runtime.seenTikTokEventObjects.set(event, types);
+  }
+
+  const eventId = safeString(
+    event?.common?.msgId || event?.msgId || event?.id || "",
+    160
+  );
+  if (!eventId) return true;
+  runtime.seenTikTokEventIds ||= new Set();
+  const key = `${type}:${eventId}`;
+  if (runtime.seenTikTokEventIds.has(key)) return false;
+  runtime.seenTikTokEventIds.add(key);
+  if (runtime.seenTikTokEventIds.size > MAX_TIKTOK_EVENT_IDS) {
+    runtime.seenTikTokEventIds.delete(
+      runtime.seenTikTokEventIds.values().next().value
+    );
+  }
+  return true;
 }
 
 function applyTikTokLikeDelta(runtime, payload) {
@@ -704,7 +853,11 @@ async function connectTikTokWhenLive(connector) {
 }
 
 function tiktokGiftIsFinal(event = {}) {
-  const gift = event.gift || event.giftDetails || {};
+  const gift = {
+    ...(event.extendedGiftInfo || {}),
+    ...(event.giftDetails || {}),
+    ...(event.gift || {})
+  };
   const giftType = Number(
     event.giftType || gift.giftType || gift.type || 0
   );
@@ -748,6 +901,11 @@ module.exports = {
   parseTikTokRelayStatus,
   parseTwitchLine,
   applyTikTokLikeDelta,
+  shouldEmitTikTokEvent,
+  tiktokDecodedEventType,
+  tiktokDecodedPayload,
+  tiktokDirectConnectionOptions,
   tiktokGiftIsFinal,
-  tiktokConnectorPayload
+  tiktokConnectorPayload,
+  tiktokSocialEventType
 };

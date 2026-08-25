@@ -7,6 +7,7 @@ const path = require("node:path");
 const {
   OverlayServer,
   hasProOverlayAccess,
+  normalizeMatchPlaybackRequest,
   overlayViewAcceptsChannel,
   overlayViewRequiresPro
 } = require("../src/main/overlay-server");
@@ -62,6 +63,7 @@ test("protège l'état local et accepte un événement authentifié", async () =
     assert.match(urls.coinJar, /view=coin-jar/);
     assert.match(urls.topDonors, /kind=donors/);
     assert.equal(urls.matchEnigma, "");
+    assert.equal(urls.matchPlayer, "");
     assert.equal(urls.winCounter, "");
     assert.equal(urls.multiplierTimer, "");
     const health = await fetch(`http://127.0.0.1:${overlayPort}/health`);
@@ -78,12 +80,33 @@ test("protège l'état local et accepte un événement authentifié", async () =
       `http://127.0.0.1:${overlayPort}/overlay/overlay.css`
     );
     assert.equal(liveStylesheet.status, 200);
-    assert.equal(liveStylesheet.headers.get("cache-control"), "no-store");
+    assert.equal(liveStylesheet.headers.get("cache-control"), "private, no-cache");
+    assert.ok(liveStylesheet.headers.get("etag"));
     const liveScript = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/overlay.js`
     );
     assert.equal(liveScript.status, 200);
-    assert.equal(liveScript.headers.get("cache-control"), "no-store");
+    assert.equal(liveScript.headers.get("cache-control"), "private, no-cache");
+    const cachedLiveScript = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/overlay.js`,
+      { headers: { "If-None-Match": liveScript.headers.get("etag") } }
+    );
+    assert.equal(cachedLiveScript.status, 304);
+    const runtimeScript = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/runtime/configuration.js`
+    );
+    assert.equal(runtimeScript.status, 200);
+    assert.match(runtimeScript.headers.get("content-type"), /javascript/);
+    const manifestScript = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/catalog/like-goal.js`
+    );
+    assert.equal(manifestScript.status, 200);
+    assert.match(manifestScript.headers.get("content-type"), /javascript/);
+    const importedStylesheet = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/styles/core.css`
+    );
+    assert.equal(importedStylesheet.status, 200);
+    assert.match(importedStylesheet.headers.get("content-type"), /css/);
     const vendorScript = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/vendor/lottie-player.js`
     );
@@ -107,6 +130,14 @@ test("protège l'état local et accepte un événement authentifié", async () =
       `http://127.0.0.1:${overlayPort}/overlay/?view=match&preview=animated&token=overlay-secret`
     );
     assert.equal(proAnimatedPreviewWhileFree.status, 200);
+    const matchVideoWhileFree = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/media/video/x2-tikcontrol.webm?token=overlay-secret`
+    );
+    assert.equal(matchVideoWhileFree.status, 403);
+    assert.throws(
+      () => server.playMatch({ match: "x2" }),
+      /abonnement Pro actif/
+    );
     const proEventsWhileFree = await fetch(
       `http://127.0.0.1:${overlayPort}/events?view=win-counter&preview=static&token=overlay-secret`
     );
@@ -138,9 +169,32 @@ test("protège l'état local et accepte un événement authentifié", async () =
     };
     const proUrls = server.urls();
     assert.match(proUrls.matchEnigma, /match=enigma/);
+    assert.match(proUrls.matchPlayer, /match=player/);
     assert.match(proUrls.winCounter, /view=win-counter/);
     const proDocument = await fetch(proUrls.winCounter);
     assert.equal(proDocument.status, 200);
+    const protectedMatchVideo = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/media/video/x2-tikcontrol.webm?token=overlay-secret`
+    );
+    assert.equal(protectedMatchVideo.status, 200);
+    assert.equal(protectedMatchVideo.headers.get("cache-control"), "no-store");
+    await protectedMatchVideo.body.cancel();
+    const matchEventStream = await fetch(
+      `http://127.0.0.1:${overlayPort}/events?view=match&token=overlay-secret`
+    );
+    const matchReader = matchEventStream.body.getReader();
+    await matchReader.read();
+    const requestedMatch = server.playMatch({
+      match: "x3",
+      variant: "gladiador",
+      fit: "cover"
+    });
+    const queuedMatch = new TextDecoder().decode((await matchReader.read()).value);
+    assert.match(queuedMatch, /event: match/);
+    assert.match(queuedMatch, /"match":"x3"/);
+    assert.equal(requestedMatch.variant, "gladiador");
+    assert.equal(requestedMatch.fit, "cover");
+    await matchReader.cancel();
 
     const eventStream = await fetch(
       `http://127.0.0.1:${overlayPort}/events?view=win-counter&token=overlay-secret`
@@ -203,6 +257,22 @@ test("calcule les droits Pro des sources locales et leurs vues protégées", () 
   );
 });
 
+test("normalise strictement chaque demande de lecture Match", () => {
+  const request = normalizeMatchPlaybackRequest({
+    match: "enigma",
+    variant: "gladiador",
+    fit: "cover"
+  });
+  assert.equal(request.match, "enigma");
+  assert.equal(request.variant, "tikcontrol");
+  assert.equal(request.fit, "cover");
+  assert.match(request.requestId, /^[0-9a-f-]{36}$/i);
+  assert.throws(
+    () => normalizeMatchPlaybackRequest({ match: "inconnu" }),
+    /Animation Match invalide/
+  );
+});
+
 test("chaque source OBS ne reçoit que les canaux qui lui appartiennent", () => {
   assert.equal(overlayViewAcceptsChannel("win-counter", "win-counter"), true);
   assert.equal(
@@ -237,6 +307,14 @@ test("chaque source OBS ne reçoit que les canaux qui lui appartiennent", () => 
   );
   assert.equal(
     overlayViewAcceptsChannel("like-goal", "event", { type: "like" }),
+    true
+  );
+  assert.equal(
+    overlayViewAcceptsChannel("match", "event", { type: "gift" }),
+    false
+  );
+  assert.equal(
+    overlayViewAcceptsChannel("match", "match", { match: "x2" }),
     true
   );
 });

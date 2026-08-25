@@ -1,3 +1,10 @@
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -6,14 +13,8 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 
 test("le rendu Media ne contient que le média sélectionné", () => {
-  const script = fs.readFileSync(
-    path.join(root, "resources", "overlays", "overlay.js"),
-    "utf8"
-  );
-  const styles = fs.readFileSync(
-    path.join(root, "resources", "overlays", "overlay.css"),
-    "utf8"
-  );
+  const script = readOverlayRuntimeSource();
+  const styles = readOverlayStyles();
   const mediaStyles = styles.slice(
     styles.indexOf(".alert-stage.media-only-stage"),
     styles.indexOf(".alert.leaving")
@@ -30,10 +31,7 @@ test("le rendu Media ne contient que le média sélectionné", () => {
 });
 
 test("l'éditeur Media exige un média et masque les réglages d'alerte", () => {
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const mediaFields = renderer.slice(
     renderer.indexOf('"overlay.media",', renderer.indexOf("const actionFields")),
     renderer.indexOf('"audio.play",', renderer.indexOf("const actionFields"))

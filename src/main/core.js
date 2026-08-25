@@ -39,6 +39,10 @@ const {
   normalizeGiftValueFilter
 } = require("../shared/gift-value-filter");
 const {
+  enrichGiftEvent,
+  giftConditionMatches
+} = require("../shared/gift-identity");
+const {
   finishOverlaySession,
   recordOverlayEvent,
   resetOverlaySession
@@ -139,7 +143,11 @@ class ShenPulseCore extends EventEmitter {
       actionRunner: this.actionRunner,
       gameHub: this.gameHub
     });
-    this.ruleEngine = new RuleEngine({ store, actionRunner: this.actionRunner });
+    this.ruleEngine = new RuleEngine({
+      store,
+      actionRunner: this.actionRunner,
+      giftCatalog: this.giftCatalog
+    });
     this.timerScheduler = new ActionTimerScheduler({
       store,
       actionRunner: this.actionRunner
@@ -512,7 +520,10 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async ingest(raw, source = "manual") {
-    const event = raw?.type && raw?.user && raw?.data ? raw : normalizeEvent(raw, source);
+    const normalized = raw?.type && raw?.user && raw?.data
+      ? raw
+      : normalizeEvent(raw, source);
+    const event = enrichGiftEvent(normalized, this.giftCatalog.gifts);
     if (!this.followSessionGuard.accept(this.store.getState(), event)) {
       return null;
     }
@@ -1097,19 +1108,15 @@ class ShenPulseCore extends EventEmitter {
     if (event.type !== "gift") return;
     const wheelConfig =
       this.store.getState().settings.overlayConfigs?.wheel || {};
-    const giftNames = new Set(
-      [
-        event.data?.giftName,
-        event.data?.giftId
-      ]
-        .map((value) => String(value || "").trim().toLocaleLowerCase("fr"))
-        .filter(Boolean)
-    );
     const wheels = Array.isArray(wheelConfig.wheels)
       ? wheelConfig.wheels
       : [];
     const matchingWheels = wheels.filter((wheel) => {
-      return wheelGiftTriggerMatches(wheel, event, giftNames);
+      return wheelGiftTriggerMatches(
+        wheel,
+        event,
+        this.giftCatalog.gifts
+      );
     });
     const deliveryCount = giftEventCount(event);
     for (let index = 0; index < deliveryCount; index += 1) {
@@ -1162,7 +1169,7 @@ class ShenPulseCore extends EventEmitter {
   }
 }
 
-function wheelGiftTriggerMatches(wheel, event, knownGiftNames = null) {
+function wheelGiftTriggerMatches(wheel, event, gifts = []) {
   if (wheel?.enabled === false || event?.type !== "gift") return false;
   const trigger = String(wheel?.trigger || "")
     .trim()
@@ -1170,12 +1177,18 @@ function wheelGiftTriggerMatches(wheel, event, knownGiftNames = null) {
   const filter = normalizeGiftValueFilter(wheel?.giftValueFilter);
   if (!trigger && !filter) return false;
   if (filter) return giftValueFilterMatches(filter, event.data?.value);
-  const giftNames = knownGiftNames || new Set(
-    [event.data?.giftName, event.data?.giftId]
-      .map((value) => String(value || "").trim().toLocaleLowerCase("fr"))
-      .filter(Boolean)
+  return giftConditionMatches(
+    {
+      field: "data.giftName",
+      operator: "equals",
+      value: wheel.trigger,
+      giftId: wheel.triggerGift?.giftId,
+      giftCost: wheel.triggerGift?.giftCost,
+      giftImageUrl: wheel.triggerGift?.giftImageUrl
+    },
+    event,
+    gifts
   );
-  return giftNames.has(trigger);
 }
 
 function synchronizeSessionWithTikTok(state, status, now = new Date().toISOString()) {

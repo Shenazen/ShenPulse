@@ -71,11 +71,16 @@
             </defs>
           </svg>
           <img id="coin-jar-back" class="coin-jar-layer" alt="" />
+          <div class="coin-jar-level" aria-hidden="true"><span id="coin-jar-level"></span></div>
           <div id="coin-jar-drops" class="coin-jar-drops">
             <div id="coin-jar-contained-drops" class="coin-jar-drop-layer coin-jar-contained-drops"></div>
             <div id="coin-jar-overflow-drops" class="coin-jar-drop-layer coin-jar-overflow-drops"></div>
           </div>
           <img id="coin-jar-front" class="coin-jar-layer coin-jar-front" alt="" />
+          <div class="coin-jar-meter">
+            <span><strong id="coin-jar-current">0</strong> / <strong id="coin-jar-target">1 000</strong></span>
+            <small>PIÈCES</small>
+          </div>
         </div>
       </section>
 
@@ -141,10 +146,28 @@
         </div>
       </section>
     </main>
-    <script src="vendor/lottie-player.js"></script>
+    <script src="runtime/dependencies.js"></script>
+    <script src="catalog/shared.js"></script>
+    <script src="catalog/my-actions.js"></script>
+    <script src="catalog/game.js"></script>
+    <script src="catalog/like-goal.js"></script>
+    <script src="catalog/top-donors.js"></script>
+    <script src="catalog/top-tappers.js"></script>
+    <script src="catalog/coin-jar.js"></script>
+    <script src="catalog/timer.js"></script>
+    <script src="catalog/multiplier-timer.js"></script>
+    <script src="catalog/win-counter.js"></script>
+    <script src="catalog/wheel.js"></script>
+    <script src="catalog/matches.js"></script>
+    <script src="overlay-catalog.js"></script>
     <script src="like-goal-policy.js"></script>
     <script src="wheel-layout.js"></script>
     <script src="coin-jar-physics.js"></script>
-    <script src="overlay.js"></script>
+    <script src="match-playback-queue.js"></script>
+    <script src="runtime/configuration.js"></script>
+    <script src="runtime/wheel-match.js"></script>
+    <script src="runtime/alerts-feed.js"></script>
+    <script src="runtime/widgets.js"></script>
+    <script src="runtime/transport.js"></script>
   </body>
 </html>

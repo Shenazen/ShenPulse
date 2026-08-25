@@ -51,6 +51,58 @@ test("exécute une règle et hydrate son action", async () => {
   assert.equal(actions[0].config.title, "Alice");
 });
 
+test("déclenche une ancienne règle française sur le cadeau LIVE anglais", async () => {
+  const calls = [];
+  const imageHash = "2f1e4f3f5c728ffbfa35705b480fdc92";
+  const rule = {
+    id: "localized_gift",
+    name: "Orbeez 1",
+    enabled: true,
+    chance: 1,
+    trigger: { type: "gift", source: "*", threshold: 1 },
+    conditions: [
+      {
+        field: "data.giftName",
+        operator: "equals",
+        value: "Chapeau et moustache"
+      }
+    ],
+    actions: [{ id: "irl", type: "test", config: {} }]
+  };
+  const engine = new RuleEngine({
+    store: createStore(rule),
+    giftCatalog: {
+      gifts: [
+        {
+          id: "hat-and-mustache",
+          name: "Chapeau et moustache",
+          cost: 99,
+          imageUrl: `https://p16.example/${imageHash}~tplv-obj.webp`
+        }
+      ]
+    },
+    actionRunner: {
+      async run(action) {
+        calls.push(action.id);
+      }
+    }
+  });
+
+  await engine.process({
+    type: "gift",
+    user: { id: "viewer" },
+    data: {
+      giftId: "",
+      giftName: "Hat and Mustache",
+      giftImageUrl: `https://p19.example/${imageHash}~tplv-obj.png`,
+      value: 99,
+      count: 1
+    }
+  });
+
+  assert.deepEqual(calls, ["irl"]);
+});
+
 test("un déclencheur réutilise plusieurs actions existantes", async () => {
   const calls = [];
   const trigger = {

@@ -1,12 +1,16 @@
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const renderer = fs.readFileSync(
-  path.join(__dirname, "..", "src", "renderer", "app.js"),
-  "utf8"
-);
+const renderer = readRendererSource();
 const rendererHtml = fs.readFileSync(
   path.join(__dirname, "..", "src", "renderer", "index.html"),
   "utf8"
@@ -56,7 +60,7 @@ test("chaque ouverture de connexion réactive les champs et annule les anciens r
   );
   assert.match(
     renderer,
-    /waitForPendingAccountLogout\(\)\s*\.then\(\(\) => api\.account\.loginWithBrowser\(\)\)/
+    /waitForPendingAccountLogout\(\)\s*\.then\(\(\) => api\.account\.loginWithBrowser\(\{ email: emailHint \}\)\)/
   );
   assert.match(submitHandler, /activeDialogSessionId !== dialogSessionId/);
   assert.match(submitHandler, /activeSubmitHandler !== dialogSubmitHandler/);

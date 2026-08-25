@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -230,10 +237,7 @@ test("coupe les événements privés envoyés au rendu en mode invité", () => {
 });
 
 test("l’interface invitée reste navigable mais verrouille données et commandes", () => {
-  const renderer = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const ipc = fs.readFileSync(
     path.join(__dirname, "..", "src", "main", "ipc.js"),
     "utf8"
@@ -266,10 +270,7 @@ test("l’interface invitée reste navigable mais verrouille données et command
 });
 
 test("le visiteur peut essayer localement les designs et animations d’overlays", () => {
-  const renderer = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const guestActions = renderer.slice(
     renderer.indexOf("const GUEST_BROWSING_ACTIONS"),
     renderer.indexOf("function renderGuestAccessNotice")

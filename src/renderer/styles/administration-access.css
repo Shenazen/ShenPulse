@@ -1,0 +1,527 @@
+.admin-game-cheats {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-cheat-access-hero {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 17px;
+  min-height: 112px;
+  padding: 19px 21px;
+  border: 1px solid rgba(236, 72, 153, 0.28);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 88% 0, rgba(236, 72, 153, 0.13), transparent 35%),
+    linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(9, 11, 21, 0.96));
+}
+
+.admin-cheat-access-hero > span {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
+  color: #f0abfc;
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.admin-cheat-access-hero h3,
+.admin-cheat-access-hero p {
+  margin: 0;
+}
+
+.admin-cheat-access-hero h3 {
+  margin-top: 4px;
+  font-size: 17px;
+}
+
+.admin-cheat-access-hero div > p:last-child {
+  max-width: 760px;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.admin-cheat-access-hero > strong {
+  min-width: 108px;
+  color: #f0abfc;
+  font-size: 26px;
+  text-align: right;
+}
+
+.admin-cheat-access-hero > strong small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-cheat-access-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.72fr) minmax(520px, 1.4fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.admin-cheat-access-form > .field {
+  display: grid;
+  margin: 18px;
+}
+
+.admin-cheat-access-form > footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.admin-cheat-access-list > div {
+  display: grid;
+  max-height: calc(100vh - 430px);
+  min-height: 146px;
+  overflow-y: auto;
+}
+
+.admin-cheat-access-list article {
+  display: grid;
+  grid-template-columns: 40px minmax(170px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 66px;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(184, 142, 255, 0.1);
+}
+
+.admin-cheat-access-list article:last-child {
+  border-bottom: 0;
+}
+
+.admin-cheat-access-list article.is-owner {
+  grid-template-columns: 40px minmax(170px, 1fr) auto;
+  background: rgba(168, 85, 247, 0.045);
+}
+
+.admin-cheat-access-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--violet-soft);
+  color: #c084fc;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-cheat-access-list article > div > strong,
+.admin-cheat-access-list article > div > small {
+  display: block;
+}
+
+.admin-cheat-access-list article > div > strong {
+  font-size: 9px;
+}
+
+.admin-cheat-access-list article > div > small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.admin-cheat-access-list article > b {
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--green);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.admin-cheat-access-list article.is-owner > b {
+  background: var(--violet-soft);
+  color: #c084fc;
+}
+
+.admin-trials-layout {
+  display: grid;
+  grid-template-columns: minmax(330px, 0.78fr) minmax(520px, 1.5fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.admin-trial-form > .form-grid,
+.admin-trial-form > .field {
+  margin: 17px;
+}
+
+.admin-trial-form input[name="email"] {
+  position: relative;
+  z-index: 1;
+  cursor: text;
+  pointer-events: auto;
+  user-select: text;
+  -webkit-app-region: no-drag;
+}
+
+.admin-trial-form > .field {
+  display: grid;
+}
+
+.admin-trial-form select[multiple] {
+  height: 126px;
+  padding: 8px;
+}
+
+.admin-trial-options {
+  display: grid;
+  gap: 8px;
+  padding: 0 17px;
+}
+
+.admin-trial-options > label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 11px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.admin-trial-options strong,
+.admin-trial-options small {
+  display: block;
+}
+
+.admin-trial-options strong {
+  font-size: 9px;
+}
+
+.admin-trial-options small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.admin-trial-form > footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 17px;
+  border-top: 1px solid var(--line);
+}
+
+.admin-trial-list > div {
+  display: grid;
+  max-height: calc(100vh - 355px);
+  overflow-y: auto;
+}
+
+.admin-trial-list article {
+  display: grid;
+  grid-template-columns: 38px minmax(130px, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 70px;
+  padding: 11px 15px;
+  border-bottom: 1px solid rgba(184, 142, 255, 0.1);
+}
+
+.admin-trial-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--violet-soft);
+  color: #c084fc;
+  font-weight: 800;
+}
+
+.admin-trial-list article > div > strong,
+.admin-trial-list article > div > small {
+  display: block;
+}
+
+.admin-trial-list article > div > strong {
+  font-size: 9px;
+}
+
+.admin-trial-list article > div > small {
+  max-width: 180px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-trial-entitlements {
+  display: flex;
+  gap: 4px;
+}
+
+.admin-trial-entitlements b {
+  padding: 4px 6px;
+  border-radius: 7px;
+  background: var(--cyan-soft);
+  color: var(--cyan);
+  font-size: 7px;
+}
+
+.admin-trial-list time {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.admin-commerce {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-commerce-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.admin-commerce-toolbar h3 {
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.admin-commerce-toolbar p:last-child {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.admin-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-plan-grid article {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 95px;
+  padding: 16px 18px;
+  border: 1px solid rgba(168, 85, 247, 0.26);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 90% 0, rgba(168, 85, 247, 0.11), transparent 38%),
+    var(--panel);
+}
+
+.admin-plan-grid article.disabled,
+.admin-product-list article.disabled,
+.admin-promotion-list article.disabled {
+  opacity: 0.52;
+}
+
+.admin-plan-grid article > span {
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  border-radius: 14px;
+  background: var(--violet-soft);
+  color: #c084fc;
+  font-size: 19px;
+}
+
+.admin-plan-grid small,
+.admin-plan-grid strong,
+.admin-plan-grid b {
+  display: block;
+}
+
+.admin-plan-grid small {
+  color: var(--muted);
+  font-size: 7px;
+  letter-spacing: 0.12em;
+}
+
+.admin-plan-grid strong {
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.admin-plan-grid b {
+  margin-top: 5px;
+  color: var(--cyan);
+  font-size: 14px;
+}
+
+.admin-plan-grid b em {
+  margin-left: 3px;
+  color: var(--muted);
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.admin-product-list,
+.admin-promotion-list,
+.admin-history-list {
+  display: grid;
+  max-height: 410px;
+  overflow-y: auto;
+}
+
+.admin-product-list article {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto 90px 95px auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 61px;
+  padding: 9px 17px;
+  border-bottom: 1px solid rgba(184, 142, 255, 0.1);
+}
+
+.admin-product-list strong,
+.admin-product-list small {
+  display: block;
+}
+
+.admin-product-list strong {
+  font-size: 9px;
+}
+
+.admin-product-list small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.admin-product-list > article > b {
+  color: #fde68a;
+  font-size: 9px;
+  text-align: right;
+}
+
+.admin-promotion-list article {
+  display: grid;
+  grid-template-columns: 38px minmax(160px, 1fr) auto auto auto;
+  align-items: center;
+  gap: 11px;
+  min-height: 63px;
+  padding: 10px 17px;
+  border-bottom: 1px solid rgba(184, 142, 255, 0.1);
+}
+
+.admin-promotion-list article > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(251, 106, 42, 0.12);
+  color: #fb923c;
+  font-weight: 800;
+}
+
+.admin-promotion-list strong,
+.admin-promotion-list small {
+  display: block;
+}
+
+.admin-promotion-list strong {
+  font-size: 9px;
+}
+
+.admin-promotion-list small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.admin-promotion-list b {
+  color: #fde68a;
+  font-size: 10px;
+}
+
+.admin-history-list > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  min-height: 57px;
+  padding: 10px 17px;
+  border-bottom: 1px solid rgba(184, 142, 255, 0.1);
+}
+
+.admin-history-list strong,
+.admin-history-list small {
+  display: block;
+}
+
+.admin-history-list strong {
+  font-size: 9px;
+}
+
+.admin-history-list small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.admin-login-dialog {
+  display: grid;
+  gap: 17px;
+}
+
+.admin-login-shield {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 15px;
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  border-radius: 13px;
+  background: rgba(52, 211, 153, 0.055);
+}
+
+.admin-login-shield > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(52, 211, 153, 0.11);
+  color: var(--green);
+  font-size: 19px;
+}
+
+.admin-login-shield strong {
+  font-size: 10px;
+}
+
+.admin-login-shield p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+dialog[data-variant="account-auth"] {
+  width: min(540px, calc(100vw - 34px));
+}

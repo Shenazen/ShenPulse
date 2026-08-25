@@ -3,6 +3,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { safeString } = require("./utils");
+const {
+  canonicalGiftName,
+  giftFamily
+} = require("../shared/gift-identity");
 
 const FALLBACK_LOCALIZED_GIFT_IDS = new Set([
   "boxing-gloves",
@@ -380,7 +384,9 @@ class GiftCatalog {
     const max = Math.min(1000, Math.max(1, Number(limit) || 80));
     const source = needle
       ? this.gifts.filter((gift) =>
-          normalizeSearch(`${gift.name} ${gift.id} ${gift.cost}`).includes(needle)
+          normalizeSearch(
+            `${gift.name} ${gift.originalName || ""} ${gift.id} ${gift.cost}`
+          ).includes(needle)
         )
       : this.gifts;
     return {
@@ -433,8 +439,6 @@ async function fetchFrenchTikTokGifts(
 function dedupeLocalizedGifts(values = []) {
   const gifts = [];
   const seenIds = new Set();
-  const seenNamesAndCosts = new Set();
-  const seenImagesAndCosts = new Set();
   for (const value of Array.isArray(values) ? values : []) {
     const gift = normalizeGift({
       cost: value?.cost ?? value?.diamondCount ?? value?.diamond_count,
@@ -447,29 +451,21 @@ function dedupeLocalizedGifts(values = []) {
         value?.icon?.url_list?.[0] ||
         value?.icon?.urlList?.[0],
       name: value?.name ?? value?.giftName,
+      combo: value?.combo ?? value?.isCombo,
+      giftType: value?.type ?? value?.giftType,
+      imageUri: value?.image?.uri ?? value?.icon?.uri,
+      isDisplayedOnPanel:
+        value?.is_displayed_on_panel ?? value?.isDisplayedOnPanel,
+      isGlobalGift: value?.is_global_gift ?? value?.isGlobalGift,
+      primaryEffectId:
+        value?.primary_effect_id ?? value?.primaryEffectId,
       source: "tiktok-fr"
     });
     if (!gift.id || !gift.name || containsUnsupportedGiftScript(gift.name)) {
       continue;
     }
-    const nameAndCostKey = [
-      normalizeSearch(gift.name).replace(/\s+/g, " "),
-      gift.cost
-    ].join("|");
-    const imageIdentity = giftImageIdentity(gift.imageUrl);
-    const imageAndCostKey = imageIdentity
-      ? `${imageIdentity}|${gift.cost}`
-      : "";
-    if (
-      seenIds.has(gift.id) ||
-      seenNamesAndCosts.has(nameAndCostKey) ||
-      (imageAndCostKey && seenImagesAndCosts.has(imageAndCostKey))
-    ) {
-      continue;
-    }
+    if (seenIds.has(gift.id)) continue;
     seenIds.add(gift.id);
-    seenNamesAndCosts.add(nameAndCostKey);
-    if (imageAndCostKey) seenImagesAndCosts.add(imageAndCostKey);
     gifts.push(gift);
   }
   return gifts.sort(
@@ -482,15 +478,6 @@ function dedupeLocalizedGifts(values = []) {
   );
 }
 
-function giftImageIdentity(value = "") {
-  return String(value || "")
-    .replace(/^https:\/\/[^/]+\//i, "")
-    .replace(/~.*$/, "")
-    .split("/")
-    .pop()
-    .toLowerCase();
-}
-
 function containsUnsupportedGiftScript(value = "") {
   return /[\u0370-\u052f\u0590-\u08ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u.test(
     String(value)
@@ -498,14 +485,31 @@ function containsUnsupportedGiftScript(value = "") {
 }
 
 function normalizeGift(value = {}) {
-  return {
+  const originalName = safeString(value.name, 200);
+  const gift = {
     id: safeString(value.id, 160),
-    name: safeString(value.name, 200),
+    name: originalName,
     cost: Math.max(0, Number(value.cost) || 0),
     imageUrl: /^https:\/\//i.test(String(value.imageUrl || ""))
       ? safeString(value.imageUrl, 1000)
       : "",
-    source: safeString(value.source || "catalog", 40)
+    source: safeString(value.source || "catalog", 40),
+    giftType: Math.max(0, Number(value.giftType) || 0),
+    combo: Boolean(value.combo),
+    imageUri: safeString(value.imageUri, 1000),
+    primaryEffectId: Math.max(0, Number(value.primaryEffectId) || 0),
+    isGlobalGift: Boolean(value.isGlobalGift),
+    isDisplayedOnPanel: Boolean(value.isDisplayedOnPanel)
+  };
+  const family = giftFamily(gift);
+  return {
+    ...gift,
+    name: family ? canonicalGiftName(gift, originalName) : originalName,
+    originalName:
+      family && originalName !== canonicalGiftName(gift, originalName)
+        ? originalName
+        : "",
+    giftFamily: family
   };
 }
 
@@ -524,6 +528,8 @@ function normalizeSearch(value) {
   return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[œŒ]/g, "oe")
+    .replace(/[æÆ]/g, "ae")
     .toLowerCase()
     .trim();
 }

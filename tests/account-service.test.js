@@ -1,11 +1,19 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const {
   AccountService,
+  createGoogleIdTokenLoopback,
   createPaymentLoopbackCallback
 } = require("../src/main/account-service");
 const { createDefaultState } = require("../src/main/defaults");
@@ -128,6 +136,139 @@ test("connecte un compte utilisateur sans conserver son mot de passe", async () 
     false
   );
   assert.equal(store.activeAccountUid, "firebase_uid");
+});
+
+test("connecte Google directement avec Firebase et un retour local vérifié", async () => {
+  const store = createStore();
+  const googleIdToken = "g".repeat(160);
+  const googleState = "s".repeat(64);
+  let openedUrl = "";
+  let createAuthBody = null;
+  let signInBody = null;
+  const service = new AccountService({
+    store,
+    googleLoopbackPort: 0,
+    openExternal: async (url) => {
+      openedUrl = String(url);
+      const redirectUri = new URL(openedUrl).searchParams.get(
+        "redirect_uri"
+      );
+      const callbackResponse = await fetch(
+        new URL("/callback/complete", redirectUri),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idToken: googleIdToken,
+            state: googleState
+          })
+        }
+      );
+      assert.equal(callbackResponse.status, 200);
+    },
+    fetchImpl: async (url, options = {}) => {
+      const target = String(url);
+      if (target.includes("accounts:createAuthUri")) {
+        createAuthBody = JSON.parse(options.body);
+        const authUri = new URL(
+          "https://accounts.google.com/o/oauth2/auth"
+        );
+        authUri.searchParams.set("response_type", "id_token");
+        authUri.searchParams.set("redirect_uri", createAuthBody.continueUri);
+        authUri.searchParams.set("state", googleState);
+        return jsonResponse({
+          authUri: authUri.toString(),
+          providerId: "google.com",
+          sessionId: "firebase-google-session"
+        });
+      }
+      if (target.includes("accounts:signInWithIdp")) {
+        signInBody = JSON.parse(options.body);
+        return jsonResponse({
+          email: "alexandre.leuridan@gmail.com",
+          localId: "google-admin-uid",
+          displayName: "Alexandre Leuridan",
+          idToken: "firebase-id-token",
+          refreshToken: "firebase-refresh-token",
+          expiresIn: "3600"
+        });
+      }
+      if (target.includes("accounts:lookup")) {
+        return jsonResponse({
+          users: [{
+            email: "alexandre.leuridan@gmail.com",
+            localId: "google-admin-uid",
+            displayName: "Alexandre Leuridan",
+            emailVerified: true,
+            providerUserInfo: [{ providerId: "google.com" }]
+          }]
+        });
+      }
+      if (target.includes("/api/account/entitlements")) {
+        return jsonResponse({
+          checkedAt: "2026-08-21T12:00:00.000Z",
+          gameEntitlements: [],
+          source: "free",
+          tier: "free"
+        });
+      }
+      throw new Error(`Appel inattendu: ${target}`);
+    }
+  });
+
+  const status = await service.loginWithBrowser({
+    email: "alexandre.leuridan@gmail.com"
+  });
+
+  assert.equal(createAuthBody.identifier, "alexandre.leuridan@gmail.com");
+  assert.match(createAuthBody.continueUri, /^http:\/\/localhost:\d+\/callback$/);
+  assert.equal(createAuthBody.providerId, "google.com");
+  assert.equal(
+    new URL(openedUrl).searchParams.get("login_hint"),
+    "alexandre.leuridan@gmail.com"
+  );
+  assert.equal(signInBody.requestUri, createAuthBody.continueUri);
+  assert.equal(signInBody.sessionId, "firebase-google-session");
+  assert.equal(
+    new URLSearchParams(signInBody.postBody).get("id_token"),
+    googleIdToken
+  );
+  assert.equal(
+    new URLSearchParams(signInBody.postBody).get("providerId"),
+    "google.com"
+  );
+  assert.equal(status.authenticated, true);
+  assert.equal(status.email, "alexandre.leuridan@gmail.com");
+  assert.equal(status.providerId, "google.com");
+  assert.equal(status.emailVerified, true);
+  assert.equal(
+    store.secrets.get(
+      store.state.settings.account.refreshTokenSecretId
+    ),
+    "firebase-refresh-token"
+  );
+});
+
+test("refuse un retour Google avec un état local falsifié", async () => {
+  const callback = await createGoogleIdTokenLoopback({
+    port: 0,
+    timeoutMs: 2000
+  });
+  callback.expectState("a".repeat(64));
+  const response = await fetch(
+    new URL("/callback/complete", callback.url),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idToken: "g".repeat(160),
+        state: "b".repeat(64)
+      })
+    }
+  );
+
+  assert.equal(response.status, 400);
+  await assert.rejects(callback.result, /n'a pas pu être vérifié/);
 });
 
 test("matérialise immédiatement un essai Pro renvoyé par le serveur", async () => {
@@ -1054,10 +1195,7 @@ test("la déconnexion efface le jeton et l’identité locale", () => {
 });
 
 test("la carte latérale expose l’email et une vraie déconnexion", () => {
-  const renderer = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const markup = fs.readFileSync(
     path.join(
       __dirname,

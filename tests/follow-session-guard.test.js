@@ -3,146 +3,83 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  FOLLOW_DUPLICATE_WINDOW_MS,
   FollowSessionGuard,
-  followLiveScope,
-  followViewerIdentity
+  followEventIdentity
 } = require("../src/main/follow-session-guard");
 
-function liveState({
-  startedAt = "2026-08-07T12:00:00.000Z",
-  roomId = "room-123"
+function follow({
+  eventId = "follow-message-1",
+  id = "viewer-one",
+  source = "source_tiktok"
 } = {}) {
   return {
-    session: { running: true, startedAt },
-    settings: {
-      tiktok: { username: "streamer", roomId }
+    id: eventId,
+    type: "follow",
+    source,
+    user: { id, name: id },
+    data: {
+      raw: {
+        common: { msgId: eventId },
+        channelUsername: "streamer"
+      }
     }
   };
 }
 
-function follow({
-  id = "viewer-one",
-  name = "viewer-one",
-  source = "source_tiktok"
-} = {}) {
-  return {
-    type: "follow",
-    source,
-    user: { id, name },
-    data: { raw: { channelUsername: "streamer" } }
-  };
-}
-
-test("accepte un seul follow par viewer pendant le même LIVE", () => {
+test("écarte uniquement la seconde livraison du même follow TikTok", () => {
   const guard = new FollowSessionGuard();
-  const state = liveState();
-
-  assert.equal(guard.accept(state, follow()), true);
-  assert.equal(guard.accept(state, follow()), false);
-  assert.equal(guard.accept(state, follow({ id: "viewer-two" })), true);
-});
-
-test("une reconnexion à la même salle TikTok ne réarme pas le follow", () => {
-  const guard = new FollowSessionGuard();
-  const firstConnection = liveState({
-    startedAt: "2026-08-07T12:00:00.000Z",
-    roomId: "room-123"
-  });
-  const reconnected = liveState({
-    startedAt: "2026-08-07T12:02:00.000Z",
-    roomId: "room-123"
-  });
-
-  assert.equal(guard.accept(firstConnection, follow()), true);
-  assert.equal(guard.accept(reconnected, follow()), false);
-});
-
-test("le même viewer peut déclencher un follow au LIVE suivant", () => {
-  const guard = new FollowSessionGuard();
-
-  assert.equal(
-    guard.accept(liveState({ roomId: "room-123" }), follow()),
-    true
-  );
-  assert.equal(
-    guard.accept(liveState({ roomId: "room-456" }), follow()),
-    true
-  );
-});
-
-test("une session manuelle utilise son heure de démarrage comme frontière", () => {
-  const guard = new FollowSessionGuard();
-  const event = follow({ source: "generic_websocket" });
-
-  assert.equal(
-    guard.accept(
-      liveState({ startedAt: "2026-08-07T12:00:00.000Z", roomId: "" }),
-      event
-    ),
-    true
-  );
-  assert.equal(
-    guard.accept(
-      liveState({ startedAt: "2026-08-07T12:00:00.000Z", roomId: "" }),
-      event
-    ),
-    false
-  );
-  assert.equal(
-    guard.accept(
-      liveState({ startedAt: "2026-08-07T13:00:00.000Z", roomId: "" }),
-      event
-    ),
-    true
-  );
-});
-
-test("les simulateurs restent répétables et les viewers inconnus ne sont pas fusionnés", () => {
-  const guard = new FollowSessionGuard();
-  const state = liveState();
-  const simulated = follow({ source: "simulator" });
-  const anonymous = follow({ id: "anonymous", name: "anonymous" });
-
-  assert.equal(guard.accept(state, simulated), true);
-  assert.equal(guard.accept(state, simulated), true);
-  assert.equal(guard.accept(state, anonymous), true);
-  assert.equal(guard.accept(state, anonymous), true);
-});
-
-test("ignore la déduplication hors LIVE et pour les autres événements", () => {
-  const guard = new FollowSessionGuard();
-  const offline = liveState();
-  offline.session.running = false;
   const event = follow();
 
-  assert.equal(guard.accept(offline, event), true);
-  assert.equal(guard.accept(offline, event), true);
-  assert.equal(
-    guard.accept(liveState(), { ...event, type: "gift" }),
-    true
-  );
+  assert.equal(guard.accept({}, event), true);
+  assert.equal(guard.accept({}, { ...event }), false);
 });
 
-test("normalise la portée LIVE et l’identité du viewer", () => {
-  assert.equal(
-    followLiveScope(liveState(), follow()),
-    "tiktok:streamer:room-123"
-  );
-  assert.equal(
-    followViewerIdentity(follow({ id: "@Viewer-One" })),
-    "source_tiktok:viewer-one"
-  );
-});
-
-test("ne limite jamais les cadeaux repetes du meme viewer", () => {
+test("accepte un unfollow puis refollow du même spectateur", () => {
   const guard = new FollowSessionGuard();
-  const state = liveState();
-  const event = follow();
-  const gift = { ...event, type: "gift" };
 
-  assert.equal(guard.accept(state, event), true);
-  assert.equal(guard.accept(state, gift), true);
-  assert.equal(guard.accept(state, gift), true);
-  assert.equal(guard.accept(state, event), false);
-  assert.equal(guard.accept(state, gift), true);
+  assert.equal(guard.accept({}, follow({ eventId: "follow-1" })), true);
+  assert.equal(guard.accept({}, follow({ eventId: "follow-2" })), true);
+  assert.equal(guard.accept({}, follow({ eventId: "follow-3" })), true);
+});
+
+test("accepte le même identifiant natif après la fenêtre réseau", () => {
+  let now = 100000;
+  const guard = new FollowSessionGuard({ now: () => now });
+  const event = follow();
+
+  assert.equal(guard.accept({}, event), true);
+  now += FOLLOW_DUPLICATE_WINDOW_MS + 1;
+  assert.equal(guard.accept({}, event), true);
+});
+
+test("la déduplication ne fusionne pas deux sources", () => {
+  const guard = new FollowSessionGuard();
+
+  assert.equal(guard.accept({}, follow({ source: "source-a" })), true);
+  assert.equal(guard.accept({}, follow({ source: "source-b" })), true);
+});
+
+test("les simulateurs restent répétables", () => {
+  const guard = new FollowSessionGuard();
+  const event = follow({ source: "simulator" });
+
+  assert.equal(guard.accept({}, event), true);
+  assert.equal(guard.accept({}, event), true);
+});
+
+test("les follows sans identifiant natif et les autres événements passent", () => {
+  const guard = new FollowSessionGuard();
+  const withoutId = follow({ eventId: "" });
+
+  assert.equal(guard.accept({}, withoutId), true);
+  assert.equal(guard.accept({}, withoutId), true);
+  assert.equal(guard.accept({}, { ...follow(), type: "gift" }), true);
+});
+
+test("construit l'identité avec la source et le message TikTok", () => {
+  assert.equal(
+    followEventIdentity(follow({ eventId: "Native-42" })),
+    "source_tiktok:native-42"
+  );
 });

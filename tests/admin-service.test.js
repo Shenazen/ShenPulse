@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -275,10 +282,7 @@ test("le stockage par défaut sépare la session admin des données publiques", 
 });
 
 test("le renderer expose les cinq espaces de la console propriétaire", () => {
-  const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const source = readRendererSource();
   for (const label of [
     "Tableau de bord",
     "Visibilité",

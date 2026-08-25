@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -235,10 +242,7 @@ test("GTA est détecté et installé automatiquement avec une progression novice
     path.join(root, "src", "main", "game-runtime.js"),
     "utf8"
   );
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
 
   assert.equal(gta.autoDetect, true);
   assert.equal(gta.unattended, true);
@@ -299,10 +303,7 @@ test("le suivi d'installation reste recuperable pendant toute l'operation", () =
     path.join(root, "src", "main", "game-runtime.js"),
     "utf8"
   );
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const installStart = runtime.indexOf("async install(gameId)");
   const pickerStart = runtime.indexOf("await this.#pickTarget", installStart);
   const trackingStart = runtime.indexOf(

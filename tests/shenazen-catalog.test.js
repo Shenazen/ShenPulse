@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -210,18 +217,9 @@ test("limite la galerie aux 17 overlays activés et conserve leurs réglages", (
 });
 
 test("réintègre les deux rendus de roue ShenazenOverlay dans l’éditeur et la source OBS", () => {
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
-  const overlayRuntime = fs.readFileSync(
-    path.join(root, "resources", "overlays", "overlay.js"),
-    "utf8"
-  );
-  const overlayStyles = fs.readFileSync(
-    path.join(root, "resources", "overlays", "overlay.css"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
+  const overlayRuntime = readOverlayRuntimeSource();
+  const overlayStyles = readOverlayStyles();
   assert.match(renderer, /wheelDesignOption\("classic"/);
   assert.match(renderer, /wheelDesignOption\("royal"/);
   assert.match(overlayRuntime, /wheel-rim-star/);

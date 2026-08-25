@@ -60,6 +60,8 @@ test("publicOverlayUrls crée des sources HTTPS stables sans jeton local", () =>
     "https://overlays.example.test/?view=timer&channel=canal-secret"
   );
   assert.match(urls.mediaScreens[7], /screen=8/);
+  assert.equal(urls.matchX2, "");
+  assert.equal(urls.matchEnigma, "");
   assert.doesNotMatch(JSON.stringify(urls), /127\.0\.0\.1|token=/);
 });
 

@@ -1,15 +1,19 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
-const renderer = fs.readFileSync(
-  path.join(root, "src", "renderer", "app.js"),
-  "utf8"
-);
+const renderer = readRendererSource();
 const rendererHtml = fs.readFileSync(
   path.join(root, "src", "renderer", "index.html"),
   "utf8"
@@ -18,14 +22,8 @@ const mainProcess = fs.readFileSync(
   path.join(root, "src", "main", "main.js"),
   "utf8"
 );
-const overlayRuntime = fs.readFileSync(
-  path.join(root, "resources", "overlays", "overlay.js"),
-  "utf8"
-);
-const overlayStyles = fs.readFileSync(
-  path.join(root, "resources", "overlays", "overlay.css"),
-  "utf8"
-);
+const overlayRuntime = readOverlayRuntimeSource();
+const overlayStyles = readOverlayStyles();
 const overlayHtml = fs.readFileSync(
   path.join(root, "resources", "overlays", "index.html"),
   "utf8"

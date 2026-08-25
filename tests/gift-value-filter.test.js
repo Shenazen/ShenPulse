@@ -71,3 +71,32 @@ test("une roue accepte soit un cadeau précis, soit une valeur", () => {
     false
   );
 });
+
+test("une roue reconnaît aussi le nom localisé du cadeau LIVE", () => {
+  const imageHash = "0962211de9b80bda00a7da89400d2a5a.png";
+  const event = {
+    type: "gift",
+    data: {
+      giftName: "Singing Sax",
+      giftImageUrl: `https://p19.example/${imageHash}~tplv-obj.png`,
+      value: 399
+    }
+  };
+  const gifts = [
+    {
+      id: "singing-sax",
+      name: "Saxo-chant",
+      cost: 399,
+      imageUrl: `https://p16.example/${imageHash}~tplv-obj.webp`
+    }
+  ];
+
+  assert.equal(
+    wheelGiftTriggerMatches(
+      { enabled: true, trigger: "Saxo-chant" },
+      event,
+      gifts
+    ),
+    true
+  );
+});

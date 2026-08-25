@@ -16,7 +16,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
     login: (credentials) => invoke("account:login", credentials),
     register: (credentials) =>
       invoke("account:register", credentials),
-    loginWithBrowser: () => invoke("account:login-browser"),
+    loginWithBrowser: (options) =>
+      invoke("account:login-browser", options),
     requestPasswordReset: (payload) =>
       invoke("account:password-reset", payload),
     cancelCheckout: (payload) =>

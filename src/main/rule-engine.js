@@ -4,12 +4,14 @@ const { EventEmitter } = require("node:events");
 const { getPath, id } = require("./utils");
 const { renderValue } = require("./template");
 const { compareGiftValue } = require("../shared/gift-value-filter");
+const { giftConditionMatches } = require("../shared/gift-identity");
 
 class RuleEngine extends EventEmitter {
-  constructor({ store, actionRunner }) {
+  constructor({ store, actionRunner, giftCatalog = null }) {
     super();
     this.store = store;
     this.actionRunner = actionRunner;
+    this.giftCatalog = giftCatalog;
     this.cooldowns = new Map();
     this.thresholds = new Map();
     this.queue = [];
@@ -109,6 +111,18 @@ class RuleEngine extends EventEmitter {
         )
       ) {
         return compareGiftValue(left, condition.operator, right);
+      }
+      if (
+        event.type === "gift" &&
+        condition.field === "data.giftName" &&
+        ["equals", "notEquals"].includes(condition.operator)
+      ) {
+        const matches = giftConditionMatches(
+          condition,
+          event,
+          this.giftCatalog?.gifts || []
+        );
+        return condition.operator === "equals" ? matches : !matches;
       }
       switch (condition.operator) {
         case "equals":

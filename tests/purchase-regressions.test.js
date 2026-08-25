@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -48,14 +55,8 @@ test("un paiement de jeu en attente ou annulé ne déverrouille rien", () => {
 });
 
 test("le thème classique retire complètement l'ancien cadre de classement", () => {
-  const overlayRuntime = fs.readFileSync(
-    path.join(root, "resources", "overlays", "overlay.js"),
-    "utf8"
-  );
-  const overlayCss = fs.readFileSync(
-    path.join(root, "resources", "overlays", "overlay.css"),
-    "utf8"
-  );
+  const overlayRuntime = readOverlayRuntimeSource();
+  const overlayCss = readOverlayStyles();
   assert.match(
     overlayRuntime,
     /if \(!path\) \{\s*element\.hidden = true;\s*element\.removeAttribute\("src"\);/
@@ -67,10 +68,7 @@ test("le thème classique retire complètement l'ancien cadre de classement", ()
 });
 
 test("les journaux masquent aussi l'ancien bruit TikTok hors LIVE", () => {
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   assert.match(
     renderer,
     /function visibleActivityEntries\(state = \{\}\)[\s\S]*\["connection", "tiktok"\]\.includes\(category\)[\s\S]*seenOfflineErrors/

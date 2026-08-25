@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -12,7 +19,7 @@ function source(relativePath) {
 test("affiche automatiquement la version de ShenPulse sous les ports locaux", () => {
   const main = source("src/main/main.js");
   const core = source("src/main/core.js");
-  const renderer = source("src/renderer/app.js");
+  const renderer = readRendererSource();
   const html = source("src/renderer/index.html");
 
   assert.match(main, /return String\(app\.getVersion\(\)\)\.trim\(\)/);

@@ -3,73 +3,20 @@
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
+const { randomUUID } = require("node:crypto");
 const { URL } = require("node:url");
 const { LocalWebSocketServer } = require("./local-websocket");
 const { safeString, timingSafeToken } = require("./utils");
-
-const PRO_OVERLAY_VIEWS = new Set([
-  "game",
-  "match",
-  "multiplier-timer",
-  "win-counter"
-]);
-
-const STATEFUL_OVERLAY_VIEWS = new Set([
-  "my-actions",
-  "feed",
-  "leaderboard",
-  "like-goal",
-  "coin-jar",
-  "timer",
-  "multiplier-timer",
-  "win-counter"
-]);
-
-const CHANNEL_OVERLAY_VIEWS = Object.freeze({
-  alert: new Set(["alerts"]),
-  game: new Set(["game"]),
-  goal: new Set(["goals"]),
-  timer: new Set(["timer"]),
-  "multiplier-timer": new Set(["multiplier-timer"]),
-  "like-goal": new Set(["like-goal"]),
-  "coin-jar": new Set(["coin-jar"]),
-  "win-counter": new Set(["win-counter"]),
-  wheel: new Set(["wheel"]),
-  "session-state": STATEFUL_OVERLAY_VIEWS
-});
+const overlayCatalog = require("../../resources/overlays/overlay-catalog");
 
 function overlayViewAcceptsChannel(view, channel, payload = {}, screen = 0) {
-  const normalizedView = String(view || "alerts").trim().toLowerCase();
-  const normalizedChannel = String(channel || "").trim().toLowerCase();
-
-  // Live audio is deliberately scoped to one numbered Media screen. The
-  // generic Alerts source and every unrelated overlay must ignore it so a
-  // single action cannot be played by every browser source loaded in OBS.
-  if (["audio", "tts"].includes(normalizedChannel)) {
-    const targetScreen = Math.min(
-      8,
-      Math.max(1, Math.round(Number(payload?.screen) || 1))
-    );
-    return (
-      normalizedView === "alerts" &&
-      Number(screen) >= 1 &&
-      Number(screen) <= 8 &&
-      Number(screen) === targetScreen
-    );
-  }
-  if (["configuration", "design"].includes(normalizedChannel)) return true;
-  if (normalizedChannel === "event") {
-    if (["feed", "my-actions"].includes(normalizedView)) return true;
-    const eventType = String(payload?.type || "").trim().toLowerCase();
-    if (eventType === "gift") {
-      return ["coin-jar", "leaderboard", "match"].includes(normalizedView);
-    }
-    if (eventType === "like") {
-      return ["like-goal", "leaderboard"].includes(normalizedView);
-    }
-    return false;
-  }
-  return CHANNEL_OVERLAY_VIEWS[normalizedChannel]?.has(normalizedView) === true;
+  return overlayCatalog.acceptsChannel({
+    view,
+    channel,
+    payload,
+    screen,
+    hasMediaScreen: Number(screen) >= 1 && Number(screen) <= 8
+  });
 }
 
 function commerceExpiryMs(entry) {
@@ -96,8 +43,30 @@ function hasProOverlayAccess(state, nowMs = Date.now()) {
   return ["active", "paid"].includes(subscription.status);
 }
 
+function normalizeMatchPlaybackRequest(incoming = {}) {
+  const allowedMatches = new Set(
+    overlayCatalog.matches.map(({ match }) => match)
+  );
+  const match = safeString(incoming.match, 40).trim().toLowerCase();
+  if (!allowedMatches.has(match)) {
+    throw new Error("Animation Match invalide.");
+  }
+  const requestedVariant = safeString(incoming.variant, 40)
+    .trim()
+    .toLowerCase();
+  return {
+    requestId: randomUUID(),
+    match,
+    variant:
+      match === "enigma" || !["tikcontrol", "gladiador"].includes(requestedVariant)
+        ? "tikcontrol"
+        : requestedVariant,
+    fit: incoming.fit === "cover" ? "cover" : "contain"
+  };
+}
+
 function overlayViewRequiresPro(view) {
-  return PRO_OVERLAY_VIEWS.has(String(view || "").trim().toLowerCase());
+  return overlayCatalog.viewRequiresPro(view);
 }
 
 const CONTENT_TYPES = {
@@ -206,50 +175,29 @@ class OverlayServer {
 
   #closeServer(server) {
     if (!server?.listening) return Promise.resolve();
-    return new Promise((resolve) => server.close(() => resolve()));
+    return new Promise((resolve) => {
+      server.close(() => resolve());
+      // Les navigateurs et les aperçus réutilisent des connexions HTTP
+      // keep-alive. Lors d'un arrêt/redémarrage, elles ne doivent pas retenir
+      // le serveur (ni la fermeture de l'application) indéfiniment.
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+    });
   }
 
   urls({ includeRestricted = false } = {}) {
     const state = this.store.getState();
     const settings = state.settings;
-    const proAccess = includeRestricted || hasProOverlayAccess(state);
     const base = `http://127.0.0.1:${settings.overlayPort}`;
-    const token = encodeURIComponent(settings.overlayToken);
-    const overlayUrl = (view, parameters = {}) => {
-      const query = new URLSearchParams({
-        view,
-        token: settings.overlayToken,
-        ...parameters
-      });
-      return `${base}/overlay/?${query.toString()}`;
-    };
-    const mediaScreens = Array.from({ length: 8 }, (_value, index) =>
-      overlayUrl("alerts", { screen: index + 1 })
-    );
+    const overlayUrls = overlayCatalog.buildUrls({
+      baseUrl: base,
+      credentialName: "token",
+      credentialValue: settings.overlayToken,
+      proAccess: hasProOverlayAccess(state),
+      includeRestricted
+    });
     return {
-      base,
-      alerts: overlayUrl("alerts"),
-      mediaScreens,
-      myActions: overlayUrl("my-actions"),
-      goals: overlayUrl("goals"),
-      likeGoal: overlayUrl("like-goal"),
-      feed: overlayUrl("feed"),
-      game: proAccess ? overlayUrl("game") : "",
-      topDonors: overlayUrl("leaderboard", { kind: "donors" }),
-      topTappers: overlayUrl("leaderboard", { kind: "tappers" }),
-      coinJar: overlayUrl("coin-jar"),
-      timer: overlayUrl("timer"),
-      multiplierTimer: proAccess ? overlayUrl("multiplier-timer") : "",
-      winCounter: proAccess ? overlayUrl("win-counter") : "",
-      wheel: overlayUrl("wheel"),
-      matchX2: proAccess ? overlayUrl("match", { match: "x2" }) : "",
-      matchX3: proAccess ? overlayUrl("match", { match: "x3" }) : "",
-      matchGants: proAccess ? overlayUrl("match", { match: "guantes" }) : "",
-      matchCoffre: proAccess ? overlayUrl("match", { match: "cofre" }) : "",
-      matchSnipe: proAccess ? overlayUrl("match", { match: "snipe" }) : "",
-      matchTapTap: proAccess ? overlayUrl("match", { match: "taptap" }) : "",
-      matchQuiereme: proAccess ? overlayUrl("match", { match: "quiereme" }) : "",
-      matchEnigma: proAccess ? overlayUrl("match", { match: "enigma" }) : "",
+      ...overlayUrls,
       api: `ws://127.0.0.1:${settings.apiPort}/?token=${encodeURIComponent(
         settings.apiToken
       )}`,
@@ -284,6 +232,15 @@ class OverlayServer {
     }
     this.webSockets?.broadcast(message);
     this.publicRelay?.publish(channel, payload);
+  }
+
+  playMatch(incoming = {}) {
+    if (!hasProOverlayAccess(this.store.getState())) {
+      throw new Error("Un abonnement Pro actif est requis pour lire les Matchs.");
+    }
+    const payload = normalizeMatchPlaybackRequest(incoming);
+    this.publish("match", payload);
+    return payload;
   }
 
   publishEvent(event) {
@@ -326,24 +283,32 @@ class OverlayServer {
       ) {
         return this.#overlayAccessDenied(response);
       }
-      return this.#serveStatic(url.pathname, response);
+      return this.#serveStatic(url.pathname, request, response);
     }
     if (url.pathname.startsWith("/overlay/media/lottie/")) {
       if (!this.#authorized(request, settings.overlayToken)) {
         return this.#json(response, 401, { error: "Jeton local invalide." });
       }
-      return this.#serveStatic(url.pathname, response);
+      return this.#serveStatic(url.pathname, request, response);
     }
     if (url.pathname.startsWith("/overlay/media/")) {
       if (!this.#authorized(request, settings.overlayToken)) {
         return this.#json(response, 401, { error: "Jeton local invalide." });
       }
-      return this.#serveStatic(url.pathname, response);
+      if (
+        url.pathname.startsWith("/overlay/media/video/") &&
+        !hasProOverlayAccess(this.store.getState())
+      ) {
+        return this.#overlayAccessDenied(response);
+      }
+      return this.#serveStatic(url.pathname, request, response);
     }
     if (
-      /^\/overlay\/(?:vendor\/)?[^/]+\.(?:css|js|png|svg)$/i.test(url.pathname)
+      /^\/overlay\/(?!media\/)(?:[^/]+\/)*[^/]+\.(?:css|js|png|svg)$/i.test(
+        url.pathname
+      )
     ) {
-      return this.#serveStatic(url.pathname, response);
+      return this.#serveStatic(url.pathname, request, response);
     }
     if (!this.#authorized(request, settings.overlayToken)) {
       return this.#json(response, 401, { error: "Jeton local invalide." });
@@ -459,7 +424,7 @@ class OverlayServer {
     });
   }
 
-  #serveStatic(requestPath, response) {
+  #serveStatic(requestPath, request, response) {
     const relative =
       requestPath === "/" || requestPath === "/overlay/" || requestPath === "/overlay"
         ? "index.html"
@@ -477,11 +442,32 @@ class OverlayServer {
       return this.#json(response, 404, { error: "Fichier introuvable." });
     }
     const extension = path.extname(target).toLowerCase();
-    const isLiveOverlayCode = [".html", ".css", ".js"].includes(extension);
-    response.writeHead(200, {
+    const isOverlayDocument = extension === ".html";
+    const isCacheableOverlayCode = [".css", ".js"].includes(extension);
+    const isProtectedMatchVideo = /^\/overlay\/media\/video\//i.test(
+      String(requestPath || "")
+    );
+    const stat = fs.statSync(target);
+    const etag = `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
+    const headers = {
       "Content-Type": CONTENT_TYPES[extension] || "application/octet-stream",
-      "Cache-Control": isLiveOverlayCode ? "no-store" : "public, max-age=3600"
-    });
+      "Cache-Control":
+        isOverlayDocument || isProtectedMatchVideo
+          ? "no-store"
+          : isCacheableOverlayCode
+            ? "private, no-cache"
+          : "public, max-age=3600"
+    };
+    if (isCacheableOverlayCode) headers.ETag = etag;
+    if (
+      isCacheableOverlayCode &&
+      String(request.headers["if-none-match"] || "") === etag
+    ) {
+      response.writeHead(304, headers);
+      response.end();
+      return;
+    }
+    response.writeHead(200, headers);
     fs.createReadStream(target).pipe(response);
   }
 
@@ -531,6 +517,7 @@ class OverlayServer {
 module.exports = {
   OverlayServer,
   hasProOverlayAccess,
+  normalizeMatchPlaybackRequest,
   overlayViewAcceptsChannel,
   overlayViewRequiresPro
 };

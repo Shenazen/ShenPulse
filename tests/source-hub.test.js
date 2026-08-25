@@ -11,12 +11,95 @@ const {
   parseTikTokRelayStatus,
   parseTwitchLine,
   applyTikTokLikeDelta,
+  shouldEmitTikTokEvent,
+  tiktokDecodedEventType,
+  tiktokDecodedPayload,
+  tiktokDirectConnectionOptions,
   tiktokGiftIsFinal,
-  tiktokConnectorPayload
+  tiktokConnectorPayload,
+  tiktokSocialEventType
 } = require("../src/main/source-hub");
 
 test("réduit la latence du polling TikTok de secours", () => {
   assert.equal(TIKTOK_REQUEST_POLLING_INTERVAL_MS, 250);
+});
+
+test("demande les informations cadeaux étendues et la locale du LIVE", () => {
+  const options = tiktokDirectConnectionOptions();
+
+  assert.equal(options.enableExtendedGiftInfo, true);
+  assert.equal(options.processInitialData, false);
+  assert.equal(options.webClientParams.webcast_language, "fr");
+  assert.equal(options.webClientHeaders["Accept-Language"].startsWith("fr-FR"), true);
+});
+
+test("récupère follow et partage depuis le message social TikTok brut", () => {
+  assert.equal(
+    tiktokSocialEventType({
+      common: { displayText: { displayType: "pm_mt_guidance_viewer_follow" } }
+    }),
+    "follow"
+  );
+  assert.equal(
+    tiktokSocialEventType({
+      common: { displayText: { displayType: "pm_mt_guidance_share" } }
+    }),
+    "share"
+  );
+  assert.equal(tiktokSocialEventType({ followCount: 1 }), "follow");
+  assert.equal(
+    tiktokSocialEventType({
+      data: {
+        common: {
+          displayText: { displayType: "pm_mt_guidance_viewer_follow" }
+        }
+      }
+    }),
+    "follow"
+  );
+  assert.equal(tiktokSocialEventType({}), "");
+});
+
+test("déplie l'enveloppe protobuf et couvre les événements TikFinity", () => {
+  const social = {
+    data: {
+      common: {
+        displayText: { displayType: "pm_mt_guidance_viewer_follow" }
+      }
+    },
+    type: "WebcastSocialMessage"
+  };
+
+  assert.equal(tiktokDecodedPayload(social), social.data);
+  assert.equal(
+    tiktokDecodedEventType("WebcastSocialMessage", social.data),
+    "follow"
+  );
+  assert.equal(tiktokDecodedEventType("WebcastGiftMessage"), "gift");
+  assert.equal(tiktokDecodedEventType("WebcastChatMessage"), "chat");
+  assert.equal(tiktokDecodedEventType("WebcastLikeMessage"), "like");
+  assert.equal(tiktokDecodedEventType("WebcastMemberMessage"), "join");
+  assert.equal(
+    tiktokDecodedEventType("WebcastSubNotifyMessage"),
+    "subscribe"
+  );
+});
+
+test("déduplique les callbacks sociaux issus du même message brut", () => {
+  const runtime = {};
+  const event = { common: { msgId: "social-42" } };
+
+  assert.equal(shouldEmitTikTokEvent(runtime, "follow", event), true);
+  assert.equal(shouldEmitTikTokEvent(runtime, "follow", event), false);
+  assert.equal(
+    shouldEmitTikTokEvent(runtime, "follow", {
+      common: { msgId: "social-42" }
+    }),
+    false
+  );
+  assert.equal(shouldEmitTikTokEvent(runtime, "share", event), true);
+  assert.equal(shouldEmitTikTokEvent(runtime, "gift", event), true);
+  assert.equal(shouldEmitTikTokEvent(runtime, "gift", event), false);
 });
 
 test("n'autodémarre jamais une source de démonstration", async () => {
@@ -128,6 +211,22 @@ test("recupere aussi le cout moderne du cadeau TikTok", () => {
   });
 
   assert.equal(payload.diamondCount, 44999);
+});
+
+test("conserve les métadonnées techniques d'un cadeau personnalisé", () => {
+  const payload = tiktokConnectorPayload("gift", {
+    giftId: "601333",
+    extendedGiftInfo: {
+      combo: true,
+      cost: 1,
+      image: { uri: "webcast-sg/resource/saliency_seg_creator.png" },
+      type: 1
+    }
+  });
+
+  assert.equal(payload.giftCombo, true);
+  assert.equal(payload.giftImageUri, "webcast-sg/resource/saliency_seg_creator.png");
+  assert.equal(payload.giftType, 1);
 });
 
 test("récupère l'image native du cadeau TikTok même dans un objet moderne", () => {

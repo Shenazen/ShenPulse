@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -134,10 +141,7 @@ test("affiche le bandeau uniquement après la réponse positive du Store", () =>
     path.join(root, "src", "renderer", "index.html"),
     "utf8"
   );
-  const renderer = fs.readFileSync(
-    path.join(root, "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const preload = fs.readFileSync(
     path.join(root, "src", "main", "preload.js"),
     "utf8"

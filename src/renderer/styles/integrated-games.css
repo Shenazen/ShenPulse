@@ -1,0 +1,5 @@
+/* Entrée des styles des jeux intégrés. */
+@import url("integrated-core.css");
+@import url("integrated-deal.css");
+@import url("integrated-sources.css");
+@import url("integrated-wheel.css");

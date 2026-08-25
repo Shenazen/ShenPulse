@@ -1,5 +1,12 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -189,10 +196,7 @@ test("vérifie le droit du compte Firebase actif sans accepter d’e-mail fourni
 });
 
 test("l’administration et DealOrNoDeal utilisent le droit global par e-mail", () => {
-  const renderer = fs.readFileSync(
-    path.join(__dirname, "..", "src", "renderer", "app.js"),
-    "utf8"
-  );
+  const renderer = readRendererSource();
   const preload = fs.readFileSync(
     path.join(__dirname, "..", "src", "main", "preload.js"),
     "utf8"

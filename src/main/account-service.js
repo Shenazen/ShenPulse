@@ -13,6 +13,7 @@ const IDENTITY_BASE_URL = "https://identitytoolkit.googleapis.com/v1";
 const TOKEN_BASE_URL = "https://securetoken.googleapis.com/v1";
 const DEFAULT_WEB_ORIGIN = "https://shenpulse.leuridan.fr";
 const BROWSER_AUTH_TIMEOUT_MS = 10 * 60 * 1000;
+const GOOGLE_LOOPBACK_PORT = 21216;
 const TRIAL_ENTITLEMENT_LEASE_MS = 10 * 60 * 1000;
 
 class AccountService {
@@ -20,12 +21,14 @@ class AccountService {
     store,
     fetchImpl = globalThis.fetch,
     openExternal = null,
-    webOrigin = DEFAULT_WEB_ORIGIN
+    webOrigin = DEFAULT_WEB_ORIGIN,
+    googleLoopbackPort = GOOGLE_LOOPBACK_PORT
   }) {
     this.store = store;
     this.fetch = fetchImpl;
     this.openExternal = openExternal;
     this.webOrigin = normalizeWebOrigin(webOrigin);
+    this.googleLoopbackPort = Number(googleLoopbackPort);
     this.idToken = "";
     this.expiresAt = 0;
     this.refreshPromise = null;
@@ -144,14 +147,16 @@ class AccountService {
     };
   }
 
-  async loginWithBrowser() {
+  async loginWithBrowser(incoming = {}) {
     if (this.browserAuthPromise) return this.browserAuthPromise;
     if (typeof this.openExternal !== "function") {
       throw new Error(
         "La connexion Google n’est pas disponible dans cette version de ShenPulse."
       );
     }
-    this.browserAuthPromise = this.#runBrowserAuth().finally(() => {
+    const rawEmailHint = String(incoming.email || "").trim();
+    const emailHint = rawEmailHint ? requireEmail(rawEmailHint) : "";
+    this.browserAuthPromise = this.#runBrowserAuth(emailHint).finally(() => {
       this.browserAuthPromise = null;
     });
     return this.browserAuthPromise;
@@ -725,55 +730,54 @@ class AccountService {
     };
   }
 
-  async #runBrowserAuth() {
-    const state = crypto.randomBytes(32).toString("base64url");
-    const callbackResult = await createLoopbackCallback({
-      onReady: async (callbackUrl) => {
-        const target = new URL("/login", this.webOrigin);
-        target.searchParams.set("desktop", "1");
-        target.searchParams.set("callback", callbackUrl);
-        target.searchParams.set("state", state);
-        await this.openExternal(target.toString());
-      },
-      state,
+  async #runBrowserAuth(emailHint = "") {
+    const callback = await createGoogleIdTokenLoopback({
+      port: this.googleLoopbackPort,
       timeoutMs: BROWSER_AUTH_TIMEOUT_MS
     });
-
-    const redeemResponse = await this.fetch(
-      `${this.webOrigin}/api/auth/desktop/redeem`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: callbackResult.code,
-          state
-        }),
-        signal: AbortSignal.timeout(20000)
-      }
-    );
-    const redeemPayload = await readPayload(redeemResponse);
-    if (!redeemResponse.ok) {
-      throw apiError(redeemPayload, redeemResponse.status);
-    }
-    if (!redeemPayload.customToken) {
-      throw new Error(
-        "Le navigateur n’a pas renvoyé une session ShenPulse valide."
+    try {
+      const authRequest = await this.#identityRequest(
+        "accounts:createAuthUri",
+        {
+          identifier: emailHint || "google@shenpulse.local",
+          continueUri: callback.url,
+          providerId: "google.com"
+        }
       );
-    }
-
-    const payload = await this.#identityRequest(
-      "accounts:signInWithCustomToken",
-      {
-        token: redeemPayload.customToken,
-        returnSecureToken: true
+      const target = googleAuthUri(authRequest.authUri);
+      const expectedState = target.searchParams.get("state") || "";
+      if (!expectedState || !authRequest.sessionId) {
+        throw new Error(
+          "Firebase n’a pas préparé une connexion Google valide."
+        );
       }
-    );
-    await this.#acceptAuthPayload(payload, {
-      fallbackEmail: redeemPayload.email,
-      providerId: redeemPayload.providerId || "google.com"
-    });
-    await this.syncEntitlements({ silent: true });
-    return this.#publicStatus(true);
+      if (emailHint) target.searchParams.set("login_hint", emailHint);
+      callback.expectState(expectedState);
+      await this.openExternal(target.toString());
+
+      const browserResult = await callback.result;
+      const payload = await this.#identityRequest(
+        "accounts:signInWithIdp",
+        {
+          requestUri: callback.url,
+          postBody: new URLSearchParams({
+            id_token: browserResult.idToken,
+            providerId: "google.com"
+          }).toString(),
+          sessionId: String(authRequest.sessionId),
+          returnIdpCredential: true,
+          returnSecureToken: true
+        }
+      );
+      await this.#acceptAuthPayload(payload, {
+        fallbackEmail: emailHint,
+        providerId: "google.com"
+      });
+      await this.syncEntitlements({ silent: true });
+      return this.#publicStatus(true);
+    } finally {
+      callback.close();
+    }
   }
 
   async #acceptAuthPayload(
@@ -1377,6 +1381,155 @@ async function createLoopbackCallback({
   });
 }
 
+/**
+ * Reçoit exclusivement sur la boucle locale le jeton OpenID renvoyé dans le
+ * fragment Google. Le fragment n'est jamais envoyé à un serveur distant : la
+ * petite page de retour le transmet au processus principal en POST local.
+ */
+async function createGoogleIdTokenLoopback({
+  port = GOOGLE_LOOPBACK_PORT,
+  timeoutMs
+}) {
+  return new Promise((resolve, reject) => {
+    let expectedState = "";
+    let settled = false;
+    let timeout = null;
+    let resolveResult;
+    let rejectResult;
+    const result = new Promise((resolveCallback, rejectCallback) => {
+      resolveResult = resolveCallback;
+      rejectResult = rejectCallback;
+    });
+    // Une erreur de préparation peut fermer le serveur avant que l'appelant
+    // commence à attendre le résultat.
+    result.catch(() => {});
+
+    const finish = (error, value) => {
+      if (settled) return false;
+      settled = true;
+      if (timeout) clearTimeout(timeout);
+      server.close(() => {});
+      if (error) rejectResult(error);
+      else resolveResult(value);
+      return true;
+    };
+    const respondJson = (response, status, payload) => {
+      response.writeHead(status, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      });
+      response.end(JSON.stringify(payload));
+    };
+    const server = http.createServer((request, response) => {
+      let target;
+      try {
+        target = new URL(request.url || "/", "http://localhost");
+      } catch {
+        response.writeHead(400).end();
+        return;
+      }
+      if (request.method === "GET" && target.pathname === "/callback") {
+        response.writeHead(200, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Security-Policy":
+            "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
+          "Cache-Control": "no-store",
+          "Referrer-Policy": "no-referrer",
+          "X-Content-Type-Options": "nosniff"
+        });
+        response.end(googleBrowserCallbackHtml());
+        return;
+      }
+      if (
+        request.method !== "POST" ||
+        target.pathname !== "/callback/complete"
+      ) {
+        response.writeHead(404).end();
+        return;
+      }
+
+      let body = "";
+      request.setEncoding("utf8");
+      request.on("data", (chunk) => {
+        body += chunk;
+        if (body.length > 32 * 1024) request.destroy();
+      });
+      request.on("end", () => {
+        let payload;
+        try {
+          payload = JSON.parse(body || "{}");
+        } catch {
+          respondJson(response, 400, { ok: false });
+          finish(new Error("Le retour Google est illisible."));
+          return;
+        }
+        const receivedState = String(payload.state || "");
+        const idToken = String(payload.idToken || "");
+        const browserError = String(payload.error || "").trim();
+        const stateMatches = Boolean(
+          expectedState &&
+          receivedState.length === expectedState.length &&
+          crypto.timingSafeEqual(
+            Buffer.from(receivedState),
+            Buffer.from(expectedState)
+          )
+        );
+        if (
+          !stateMatches ||
+          browserError ||
+          !/^[A-Za-z0-9._-]{100,20000}$/.test(idToken)
+        ) {
+          respondJson(response, 400, { ok: false });
+          finish(
+            new Error(
+              browserError ||
+                "Le retour Google n'a pas pu être vérifié."
+            )
+          );
+          return;
+        }
+        respondJson(response, 200, { ok: true });
+        finish(null, { idToken });
+      });
+      request.on("error", (error) => finish(error));
+    });
+
+    server.once("error", reject);
+    server.listen(Number(port), "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        server.close(() => {});
+        reject(
+          new Error("Le retour local de connexion est indisponible.")
+        );
+        return;
+      }
+      timeout = setTimeout(
+        () =>
+          finish(
+            new Error(
+              "La connexion Google a expiré. Relancez-la depuis ShenPulse."
+            )
+          ),
+        timeoutMs
+      );
+      resolve({
+        close: () =>
+          finish(
+            new Error("La connexion Google a été interrompue.")
+          ),
+        expectState: (value) => {
+          expectedState = String(value || "");
+        },
+        result,
+        url: `http://localhost:${address.port}/callback`
+      });
+    });
+  });
+}
+
 async function createPaymentLoopbackCallback({ state, timeoutMs }) {
   return new Promise((resolve, reject) => {
     let ready = false;
@@ -1504,6 +1657,47 @@ function browserResponseHtml(success) {
   return `<!doctype html><html lang="fr"><meta charset="utf-8"><title>${title}</title><body style="margin:0;background:#090b14;color:#f7f7ff;font-family:system-ui;display:grid;place-items:center;min-height:100vh"><main style="max-width:560px;padding:40px;text-align:center;border:1px solid #563080;border-radius:20px;background:#111426"><h1>${title}</h1><p style="color:#aeb6cf">${detail}</p></main></body></html>`;
 }
 
+function googleBrowserCallbackHtml() {
+  return `<!doctype html>
+<html lang="fr">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Connexion Google ShenPulse</title>
+  <body style="margin:0;background:#090b14;color:#f7f7ff;font-family:system-ui;display:grid;place-items:center;min-height:100vh">
+    <main style="max-width:560px;padding:40px;text-align:center;border:1px solid #563080;border-radius:20px;background:#111426">
+      <h1 id="title">Connexion en cours…</h1>
+      <p id="detail" style="color:#aeb6cf">ShenPulse vérifie le retour Google sur cet appareil.</p>
+    </main>
+    <script>
+      (async () => {
+        const values = new URLSearchParams(location.hash.slice(1));
+        const payload = {
+          error: values.get("error") || "",
+          idToken: values.get("id_token") || "",
+          state: values.get("state") || ""
+        };
+        history.replaceState(null, "", location.pathname);
+        try {
+          const response = await fetch("/callback/complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!response.ok) throw new Error();
+          document.getElementById("title").textContent = "Connexion terminée";
+          document.getElementById("detail").textContent =
+            "Vous pouvez fermer cette page et revenir dans ShenPulse.";
+        } catch {
+          document.getElementById("title").textContent = "Connexion refusée";
+          document.getElementById("detail").textContent =
+            "Revenez dans ShenPulse puis relancez la connexion Google.";
+        }
+      })();
+    </script>
+  </body>
+</html>`;
+}
+
 function paymentResponseHtml(status) {
   const cancelled = status === "cancelled";
   const error = status === "error";
@@ -1616,6 +1810,23 @@ function normalizeWebOrigin(value) {
   }
 }
 
+function googleAuthUri(value) {
+  try {
+    const target = new URL(String(value || ""));
+    if (
+      target.protocol !== "https:" ||
+      target.hostname !== "accounts.google.com"
+    ) {
+      throw new Error();
+    }
+    return target;
+  } catch {
+    throw new Error(
+      "Firebase n'a pas renvoyé une adresse de connexion Google valide."
+    );
+  }
+}
+
 async function readPayload(response) {
   const text = await response.text();
   if (!text) return {};
@@ -1702,6 +1913,7 @@ module.exports = {
   AccountService,
   cleanDisplayName,
   cleanUid,
+  createGoogleIdTokenLoopback,
   createLoopbackCallback,
   createPaymentLoopbackCallback,
   normalizeEmail,

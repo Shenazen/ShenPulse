@@ -1,23 +1,21 @@
 "use strict";
 
+const {
+  readOverlayRuntimeSource,
+  readOverlayStyles,
+  readRendererSource,
+  readRendererStyles
+} = require("./helpers/source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const renderer = fs.readFileSync(
-  path.join(root, "src", "renderer", "app.js"),
-  "utf8"
-);
-const rendererCss = fs.readFileSync(
-  path.join(root, "src", "renderer", "styles.css"),
-  "utf8"
-);
-const overlayRuntime = fs.readFileSync(
-  path.join(root, "resources", "overlays", "overlay.js"),
-  "utf8"
-);
+const renderer = readRendererSource();
+const rendererCss = readRendererStyles();
+const overlayRuntime = readOverlayRuntimeSource();
 const mainIpc = fs.readFileSync(
   path.join(root, "src", "main", "ipc.js"),
   "utf8"
@@ -70,6 +68,8 @@ test("l'aperçu de configuration se met à jour sans recharger son iframe", () =
   const previewUpdate = renderer.slice(start, end);
 
   assert.match(previewUpdate, /channel:\s*"configuration"/);
+  assert.match(previewUpdate, /const previewUrl = overlayCatalogPreviewUrl\(item\)/);
+  assert.match(previewUpdate, /previewUrl \? \{ \.\.\.item, url: previewUrl \} : item/);
   assert.match(previewUpdate, /contentWindow\?\.postMessage/);
   assert.doesNotMatch(previewUpdate, /frame\.src\s*=/);
   assert.match(overlayRuntime, /function updatePreviewConfiguration\(payload = \{\}\)/);
@@ -177,10 +177,45 @@ test("l'éditeur de roue sépare les tâches et garde un aperçu unique", () => 
   }
   assert.match(editor, /wheel-editor-workspace/);
   assert.match(editor, /wheel-preview-column/);
+  assert.match(editor, /const wheelTriggerText = wheelTriggerSummary\(wheel\)/);
   assert.match(editor, /Réglages typographiques avancés/);
   assert.match(renderer, /function syncWheelSegmentActionVisibility/);
   assert.match(rendererCss, /\.wheel-editor-steps/);
   assert.match(rendererCss, /\.wheel-preview-column/);
+});
+
+test("les éditeurs overlay standards restent compacts dans quatre onglets", () => {
+  const start = renderer.indexOf("function overlayEditorTab");
+  const end = renderer.indexOf("function openOverlayConfigLegacy", start);
+  const editor = renderer.slice(start, end);
+
+  for (const section of ["placement", "content", "appearance", "visibility"]) {
+    assert.match(
+      editor,
+      new RegExp(`overlayEditorTab\\("${section}"`)
+    );
+    assert.match(
+      editor,
+      new RegExp(`overlayEditorPanel\\("${section}"`)
+    );
+  }
+  assert.match(renderer, /data-overlay-editor-tab/);
+  assert.match(renderer, /data-overlay-editor-panel/);
+  assert.match(rendererCss, /\.overlay-editor-tabs/);
+  assert.match(rendererCss, /\.overlay-editor-panels\s*\{[\s\S]*overflow:\s*hidden/);
+  assert.match(rendererCss, /\.overlay-editor-panel\s*\{[\s\S]*overflow:\s*auto/);
+});
+
+test("le générateur d'URL consomme le contrat central des paramètres", () => {
+  const start = renderer.indexOf("function overlayUrl(");
+  const end = renderer.indexOf("function localOverlayUrl", start);
+  const urlBuilder = renderer.slice(start, end);
+
+  assert.match(
+    urlBuilder,
+    /const mappings = overlayCatalog\.configParameterMappings/
+  );
+  assert.doesNotMatch(urlBuilder, /likeGoalTitleOffsetX:\s*"titleX"/);
 });
 
 test("le Like Goal propose en français les quatre comportements de fin", () => {
@@ -253,7 +288,7 @@ test("le Like Goal et le timer standard proposent une action de fin", () => {
   assert.match(renderer, /if \(item\.key === "timer"\)/);
   assert.match(
     overlayRuntime,
-    /timerAutoStart\s*&&\s*viewName === "multiplier-timer"/
+    /timerAutoStart\s*&&[\s\S]*\["timer", "multiplier-timer"\]\.includes\(viewName\)/
   );
   assert.match(mainCore, /"overlay-completion-fired"/);
   assert.match(renderer, /api\.on\("overlay-completion-fired"/);
@@ -339,8 +374,10 @@ test("le cadeau déclencheur d'une roue est exécuté par le moteur", () => {
 
   assert.match(core, /await this\.#handleWheelGiftTriggers\(event\)/);
   assert.match(core, /event\.type !== "gift"/);
-  assert.match(core, /event\.data\?\.giftName/);
-  assert.match(core, /event\.data\?\.giftId/);
+  assert.match(core, /giftConditionMatches/);
+  assert.match(core, /this\.giftCatalog\.gifts/);
+  assert.match(core, /wheel\.triggerGift\?\.giftId/);
+  assert.match(core, /wheel\.triggerGift\?\.giftImageUrl/);
   assert.match(core, /wheel\?\.enabled === false/);
   assert.match(core, /wheel\?\.giftValueFilter/);
   assert.match(core, /type:\s*"wheel\.spin"/);
@@ -363,6 +400,16 @@ test("les réglages vidéo des matchs atteignent réellement leur source", () =>
     overlayRuntime,
     /video\.autoplay\s*=\s*isStaticPreview\s*\?\s*false\s*:\s*matchAutoplay/
   );
+  assert.match(overlayRuntime, /function setupMatchActivationRecovery\(\)/);
+  assert.match(overlayRuntime, /visibilitychange/);
+  assert.match(overlayRuntime, /MATCH_SOURCE_SUSPEND_GAP_MS/);
+  assert.match(overlayRuntime, /video\.currentTime = 0/);
+  assert.match(overlayRuntime, /function enqueueMatchPlayback\(payload = \{\}\)/);
+  assert.match(overlayRuntime, /matchName === "player"/);
+  assert.doesNotMatch(
+    overlayRuntime,
+    /renderCoinJar\(\);\s*restartMatchVideo\(\);/
+  );
 });
 
 test("les timers forcent les heures et dimensionnent titre et valeur séparément", () => {
@@ -379,6 +426,20 @@ test("les timers forcent les heures et dimensionnent titre et valeur séparémen
   assert.match(rendererCss, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(rendererCss, /@media \(max-width:\s*900px\)[\s\S]*grid-template-columns:\s*repeat\(2/);
   assert.match(rendererCss, /@media \(max-width:\s*620px\)[\s\S]*grid-template-columns:\s*1fr/);
+});
+
+test("le Coin Jar expose une jauge réellement pilotée par ses quatre champs", () => {
+  const overlayHtml = fs.readFileSync(
+    path.join(root, "resources", "overlays", "index.html"),
+    "utf8"
+  );
+  assert.match(overlayHtml, /id="coin-jar-current"/);
+  assert.match(overlayHtml, /id="coin-jar-target"/);
+  assert.match(overlayHtml, /id="coin-jar-level"/);
+  assert.match(overlayRuntime, /coinJarTarget - coinJarMinimum/);
+  assert.match(overlayRuntime, /widget\?\.classList\.toggle\("without-base", !showBase\)/);
+  assert.match(overlayRuntime, /meter\.hidden = !showGoal/);
+  assert.match(renderer, /\["likeGoal", "coinJar", "winCounter"\]/);
 });
 
 test("chaque popup overlay se rouvre en haut avec des champs lisibles", () => {

@@ -1,5 +1,7 @@
 "use strict";
 
+const overlayCatalog = require("../../resources/overlays/overlay-catalog");
+
 const PUBLIC_OVERLAY_PROTOCOL_VERSION = 1;
 const PUBLIC_OVERLAY_RELAY_PATH = "publicOverlayRelay";
 const DEFAULT_PUBLIC_OVERLAY_BASE_URL =
@@ -9,117 +11,14 @@ const DEFAULT_FIREBASE_DATABASE_URL =
 const DEFAULT_FIREBASE_API_KEY =
   "AIzaSyDHcC8ngIhy2Av8N7J-XdCQq9G8KimGGJk";
 
-const PRO_PUBLIC_OVERLAY_KEYS = new Set([
-  "game",
-  "multiplierTimer",
-  "winCounter",
-  "matchX2",
-  "matchX3",
-  "matchGants",
-  "matchCoffre",
-  "matchSnipe",
-  "matchTapTap",
-  "matchQuiereme",
-  "matchEnigma"
-]);
+const PRO_PUBLIC_OVERLAY_KEYS = new Set(
+  overlayCatalog.routes
+    .filter((route) => route.requiresPro && route.public !== false)
+    .map((route) => route.key)
+);
 
-const PUBLIC_OVERLAY_CONFIG_PARAMETER_MAPPINGS = Object.freeze({
-  accentColor: "accent",
-  secondaryColor: "secondary",
-  textColor: "textColor",
-  backgroundColor: "background",
-  backgroundOpacity: "backgroundOpacity",
-  shadowColor: "shadowColor",
-  showShadow: "showShadow",
-  showWhenIdle: "showWhenIdle",
-  font: "font",
-  fontSize: "fontSize",
-  layout: "layout",
-  animation: "animation",
-  displayTime: "displayTime",
-  pauseTime: "pauseTime",
-  soundEnabled: "soundEnabled",
-  soundVolume: "soundVolume",
-  saturation: "saturation",
-  hue: "hue",
-  rtl: "rtl",
-  scale: "scale",
-  xOffset: "x",
-  yOffset: "y",
-  title: "title",
-  current: "current",
-  target: "target",
-  seconds: "seconds",
-  multiplier: "multiplier",
-  fit: "fit",
-  autoplay: "autoplay",
-  loop: "loop",
-  showHeader: "showHeader",
-  showGoal: "showGoal",
-  showPercent: "showPercent",
-  likeGoalTitleOffsetX: "titleX",
-  likeGoalTitleOffsetY: "titleY",
-  likeGoalTitleScale: "titleScale",
-  likeGoalTitleColor: "titleColor",
-  likeGoalContentOffsetX: "contentX",
-  likeGoalContentOffsetY: "contentY",
-  likeGoalContentScale: "contentScale",
-  likeGoalContentColor: "contentColor",
-  likeGoalPercentColor: "percentColor",
-  showRank: "showRank",
-  showAvatars: "showAvatars",
-  showCrown: "showCrown",
-  showRankBadges: "showRankBadges",
-  showMetricLabel: "showMetricLabel",
-  showBase: "showBase",
-  showHours: "showHours",
-  timerTitleScale: "timerTitleScale",
-  timerValueScale: "timerValueScale",
-  timerAutoStart: "timerAutoStart",
-  allowNegative: "allowNegative",
-  minCoins: "minCoins",
-  goalBaseline: "goalBaseline",
-  progressLabel: "progressLabel",
-  whenReached: "whenReached",
-  winCounterLabelColorNegative: "negativeColor",
-  winCounterLabelColorNeutral: "neutralColor",
-  winCounterLabelColorPositive: "positiveColor",
-  winCounterLabelOffsetX: "labelX",
-  winCounterLabelOffsetY: "labelY",
-  maxRows: "maxRows",
-  enabled: "enabled",
-  nameColor: "nameColor",
-  scoreColor: "scoreColor",
-  rankColor: "rankColor",
-  rowOpacity: "rowOpacity",
-  theme: "theme",
-  model: "model",
-  design: "design",
-  variant: "variant",
-  textOrientation: "textOrientation",
-  textShadowColor: "textShadowColor",
-  textShadowStrength: "textShadowStrength",
-  textRadius: "textRadius",
-  textSegmentOffset: "textSegmentOffset",
-  textBoxWidth: "textBoxWidth",
-  textBoxHeight: "textBoxHeight",
-  textAngleOffset: "textAngleOffset",
-  textAlign: "textAlign",
-  textClamp: "textClamp",
-  textMaxLines: "textMaxLines",
-  lineSpacing: "lineSpacing",
-  letterSpacing: "letterSpacing",
-  soundActive: "soundActive",
-  spinDuration: "spinDuration",
-  waitDuration: "waitDuration",
-  glow: "glow",
-  showWinner: "showWinner",
-  pointerPosition: "pointerPosition",
-  alwaysVisible: "alwaysVisible",
-  entranceAnimation: "entranceAnimation",
-  exitAnimation: "exitAnimation",
-  resultDuration: "resultDuration"
-});
+const PUBLIC_OVERLAY_CONFIG_PARAMETER_MAPPINGS =
+  overlayCatalog.configParameterMappings;
 
 function trimTrailingSlash(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -143,48 +42,13 @@ function publicOverlayUrls({
   channelId,
   proAccess = true
 } = {}) {
-  const base = trimTrailingSlash(baseUrl);
-  const channel = String(channelId || "").trim();
-  const overlayUrl = (view, parameters = {}) => {
-    if (!base || !channel) return "";
-    const query = new URLSearchParams({
-      view,
-      channel,
-      ...parameters
-    });
-    return `${base}/?${query.toString()}`;
-  };
-  const urls = {
-    base,
-    alerts: overlayUrl("alerts"),
-    mediaScreens: Array.from({ length: 8 }, (_value, index) =>
-      overlayUrl("alerts", { screen: index + 1 })
-    ),
-    myActions: overlayUrl("my-actions"),
-    goals: overlayUrl("goals"),
-    likeGoal: overlayUrl("like-goal"),
-    feed: overlayUrl("feed"),
-    game: overlayUrl("game"),
-    topDonors: overlayUrl("leaderboard", { kind: "donors" }),
-    topTappers: overlayUrl("leaderboard", { kind: "tappers" }),
-    coinJar: overlayUrl("coin-jar"),
-    timer: overlayUrl("timer"),
-    multiplierTimer: overlayUrl("multiplier-timer"),
-    winCounter: overlayUrl("win-counter"),
-    wheel: overlayUrl("wheel"),
-    matchX2: overlayUrl("match", { match: "x2" }),
-    matchX3: overlayUrl("match", { match: "x3" }),
-    matchGants: overlayUrl("match", { match: "guantes" }),
-    matchCoffre: overlayUrl("match", { match: "cofre" }),
-    matchSnipe: overlayUrl("match", { match: "snipe" }),
-    matchTapTap: overlayUrl("match", { match: "taptap" }),
-    matchQuiereme: overlayUrl("match", { match: "quiereme" }),
-    matchEnigma: overlayUrl("match", { match: "enigma" })
-  };
-  if (!proAccess) {
-    for (const key of PRO_PUBLIC_OVERLAY_KEYS) urls[key] = "";
-  }
-  return urls;
+  return overlayCatalog.buildUrls({
+    baseUrl,
+    credentialName: "channel",
+    credentialValue: channelId,
+    proAccess,
+    publicDelivery: true
+  });
 }
 
 function publicMediaUrl(value, baseUrl = DEFAULT_PUBLIC_OVERLAY_BASE_URL) {
