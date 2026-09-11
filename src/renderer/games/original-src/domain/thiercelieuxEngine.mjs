@@ -67,6 +67,35 @@ export const ROLE_CATALOG = Object.freeze([
 
 export const ROLE_BY_ID = Object.freeze(Object.fromEntries(ROLE_CATALOG.map((entry) => [entry.id, entry])))
 
+// Les règles officielles ne donnent pas un « résultat » après chaque geste.
+// Cette table distingue les informations à montrer immédiatement de celles qui
+// restent cachées jusqu'à l'aube ou qui sont déjà connues par le choix du joueur.
+export const ACTION_REVEAL_POLICY = Object.freeze({
+  steal: 'private-actor',
+  actor: 'none',
+  lovers: 'private-targets',
+  'inspect-role': 'private-actor',
+  fox: 'private-actor',
+  recognize: 'none',
+  'choose-model': 'none',
+  'choose-camp': 'private-actor',
+  'judge-sign': 'none',
+  bear: 'public-dawn',
+  raven: 'public-dawn',
+  'burn-building': 'public-dawn',
+  protect: 'none',
+  'wolf-vote': 'public-dawn',
+  'observe-wolves': 'none',
+  'white-wolf': 'public-dawn',
+  infect: 'private-targets',
+  'big-wolf': 'public-dawn',
+  'suppress-power': 'private-targets',
+  witch: 'public-dawn',
+  spiritism: 'public-day',
+  monkey: 'private-actor',
+  charm: 'private-targets',
+})
+
 export const BUILDINGS = Object.freeze([
   { id: 'ferme-1', name: 'Ferme I', job: 'Fermier', power: 'Élit le Capitaine parmi les Fermiers dès le deuxième tour.' },
   { id: 'ferme-2', name: 'Ferme II', job: 'Fermier', power: 'Peut hériter de la fonction de Capitaine.' },
@@ -105,6 +134,8 @@ export const EVENTS = Object.freeze(Array.from({ length: 36 }, (_, index) => Obj
   id: `event-${String(index + 1).padStart(2, '0')}`,
   name: index >= 31 ? `Spiritisme ${index - 30}` : `Événement Nouvelle Lune ${index + 1}`,
   type: index >= 31 ? 'spiritism' : ['immediate', 'delayed', 'permanent'][index % 3],
+  disclosure: 'public-dawn',
+  resolveAt: 'dawn',
   licensedContentRequired: true,
 })))
 
@@ -330,6 +361,7 @@ export function createGame({ players = [], roleIds = [], config = {}, random = M
     centerRoles: roleIds.includes('voleur') ? ['simple-villageois', 'simple-loup-garou'] : [],
     nightQueue: [], nightCursor: 0, pendingAttacks: [], pendingDeaths: [], deathTriggers: [], votes: {},
     protectedId: null, lastProtectedId: null, wolfVictimId: null, ravenTargetId: null, lovers: [], captainId: null,
+    dawnAnnouncements: [], eventDeck: shuffle(EVENTS.map((entry) => entry.id), random), eventCursor: 0, currentEvent: null, eventHistory: [],
     flags: { wolfHasDied: false, villagePowersDisabled: false, secondVoteAvailable: false },
     history: [history('game', 'Partie créée ; distribution privée ouverte.', { roleCount: roleIds.length })],
     privateMessages: {}, spectatorPredictions: [], winners: [], winnerLabel: '', finished: false,
@@ -366,6 +398,8 @@ export function startNight(game) {
   game.votes = {}
   game.pendingAttacks = []
   game.pendingDeaths = []
+  game.dawnAnnouncements = []
+  game.currentEvent = null
   game.protectedId = null
   game.ravenTargetId = null
   game.nightQueue = buildNightQueue(game)
@@ -440,9 +474,6 @@ export function prepareDawn(game) {
       continue
     }
     if (attack.infection) {
-      target.camp = 'wolves'
-      target.statuses.push('infected')
-      addPrivate(game, target.id, 'Vous avez été infecté : vous rejoignez secrètement les Loups-Garous tout en conservant votre pouvoir.')
       game.history.push(history('infection', `${target.name} a été infecté.`, { targetId: target.id }, 'secret'))
       continue
     }
@@ -461,9 +492,20 @@ export function prepareDawn(game) {
   }
   resolveDeaths(game)
   applyTransformations(game)
+  const bear = game.players.find((player) => player.alive && player.roleId === 'montreur-ours')
+  if (bear) {
+    bear.statuses = bear.statuses.filter((status) => status !== 'bear-growl')
+    if (bear.statuses.includes('infected') || seatNeighbors(game, bear).some((player) => player.camp === 'wolves')) {
+      bear.statuses.push('bear-growl')
+      pushDawnAnnouncement(game, 'L’ours grogne : il sent un Loup-Garou près du Montreur d’Ours.')
+    }
+  }
+  const ravenTarget = game.players.find((player) => player.id === game.ravenTargetId && player.alive)
+  if (ravenTarget) pushDawnAnnouncement(game, `Le Corbeau accuse ${ravenTarget.name} : deux voix sont déjà placées contre cette personne.`)
   game.lastProtectedId = game.protectedId
   game.phase = game.deathTriggers.length ? 'death-trigger' : 'dawn'
   game.day += 1
+  if (game.config.eventsEnabled && game.day > 1) drawDawnEvent(game)
   game.history.push(history('phase', `Le village se réveille au jour ${game.day}.`, { day: game.day }))
   checkVictory(game)
   touch(game)
@@ -679,6 +721,11 @@ export function hydrateGame(serialized) {
   const game = typeof serialized === 'string' ? JSON.parse(serialized) : structuredClone(serialized)
   if (game?.schemaVersion !== THIERCELIEUX_SCHEMA_VERSION) throw new Error('Sauvegarde incompatible.')
   game.config = normalizeConfig(game.config)
+  game.dawnAnnouncements ||= []
+  game.eventDeck ||= EVENTS.map((entry) => entry.id)
+  game.eventCursor = Math.max(0, Number(game.eventCursor) || 0)
+  game.currentEvent ||= null
+  game.eventHistory ||= []
   return game
 }
 
@@ -701,11 +748,24 @@ function applyNightAction(game, actor, step, payload) {
   if (step.action === 'infect' && target) {
     game.pendingAttacks = game.pendingAttacks.filter((attack) => !(attack.targetId === target.id && attack.cause === 'wolves'))
     game.pendingAttacks.push({ targetId: target.id, cause: 'wolves', infection: true })
+    target.camp = 'wolves'
+    if (!target.statuses.includes('infected')) target.statuses.push('infected')
+    addPrivate(game, target.id, 'Vous avez été infecté : vous rejoignez secrètement les Loups-Garous tout en conservant votre pouvoir.')
     actor.charges.main = 0
   }
-  if (step.action === 'suppress-power' && target && target.camp !== 'wolves') { target.powerEnabled = false; target.statuses.push('powerless'); actor.charges.main = Math.max(0, Number(actor.charges.main ?? 2) - 1) }
+  if (step.action === 'suppress-power' && target && target.camp !== 'wolves') {
+    target.powerEnabled = false
+    if (!target.statuses.includes('powerless')) target.statuses.push('powerless')
+    addPrivate(game, target.id, 'Votre pouvoir de Villageois vient d’être neutralisé. Votre personnage secret reste inchangé.')
+    actor.charges.main = Math.max(0, Number(actor.charges.main ?? 2) - 1)
+  }
   if (step.action === 'raven' && target) game.ravenTargetId = target.id
-  if (step.action === 'burn-building' && target?.buildingId) { target.buildingId = 'place-vagabonds'; actor.charges.main = 0 }
+  if (step.action === 'burn-building' && target?.buildingId && target.buildingId !== 'place-vagabonds') {
+    const buildingName = BUILDINGS.find((entry) => entry.id === target.buildingId)?.name || 'bâtiment'
+    target.buildingId = 'place-vagabonds'
+    pushDawnAnnouncement(game, `Un incendie a détruit ${buildingName}. ${target.name} devient Vagabond.`)
+    actor.charges.main = 0
+  }
   if (step.action === 'choose-model' && target) { actor.modelId = target.id; actor.charges.main = 0 }
   if (step.action === 'choose-camp') { actor.camp = payload.choice === 'wolves' ? 'wolves' : 'village'; actor.charges.main = 0; addPrivate(game, actor.id, `Vous choisissez le camp ${CAMPS[actor.camp].name}.`) }
   if (step.action === 'lovers') {
@@ -715,18 +775,18 @@ function applyNightAction(game, actor, step, payload) {
     actor.charges.main = 0
   }
   if (step.action === 'recognize') addPrivate(game, actor.id, `Vos proches : ${game.players.filter((player) => player.roleId === actor.roleId && player.id !== actor.id).map((player) => player.name).join(', ')}.`)
-  if (step.action === 'bear') {
-    const neighbors = seatNeighbors(game, actor)
-    actor.statuses = actor.statuses.filter((status) => status !== 'bear-growl')
-    if (actor.statuses.includes('infected') || neighbors.some((player) => player.camp === 'wolves')) actor.statuses.push('bear-growl')
-  }
+  if (step.action === 'bear') actor.statuses = actor.statuses.filter((status) => status !== 'bear-growl')
   if (step.action === 'fox') {
     const selectedIds = payload.targetIds.length ? payload.targetIds : target ? seatTriplet(game, target).map((player) => player.id) : []
     const hasWolf = selectedIds.some((id) => requirePlayer(game, id).camp === 'wolves')
     addPrivate(game, actor.id, hasWolf ? 'Au moins un Loup-Garou se trouve dans ce groupe.' : 'Aucun Loup-Garou dans ce groupe : votre pouvoir est perdu.')
     if (!hasWolf) actor.powerEnabled = false
   }
-  if (step.action === 'charm') payload.targetIds.slice(0, 2).forEach((id) => { const charmed = requirePlayer(game, id); if (!charmed.statuses.includes('charmed')) charmed.statuses.push('charmed') })
+  if (step.action === 'charm') {
+    payload.targetIds.slice(0, 2).forEach((id) => { const charmed = requirePlayer(game, id); if (!charmed.statuses.includes('charmed')) charmed.statuses.push('charmed') })
+    const charmedPlayers = game.players.filter((player) => player.statuses.includes('charmed'))
+    charmedPlayers.forEach((player) => addPrivate(game, player.id, `Joueurs charmés connus : ${charmedPlayers.filter((candidate) => candidate.id !== player.id).map((candidate) => candidate.name).join(', ') || 'aucun autre'}.`))
+  }
   if (step.action === 'witch') {
     if (payload.heal && actor.charges.heal && game.wolfVictimId) { game.pendingAttacks = game.pendingAttacks.filter((attack) => !(attack.targetId === game.wolfVictimId && !attack.infection)); actor.charges.heal = false }
     if (payload.poisonTargetId && actor.charges.poison) { const poisoned = requirePlayer(game, payload.poisonTargetId); if (!poisoned.alive) throw new Error('La potion vise un joueur vivant.'); game.pendingAttacks.push({ targetId: poisoned.id, cause: 'witch' }); actor.charges.poison = false }
@@ -801,6 +861,23 @@ function applyTransformations(game) {
   for (const player of game.players.filter((candidate) => candidate.alive && candidate.roleId === 'enfant-sauvage' && candidate.modelId)) {
     if (!requirePlayer(game, player.modelId).alive && player.camp !== 'wolves') { player.camp = 'wolves'; player.statuses.push('wild-converted'); addPrivate(game, player.id, 'Votre modèle est mort : vous devenez Loup-Garou à partir de cette nuit.') }
   }
+}
+
+function drawDawnEvent(game) {
+  if (!game.eventDeck?.length) game.eventDeck = EVENTS.map((entry) => entry.id)
+  const eventId = game.eventDeck[game.eventCursor % game.eventDeck.length]
+  const selected = EVENTS.find((entry) => entry.id === eventId)
+  game.eventCursor += 1
+  if (!selected) return
+  game.currentEvent = { id: selected.id, name: selected.name, type: selected.type, disclosure: selected.disclosure, resolveAt: selected.resolveAt }
+  game.eventHistory.push({ ...game.currentEvent, day: game.day })
+  pushDawnAnnouncement(game, `${selected.name} est révélée : l’événement doit maintenant être lu à voix haute et appliqué.`)
+  game.history.push(history('event', `${selected.name} est révélée.`, { eventId: selected.id, day: game.day }))
+}
+
+function pushDawnAnnouncement(game, message) {
+  game.dawnAnnouncements ||= []
+  if (message && !game.dawnAnnouncements.includes(message)) game.dawnAnnouncements.push(message)
 }
 
 function finishGame(game, label, winners) {

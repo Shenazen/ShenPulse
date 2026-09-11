@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import landscapeUrl from '../../../../assets/games/catalog/thiercelieux-landscape.png?url'
 import portraitUrl from '../../../../assets/games/catalog/thiercelieux-portrait.png?url'
 import {
+  ACTION_REVEAL_POLICY,
   MAX_ACTIVE_PLAYERS,
   MIN_ACTIVE_PLAYERS,
   ROLE_BY_ID,
@@ -56,6 +57,7 @@ const phasePulse = ref(0)
 const privateResults = ref<any[]>([])
 const privateResultUnlocked = ref(false)
 const pendingDawnAfterResults = ref(false)
+const lastDawnAnnouncements = ref<string[]>([])
 const shownBriefStepIds = new Set<string>()
 let toastTimer = 0
 let phaseTimer = 0
@@ -130,7 +132,7 @@ watch(() => guide.value?.id, () => {
 })
 
 watch(
-  [screen, game, privateUnlocked, privateResults, privateResultUnlocked, selectedTargetId, selectedTargetIds, actionChoice, witchHeal, paused, phaseRemaining, revealRemaining, hostError, ambienceMuted],
+  [screen, game, privateUnlocked, privateResults, privateResultUnlocked, lastDawnAnnouncements, selectedTargetId, selectedTargetIds, actionChoice, witchHeal, paused, phaseRemaining, revealRemaining, hostError, ambienceMuted],
   () => publishHostState(),
   { deep: true, immediate: true },
 )
@@ -182,6 +184,7 @@ function savedGame() { try { return hydrateGame(localStorage.getItem(GAME_KEY) |
 function startPreparedGame() {
   if (!setupValidation.value.valid) return fail(setupValidation.value.errors[0] || 'La régie est incomplète.')
   clearPrivateResults()
+  lastDawnAnnouncements.value = []
   game.value = createGame({ players: preparedPlayers.value, roleIds: roleIds.value, config: config.value })
   screen.value = 'reveal'
   privateUnlocked.value = false
@@ -229,7 +232,7 @@ function confirmRole() {
   }
 }
 
-function beginCurrentNight() { clearPrivateResults(); startNight(game.value); resetAction(); phasePulse.value += 1; playHowl() }
+function beginCurrentNight() { clearPrivateResults(); startNight(game.value); queuePendingNightNotices(); resetAction(); phasePulse.value += 1; playHowl() }
 function toggleTarget(id: string, multiple = false) {
   if (!multiple) selectedTargetId.value = selectedTargetId.value === id ? '' : id
   else selectedTargetIds.value = selectedTargetIds.value.includes(id) ? selectedTargetIds.value.filter((entry) => entry !== id) : [...selectedTargetIds.value, id].slice(-3)
@@ -261,27 +264,36 @@ function validateNightStep(skip = false) {
 }
 
 function queueNightResults({ step, actor, payload, messageCounts }: any) {
+  if (payload.skip) return
+  const policy = ACTION_REVEAL_POLICY[step.action as keyof typeof ACTION_REVEAL_POLICY] || 'none'
   const newMessages = new Map<string, string[]>()
   for (const player of game.value.players) {
     const messages = (game.value.privateMessages?.[player.id] || []).slice(Number(messageCounts[player.id] || 0)).map((entry: any) => String(entry.message || '')).filter(Boolean)
     if (messages.length) newMessages.set(player.id, messages)
   }
-  const actorMessages = newMessages.get(actor.id) || []
   const target = game.value.players.find((player: any) => player.id === (payload.targetId || payload.poisonTargetId))
   const targets = (payload.targetIds || []).map((id: string) => game.value.players.find((player: any) => player.id === id)).filter(Boolean)
-  const displayPlayerId = ['inspect-role', 'monkey'].includes(step.action) && target ? target.id : actor.id
-  queuePrivateResult({
-    recipient: actor,
-    displayPlayerId,
-    title: `${ROLE_BY_ID[step.roleId]?.name || 'Personnage'} · résultat`,
-    eyebrow: step.collective ? 'RÉSULTAT DE LA MEUTE' : 'RÉSULTAT DE VOTRE ACTION',
-    lines: actorMessages.length ? actorMessages : nightResultFallback(step.action, actor, target, targets, payload),
-  })
-  newMessages.delete(actor.id)
-  for (const [playerId, lines] of newMessages) {
-    const recipient = game.value.players.find((player: any) => player.id === playerId)
-    if (recipient) queuePrivateResult({ recipient, displayPlayerId: recipient.id, title: 'Message secret', eyebrow: 'INFORMATION PERSONNELLE', lines })
+  if (policy === 'private-actor') {
+    const actorMessages = newMessages.get(actor.id) || []
+    const displayPlayerId = ['inspect-role', 'monkey'].includes(step.action) && target ? target.id : actor.id
+    queuePrivateResult({
+      recipient: actor,
+      displayPlayerId,
+      title: `${ROLE_BY_ID[step.roleId]?.name || 'Personnage'} · résultat`,
+      eyebrow: 'INFORMATION IMMÉDIATE',
+      lines: actorMessages.length ? actorMessages : nightResultFallback(step.action, actor, target, targets, payload),
+    })
   }
+  if (policy === 'private-targets') {
+    for (const [playerId, lines] of newMessages) {
+      const recipient = game.value.players.find((player: any) => player.id === playerId)
+      if (recipient) queuePrivateResult({ recipient, displayPlayerId: recipient.id, title: privateTargetTitle(step.action), eyebrow: 'INFORMATION SECRÈTE', lines })
+    }
+  }
+}
+
+function privateTargetTitle(action: string) {
+  return ({ lovers: 'Les Amoureux se reconnaissent', charm: 'Les joueurs charmés se reconnaissent', infect: 'La morsure de l’Infect Père', 'suppress-power': 'Votre pouvoir est neutralisé' } as Record<string, string>)[action] || 'Message secret'
 }
 
 function nightResultFallback(action: string, actor: any, target: any, targets: any[], payload: any) {
@@ -324,13 +336,24 @@ function witchResultLine(payload: any, target: any) {
 
 function maybeQueueActionBrief() {
   const step = guide.value
-  if (!step || shownBriefStepIds.has(step.id) || !['witch', 'infect'].includes(step.action)) return
+  if (!step || shownBriefStepIds.has(step.id) || !['witch', 'steal'].includes(step.action)) return
   const actor = game.value?.players?.find((player: any) => player.id === step.actorId)
   const victim = game.value?.players?.find((player: any) => player.id === game.value?.wolfVictimId)
-  const line = step.privateAlert || (victim ? `Victime de la meute : ${victim.name}.` : '')
+  const line = step.action === 'steal'
+    ? `Cartes au centre : ${(game.value?.centerRoles || []).map((roleId: string) => ROLE_BY_ID[roleId]?.name || roleId).join(' et ')}.`
+    : step.privateAlert || (victim ? `Victime de la meute : ${victim.name}.` : '')
   if (!actor || !line) return
   shownBriefStepIds.add(step.id)
-  queuePrivateResult({ recipient: actor, displayPlayerId: actor.id, title: step.action === 'witch' ? 'Information de la Sorcière' : 'Information de l’Infect Père', eyebrow: 'AVANT VOTRE ACTION', lines: [line] })
+  queuePrivateResult({ recipient: actor, displayPlayerId: actor.id, title: step.action === 'witch' ? 'Victime de la meute' : 'Cartes du Voleur', eyebrow: 'AVANT VOTRE ACTION', lines: [line] })
+}
+
+function queuePendingNightNotices() {
+  for (const player of game.value?.players || []) {
+    if (player.alive && player.statuses?.includes('wild-converted') && !player.statuses.includes('wild-notified')) {
+      player.statuses.push('wild-notified')
+      queuePrivateResult({ recipient: player, displayPlayerId: player.id, title: 'Votre camp change', eyebrow: 'INFORMATION SECRÈTE', lines: ['Votre modèle est mort. À partir de cette nuit, vous rejoignez les Loups-Garous.'] })
+    }
+  }
 }
 
 function queuePrivateResult({ recipient, displayPlayerId, title, eyebrow, lines }: any) {
@@ -364,9 +387,11 @@ function resetAction() { selectedTargetId.value = ''; selectedTargetIds.value = 
 function repeatGuide() { if (guide.value) speak(guide.value.phrase) }
 function speakDawn() {
   const dead = game.value.players.filter((player: any) => !player.alive && player.eliminatedBy && !player.announced)
-  const line = dead.length ? `À l'aube, ${dead.map((player: any) => player.name).join(' et ')} ne répondent plus.` : 'À l’aube, tous les habitants répondent encore.'
+  const lines = [dead.length ? `À l'aube, ${dead.map((player: any) => player.name).join(' et ')} ne répondent plus.` : 'À l’aube, tous les habitants répondent encore.', ...(game.value.dawnAnnouncements || [])]
   dead.forEach((player: any) => { player.announced = true })
-  if (config.value.runMode !== 'manual') speak(line)
+  lastDawnAnnouncements.value = lines
+  if (config.value.runMode !== 'manual') speak(lines.join(' '))
+  if (lines.length > 1) notify(lines[1])
   phasePulse.value += 1
   playTransitionSound()
 }
@@ -390,15 +415,8 @@ function chooseDeathTarget(id: string) {
     const target = game.value?.players?.find((player: any) => player.id === id)
     const inheritedRole = trigger?.kind === 'servant' ? ROLE_BY_ID[target?.roleId] : null
     resolveDeathTrigger(game.value, id)
-    if (actor && target && trigger) {
-      const copy: Record<string, { title: string, line: string }> = {
-        hunter: { title: 'Dernier tir du Chasseur', line: `${target.name} a été touché par votre dernier tir.` },
-        colossus: { title: 'Dernière force du Colosse', line: `${target.name} a été emporté·e avec vous.` },
-        'captain-successor': { title: 'Succession du Capitaine', line: `${target.name} devient le nouveau Capitaine.` },
-        servant: { title: 'Nouvelle identité', line: `Vous devenez secrètement ${inheritedRole?.name || 'le personnage choisi'}. ${inheritedRole?.power || ''}` },
-      }
-      const result = copy[trigger.kind]
-      if (result) queuePrivateResult({ recipient: actor, displayPlayerId: trigger.kind === 'servant' ? actor.id : target.id, title: result.title, eyebrow: 'RÉSULTAT DE VOTRE ACTION', lines: [result.line] })
+    if (actor && target && trigger?.kind === 'servant') {
+      queuePrivateResult({ recipient: actor, displayPlayerId: actor.id, title: 'Nouvelle identité', eyebrow: 'INFORMATION SECRÈTE', lines: [`Vous devenez secrètement ${inheritedRole?.name || 'le personnage choisi'}. ${inheritedRole?.power || ''}`] })
     }
     hostError.value = ''
     phasePulse.value += 1
@@ -407,16 +425,11 @@ function chooseDeathTarget(id: string) {
 function skipCurrentDeathTrigger() { skipDeathTrigger(game.value); phasePulse.value += 1 }
 function electCaptain(id: string) { try { appointCaptain(game.value, id); notify('Le Capitaine est élu.') } catch (error: any) { fail(error.message) } }
 function continueAfterVerdict() {
-  const messageCounts = Object.fromEntries(game.value.players.map((player: any) => [player.id, (game.value.privateMessages?.[player.id] || []).length]))
   finishVerdict(game.value)
   checkVictory(game.value)
-  for (const player of game.value.players) {
-    const lines = (game.value.privateMessages?.[player.id] || []).slice(Number(messageCounts[player.id] || 0)).map((entry: any) => String(entry.message || '')).filter(Boolean)
-    if (lines.length) queuePrivateResult({ recipient: player, displayPlayerId: player.id, title: 'Votre personnage évolue', eyebrow: 'INFORMATION PERSONNELLE', lines })
-  }
   phasePulse.value += 1
 }
-function newRound() { clearPrivateResults(); game.value = null; screen.value = 'ready'; privateUnlocked.value = false; resetAction(); hostError.value = ''; phasePulse.value += 1 }
+function newRound() { clearPrivateResults(); lastDawnAnnouncements.value = []; game.value = null; screen.value = 'ready'; privateUnlocked.value = false; resetAction(); hostError.value = ''; phasePulse.value += 1 }
 
 function handleBoardCard(player: any) {
   ensureAudio()
@@ -495,7 +508,7 @@ function hostCopy() {
     title: 'Dernière volonté', dialogue: `${game.value?.players?.find((player: any) => player.id === deathTrigger.value?.actorId)?.name || 'Un habitant'} doit désigner une carte.`, expected: 'Sélectionner la cible sur le plateau ou depuis la régie.',
   }
   if (phase === 'dawn') return {
-    title: `Le village se réveille · Jour ${game.value?.day || 1}`, dialogue: 'Annoncez : « Le jour se lève. Le village ouvre les yeux. » Révélez ensuite les disparitions visibles sur le plateau.', expected: 'Ouvrir la discussion lorsque les annonces sont terminées.',
+    title: `Le village se réveille · Jour ${game.value?.day || 1}`, dialogue: `Annoncez : « Le jour se lève. Le village ouvre les yeux. » ${lastDawnAnnouncements.value.join(' ') || 'Révélez ensuite les disparitions visibles sur le plateau.'}`, expected: 'Respecter l’ordre : victimes, grognement de l’Ours, Spiritisme ou événement, puis ouvrir la discussion.',
   }
   if (phase === 'discussion') return {
     title: 'Le débat est ouvert', dialogue: 'Laissez les habitants accuser, se défendre et observer. Relancez avec : « Qui ment ? Qui protège la meute ? »', expected: 'Ouvrir le vote quand le débat est mûr.',

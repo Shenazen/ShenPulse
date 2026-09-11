@@ -343,8 +343,41 @@ const GAMES = [
       await delay(950);
       window.thiercelieuxPrivateResultCapture = await window.webContents.capturePage();
       await evaluate(window, () => document.querySelector(".board-card.current")?.click());
-      await waitFor(window, async () => !(await window.shenPulse.getSmokeThiercelieuxHostState())?.resultPending);
-      return { ready, reveal, live, lockedResult, privateResult };
+      await waitFor(window, async () => {
+        const state = await window.shenPulse.getSmokeThiercelieuxHostState();
+        return !state?.resultPending && state?.action === "wolf-vote";
+      });
+      await evaluate(window, () => document.querySelector(".board-card.selectable")?.click());
+      await evaluate(window, () => window.dispatchEvent(new CustomEvent("shenpulse:thiercelieux-command", { detail: { type: "validate-night" } })));
+      await waitFor(window, async () => Boolean((await window.shenPulse.getSmokeThiercelieuxHostState())?.resultPending));
+      const witchBrief = await evaluate(window, async () => {
+        const state = await window.shenPulse.getSmokeThiercelieuxHostState();
+        return { action: state.action, playerName: state.resultPlayerName, title: state.title };
+      });
+      if (witchBrief.playerName !== "Villageois 3" || witchBrief.action) {
+        throw new Error("Le vote des Loups ne doit pas produire de résultat privé ; seule la Sorcière doit recevoir la victime avant son action.");
+      }
+      await evaluate(window, () => document.querySelector(".board-card.current")?.click());
+      await waitFor(window, () => document.querySelector(".board-card.current")?.classList.contains("revealed"));
+      const witchVictim = await evaluate(window, () => document.querySelector(".board-card.current .result-front p")?.textContent?.trim() || "");
+      if (!witchVictim.includes("Victime de la meute")) {
+        throw new Error("La Sorcière ne reçoit pas la victime avant de choisir ses potions.");
+      }
+      await evaluate(window, () => document.querySelector(".board-card.current")?.click());
+      await waitFor(window, async () => {
+        const state = await window.shenPulse.getSmokeThiercelieuxHostState();
+        return !state?.resultPending && state?.action === "witch";
+      });
+      await evaluate(window, () => window.dispatchEvent(new CustomEvent("shenpulse:thiercelieux-command", { detail: { type: "validate-night" } })));
+      await waitFor(window, async () => (await window.shenPulse.getSmokeThiercelieuxHostState())?.phase === "dawn");
+      const dawn = await evaluate(window, async () => {
+        const state = await window.shenPulse.getSmokeThiercelieuxHostState();
+        return { dialogue: state.dialogue, resultPending: state.resultPending };
+      });
+      if (dawn.resultPending || !dawn.dialogue.includes("ne répondent plus")) {
+        throw new Error("Les conséquences des Loups et de la Sorcière doivent rester cachées jusqu'à l'aube.");
+      }
+      return { ready, reveal, live, lockedResult, privateResult, witchBrief, dawn };
     }
   },
   {

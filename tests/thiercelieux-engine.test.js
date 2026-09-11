@@ -33,6 +33,7 @@ test("Thiercelieux exposes every requested collection and license-safe event slo
   assert.equal(engine.BUILDINGS.length, 14);
   assert.equal(engine.EVENTS.length, 36);
   assert.equal(engine.EVENTS.filter((entry) => entry.type === "spiritism").length, 5);
+  assert.ok(engine.EVENTS.every((entry) => entry.disclosure === "public-dawn" && entry.resolveAt === "dawn"));
   assert.deepEqual(
     [...new Set(engine.ROLE_CATALOG.map((role) => role.pack))].sort(),
     ["25-ans", "base", "nouvelle-lune", "personnages", "village"].sort()
@@ -51,6 +52,18 @@ test("Thiercelieux exposes every requested collection and license-safe event slo
   ]) {
     assert.ok(engine.ROLE_CATALOG.some((role) => role.name === name), name);
   }
+});
+
+test("official disclosure timing is defined for every active character", async () => {
+  const { ACTION_REVEAL_POLICY, ROLE_CATALOG } = await enginePromise;
+  const activeActions = [...new Set(ROLE_CATALOG.map((role) => role.action).filter((action) => !["none", "death-shot", "tie-sacrifice", "inherit", "colossus"].includes(action)))];
+  assert.ok(activeActions.every((action) => ACTION_REVEAL_POLICY[action]), activeActions.filter((action) => !ACTION_REVEAL_POLICY[action]).join(", "));
+  assert.equal(ACTION_REVEAL_POLICY["inspect-role"], "private-actor");
+  assert.equal(ACTION_REVEAL_POLICY.fox, "private-actor");
+  assert.equal(ACTION_REVEAL_POLICY.bear, "public-dawn");
+  assert.equal(ACTION_REVEAL_POLICY.raven, "public-dawn");
+  assert.equal(ACTION_REVEAL_POLICY.infect, "private-targets");
+  assert.equal(ACTION_REVEAL_POLICY["suppress-power"], "private-targets");
 });
 
 test("display orientation is normalized to portrait or landscape", async () => {
@@ -159,6 +172,74 @@ test("night order is rebuilt from living roles and Witch can heal the wolf victi
   }
   assert.equal(game.players.find((player) => player.id === "p3").alive, true);
   assert.equal(game.players.find((player) => player.roleId === "sorciere").charges.heal, false);
+});
+
+test("infection and power suppression notify only the affected player", async () => {
+  const engine = await enginePromise;
+  const infectedGame = engine.createGame({
+    players: players(5),
+    roleIds: ["infect-pere-des-loups", "voyante", "simple-villageois", "simple-villageois", "simple-villageois"],
+    config: { ...engine.DEFAULT_CONFIG, assignmentMode: "manual" }
+  });
+  engine.startNight(infectedGame);
+  while (infectedGame.phase === "night") {
+    const step = engine.currentNightStep(infectedGame);
+    if (step.action === "inspect-role") engine.submitNightAction(infectedGame, { targetId: "p1" });
+    else if (step.action === "wolf-vote") engine.submitNightAction(infectedGame, { targetId: "p2" });
+    else if (step.action === "infect") engine.submitNightAction(infectedGame, { targetId: "p2" });
+    else engine.submitNightAction(infectedGame, { skip: true });
+  }
+  assert.equal(infectedGame.players[1].camp, "wolves");
+  assert.ok(infectedGame.players[1].statuses.includes("infected"));
+  assert.equal(infectedGame.privateMessages.p2.filter((entry) => /infecté/.test(entry.message)).length, 1);
+
+  const motherGame = engine.createGame({
+    players: players(5),
+    roleIds: ["puissante-mere-des-loups", "voyante", "simple-villageois", "simple-villageois", "simple-villageois"],
+    config: { ...engine.DEFAULT_CONFIG, assignmentMode: "manual" }
+  });
+  engine.startNight(motherGame);
+  while (motherGame.phase === "night") {
+    const step = engine.currentNightStep(motherGame);
+    if (step.action === "inspect-role") engine.submitNightAction(motherGame, { targetId: "p1" });
+    else if (step.action === "wolf-vote") engine.submitNightAction(motherGame, { targetId: "p3" });
+    else if (step.action === "suppress-power") engine.submitNightAction(motherGame, { targetId: "p2" });
+    else engine.submitNightAction(motherGame, { skip: true });
+  }
+  assert.equal(motherGame.players[1].powerEnabled, false);
+  assert.match(motherGame.privateMessages.p2.at(-1).message, /neutralisé/);
+  assert.equal((motherGame.privateMessages.p1 || []).some((entry) => /neutralisé/.test(entry.message)), false);
+});
+
+test("Bear, Raven, fire and New Moon events are announced only at dawn", async () => {
+  const engine = await enginePromise;
+  const game = engine.createGame({
+    players: players(5),
+    roleIds: ["montreur-ours", "simple-loup-garou", "corbeau", "pyromane", "simple-villageois"],
+    config: { ...engine.DEFAULT_CONFIG, assignmentMode: "manual", packs: ["base", "personnages", "village", "nouvelle-lune"], buildingsEnabled: true, eventsEnabled: true }
+  });
+  engine.startNight(game);
+  while (game.phase === "night") {
+    const step = engine.currentNightStep(game);
+    if (step.action === "raven") engine.submitNightAction(game, { targetId: "p5" });
+    else if (step.action === "burn-building") engine.submitNightAction(game, { targetId: "p3" });
+    else if (step.action === "wolf-vote") engine.submitNightAction(game, { targetId: "p4" });
+    else engine.submitNightAction(game, { skip: true });
+  }
+  assert.ok(game.dawnAnnouncements.some((line) => /ours grogne/.test(line)));
+  assert.ok(game.dawnAnnouncements.some((line) => /Corbeau accuse Joueur 5/.test(line)));
+  assert.ok(game.dawnAnnouncements.some((line) => /incendie/.test(line)));
+  assert.equal(game.currentEvent, null, "no event on the first morning");
+
+  engine.startNight(game);
+  while (game.phase === "night") {
+    const step = engine.currentNightStep(game);
+    if (step.action === "raven") engine.submitNightAction(game, { targetId: "p5" });
+    else if (step.action === "wolf-vote") engine.submitNightAction(game, { targetId: "p3" });
+    else engine.submitNightAction(game, { skip: true });
+  }
+  assert.equal(game.currentEvent?.disclosure, "public-dawn");
+  assert.ok(game.dawnAnnouncements.some((line) => /Événement|Spiritisme/.test(line)));
 });
 
 test("private roles never leak through the public view", async () => {

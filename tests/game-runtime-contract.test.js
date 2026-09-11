@@ -687,7 +687,8 @@ test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () =
   assert.match(thiercelieux, /handleBoardCard/);
   assert.match(thiercelieux, /queueNightResults/);
   assert.match(thiercelieux, /currentPrivateResult/);
-  assert.match(thiercelieux, /RÉSULTAT DE VOTRE ACTION/);
+  assert.match(thiercelieux, /ACTION_REVEAL_POLICY/);
+  assert.match(thiercelieux, /INFORMATION IMMÉDIATE/);
   assert.doesNotMatch(thiercelieux, /class="guide-panel"|class="runtime-tabs"|class="guide-controls"/);
   assert.doesNotMatch(thiercelieux, /lobbyTab|simulateGift|v-model="config\.giftName"/);
   const thiercelieuxSettings = fs.readFileSync(
