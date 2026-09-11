@@ -88,7 +88,9 @@
       view,
       ...(Object.keys(parameters).length ? { parameters } : {}),
       ...(definition.requiresPro ? { requiresPro: true } : {}),
-      ...(definition.delivery === "local" ? { public: false } : {})
+      ...(definition.delivery === "local" || definition.public === false
+        ? { public: false }
+        : {})
     };
   }
 
@@ -199,6 +201,7 @@
     payload = {},
     screen = 0,
     matchName = "",
+    leaderboardKind = "",
     hasMediaScreen = Number(screen) > 0
   } = {}) {
     const normalizedView = String(view || "alerts").trim().toLowerCase();
@@ -217,8 +220,17 @@
     if (normalizedChannel === "event") {
       if (["feed", "my-actions"].includes(normalizedView)) return true;
       const eventType = String(payload?.type || "").trim().toLowerCase();
-      if (eventType === "gift") return ["coin-jar", "leaderboard"].includes(normalizedView);
-      if (eventType === "like") return ["like-goal", "leaderboard"].includes(normalizedView);
+      const normalizedLeaderboardKind = String(leaderboardKind || "")
+        .trim()
+        .toLowerCase();
+      if (normalizedView === "leaderboard") {
+        return (
+          (eventType === "gift" && normalizedLeaderboardKind === "donors") ||
+          (eventType === "like" && normalizedLeaderboardKind === "tappers")
+        );
+      }
+      if (eventType === "gift") return normalizedView === "coin-jar";
+      if (eventType === "like") return normalizedView === "like-goal";
       return false;
     }
     return CHANNEL_VIEWS[normalizedChannel]?.has(normalizedView) === true;

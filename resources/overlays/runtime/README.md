@@ -57,5 +57,8 @@ Le renderer ne crée la source réelle que lorsque sa carte approche de la zone
 visible, avec un aperçu léger affiché immédiatement pendant ce court chargement.
 
 `transport.js` ne connaît pas les matrices de routage : elles appartiennent au
-catalogue. Les vidéos Match sont déclarées `delivery: "local"`, ce qui empêche
-leur publication sur le relais statique et conserve le contrôle de l'accès Pro.
+catalogue. Les cartes Match utilisent une source HTTPS courte `/m/<compte>/<canal>`.
+Le site public ne contient aucune vidéo : il reçoit les événements via le relais,
+puis demande au serveur ShenPulse local un ticket vidéo opaque et temporaire.
+Le canal Match est isolé des autres overlays et l'abonnement Pro est revérifié
+aussi bien par le relais que par le serveur local.

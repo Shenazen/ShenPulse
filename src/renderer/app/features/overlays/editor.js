@@ -276,6 +276,7 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
   for (const key of booleanKeys) {
     if (data.has(key)) next[key] = data.get(key) === "true";
   }
+  if (["timer", "multiplierTimer"].includes(item.key)) next.seconds = timerDurationTotalSeconds(data, next.seconds);
   return next;
 }
 
@@ -441,7 +442,7 @@ function openOverlayConfig(item) {
       ${overlaySelect("showBase", "Afficher le niveau de remplissage", String(config.showBase !== false), [["true", "Oui"], ["false", "Non"]], false, "Affiche ou masque la jauge lumineuse située derrière les cadeaux dans le bocal.")}`;
   }
   if (["timer", "multiplierTimer"].includes(item.key)) {
-    specialized += `${overlayField("seconds", "Durée initiale (secondes)", config.seconds ?? 300, "number", 'min="0" max="359999" full')}
+    specialized += `${overlayTimerDurationFields(config.seconds ?? 300)}
       ${overlaySelect("timerAutoStart", "Démarrage automatique", String(config.timerAutoStart === true), [["true", "Oui"], ["false", "Non"]])}
       ${overlaySelect("showHours", "Afficher les heures", String(config.showHours !== false), [["true", "Oui"], ["false", "Non"]])}
       ${overlayField("timerTitleScale", "Taille du titre (%)", config.timerTitleScale ?? 100, "number", 'min="50" max="200"')}
@@ -598,7 +599,7 @@ function openOverlayConfigLegacy(item) {
     specialized += `${field("current", "Valeur actuelle", config.current ?? 0, "number", 'min="-999999" max="999999"')}${field("target", "Objectif", config.target ?? 1000, "number", 'min="1" max="999999"')}`;
   }
   if (["timer", "multiplierTimer"].includes(item.key)) {
-    specialized += field("seconds", "Durée initiale (secondes)", config.seconds ?? 300, "number", 'min="0" max="359999" full');
+    specialized += overlayTimerDurationFields(config.seconds ?? 300);
   }
   if (item.key === "multiplierTimer") {
     specialized += field("multiplier", "Multiplicateur", config.multiplier ?? 2, "number", 'min="2" max="5"');
@@ -626,7 +627,7 @@ function openOverlayConfigLegacy(item) {
       ${dialogSection("Placement", "Déplacez et redimensionnez le rendu sans modifier les dimensions de la source OBS.", common, "dialog-section-accent")}
       ${dialogSection("Contenu & design", "Seuls les réglages réellement pris en charge par ce moteur sont proposés.", specialized || `<div class="field full"><small>Aucun réglage spécifique supplémentaire.</small></div>`)}
       ${dialogSection("Affichage", "Affinez les éléments visibles dans la source navigateur.", toggles)}
-      <div class="overlay-config-source"><span>Source HTTPS recommandée</span><strong>${escapeHtml(overlaySourceSize(item).label)}</strong><code>${escapeHtml(overlayUrl(item))}</code><small>OBS local</small><code>${escapeHtml(localOverlayUrl(item))}</code></div>
+      <div class="overlay-config-source"><span>Source HTTPS recommandée</span><strong>${escapeHtml(overlaySourceSize(item).label)}</strong><code>${escapeHtml(overlayUrl(item))}</code>${item.previewKind === "match" ? "" : `<small>OBS local</small><code>${escapeHtml(localOverlayUrl(item))}</code>`}</div>
     </div>`,
     onSubmit: async (data) => {
       const next = {
@@ -644,6 +645,7 @@ function openOverlayConfigLegacy(item) {
       for (const key of ["current", "target", "seconds", "multiplier", "maxRows"]) {
         if (data.has(key)) next[key] = Number(data.get(key));
       }
+      if (["timer", "multiplierTimer"].includes(item.key)) next.seconds = timerDurationTotalSeconds(data, next.seconds);
       for (const key of ["showHeader", "showGoal", "showBase"]) {
         if (data.has(key)) next[key] = data.get(key) === "true";
       }
@@ -668,12 +670,23 @@ function openOverlayConfigLegacy(item) {
 }
 
 function renderMatchOverlayGuide() {
+  const sourceUrl = snapshot?.overlayUrls?.matchPlayer || "";
+  let accountNumber = "—";
+  try {
+    accountNumber = new URL(sourceUrl).pathname.split("/").filter(Boolean)[1] || "—";
+  } catch {
+    // La source reste indisponible tant que le compte ou l'accès Pro manque.
+  }
   return `<aside class="match-overlay-guide">
     <header>
       <span aria-hidden="true">LIVE</span>
       <div>
         <strong>Comment utiliser ces animations de matchs&nbsp;?</strong>
-        <p>Un seul lecteur protégé reçoit toutes les animations et les joue dans l’ordre, sans chevauchement.</p>
+        <p>Un seul lecteur protégé reçoit toutes les animations. Une nouvelle demande remplace la vidéo en cours et repart à zéro.</p>
+      </div>
+      <div class="match-overlay-guide-actions">
+        <small>Compte n° ${escapeHtml(accountNumber)}</small>
+        <button type="button" class="button tiny ghost" data-action="rotate-match-overlay-url">Régénérer l’URL Match</button>
       </div>
     </header>
     <ol>
@@ -687,8 +700,10 @@ function renderMatchOverlayGuide() {
           <small><strong>Largeur</strong> · 1080 px</small>
           <small><strong>Hauteur</strong> · 1920 px</small>
           <small><strong>Toujours garder actif</strong> · activé</small>
-          <small>Chaque nouvel appui attend la fin réelle de la vidéo précédente.</small>
-          <small>ShenPulse doit rester ouvert avec un abonnement Pro actif.</small>
+          <small>Chaque nouvel appui arrête la vidéo active et relance la nouvelle à 0.</small>
+          <small>L’URL HTTPS contient le numéro unique du compte et un canal Match révocable, sans adresse locale visible.</small>
+          <small>ShenPulse doit rester ouvert avec un abonnement Pro actif. L’accès est revérifié en continu.</small>
+          <small>Les fichiers vidéo ne sont jamais exposés par une URL de stockage directe.</small>
         </span>
       </li>
     </ol>
@@ -734,27 +749,21 @@ function renderOverlaysV2() {
       items: items.filter((item) => item.category === id)
     }))
     .filter((section) => section.items.length);
-  const relay = snapshot.publicOverlayRelay || {};
-  const relayStatus = relay.connected
-    ? ["success", "CONNECTÉ", "Les URL HTTPS reçoivent les événements en temps réel."]
-    : relay.status === "connecting"
-      ? ["cyan", "CONNEXION", "Initialisation sécurisée du relais cloud…"]
-      : ["warning", "HORS LIGNE", "Les URL restent stables et se reconnecteront automatiquement."];
   return `
     <div class="reference-page overlay-catalog-page">
       <section class="page-hero">
         <div><span class="hero-chip">GALERIE OVERLAYS</span><h2>Overlays & widgets</h2><p>Les overlays ShenPulse classés comme dans ShenazenOverlay, avec leurs réglages persistants.</p></div>
         <span class="hero-count">${catalogItems.length}</span>
       </section>
-      ${isAccountAuthenticated() ? `<section class="card public-overlay-relay-card">
+      ${isAccountAuthenticated() ? `<section class="card public-overlay-relay-card" data-public-overlay-relay>
         <header class="card-header">
           <div>
             <p class="eyebrow">RELAIS PUBLIC SHENPULSE</p>
             <h3>Sources pour TikTok LIVE Studio et OBS</h3>
-            <p>${relayStatus[2]} Les vidéos Match restent locales dans ShenPulse afin de conserver le contrôle de l’accès Pro.</p>
+            <p data-public-overlay-relay-detail>Connexion au relais public… Le lecteur Match utilise lui aussi une URL HTTPS courte sur shenpulse-overlays.web.app, avec un canal révocable et des tickets vidéo temporaires.</p>
           </div>
           <div class="button-row">
-            <span class="badge ${relayStatus[0]}">${relayStatus[1]}</span>
+            <span class="badge cyan" data-public-overlay-relay-badge>CONNEXION</span>
             <button class="button small ghost" data-action="rotate-public-overlay-urls">Régénérer les URL</button>
           </div>
         </header>

@@ -73,6 +73,8 @@ test("PublicOverlayRelay authentifie l'installation puis publie état et lots", 
       likeGoalContentOffsetY: -25,
       likeGoalContentScale: 200
     });
+    state.overlaySession.hasData = true;
+    state.overlaySession.likeGoalCurrent = 321;
   });
 
   relay.publish("timer", {
@@ -96,6 +98,9 @@ test("PublicOverlayRelay authentifie l'installation puis publie état et lots", 
     .map((entry) => JSON.parse(entry.body))
     .find((entry) => entry.lastBatch);
   assert.equal(batch.lastBatch.messages[0].channel, "timer");
+  assert.ok(batch.lastBatch.sequence >= 1);
+  assert.equal(batch.lastBatch.state.overlaySession.likeGoalCurrent, 321);
+  assert.deepEqual(batch.lastBatch.state, batch.state);
   assert.match(
     batch.lastBatch.messages[0].payload.url,
     /^https:\/\/shenpulse-overlays\.web\.app\/media\//
@@ -130,5 +135,57 @@ test("PublicOverlayRelay conserve une URL stable et sait la régénérer", async
   await relay.rotateChannel();
   assert.notEqual(relay.urls().alerts, previous);
   assert.equal(relay.status().connected, true);
+  await relay.stop();
+});
+
+test("PublicOverlayRelay isole l’URL Match HTTPS des autres overlays", async () => {
+  const store = createStore();
+  store.mutate((state) => {
+    state.settings.account.uid = "account-match-test";
+    state.commerce.subscription = {
+      tier: "pro",
+      source: "paid",
+      status: "active"
+    };
+  });
+  const requests = [];
+  const fetchImpl = async (url, options = {}) => {
+    requests.push({
+      url: String(url),
+      method: options.method,
+      body: options.body ? String(options.body) : ""
+    });
+    if (String(url).includes("accounts:signUp")) {
+      return response(200, {
+        idToken: "id-token",
+        refreshToken: "refresh-token",
+        expiresIn: "3600",
+        localId: "uid-installation"
+      });
+    }
+    return response(200, {});
+  };
+  const relay = new PublicOverlayRelay({ store, fetchImpl });
+  const initialMatchUrl = relay.urls().matchPlayer;
+  const initialTimerUrl = relay.urls().timer;
+
+  assert.match(
+    initialMatchUrl,
+    /^https:\/\/shenpulse-overlays\.web\.app\/m\/\d{12}\/[A-Za-z0-9_-]{24}$/
+  );
+  assert.doesNotMatch(initialMatchUrl, /127\.0\.0\.1|[?&]token=/);
+  await relay.start();
+
+  const matchAliasWrite = requests
+    .filter((entry) => entry.method === "PATCH")
+    .map((entry) => JSON.parse(entry.body || "{}"))
+    .find((body) => body.matchSource);
+  assert.equal(matchAliasWrite.matchSource.enabled, true);
+  assert.equal(matchAliasWrite.matchSource.localPort, 17654);
+  assert.equal(matchAliasWrite.sourceChannel, relay.status().channelId);
+
+  await relay.rotateMatchChannel();
+  assert.notEqual(relay.urls().matchPlayer, initialMatchUrl);
+  assert.equal(relay.urls().timer, initialTimerUrl);
   await relay.stop();
 });

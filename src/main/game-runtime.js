@@ -16,6 +16,7 @@ const {
   installerForGame,
   isIntegratedGame
 } = require("./game-installer-manifest");
+const { BrumeluneLanService } = require("./brumelune-lan-service");
 
 const ASSET_ORIGIN = "https://shenpulse.leuridan.fr";
 const ASSET_SECRET = "shenpulse-installer-assets-v1-local-fallback";
@@ -42,6 +43,26 @@ class GameRuntimeService {
     this.minecraftServers = new Map();
     this.minecraftAutoClickers = new Map();
     this.saveDeploymentJobs = new Map();
+    this.brumeluneLan = new BrumeluneLanService();
+  }
+
+  startBrumeluneLan(payload) {
+    this.assertAccess("brumelune");
+    return this.brumeluneLan.start(payload);
+  }
+
+  updateBrumeluneLan(payload) {
+    this.assertAccess("brumelune");
+    return this.brumeluneLan.update(payload);
+  }
+
+  pollBrumeluneLan() {
+    this.assertAccess("brumelune");
+    return this.brumeluneLan.drainActions();
+  }
+
+  stopBrumeluneLan() {
+    return this.brumeluneLan.stop();
   }
 
   status(gameId) {
@@ -450,6 +471,7 @@ class GameRuntimeService {
   }
 
   async dispose() {
+    await this.brumeluneLan.stop();
     await this.#stopMinecraftServers();
     await this.#stopMinecraftAutoClickers();
     for (const window of this.gameWindows.values()) {
@@ -1141,7 +1163,8 @@ class GameRuntimeService {
     const originalGameHost = new Set([
       "coin-pusher",
       "connect-four",
-      "deal-or-no-deal"
+      "deal-or-no-deal",
+      "brumelune"
     ]).has(gameId);
     gameWindow.loadFile(
       originalGameHost

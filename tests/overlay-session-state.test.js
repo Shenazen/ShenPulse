@@ -220,6 +220,8 @@ test("le multiplicateur WINS s'applique aux gains et aux pertes jusqu'à son exp
   assert.equal(state.overlaySession.winCounterCurrent, 11);
   assert.equal(state.overlaySession.winCounterMultiplier, 1);
   assert.equal(state.overlaySession.winCounterMultiplierUntil, 0);
+  assert.equal(state.overlaySession.multiplierTimerSeconds, 0);
+  assert.equal(state.overlaySession.multiplierTimerEndsAt, 0);
 });
 
 test("le timer conserve son échéance pour les overlays connectés plus tard", () => {
@@ -260,4 +262,55 @@ test("le timer conserve son échéance pour les overlays connectés plus tard", 
     Date.parse("2030-01-01T10:11:00.000Z")
   );
   assert.equal(state.overlaySession.timerPaused, false);
+});
+
+test("le timer accepte une durée initiale supérieure à un jour", () => {
+  const state = runtimeState();
+  const startedAt = "2030-01-01T10:00:00.000Z";
+
+  applyOverlayOperation(
+    state,
+    "timer",
+    { operation: "set", seconds: 176_461 },
+    startedAt
+  );
+
+  assert.equal(state.overlaySession.timerSeconds, 176_461);
+  assert.equal(
+    state.overlaySession.timerEndsAt,
+    Date.parse(startedAt) + 176_461_000
+  );
+});
+
+test("le timer multiplicateur possède un état et un titre indépendants", () => {
+  const state = runtimeState();
+  const startedAt = "2030-01-01T10:00:00.000Z";
+
+  applyOverlayOperation(
+    state,
+    "timer",
+    { operation: "set", seconds: 600, label: "TIMER STANDARD" },
+    startedAt
+  );
+  applyOverlayOperation(
+    state,
+    "multiplier-timer",
+    {
+      operation: "set",
+      seconds: 120,
+      multiplier: 3,
+      label: "BONUS DISTINCT"
+    },
+    startedAt
+  );
+
+  assert.equal(state.overlaySession.timerSeconds, 600);
+  assert.equal(state.overlaySession.timerLabel, "TIMER STANDARD");
+  assert.equal(state.overlaySession.multiplierTimerSeconds, 120);
+  assert.equal(state.overlaySession.multiplierTimerLabel, "BONUS DISTINCT");
+  assert.equal(state.overlaySession.multiplierTimerMultiplier, 3);
+  assert.equal(
+    state.overlaySession.multiplierTimerEndsAt,
+    Date.parse(startedAt) + 120_000
+  );
 });

@@ -37,7 +37,11 @@ function canAccessOverlay(item) {
 }
 
 function canAccessGame(pack) {
-  return Boolean(pack?.id && canAccessCatalogItem("games", pack.id));
+  return Boolean(
+    pack?.id &&
+      (pack.ownerOnly !== true || isVerifiedAdminSession()) &&
+      canAccessCatalogItem("games", pack.id)
+  );
 }
 
 function minecraftLauncherPack(modePacks) {
@@ -554,6 +558,7 @@ function render() {
     renderedContentPage === currentPage &&
     renderedContentMarkup === nextContentMarkup
   ) {
+    syncPublicOverlayRelayStatus();
     applyGuestReadOnlyMode(content);
     return;
   }
@@ -561,6 +566,7 @@ function render() {
   renderedContentPage = currentPage;
   renderedContentMarkup = nextContentMarkup;
   bindOverlayRuntimeFrames(content);
+  syncPublicOverlayRelayStatus();
   applyGuestReadOnlyMode(content);
   restoreAdminScrollState(adminScrollState);
 }

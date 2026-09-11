@@ -137,12 +137,12 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
     </div>
     ${allowed && accountReady
       ? `<div class="overlay-card-footer">
-          <div class="url-field"><code>${escapeHtml(url)}</code><button class="button small" data-action="copy" data-value="${escapeHtml(url)}">Copier</button></div>
+          <div class="url-field"><code>${escapeHtml(url)}</code><button class="button small" data-action="copy" data-value="${escapeHtml(url)}">${isMatchOverlay ? "Copier l’URL Match" : "Copier"}</button></div>
           <div class="entity-actions">
-            <button class="button small primary" data-action="preview-overlay" data-id="${escapeHtml(item.key)}">${isMatchOverlay ? "Lire dans la file" : "Tester en direct"}</button>
+            <button class="button small primary" data-action="preview-overlay" data-id="${escapeHtml(item.key)}">${isMatchOverlay ? "Relancer à 0" : "Tester en direct"}</button>
             <button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer</button>
             <button class="button small" data-action="open-url" data-value="${escapeHtml(url)}">Ouvrir</button>
-            <button class="button small ghost" data-action="copy" data-value="${escapeHtml(localOverlayUrl(item))}">OBS local</button>
+            ${isMatchOverlay ? "" : `<button class="button small ghost" data-action="copy" data-value="${escapeHtml(localOverlayUrl(item))}">OBS local</button>`}
           </div>
         </div>`
       : ""}
@@ -153,6 +153,74 @@ function overlayCardElement(key) {
   return [...content.querySelectorAll("[data-overlay-card]")].find(
     (card) => card.dataset.overlayCard === key
   ) || null;
+}
+
+function publicOverlayRelayPresentation(relay = snapshot?.publicOverlayRelay || {}) {
+  if (relay.connected) {
+    return [
+      "success",
+      "CONNECTÉ",
+      "Les URL HTTPS reçoivent les événements en temps réel."
+    ];
+  }
+  if (relay.status === "connecting") {
+    return [
+      "cyan",
+      "CONNEXION",
+      "Initialisation sécurisée du relais cloud…"
+    ];
+  }
+  return [
+    "warning",
+    "HORS LIGNE",
+    "Les URL restent stables et se reconnecteront automatiquement."
+  ];
+}
+
+function syncPublicOverlayRelayStatus(relay = snapshot?.publicOverlayRelay || {}) {
+  const card = content.querySelector("[data-public-overlay-relay]");
+  if (!card) return;
+  const [tone, label, detail] = publicOverlayRelayPresentation(relay);
+  const description = card.querySelector("[data-public-overlay-relay-detail]");
+  const badge = card.querySelector("[data-public-overlay-relay-badge]");
+  if (description) {
+    description.textContent = `${detail} Le lecteur Match utilise lui aussi une URL HTTPS courte sur shenpulse-overlays.web.app, avec un canal révocable et des tickets vidéo temporaires.`;
+  }
+  if (badge) {
+    badge.className = `badge ${tone}`;
+    badge.textContent = label;
+  }
+}
+
+function sendOverlayPreviewFrameEvent(frame, channel, payload) {
+  if (!frame?.contentWindow) return false;
+  try {
+    frame.contentWindow.postMessage(
+      {
+        source: "shenpulse-overlay-card",
+        channel,
+        payload
+      },
+      new URL(frame.src).origin
+    );
+    return true;
+  } catch {
+    // L'aperçu peut être remplacé pendant une navigation ou un changement de page.
+    return false;
+  }
+}
+
+function hydrateOverlayPreviewFrame(frame) {
+  const key =
+    frame?.closest("[data-overlay-card]")?.dataset.overlayCard ||
+    frame?.closest("[data-overlay-config-editor]")?.dataset.overlayConfigEditor ||
+    "";
+  if (!key) return false;
+  return sendOverlayPreviewFrameEvent(
+    frame,
+    "session-state",
+    snapshot?.state?.overlaySession || {}
+  );
 }
 
 function postOverlayCardEvent(key, channel, payload) {
@@ -168,19 +236,8 @@ function postOverlayCardEvent(key, channel, payload) {
       frame?.contentWindow && entries.indexOf(frame) === index
   );
   if (!frames.length) return false;
-  const message = {
-    source: "shenpulse-overlay-card",
-    channel,
-    payload
-  };
   for (const frame of frames) {
-    const send = () => {
-      try {
-        frame.contentWindow?.postMessage(message, new URL(frame.src).origin);
-      } catch {
-        // The preview may have left the DOM while navigating.
-      }
-    };
+    const send = () => sendOverlayPreviewFrameEvent(frame, channel, payload);
     send();
     if (!frame.dataset.overlayPreviewReady) {
       frame.addEventListener("load", send, { once: true });
@@ -195,21 +252,7 @@ function postOverlayPreviewEvent(channel, payload) {
   );
   for (const frame of frames) {
     if (!frame.contentWindow) continue;
-    const message = {
-      source: "shenpulse-overlay-card",
-      channel,
-      payload
-    };
-    const send = () => {
-      try {
-        frame.contentWindow?.postMessage(
-          message,
-          new URL(frame.src).origin
-        );
-      } catch {
-        // A preview can disappear when the user changes page.
-      }
-    };
+    const send = () => sendOverlayPreviewFrameEvent(frame, channel, payload);
     send();
     if (!frame.dataset.overlayPreviewReady) {
       frame.addEventListener("load", send, { once: true });

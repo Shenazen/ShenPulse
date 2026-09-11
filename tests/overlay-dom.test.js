@@ -15,6 +15,7 @@ async function loadOverlay(view, parameters = {}) {
   url.search = new URLSearchParams({
     view,
     preview: "static",
+    native: "1",
     ...parameters
   }).toString();
   const runtimeErrors = [];
@@ -34,6 +35,9 @@ async function loadOverlay(view, parameters = {}) {
         fillStyle: "",
         fillRect() {}
       });
+      window.HTMLMediaElement.prototype.load = () => {};
+      window.HTMLMediaElement.prototype.pause = () => {};
+      window.HTMLMediaElement.prototype.play = async () => {};
     }
   });
   await new Promise((resolve, reject) => {
@@ -51,7 +55,9 @@ async function loadOverlay(view, parameters = {}) {
     );
   });
   assert.deepEqual(
-    runtimeErrors.map((error) => error.message),
+    runtimeErrors
+      .map((error) => error.message)
+      .filter((message) => message !== "Not implemented: HTMLMediaElement's load() method"),
     [],
     "le chargement réel du widget ne doit produire aucune erreur DOM"
   );
@@ -97,10 +103,33 @@ test("un Like Goal chargé dans un vrai DOM applique sa configuration et son ét
   assert.equal(document.getElementById("like-goal-progress").style.width, "50%");
 
   sendCardMessage(window, "like-goal", { operation: "add", amount: 50 });
+  assert.equal(document.getElementById("like-goal-current").textContent, "250");
+  await new Promise((resolve) => setTimeout(resolve, 600));
   assert.equal(document.getElementById("like-goal-current").textContent, "300");
   assert.equal(document.getElementById("like-goal-percent").textContent, "60%");
 
   dom.window.close();
+});
+
+test("les sources de tous formats montent leur scène native avant le rendu", async () => {
+  for (const [view, width, height] of [
+    ["like-goal", 1300, 200],
+    ["timer", 900, 360],
+    ["leaderboard", 520, 640],
+    ["wheel", 800, 900],
+    ["match", 1080, 1920],
+    ["game", 1920, 1080]
+  ]) {
+    const dom = await loadOverlay(view, { native: "" });
+    const shell = dom.window.document.querySelector(".native-overlay-shell");
+    const frame = shell?.querySelector("iframe");
+    assert.ok(shell, `${view} doit créer son conteneur natif`);
+    assert.equal(shell.style.getPropertyValue("--native-overlay-width"), `${width}px`);
+    assert.equal(shell.style.getPropertyValue("--native-overlay-height"), `${height}px`);
+    assert.equal(new URL(frame.src).searchParams.get("native"), "1");
+    assert.equal(dom.window.document.getElementById("overlay-root").hidden, true);
+    dom.window.close();
+  }
 });
 
 test("tous les réglages communs et visuels du Like Goal modifient le DOM réel", async () => {
@@ -162,7 +191,7 @@ test("tous les réglages communs et visuels du Like Goal modifient le DOM réel"
   assert.equal(root.style.getPropertyValue("--like-goal-content-x"), "-22px");
   assert.equal(root.style.getPropertyValue("--like-goal-content-y"), "19px");
   assert.equal(root.style.getPropertyValue("--like-goal-content-scale"), "1.6");
-  assert.equal(view.style.fontFamily, "Georgia");
+  assert.equal(view.style.fontFamily, 'Georgia, "Times New Roman", serif');
   assert.equal(view.style.direction, "rtl");
   assert.equal(view.style.filter, "saturate(43%) hue-rotate(-21deg)");
   assert.equal(view.classList.contains("overlay-config-disabled"), true);
@@ -263,6 +292,68 @@ test("les champs de classement pilotent le titre, les lignes, badges et couleurs
   dom.window.close();
 });
 
+test("les classements donateurs et tapoteurs restent totalement isolés", async () => {
+  const cases = [
+    {
+      kind: "donors",
+      overlayKey: "topDonors",
+      otherOverlayKey: "topTappers",
+      title: "DONATEURS UNIQUEMENT",
+      acceptedType: "gift",
+      acceptedData: { giftName: "Rose", count: 5, value: 1_000 },
+      rejectedType: "like",
+      rejectedData: { count: 50_000, likeCount: 50_000 }
+    },
+    {
+      kind: "tappers",
+      overlayKey: "topTappers",
+      otherOverlayKey: "topDonors",
+      title: "TAPOTEURS UNIQUEMENT",
+      acceptedType: "like",
+      acceptedData: { count: 5_000, likeCount: 5_000 },
+      rejectedType: "gift",
+      rejectedData: { giftName: "Rose", count: 50, value: 1_000 }
+    }
+  ];
+
+  for (const entry of cases) {
+    const dom = await loadOverlay("leaderboard", {
+      kind: entry.kind,
+      theme: "classic"
+    });
+    const { window } = dom;
+    const { document } = window;
+
+    sendCardMessage(window, "configuration", {
+      overlayKey: entry.overlayKey,
+      config: { title: entry.title, maxRows: 5 }
+    });
+    sendCardMessage(window, "configuration", {
+      overlayKey: entry.otherOverlayKey,
+      config: { title: "TITRE DE L’AUTRE CLASSEMENT" }
+    });
+    sendCardMessage(window, "event", {
+      id: `rejected-${entry.kind}`,
+      type: entry.rejectedType,
+      timestamp: Date.now(),
+      user: { id: "intrus", displayName: "AUTRE CLASSEMENT" },
+      data: entry.rejectedData
+    });
+    sendCardMessage(window, "event", {
+      id: `accepted-${entry.kind}`,
+      type: entry.acceptedType,
+      timestamp: Date.now(),
+      user: { id: "valid", displayName: "CLASSEMENT CORRECT" },
+      data: entry.acceptedData
+    });
+
+    assert.equal(document.getElementById("leaderboard-title").textContent, entry.title);
+    assert.match(document.getElementById("leaderboard-rows").textContent, /CLASSEMENT CORRECT/);
+    assert.doesNotMatch(document.getElementById("leaderboard-rows").textContent, /AUTRE CLASSEMENT/);
+    dom.window.close();
+  }
+});
+
 test("le timer standard applique chaque champ et son démarrage automatique", async () => {
   const dom = await loadOverlay("timer", {
     theme: "classic",
@@ -289,6 +380,28 @@ test("le timer standard applique chaque champ et son démarrage automatique", as
   assert.equal(document.documentElement.style.getPropertyValue("--timer-title-scale"), "1.3");
   assert.equal(document.documentElement.style.getPropertyValue("--timer-value-scale"), "1.55");
 
+  sendCardMessage(window, "timer", {
+    operation: "set",
+    seconds: 3661,
+    label: "TITRE DU MULTIPLICATEUR"
+  });
+  assert.equal(
+    document.getElementById("timer-label").textContent,
+    "CHRONO TEST"
+  );
+
+  sendCardMessage(window, "configuration", {
+    overlayKey: "timer",
+    config: { seconds: 90_061, showHours: true, timerAutoStart: false }
+  });
+  assert.equal(document.getElementById("timer-value").textContent, "25:01:01");
+
+  sendCardMessage(window, "configuration", {
+    overlayKey: "timer",
+    config: { seconds: 90_061, showHours: false, timerAutoStart: false }
+  });
+  assert.equal(document.getElementById("timer-value").textContent, "1501:01");
+
   sendCardMessage(window, "configuration", {
     overlayKey: "timer",
     config: {
@@ -307,6 +420,42 @@ test("le timer standard applique chaque champ et son démarrage automatique", as
   });
   await new Promise((resolve) => setTimeout(resolve, 1100));
   assert.equal(document.getElementById("timer-value").textContent, "00:03");
+
+  dom.window.close();
+});
+
+test("les deux timers conservent chacun leur propre titre", async () => {
+  const dom = await loadOverlay("multiplier-timer", {
+    theme: "classic",
+    timerAutoStart: "false"
+  });
+  const { window } = dom;
+  const { document } = window;
+
+  sendCardMessage(window, "configuration", {
+    overlayKey: "multiplierTimer",
+    config: {
+      title: "BONUS PERSONNALISÉ",
+      seconds: 120,
+      multiplier: 3,
+      showHours: false,
+      timerAutoStart: false
+    }
+  });
+  sendCardMessage(window, "multiplier-timer", {
+    operation: "set",
+    seconds: 90,
+    multiplier: 3,
+    label: "TITRE DU TIMER STANDARD"
+  });
+
+  assert.equal(
+    document.getElementById("multiplier-timer-label").textContent,
+    "BONUS PERSONNALISÉ"
+  );
+  assert.equal(document.getElementById("multiplier-timer-value").textContent, "01:30");
+  assert.equal(document.getElementById("multiplier-value").textContent, "X3");
+  assert.equal(document.getElementById("timer-label").textContent, "TEMPS RESTANT");
 
   dom.window.close();
 });
@@ -416,6 +565,21 @@ test("tous les champs visuels de la roue atteignent son moteur", async () => {
   assert.equal(machine.style.getPropertyValue("--wheel-text-height"), "210px");
   assert.equal(machine.style.getPropertyValue("--wheel-angle-offset"), "7deg");
   assert.equal(machine.style.getPropertyValue("--wheel-spin-duration"), "8s");
+
+  sendCardMessage(window, "wheel", {
+    choices: ["RÉSULTAT A", "RÉSULTAT B"],
+    colors: ["#aa0000", "#00aa00"],
+    winnerIndex: 1,
+    winner: "RÉSULTAT B",
+    settings: { spinDuration: 1, alwaysVisible: true, soundActive: false },
+    design: "classic"
+  });
+  assert.deepEqual(
+    [...document.querySelectorAll(".segment-label")].map((label) => label.textContent),
+    ["RÉSULTAT A", "RÉSULTAT B"]
+  );
+  assert.equal(document.documentElement.dataset.wheelDesign, "classic");
+  assert.equal(document.getElementById("wheel").style.getPropertyValue("--wheel-spin-rotation"), "2610deg");
 
   dom.window.close();
 });

@@ -105,6 +105,24 @@
   gap: 3px;
 }
 
+.match-overlay-guide > header > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+
+.match-overlay-guide .match-overlay-guide-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.match-overlay-guide-actions small {
+  color: #67e8f9;
+  font-size: 9px;
+  font-weight: 850;
+}
+
 .match-overlay-guide > header strong {
   color: #fff;
   font-size: 13px;

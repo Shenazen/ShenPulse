@@ -143,6 +143,19 @@ function actionDescription(action) {
       return `${timerOperationLabel(config.operation)} · ${config.seconds || 0}s · ${config.label || "Minuteur"}`;
     case "wheel.spin":
       return Array.isArray(config.choices) ? config.choices.join(", ") : "Roue";
+    case "action.group": {
+      const actionCount = Array.isArray(config.actionIds)
+        ? new Set(config.actionIds.map(String).filter(Boolean)).size
+        : 0;
+      if (config.mode !== "random") {
+        return `Toutes · ${actionCount} action${actionCount > 1 ? "s" : ""}`;
+      }
+      const randomCount = Math.min(
+        actionCount,
+        Math.max(1, Math.floor(Number(config.randomCount) || 1))
+      );
+      return `${randomCount} au hasard sur ${actionCount}`;
+    }
     case "overlay.match":
       return MATCH_OVERLAYS.find((entry) => entry[2] === config.match)?.[1] || "Animation Match";
     case "game.effect":
@@ -449,7 +462,7 @@ function renderActions() {
             <div>
               <label class="field"><span>@ du viewer test</span><input name="username" value="test_viewer" required></label>
               <label class="field"><span>Nom affiché</span><input name="nickname" value="Spectateur test" required></label>
-              <label class="field"><span>Quantité / likes</span><input name="count" type="number" min="1" value="${simulatorType === "like" ? 25 : 5}"></label>
+              <label class="field"><span>${simulatorType === "like" ? "Nombre de likes" : simulatorType === "gift" ? "Nombre de cadeaux" : "Quantité"}</span><input name="count" type="number" min="1" value="${simulatorType === "like" ? 25 : 1}" ${["gift", "like"].includes(simulatorType) ? "" : "disabled"}></label>
               <label class="field"><span>Valeur (hors cadeau)</span><input name="value" type="number" min="0" value="5" ${simulatorType === "gift" ? "disabled" : ""}></label>
               ${giftPickerField("giftName", "Cadeau", "Rose", simulatorType === "gift" ? "" : "disabled")}
               <label class="field"><span>Message</span><input name="message" value="!help" ${simulatorType === "chat" ? "" : "disabled"}></label>

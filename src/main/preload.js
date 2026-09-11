@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld("shenPulse", {
   },
   restartServers: () => invoke("server:restart"),
   rotatePublicOverlayUrls: () => invoke("overlay:public-urls-rotate"),
+  rotateMatchOverlayUrl: () => invoke("overlay:match-url-rotate"),
   upsert: (collection, item) => invoke("entity:upsert", collection, item),
   remove: (collection, id) => invoke("entity:remove", collection, id),
   saveConnection: (connection) => invoke("connection:save", connection),
@@ -87,6 +88,12 @@ contextBridge.exposeInMainWorld("shenPulse", {
   configureGame: (id, config) => invoke("game:configure", id, config),
   publishDealHostState: (state) =>
     invoke("game:deal-host-state", state),
+  brumeluneLan: {
+    start: (payload) => invoke("game:brumelune-lan:start", payload),
+    update: (payload) => invoke("game:brumelune-lan:update", payload),
+    poll: () => invoke("game:brumelune-lan:poll"),
+    stop: () => invoke("game:brumelune-lan:stop")
+  },
   initializeGameInteractions: (id) =>
     invoke("game:initialize-interactions", id),
   saveGameInteraction: (id, rule) =>

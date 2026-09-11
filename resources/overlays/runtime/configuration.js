@@ -1,5 +1,4 @@
 "use strict";
-
 /**
  * Paramètres, état et configuration commune du runtime overlay.
  *
@@ -8,13 +7,20 @@
  */
 
 const parameters = new URLSearchParams(location.search);
+const matchSourceRoute = /^\/match\/(\d{12})\/([A-Za-z0-9_-]{32,128})\/?$/i.exec(location.pathname);
+const publicMatchSourceRoute = /^\/m\/(\d{12})\/([A-Za-z0-9_-]{24,128})\/?$/i.exec(location.pathname);
+const matchSourceBasePath = matchSourceRoute ? `/match/${matchSourceRoute[1]}/${matchSourceRoute[2]}` : "";
+const publicMatchAccountNumber = publicMatchSourceRoute?.[1] || "";
+const publicMatchChannel = publicMatchSourceRoute?.[2] || "";
+const isPublicMatchSource = Boolean(publicMatchSourceRoute);
 const overlayCatalog = globalThis.ShenPulseOverlayCatalog;
 if (!overlayCatalog) {
   throw new Error("Le catalogue commun des overlays n'est pas chargé.");
 }
-const viewName = parameters.get("view") || "alerts";
+const viewName = matchSourceRoute || isPublicMatchSource ? "match"
+  : parameters.get("view") || "alerts";
 const token = parameters.get("token") || "";
-const relayChannel = parameters.get("channel") || "";
+const relayChannel = publicMatchChannel || parameters.get("channel") || "";
 const relayDatabaseUrl =
   "https://shenazenoverlay-default-rtdb.firebaseio.com";
 const mediaScreen = Math.min(
@@ -30,7 +36,9 @@ let themeName = parameters.get("theme") || "classic";
 let jarModel = parameters.get("model") || "fantasy";
 let wheelDesign = parameters.get("design") || "classic";
 const leaderboardKind = parameters.get("kind") === "tappers" ? "tappers" : "donors";
-const matchName = parameters.get("match") || "x2";
+const matchName = matchSourceRoute || isPublicMatchSource
+  ? "player"
+  : parameters.get("match") || "x2";
 let matchVariant = parameters.get("variant") || "tikcontrol";
 let overlayScale = Math.min(1.8, Math.max(0.5, Number(parameters.get("scale") || 100) / 100));
 let overlayX = Math.min(1000, Math.max(-1000, Number(parameters.get("x") || 0)));
@@ -120,7 +128,7 @@ let wheelRuntimeSettings = {
   resultDuration: Number(parameters.get("resultDuration") || 4)
 };
 const activeView = document.getElementById(`${viewName}-view`) || document.getElementById("alerts-view");
-activeView.classList.add("active");
+activeView.classList.add("active"); configureNativeOverlayCanvas(viewName, activeView, overlayCatalog); configureLikeGoalViewport(viewName, activeView);
 document.documentElement.dataset.theme = themeName;
 document.documentElement.dataset.jarModel = jarModel;
 document.documentElement.dataset.wheelDesign = wheelDesign;
@@ -149,7 +157,7 @@ document.documentElement.style.setProperty("--leaderboard-name-color", parameter
 document.documentElement.style.setProperty("--leaderboard-score-color", parameters.get("scoreColor") || "#ffe575");
 document.documentElement.style.setProperty("--leaderboard-rank-color", parameters.get("rankColor") || "#ffe575");
 document.documentElement.style.setProperty("--leaderboard-row-opacity", `${leaderboardRowOpacity / 100}`);
-activeView.style.fontFamily = parameters.get("font") || "Inter";
+activeView.style.fontFamily = overlayFontStack(parameters.get("font"));
 activeView.style.direction = parameters.get("rtl") === "true" ? "rtl" : "ltr";
 activeView.style.filter = `saturate(${Math.min(200, Math.max(0, Number(parameters.get("saturation") || 100)))}%) hue-rotate(${Math.min(180, Math.max(-180, Number(parameters.get("hue") || 0)))}deg)`;
 activeView.classList.toggle("overlay-without-shadow", !showShadow);
@@ -232,6 +240,8 @@ let matchSourceInactive = document.visibilityState === "hidden";
 let matchActivationLastFrameAt = 0;
 let matchLastRestartAt = 0;
 let matchPlaybackQueue = null;
+let publicMatchRelayDocument = {};
+let publicMatchRelayReady = false;
 const matchPlaybackRequestIds = new Set();
 
 const MATCH_SOURCE_SUSPEND_GAP_MS = 3000;
@@ -544,7 +554,7 @@ function updatePreviewConfiguration(payload = {}) {
   document.documentElement.style.setProperty("--leaderboard-score-color", payload.scoreColor || parameters.get("scoreColor") || "#ffe575");
   document.documentElement.style.setProperty("--leaderboard-rank-color", payload.rankColor || parameters.get("rankColor") || "#ffe575");
   document.documentElement.style.setProperty("--leaderboard-row-opacity", `${leaderboardRowOpacity / 100}`);
-  activeView.style.fontFamily = payload.font || parameters.get("font") || "Inter";
+  activeView.style.fontFamily = overlayFontStack(payload.font || parameters.get("font"));
   activeView.style.direction = String(payload.rtl) === "true" ? "rtl" : "ltr";
   activeView.dataset.layout = payload.layout || activeView.dataset.layout || "wide";
   const saturation = previewNumber(payload, "saturation", 100, 0, 200);

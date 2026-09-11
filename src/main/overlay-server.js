@@ -6,15 +6,23 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const { URL } = require("node:url");
 const { LocalWebSocketServer } = require("./local-websocket");
+const { MatchSourceService } = require("./match-source-service");
 const { safeString, timingSafeToken } = require("./utils");
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
 
-function overlayViewAcceptsChannel(view, channel, payload = {}, screen = 0) {
+function overlayViewAcceptsChannel(
+  view,
+  channel,
+  payload = {},
+  screen = 0,
+  leaderboardKind = ""
+) {
   return overlayCatalog.acceptsChannel({
     view,
     channel,
     payload,
     screen,
+    leaderboardKind,
     hasMediaScreen: Number(screen) >= 1 && Number(screen) <= 8
   });
 }
@@ -104,6 +112,12 @@ class OverlayServer {
     this.webSockets = null;
     this.apiWebSockets = null;
     this.accessTimer = null;
+    this.matchSource = new MatchSourceService({
+      store,
+      staticDirectory,
+      hasAccess: () => hasProOverlayAccess(this.store.getState()),
+      normalizePlayback: normalizeMatchPlaybackRequest
+    });
   }
 
   async start() {
@@ -168,6 +182,7 @@ class OverlayServer {
     this.apiWebSockets?.close();
     for (const client of this.sseClients) client.response.end();
     this.sseClients.clear();
+    this.matchSource.clear();
     await Promise.all([this.#closeServer(this.server), this.#closeServer(this.apiServer)]);
     this.server = null;
     this.apiServer = null;
@@ -196,6 +211,9 @@ class OverlayServer {
       proAccess: hasProOverlayAccess(state),
       includeRestricted
     });
+    overlayUrls.matchPlayer = this.matchSource.sourceUrl(base, {
+      includeRestricted
+    });
     return {
       ...overlayUrls,
       api: `ws://127.0.0.1:${settings.apiPort}/?token=${encodeURIComponent(
@@ -219,7 +237,8 @@ class OverlayServer {
           client.view,
           channel,
           payload,
-          client.screen
+          client.screen,
+          client.leaderboardKind
         )
       ) {
         continue;
@@ -243,6 +262,10 @@ class OverlayServer {
     return payload;
   }
 
+  refreshAccess() {
+    this.#enforceOverlayAccess();
+  }
+
   publishEvent(event) {
     this.publish("event", event);
     this.apiWebSockets?.broadcast({ event: event.type, data: event });
@@ -264,6 +287,31 @@ class OverlayServer {
 
     if (url.pathname === "/health") {
       return this.#json(response, 200, { ok: true, service: "ShenPulse Overlay" });
+    }
+    const matchBridge = this.matchSource.parseBridge(url.pathname);
+    if (matchBridge) {
+      return this.matchSource.handleBridgeRequest({
+        credentials: matchBridge,
+        url,
+        request,
+        response
+      });
+    }
+    const matchSource = this.matchSource.parse(url.pathname);
+    if (matchSource) {
+      return this.matchSource.handleSourceRequest({
+        credentials: matchSource,
+        url,
+        request,
+        response,
+        registerEventClient: (client) => {
+          this.sseClients.add(client);
+          request.on("close", () => this.sseClients.delete(client));
+        }
+      });
+    }
+    if (url.pathname.startsWith("/match-media/")) {
+      return this.matchSource.serveMedia(url, request, response);
     }
     const isOverlayDocument =
       url.pathname === "/" ||
@@ -337,7 +385,8 @@ class OverlayServer {
       });
       response.write(": ShenPulse connected\n\n");
       const screen = Math.round(Number(url.searchParams.get("screen")) || 0);
-      const client = { response, view, screen };
+      const leaderboardKind = String(url.searchParams.get("kind") || "");
+      const client = { response, view, screen, leaderboardKind };
       this.sseClients.add(client);
       request.on("close", () => this.sseClients.delete(client));
       return;
@@ -483,12 +532,20 @@ class OverlayServer {
   }
 
   #enforceOverlayAccess() {
-    if (hasProOverlayAccess(this.store.getState())) return;
+    const hasProAccess = hasProOverlayAccess(this.store.getState());
     for (const client of [...this.sseClients]) {
       if (!overlayViewRequiresPro(client.view)) continue;
+      const matchUrlStillValid =
+        !client.matchAccess ||
+        this.matchSource.isAuthorized(client.matchAccess);
+      if (hasProAccess && matchUrlStillValid) continue;
       try {
         client.response.write(
-          'event: access-revoked\ndata: {"reason":"subscription-required"}\n\n'
+          `event: access-revoked\ndata: ${JSON.stringify({
+            reason: hasProAccess
+              ? "match-url-regenerated"
+              : "subscription-required"
+          })}\n\n`
         );
         client.response.end();
       } catch {

@@ -125,7 +125,7 @@
   font-family: var(--wheel-font), sans-serif;
   font-size: var(--wheel-font-size);
   font-style: normal;
-  font-weight: 950;
+  font-weight: 900;
   line-height: var(--wheel-line-spacing);
   letter-spacing: var(--wheel-letter-spacing);
   overflow-wrap: anywhere;

@@ -3,7 +3,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
+  ShenPulseCore,
   clearSessionState,
+  defaultTestEventCount,
   readMontChiliadCounterEvent,
   recordEventStatistics,
   resolveLikeGoalCompletionChange,
@@ -11,12 +13,27 @@ const {
   synchronizeSessionWithTikTok
 } = require("../src/main/core");
 
+test("le simulateur envoie un seul cadeau par défaut", () => {
+  assert.equal(defaultTestEventCount("gift"), 1);
+  assert.equal(defaultTestEventCount("follow"), 1);
+  assert.equal(defaultTestEventCount("like"), 25);
+
+  const core = Object.create(ShenPulseCore.prototype);
+  core.store = {
+    getState: () => ({ settings: { tiktok: { username: "creator" } } })
+  };
+  assert.equal(core.createTestEvent("gift").data.repeatCount, 1);
+  assert.equal(core.createTestEvent("like").data.likeCount, 25);
+});
+
 function state() {
   return {
     session: {
       running: false,
       startedAt: null,
       startedBy: "",
+      tiktokRoomId: "",
+      tiktokInterruptedAt: null,
       activeConnectionIds: []
     },
     statistics: {
@@ -40,12 +57,15 @@ test("démarre automatiquement la session quand TikTok passe en LIVE", () => {
   const transition = synchronizeSessionWithTikTok(
     value,
     "live",
+    { roomId: "room-a" },
     "2026-07-27T12:00:00.000Z"
   );
   assert.equal(transition, "started");
   assert.equal(value.session.running, true);
   assert.equal(value.session.startedBy, "tiktok");
   assert.equal(value.session.startedAt, "2026-07-27T12:00:00.000Z");
+  assert.equal(value.session.tiktokRoomId, "room-a");
+  assert.equal(value.session.tiktokInterruptedAt, null);
   assert.deepEqual(value.session.activeConnectionIds, ["source_tiktok"]);
   assert.equal(value.statistics.sessionEvents, 0);
   assert.equal(value.statistics.sessionActions, 0);
@@ -53,24 +73,102 @@ test("démarre automatiquement la session quand TikTok passe en LIVE", () => {
   assert.deepEqual(value.statistics.sessionUniqueViewers, []);
 });
 
-test("arrête toute session dès que le compte TikTok n’est plus en LIVE", () => {
-  const automatic = state();
-  synchronizeSessionWithTikTok(automatic, "live");
-  assert.equal(synchronizeSessionWithTikTok(automatic, "offline"), "stopped");
-  assert.equal(automatic.session.running, false);
-  assert.equal(automatic.session.startedAt, null);
-  assert.deepEqual(automatic.session.activeConnectionIds, []);
+test("conserve tous les overlays pendant une coupure du même LIVE", () => {
+  const value = state();
+  synchronizeSessionWithTikTok(
+    value,
+    "live",
+    { roomId: "room-a" },
+    "2026-07-27T12:00:00.000Z"
+  );
+  value.statistics.sessionEvents = 37;
+  value.statistics.sessionLikes = 4616;
+  value.overlaySession.likeGoalCurrent = 4616;
+  value.overlaySession.timerSeconds = 5880;
+  value.overlaySession.leaderboards.tappers = [
+    { id: "alice", name: "Alice", avatarUrl: "", score: 4616 }
+  ];
 
-  const manual = state();
-  manual.session.running = true;
-  manual.session.startedBy = "manual";
-  manual.session.startedAt = "2026-07-27T12:00:00.000Z";
-  manual.session.activeConnectionIds = ["source_demo", "source_tiktok"];
-  assert.equal(synchronizeSessionWithTikTok(manual, "error"), "stopped");
-  assert.equal(manual.session.running, false);
-  assert.equal(manual.session.startedAt, null);
-  assert.equal(manual.session.startedBy, "");
-  assert.deepEqual(manual.session.activeConnectionIds, []);
+  assert.equal(
+    synchronizeSessionWithTikTok(
+      value,
+      "offline",
+      { roomId: "room-a" },
+      "2026-07-27T12:30:00.000Z"
+    ),
+    "interrupted"
+  );
+  assert.equal(value.session.running, true);
+  assert.equal(value.session.startedAt, "2026-07-27T12:00:00.000Z");
+  assert.equal(value.session.tiktokRoomId, "room-a");
+  assert.equal(
+    value.session.tiktokInterruptedAt,
+    "2026-07-27T12:30:00.000Z"
+  );
+  assert.deepEqual(value.session.activeConnectionIds, []);
+  assert.equal(value.statistics.sessionEvents, 37);
+  assert.equal(value.statistics.sessionLikes, 4616);
+  assert.equal(value.overlaySession.active, true);
+  assert.equal(value.overlaySession.likeGoalCurrent, 4616);
+  assert.equal(value.overlaySession.timerSeconds, 5880);
+  assert.equal(value.overlaySession.leaderboards.tappers[0].score, 4616);
+
+  assert.equal(
+    synchronizeSessionWithTikTok(
+      value,
+      "live",
+      { roomId: "room-a" },
+      "2026-07-27T12:30:04.000Z"
+    ),
+    "resumed"
+  );
+  assert.equal(value.session.running, true);
+  assert.equal(value.session.startedAt, "2026-07-27T12:00:00.000Z");
+  assert.equal(value.session.tiktokInterruptedAt, null);
+  assert.deepEqual(value.session.activeConnectionIds, ["source_tiktok"]);
+  assert.equal(value.statistics.sessionEvents, 37);
+  assert.equal(value.statistics.sessionLikes, 4616);
+  assert.equal(value.overlaySession.likeGoalCurrent, 4616);
+  assert.equal(value.overlaySession.timerSeconds, 5880);
+  assert.equal(value.overlaySession.leaderboards.tappers[0].score, 4616);
+});
+
+test("réinitialise les overlays uniquement quand TikTok ouvre une autre salle LIVE", () => {
+  const value = state();
+  synchronizeSessionWithTikTok(
+    value,
+    "live",
+    { roomId: "room-a" },
+    "2026-07-27T12:00:00.000Z"
+  );
+  value.statistics.sessionEvents = 37;
+  value.statistics.sessionLikes = 4616;
+  value.overlaySession.likeGoalCurrent = 4616;
+  synchronizeSessionWithTikTok(
+    value,
+    "offline",
+    { roomId: "room-a" },
+    "2026-07-27T13:00:00.000Z"
+  );
+
+  assert.equal(
+    synchronizeSessionWithTikTok(
+      value,
+      "live",
+      { roomId: "room-b" },
+      "2026-07-27T18:00:00.000Z"
+    ),
+    "started"
+  );
+  assert.equal(value.session.tiktokRoomId, "room-b");
+  assert.equal(value.session.startedAt, "2026-07-27T18:00:00.000Z");
+  assert.equal(value.statistics.sessionEvents, 0);
+  assert.equal(value.statistics.sessionLikes, 0);
+  assert.equal(value.overlaySession.likeGoalCurrent, 0);
+  assert.deepEqual(value.overlaySession.leaderboards, {
+    donors: [],
+    tappers: []
+  });
 });
 
 test("efface un ancien compteur LIVE lors d’un redémarrage", () => {
@@ -78,6 +176,8 @@ test("efface un ancien compteur LIVE lors d’un redémarrage", () => {
   value.session.running = true;
   value.session.startedAt = "2026-07-27T11:10:21.122Z";
   value.session.startedBy = "manual";
+  value.session.tiktokRoomId = "room-old";
+  value.session.tiktokInterruptedAt = "2026-07-27T11:20:00.000Z";
   value.session.activeConnectionIds = ["source_tiktok"];
 
   clearSessionState(value);
@@ -85,6 +185,8 @@ test("efface un ancien compteur LIVE lors d’un redémarrage", () => {
   assert.equal(value.session.running, false);
   assert.equal(value.session.startedAt, null);
   assert.equal(value.session.startedBy, "");
+  assert.equal(value.session.tiktokRoomId, "");
+  assert.equal(value.session.tiktokInterruptedAt, null);
   assert.deepEqual(value.session.activeConnectionIds, []);
 });
 

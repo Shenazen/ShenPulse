@@ -448,6 +448,7 @@ api.on("state-changed", (value) => {
   }
   if (refreshCurrentPage) render();
   else {
+    if (currentPage === "overlays") syncPublicOverlayRelayStatus();
     renderNavigation();
     syncChrome();
   }
@@ -456,8 +457,8 @@ api.on("state-changed", (value) => {
 api.on("public-overlay-relay-status", (status) => {
   if (!snapshot) return;
   snapshot.publicOverlayRelay = status;
-  if (currentPage === "overlays") render();
-  else syncChrome();
+  if (currentPage === "overlays") syncPublicOverlayRelayStatus(status);
+  syncChrome();
 });
 
 api.on("game-round-timeout", (entry) => {

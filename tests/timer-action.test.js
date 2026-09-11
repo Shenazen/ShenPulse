@@ -72,6 +72,39 @@ test("le runner transmet toutes les commandes du timer à l'overlay", async () =
   );
 });
 
+test("le runner route le timer multiplicateur sans modifier le timer standard", async () => {
+  const published = [];
+  const state = {
+    settings: { tts: {} },
+    overlaySession: {
+      hasData: true,
+      timerSeconds: 600,
+      timerLabel: "TIMER STANDARD"
+    }
+  };
+  const runner = createRunner(published, state);
+
+  const result = await runner.run(
+    {
+      type: "overlay.multiplier-timer",
+      config: {
+        operation: "set",
+        seconds: 90,
+        multiplier: 3,
+        label: "BONUS DISTINCT"
+      }
+    },
+    {}
+  );
+
+  assert.equal(published[0].event, "multiplier-timer");
+  assert.equal(result.remainingSeconds, 90);
+  assert.equal(result.multiplier, 3);
+  assert.equal(state.overlaySession.timerSeconds, 600);
+  assert.equal(state.overlaySession.timerLabel, "TIMER STANDARD");
+  assert.equal(state.overlaySession.multiplierTimerLabel, "BONUS DISTINCT");
+});
+
 test("les actions Match transmettent une lecture sérialisable au lecteur unique", async () => {
   const published = [];
   const runner = createRunner(published);
@@ -121,6 +154,24 @@ test("le runner persiste le timer avant de le diffuser", async () => {
   assert.ok(state.overlaySession.timerEndsAt > Date.now());
   assert.equal(state.overlaySession.timerPaused, false);
   assert.equal(result.endsAt, state.overlaySession.timerEndsAt);
+});
+
+test("le runner ne tronque pas un timer configuré sur plusieurs jours", async () => {
+  const published = [];
+  const state = { settings: { tts: {} }, overlaySession: {} };
+  const runner = createRunner(published, state);
+
+  const result = await runner.run(
+    {
+      type: "timer.add",
+      config: { operation: "set", seconds: 176_461 }
+    },
+    {}
+  );
+
+  assert.equal(state.overlaySession.timerSeconds, 176_461);
+  assert.equal(result.seconds, 176_461);
+  assert.equal(published[0].payload.remainingSeconds, 176_461);
 });
 
 test("le runner signale les changements persistés du timer", async () => {

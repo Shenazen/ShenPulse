@@ -407,14 +407,14 @@ test("les cartes séparent la source HTTPS LIVE Studio de la source OBS locale",
   assert.match(renderer, /Sources pour TikTok LIVE Studio et OBS/);
 });
 
-test("les vidéos Match utilisent un lecteur local unique avec une file d’attente", () => {
+test("les vidéos Match utilisent un lecteur local exclusif et protégé par compte", () => {
   const firebaseConfig = fs.readFileSync(
     path.join(root, "firebase.json"),
     "utf8"
   );
 
   const definitions = overlayCatalog.definitionsWithUrls({
-    publicUrls: { matchX2: "https://public.invalid/match" },
+    publicUrls: { matchPlayer: "https://public.invalid/m/123/channel" },
     localUrls: { matchPlayer: "http://127.0.0.1/match-player" }
   });
   const matchDefinitions = definitions.filter(
@@ -424,18 +424,21 @@ test("les vidéos Match utilisent un lecteur local unique avec une file d’atte
   assert.ok(
     matchDefinitions.every(
       (definition) =>
-        definition.delivery === "local" &&
-        definition.url === "http://127.0.0.1/match-player"
+        definition.delivery === "public" &&
+        definition.url === "https://public.invalid/m/123/channel"
     )
   );
   assert.match(renderer, /Toujours garder actif/);
   assert.match(renderer, /Source Lien protégée/);
-  assert.match(renderer, /vidéos Match restent locales dans ShenPulse/);
+  assert.match(renderer, /L’URL HTTPS contient le numéro unique du compte/);
   assert.match(renderer, /ShenPulse doit rester ouvert avec un abonnement Pro actif/);
-  assert.match(renderer, /Chaque nouvel appui attend la fin réelle/);
+  assert.match(renderer, /Chaque nouvel appui arrête la vidéo active et relance la nouvelle à 0/);
+  assert.match(renderer, /Régénérer l’URL Match/);
   assert.match(renderer, /type: "overlay\.match"/);
   assert.match(overlayRuntime, /matchPlaybackQueue\?\.enqueue\(request\)/);
-  assert.match(overlayRuntime, /video\.addEventListener\("ended", finishMatchPlayback\)/);
+  assert.match(overlayRuntime, /matchTicketUrl\(request\)/);
+  assert.match(overlayRuntime, /\/match-bridge\//);
+  assert.match(overlayRuntime, /video\.addEventListener\("ended", \(\) =>/);
   assert.doesNotMatch(renderer, /download-match-video|exportMatchVideo/);
   assert.match(firebaseConfig, /media\/video\/\*\*/);
 });
@@ -532,7 +535,7 @@ test("la roue et son son démarrent immédiatement puis le son s'arrête avec la
 test("le Like Goal montre le palier atteint avant de calculer le suivant", () => {
   assert.match(
     overlayRuntime,
-    /renderLikeGoal\(\{ preserveTarget: true, forceVisible: true \}\)/
+    /renderLikeGoal\(\{ preserveTarget: true, forceVisible: true, animate: true \}\)/
   );
   assert.match(
     overlayRuntime,
@@ -605,11 +608,31 @@ test("le bouton des sources suit la visibilité de sa page", () => {
 
 test("la page overlays ne recrée pas ses iframes pour un état sans rapport", () => {
   assert.match(renderer, /function overlayPageStateSignature\(value\)/);
+  assert.match(renderer, /function overlayRelayPageSignature\(value\)/);
+  const relaySignatureStart = renderer.indexOf(
+    "function overlayRelayPageSignature(value)"
+  );
+  const relaySignatureEnd = renderer.indexOf(
+    "function overlayPageStateSignature(value)",
+    relaySignatureStart
+  );
+  const relaySignature = renderer.slice(relaySignatureStart, relaySignatureEnd);
+  assert.doesNotMatch(relaySignature, /connected|status|lastError|updatedAt/);
   assert.match(
     renderer,
     /const refreshOverlayPage =\s*currentPage === "overlays"[\s\S]*overlayPageStateSignature\(snapshot\) !== overlayPageStateSignature\(value\)/
   );
   assert.match(renderer, /refreshGamePage \|\|\s*refreshOverlayPage \|\|/);
+  const relayStatusStart = renderer.indexOf(
+    'api.on("public-overlay-relay-status"'
+  );
+  const relayStatusEnd = renderer.indexOf(
+    'api.on("game-round-timeout"',
+    relayStatusStart
+  );
+  const relayStatusHandler = renderer.slice(relayStatusStart, relayStatusEnd);
+  assert.match(relayStatusHandler, /syncPublicOverlayRelayStatus\(status\)/);
+  assert.doesNotMatch(relayStatusHandler, /render\(\)/);
 });
 
 test("les WINS natifs actualisent les aperçus sans reconstruire la page du jeu", () => {
@@ -703,7 +726,11 @@ test("les sources OBS utilisent toute leur hauteur et contiennent les widgets", 
   );
   assert.match(
     overlayCss,
-    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.timer-panel[\s\S]*calc\(\(100vh - 24px\) \* 1\.825\)/
+    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.timer-panel[\s\S]*width:\s*613\.2px;[\s\S]*height:\s*336px;/
+  );
+  assert.match(
+    overlayCss,
+    /\.view\.active\.native-overlay-canvas[\s\S]*scale\(var\(--native-canvas-scale, 1\)\)/
   );
   assert.match(
     overlayCss,
@@ -828,7 +855,7 @@ test("les cartes ne saturent pas les connexions réservées aux aperçus live", 
   );
   assert.match(
     overlayRuntime,
-    /setupOverlayDesign\(\);\s*renderTimer\(\);[\s\S]*if \(isCatalogPreview\) return;[\s\S]*fetch\(`\/api\/state/
+    /setupOverlayDesign\(\);\s*renderTimer\(\);[\s\S]*if \(isCatalogPreview\) \{[\s\S]*markOverlayReady\(\);[\s\S]*return;[\s\S]*const stateUrl =[\s\S]*`\/api\/state/
   );
   assert.match(renderer, /data-overlay-src="\$\{escapeHtml\(runtimeUrl\)\}"/);
   assert.match(renderer, /new IntersectionObserver\([\s\S]*queueDeferredOverlayPreview/);
@@ -843,10 +870,19 @@ test("les cartes ne saturent pas les connexions réservées aux aperçus live", 
 });
 
 test("les aperçus et sources reprennent la session overlay courante ou précédente", () => {
-  assert.match(overlayRuntime, /function hydrateOverlaySession\(state = \{\}\)/);
+  assert.match(
+    overlayRuntime,
+    /function hydrateOverlaySession\(state = \{\}, options = \{\}\)/
+  );
   assert.match(overlayRuntime, /runtime\.leaderboards\?\.\[leaderboardKind\]/);
   assert.match(overlayRuntime, /overlayChannels\["session-state"\] = hydrateOverlaySession/);
   assert.match(renderer, /function postOverlayPreviewEvent\(channel, payload\)/);
+  assert.match(renderer, /function hydrateOverlayPreviewFrame\(frame\)/);
+  assert.match(renderer, /window\.hydrateOverlayPreviewFrame\?\.\(iframe\)/);
+  assert.match(
+    renderer,
+    /hydrateOverlayPreviewFrame\(frame\)[\s\S]*"session-state"[\s\S]*snapshot\?\.state\?\.overlaySession/
+  );
   assert.match(renderer, /postOverlayPreviewEvent\("event", event\)/);
   assert.match(renderer, /postOverlayPreviewEvent\(\s*"session-state"/);
 });

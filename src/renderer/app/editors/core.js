@@ -225,6 +225,44 @@ function syncActionEditorVisibility() {
       );
     });
   }
+  syncActionGroupEditor();
+}
+
+function syncActionGroupEditor() {
+  const active =
+    dialogBody.querySelector("[name='actionType']")?.value === "action.group";
+  const mode = dialogBody.querySelector(
+    '[name="actionGroupMode"]'
+  )?.value;
+  if (!mode) return;
+  const randomCountField = dialogBody.querySelector(
+    "[data-action-group-random-count]"
+  );
+  setEditorConditionalVisibility(
+    randomCountField,
+    active && mode === "random"
+  );
+  const selectedCount = dialogBody.querySelectorAll(
+    '[name="groupActionIds"]:checked'
+  ).length;
+  const randomCountInput = randomCountField?.querySelector(
+    '[name="actionGroupRandomCount"]'
+  );
+  if (!randomCountInput) return;
+  const maximum = Math.max(1, selectedCount);
+  randomCountInput.max = String(maximum);
+  if (Number(randomCountInput.value) > maximum) {
+    randomCountInput.value = String(maximum);
+  }
+  const count = Math.max(1, Number(randomCountInput.value) || 1);
+  const help = randomCountField.querySelector(
+    "[data-action-group-random-count-help]"
+  );
+  if (help) {
+    help.textContent = selectedCount
+      ? `Exactement ${count} action${count > 1 ? "s" : ""} sera${count > 1 ? "ont" : ""} tirée${count > 1 ? "s" : ""} parmi ${selectedCount} à chaque exécution.`
+      : "Sélectionnez d’abord les actions disponibles pour le tirage.";
+  }
 }
 
 function syncTriggerSelectionEditor() {

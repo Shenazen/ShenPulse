@@ -30,10 +30,16 @@ const {
 
 const root = path.join(__dirname, "..");
 
-test("recrée les 37 jeux conservés sans doublon et avec les tarifs réels", () => {
+test("conserve les jeux existants et ajoute Fortnite et Brumelune sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 37);
-  assert.equal(new Set(games.map((game) => game.id)).size, 37);
+  assert.equal(games.length, 39);
+  assert.equal(new Set(games.map((game) => game.id)).size, 39);
+  assert.equal(
+    games.filter((game) => !["fortnite", "brumelune"].includes(game.id)).length,
+    37
+  );
+  assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
+  assert.equal(games.find((game) => game.id === "brumelune")?.source, "ShenPulse Original");
   assert.ok(games.some((game) => game.id === "gtav-montchiliad"));
   assert.equal(
     games.find((game) => game.id === "gtav-montchiliad")?.installerVersion,

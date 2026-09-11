@@ -7,10 +7,20 @@ const { EventEmitter } = require("node:events");
 const { id, safeString } = require("./utils");
 const { loadShenazenGameCatalog } = require("./game-catalog");
 const { assertGameAccess } = require("./game-access");
+const { assertAdminAccount } = require("./account-access");
 const { SimpleTcpServerBridge } = require("./simple-tcp-server-bridge");
+const {
+  WindowsInputService,
+  normalizeWindowsInputSequence
+} = require("./windows-input-service");
 
 class GameHub extends EventEmitter {
-  constructor({ store, packsDirectory, resourcesDirectory }) {
+  constructor({
+    store,
+    packsDirectory,
+    resourcesDirectory,
+    windowsInputService
+  }) {
     super();
     this.store = store;
     this.packsDirectory = packsDirectory;
@@ -19,6 +29,8 @@ class GameHub extends EventEmitter {
     this.sockets = new Map();
     this.serverBridges = new Map();
     this.minecraftRuntime = null;
+    this.windowsInputService =
+      windowsInputService || new WindowsInputService();
   }
 
   setMinecraftRuntime(runtime) {
@@ -93,7 +105,9 @@ class GameHub extends EventEmitter {
   }
 
   assertAccess(packId) {
-    return assertGameAccess(this.store.getState(), this.#pack(packId));
+    const pack = this.#pack(packId);
+    if (pack.ownerOnly === true) assertAdminAccount(this.store);
+    return assertGameAccess(this.store.getState(), pack);
   }
 
   initializeDefaultInteractions(packId) {
@@ -187,6 +201,9 @@ class GameHub extends EventEmitter {
       }
     }
     if (connector.type === "udp") return { ok: true, connectionless: true };
+    if (connector.type === "windows-input") {
+      return this.windowsInputService.status(connector.processName);
+    }
     if (connector.type === "rcon") {
       const password = this.#connectorSecret(pack, connector);
       await rconRequest(connector, password, "list");
@@ -331,6 +348,15 @@ class GameHub extends EventEmitter {
         pack.id,
         payload.effect.commands
       );
+    } else if (connector.type === "windows-input") {
+      result = {
+        status: "success",
+        ...(await this.windowsInputService.play(
+          connector.processName,
+          effect.inputSequence,
+          connector.keyLayout
+        ))
+      };
     } else {
       throw new Error(`Connecteur de jeu inconnu : ${connector.type}`);
     }
@@ -358,6 +384,15 @@ class GameHub extends EventEmitter {
 
   #connector(pack) {
     const override = this.store.getState().game.connectorOverrides?.[pack.id] || {};
+    if (pack.connector?.type === "windows-input") {
+      return {
+        ...pack.connector,
+        keyLayout:
+          String(override.keyLayout || "").toLowerCase() === "azerty"
+            ? "azerty"
+            : "wasd"
+      };
+    }
     return { ...(pack.connector || {}), ...override };
   }
 
@@ -676,6 +711,9 @@ function validatePack(pack) {
   for (const effect of pack.effects) {
     if (!effect.id || ids.has(effect.id)) throw new Error(`Effet invalide dans ${pack.id}`);
     ids.add(effect.id);
+    if (pack.connector.type === "windows-input") {
+      normalizeWindowsInputSequence(effect.inputSequence);
+    }
   }
 }
 

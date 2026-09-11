@@ -220,6 +220,40 @@ test("conserve l’instantané complet pour un compte connecté", () => {
   );
 });
 
+test("ne transmet les jeux ownerOnly qu’au compte propriétaire vérifié", () => {
+  const snapshot = {
+    state: { activity: [] },
+    packs: [
+      { id: "regular" },
+      { id: "fortnite", ownerOnly: true }
+    ]
+  };
+  const viewerSnapshot = snapshotForRenderer(
+    snapshot,
+    createStore({ authenticated: true })
+  );
+  assert.deepEqual(
+    viewerSnapshot.packs.map((pack) => pack.id),
+    ["regular"]
+  );
+
+  const ownerState = {
+    settings: {
+      account: {
+        email: "alexandre.leuridan@gmail.com",
+        emailVerified: true,
+        uid: "owner-uid",
+        refreshTokenSecretId: "owner-secret"
+      }
+    }
+  };
+  const ownerStore = {
+    getState: () => ownerState,
+    getSecret: (id) => (id === "owner-secret" ? "refresh-token" : "")
+  };
+  assert.equal(snapshotForRenderer(snapshot, ownerStore), snapshot);
+});
+
 test("coupe les événements privés envoyés au rendu en mode invité", () => {
   const guestStore = createStore();
   assert.equal(

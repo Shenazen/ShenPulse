@@ -12,6 +12,7 @@ const {
   normalizeOverlaySession
 } = require("./overlay-session-state");
 const { normalizeIrlSettings } = require("./shelly-service");
+const { normalizeMatchAccess } = require("./match-access");
 
 const ACCOUNT_WORKSPACE_SCHEMA_VERSION = 1;
 const LEGACY_AUTOMATIC_DEMO_VIEWER_IDS = new Set([
@@ -30,6 +31,7 @@ const ACCOUNT_SETTING_KEYS = [
   "apiToken",
   "historyLimit",
   "startOverlayServer",
+  "matchAccess",
   "publicOverlayRelay",
   "minimizeToTray",
   "launchAtStartup",
@@ -62,18 +64,80 @@ class StateStore {
   }
 
   #readJson(filePath, fallback) {
+    const primaryExists = fs.existsSync(filePath);
     try {
-      if (!fs.existsSync(filePath)) return fallback;
-      return JSON.parse(fs.readFileSync(filePath, "utf8"));
+      if (primaryExists) return this.#parseJsonFile(filePath).value;
     } catch (error) {
       const corruptPath = `${filePath}.corrupt-${Date.now()}`;
       try {
         fs.copyFileSync(filePath, corruptPath);
       } catch {
-        // The clean fallback is still usable.
+        // Recovery candidates can still be inspected.
       }
-      return fallback;
     }
+
+    const recovered = this.#latestValidJsonBackup(filePath);
+    if (!recovered) return fallback;
+    try {
+      this.#atomicWrite(filePath, recovered.content, false);
+    } catch {
+      // The parsed recovery remains usable even if restoring the file fails.
+    }
+    return recovered.value;
+  }
+
+  #parseJsonFile(filePath) {
+    const content = fs.readFileSync(filePath, "utf8");
+    if (!content.trim()) throw new Error("The JSON file is empty.");
+    const value = JSON.parse(content);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("The JSON file does not contain a valid object.");
+    }
+    return { content, value };
+  }
+
+  #latestValidJsonBackup(filePath) {
+    const directory = path.dirname(filePath);
+    const fileName = path.basename(filePath);
+    const stem = fileName.endsWith(".json")
+      ? fileName.slice(0, -".json".length)
+      : fileName;
+    let candidates = [];
+    try {
+      candidates = fs
+        .readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => entry.name)
+        .filter(
+          (name) =>
+            name === `${fileName}.bak` ||
+            (name.startsWith(`${fileName}.`) && name.endsWith(".tmp")) ||
+            (name.startsWith(`${stem}.before-`) && name.endsWith(".json")) ||
+            name.startsWith(`${fileName}.corrupt-`)
+        )
+        .map((name) => {
+          const candidatePath = path.join(directory, name);
+          return {
+            candidatePath,
+            modifiedAt: fs.statSync(candidatePath).mtimeMs,
+            priority: name === `${fileName}.bak` ? 2 : 1
+          };
+        })
+        .sort(
+          (left, right) =>
+            right.priority - left.priority || right.modifiedAt - left.modifiedAt
+        );
+    } catch {
+      return null;
+    }
+    for (const candidate of candidates) {
+      try {
+        return this.#parseJsonFile(candidate.candidatePath);
+      } catch {
+        // Try the next candidate.
+      }
+    }
+    return null;
   }
 
   #migrate() {
@@ -108,6 +172,9 @@ class StateStore {
       ...defaults.settings.publicOverlayRelay,
       ...(this.state.settings.publicOverlayRelay || {})
     };
+    this.state.settings.matchAccess = normalizeMatchAccess(
+      this.state.settings.matchAccess
+    );
     this.state.settings.tiktok = {
       ...defaults.settings.tiktok,
       ...(this.state.settings.tiktok || {})
@@ -275,6 +342,8 @@ class StateStore {
     this.state.session.running = false;
     this.state.session.startedAt = null;
     this.state.session.startedBy = "";
+    this.state.session.tiktokRoomId = "";
+    this.state.session.tiktokInterruptedAt = null;
     this.state.session.activeConnectionIds = [];
     this.state.session.game = clone(defaults.session.game);
     this.state.statistics = {
@@ -860,11 +929,45 @@ class StateStore {
     this.#atomicWrite(this.secretPath, JSON.stringify(this.secrets, null, 2));
   }
 
-  #atomicWrite(filePath, content) {
+  #atomicWrite(filePath, content, preserveBackup = true) {
+    JSON.parse(content);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    const temporaryPath = `${filePath}.${process.pid}.tmp`;
-    fs.writeFileSync(temporaryPath, content, { encoding: "utf8", mode: 0o600 });
+    const suffix = `${process.pid}-${Date.now()}-${Math.random()
+      .toString(16)
+      .slice(2)}`;
+    const temporaryPath = `${filePath}.${suffix}.tmp`;
+    this.#writeSyncedFile(temporaryPath, content);
+    const verified = this.#parseJsonFile(temporaryPath).content;
+    if (verified !== content) {
+      throw new Error("The ShenPulse state write could not be verified.");
+    }
+
+    if (preserveBackup && fs.existsSync(filePath)) {
+      try {
+        const previous = this.#parseJsonFile(filePath).content;
+        const backupPath = `${filePath}.bak`;
+        const backupTemporaryPath = `${backupPath}.${suffix}.tmp`;
+        this.#writeSyncedFile(backupTemporaryPath, previous);
+        if (this.#parseJsonFile(backupTemporaryPath).content !== previous) {
+          throw new Error("The ShenPulse backup is incomplete.");
+        }
+        fs.renameSync(backupTemporaryPath, backupPath);
+      } catch {
+        // An invalid previous file must never replace a valid backup.
+      }
+    }
+
     fs.renameSync(temporaryPath, filePath);
+  }
+
+  #writeSyncedFile(filePath, content) {
+    const descriptor = fs.openSync(filePath, "wx", 0o600);
+    try {
+      fs.writeFileSync(descriptor, content, "utf8");
+      fs.fsyncSync(descriptor);
+    } finally {
+      fs.closeSync(descriptor);
+    }
   }
 }
 

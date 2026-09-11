@@ -11,6 +11,7 @@ const ENTITY_GAME_ACTIONS = new Set([
   "open-url",
   "restart-servers",
   "rotate-public-overlay-urls",
+  "rotate-match-overlay-url",
   "add-rule",
   "edit-rule",
   "run-rule",
@@ -69,6 +70,21 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
       acceptSnapshot(result.snapshot);
       render();
     }, "Nouvelles URL publiques générées");
+  }
+  if (action === "rotate-match-overlay-url") {
+    if (
+      !(await confirmAction(
+        "Régénérer l’URL du lecteur Match ? L’ancienne source TikTok LIVE Studio ou OBS sera coupée immédiatement.",
+        { title: "Régénérer l’URL Match", confirmLabel: "Régénérer" }
+      ))
+    ) {
+      return;
+    }
+    return perform(async () => {
+      const result = await api.rotateMatchOverlayUrl();
+      acceptSnapshot(result.snapshot);
+      render();
+    }, "Nouvelle URL Match générée");
   }
   if (action === "add-rule") return openRuleEditor();
   if (action === "edit-rule") return openRuleEditor(snapshot.state.rules.find((item) => item.id === id));

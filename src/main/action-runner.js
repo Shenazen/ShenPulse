@@ -6,6 +6,7 @@ const { shell } = require("electron");
 const { clamp, safeString } = require("./utils");
 const { renderValue } = require("./template");
 const {
+  MAX_TIMER_SECONDS,
   applyOverlayOperation
 } = require("./overlay-session-state");
 
@@ -16,6 +17,8 @@ const TTS_LINK_PATTERN =
 const TTS_EVENT_DEDUPE_MS = 30 * 60 * 1000;
 const TTS_CONTENT_DEDUPE_MS = 30 * 1000;
 const TTS_DEDUPE_MAX_ENTRIES = 4000;
+const ACTION_GROUP_STACK = Symbol("shenpulse.actionGroupStack");
+const ACTION_GROUP_MAX_DEPTH = 20;
 
 function filterTtsChatComment(value, config = {}) {
   let text = safeString(value, 1000).trim();
@@ -95,7 +98,8 @@ class ActionRunner {
     notifyRenderer,
     onOverlayOperation = () => {},
     setTimeoutImpl = setTimeout,
-    nowImpl = Date.now
+    nowImpl = Date.now,
+    randomImpl = Math.random
   }) {
     this.store = store;
     this.overlayServer = overlayServer;
@@ -108,6 +112,7 @@ class ActionRunner {
     this.onOverlayOperation = onOverlayOperation;
     this.setTimeoutImpl = setTimeoutImpl;
     this.nowImpl = nowImpl;
+    this.randomImpl = randomImpl;
     this.wheelSpinActive = false;
     this.wheelSpinQueue = [];
     this.ttsReadMessages = new Map();
@@ -187,7 +192,7 @@ class ActionRunner {
     return runtime;
   }
 
-  async run(action, context) {
+  async run(action, context = {}) {
     const config = action.config || {};
     switch (action.type) {
       case "overlay.alert":
@@ -278,7 +283,11 @@ class ActionRunner {
           : "add";
         const payload = {
           operation,
-          seconds: clamp(config.seconds || 0, -86400, 86400),
+          seconds: clamp(
+            config.seconds || 0,
+            -MAX_TIMER_SECONDS,
+            MAX_TIMER_SECONDS
+          ),
           label: safeString(config.label || "Temps restant", 100)
         };
         const runtime = this.#applyOverlayOperation("timer", payload, {
@@ -291,6 +300,43 @@ class ActionRunner {
           payload.remainingSeconds = runtime.timerSeconds;
         }
         this.overlayServer.publish("timer", payload);
+        return payload;
+      }
+      case "overlay.multiplier-timer": {
+        const operation = [
+          "add",
+          "set",
+          "pause",
+          "resume",
+          "reset"
+        ].includes(String(config.operation || "add"))
+          ? String(config.operation || "add")
+          : "add";
+        const payload = {
+          operation,
+          seconds: clamp(
+            config.seconds || 0,
+            -MAX_TIMER_SECONDS,
+            MAX_TIMER_SECONDS
+          ),
+          multiplier: clamp(config.multiplier || 2, 1, 100),
+          label: safeString(config.label || "Bonus actif", 100)
+        };
+        const runtime = this.#applyOverlayOperation(
+          "multiplier-timer",
+          payload,
+          {
+            context,
+            originActionId: action.id || ""
+          }
+        );
+        if (runtime?.hasData) {
+          payload.endsAt = runtime.multiplierTimerEndsAt;
+          payload.paused = runtime.multiplierTimerPaused;
+          payload.remainingSeconds = runtime.multiplierTimerSeconds;
+          payload.multiplier = runtime.multiplierTimerMultiplier;
+        }
+        this.overlayServer.publish("multiplier-timer", payload);
         return payload;
       }
       case "wheel.spin": {
@@ -434,6 +480,8 @@ class ActionRunner {
         queueTimer.unref?.();
         return payload;
       }
+      case "action.group":
+        return this.#runActionGroup(action, config, context);
       case "overlay.match":
         return this.overlayServer.playMatch({
           match: safeString(config.match, 40),
@@ -589,6 +637,174 @@ class ActionRunner {
     }
   }
 
+  async #runActionGroup(action, config, context) {
+    const actionIds = [
+      ...new Set(
+        (Array.isArray(config.actionIds) ? config.actionIds : [])
+          .map(String)
+          .filter(Boolean)
+      )
+    ];
+    if (!actionIds.length) {
+      throw new Error("Ce groupe d’actions ne contient aucune action.");
+    }
+
+    const stack = Array.isArray(context[ACTION_GROUP_STACK])
+      ? context[ACTION_GROUP_STACK]
+      : [];
+    const groupId = safeString(action.id || "", 160);
+    if (groupId && stack.includes(groupId)) {
+      throw new Error(
+        `Référence circulaire détectée dans les groupes d’actions : ${[
+          ...stack,
+          groupId
+        ].join(" → ")}.`
+      );
+    }
+    if (stack.length >= ACTION_GROUP_MAX_DEPTH) {
+      throw new Error(
+        `Profondeur maximale de ${ACTION_GROUP_MAX_DEPTH} groupes d’actions atteinte.`
+      );
+    }
+
+    const actionsById = new Map(
+      (this.store.getState().rules || []).flatMap((rule) =>
+        (rule.actions || [])
+          .filter((entry) => entry?.id)
+          .map((entry) => [
+            String(entry.id),
+            {
+              action: entry,
+              name: safeString(rule.name || entry.name || entry.id, 200)
+            }
+          ])
+      )
+    );
+    const missingActionIds = actionIds.filter(
+      (actionId) => !actionsById.has(actionId)
+    );
+    let selectedActions = actionIds
+      .map((actionId) => actionsById.get(actionId))
+      .filter(Boolean);
+    if (!selectedActions.length) {
+      throw new Error(
+        "Les actions liées à ce groupe sont introuvables. Modifiez sa sélection."
+      );
+    }
+
+    const mode = config.mode === "random" ? "random" : "all";
+    if (mode === "random" && selectedActions.length > 1) {
+      selectedActions = [...selectedActions];
+      for (let index = selectedActions.length - 1; index > 0; index -= 1) {
+        const sampled = Number(this.randomImpl());
+        const bounded = Number.isFinite(sampled)
+          ? Math.min(0.999999999999, Math.max(0, sampled))
+          : 0;
+        const randomIndex = Math.floor(bounded * (index + 1));
+        [selectedActions[index], selectedActions[randomIndex]] = [
+          selectedActions[randomIndex],
+          selectedActions[index]
+        ];
+      }
+      selectedActions = selectedActions.slice(
+        0,
+        Math.min(
+          selectedActions.length,
+          Math.max(1, Math.floor(Number(config.randomCount) || 1))
+        )
+      );
+    }
+
+    const nextStack = [
+      ...stack,
+      groupId || `groupe-anonyme-${stack.length + 1}`
+    ];
+    const missingFailures = missingActionIds.map((actionId) => ({
+      actionId,
+      actionName: actionId,
+      error: new Error(`Action liée introuvable : ${actionId}.`)
+    }));
+    const outcomes = await Promise.all(
+      selectedActions.map(async ({ action: linkedAction, name: actionName }) => {
+        const hydratedAction = {
+          ...linkedAction,
+          config: renderValue(linkedAction.config || {}, context)
+        };
+        try {
+          const result = await this.run(hydratedAction, {
+            ...context,
+            [ACTION_GROUP_STACK]: nextStack
+          });
+          if (result?.skipped) {
+            const reason = String(result.reason || "action-skipped");
+            const message = reason === "irl-disabled"
+              ? "Interactions IRL désactivées dans la page PlugPlus."
+              : `Action ignorée : ${reason}.`;
+            return {
+              ok: false,
+              actionId: String(linkedAction.id || ""),
+              actionName,
+              error: new Error(message)
+            };
+          }
+          return {
+            ok: true,
+            actionId: String(linkedAction.id || ""),
+            actionName,
+            result
+          };
+        } catch (error) {
+          return {
+            ok: false,
+            actionId: String(linkedAction.id || ""),
+            actionName,
+            error
+          };
+        }
+      })
+    );
+    const succeeded = outcomes.filter(({ ok }) => ok);
+    const failures = [
+      ...missingFailures,
+      ...outcomes.filter(({ ok }) => !ok)
+    ];
+    const results = outcomes.map((outcome) =>
+      outcome.ok
+        ? outcome
+        : {
+            ok: false,
+            actionId: outcome.actionId,
+            actionName: outcome.actionName,
+            message: outcome.error?.message || String(outcome.error)
+          }
+    );
+
+    if (failures.length && !succeeded.length) {
+      const firstMessage = failures[0].error?.message || "Erreur inconnue";
+      throw new AggregateError(
+        failures.map(({ error }) => error),
+        `Le groupe d’actions a rencontré ${failures.length} erreur${
+          failures.length > 1 ? "s" : ""
+        } : ${firstMessage}`
+      );
+    }
+    return {
+      mode,
+      requested: actionIds.length,
+      selected: selectedActions.length,
+      executed: succeeded.length,
+      failed: failures.length,
+      partial: failures.length > 0,
+      actionIds: selectedActions.map(({ action: entry }) => String(entry.id || "")),
+      results,
+      failures: failures.map(({ actionId, actionName, error }) => ({
+        actionId,
+        actionName,
+        message: error?.message || String(error)
+      }))
+    };
+  }
+
   #localMediaUrl(value) {
     const source = safeString(value, 2000);
     if (!source.startsWith("/overlay/media/")) return source;
@@ -601,9 +817,10 @@ class ActionRunner {
     const url = String(config.url || "");
     if (!/^https?:\/\//i.test(url)) throw new Error("URL HTTP(S) requise.");
     const controller = new AbortController();
+    const timeoutMs = clamp(config.timeoutMs || 10000, 500, 30000);
     const timer = setTimeout(
       () => controller.abort(),
-      clamp(config.timeoutMs || 10000, 500, 30000)
+      timeoutMs
     );
     try {
       const response = await fetch(url, {
@@ -618,6 +835,13 @@ class ActionRunner {
       const text = await response.text();
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
       return { status: response.status, body: text.slice(0, 5000) };
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new Error(
+          `Délai HTTP dépassé après ${timeoutMs} ms pour ${url}. Augmentez le délai maximal de cette action.`
+        );
+      }
+      throw error;
     } finally {
       clearTimeout(timer);
     }

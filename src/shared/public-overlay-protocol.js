@@ -2,7 +2,7 @@
 
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
 
-const PUBLIC_OVERLAY_PROTOCOL_VERSION = 1;
+const PUBLIC_OVERLAY_PROTOCOL_VERSION = 2;
 const PUBLIC_OVERLAY_RELAY_PATH = "publicOverlayRelay";
 const DEFAULT_PUBLIC_OVERLAY_BASE_URL =
   "https://shenpulse-overlays.web.app";

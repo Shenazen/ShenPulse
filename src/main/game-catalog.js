@@ -30,6 +30,11 @@ const {
   MINECRAFT_SANDBOX_EFFECTS,
   MINECRAFT_SANDBOX_INTERACTION_CATALOG_VERSION
 } = require("./minecraft-game-catalog");
+const {
+  FORTNITE_DEFAULT_MAPPINGS,
+  FORTNITE_EFFECTS,
+  FORTNITE_INTERACTION_CATALOG_VERSION
+} = require("./fortnite-catalog");
 
 const LOCAL_BRIDGE = Object.freeze({
   type: "tcp",
@@ -195,6 +200,25 @@ const COIN_PUSHER_DEFAULT_MAPPINGS = Object.freeze(
 );
 
 const INTERNAL_GAMES = [
+  game("brumelune", "Veilleurs de Brumelune", {
+    artwork: "catalog/brumelune.png",
+    included: true,
+    requiresPro: true,
+    source: "ShenPulse Original",
+    description:
+      "Jeu social local à rôles cachés orchestré par ShenPulse : attribution privée, nuits automatisées, conseils, spectateurs et compagnons mobiles.",
+    tags: [
+      "abonnement requis",
+      "inclus",
+      "jeu local",
+      "rôles cachés"
+    ],
+    effects: [
+      "Ajouter 30 secondes au conseil",
+      "Jouer un signal de tension",
+      "Afficher un rappel public"
+    ]
+  }),
   game("coin-pusher", "Coin Pusher Live", {
     artwork: "catalog/coin-pusher.webp",
     price: 4.99,
@@ -232,6 +256,28 @@ const INTERNAL_GAMES = [
     included: true,
     requiresPro: true,
     effects: ["Soigner l'équipe", "Empoisonner", "Rencontre aléatoire", "Donner un objet", "Retirer un objet", "Téléportation", "Changer de Pokémon", "Combat surprise"]
+  }),
+  game("fortnite", "Fortnite", {
+    artworkUrl:
+      "https://resources.crowdcontrol.live/images/Fortnite/box.jpg",
+    included: true,
+    ownerOnly: true,
+    source: "Crowd Control · Fortnite Input Disrupts",
+    tags: [
+      "abonnement requis",
+      "inclus",
+      "Crowd Control",
+      "clavier PC"
+    ],
+    connector: {
+      type: "windows-input",
+      processName: "FortniteClient-Win64-Shipping.exe",
+      keyLayout: "wasd"
+    },
+    effects: FORTNITE_EFFECTS,
+    defaultMappings: FORTNITE_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      FORTNITE_INTERACTION_CATALOG_VERSION
   }),
   game("gtav-montchiliad", "GTA V Mont Chiliad", {
     artwork: "catalog/gtav-montchiliad.png",
@@ -381,6 +427,14 @@ const EXTERNAL_GUIDE_URLS = Object.freeze({
 });
 
 const GAME_GUIDES = Object.freeze({
+  brumelune: integratedGuide(
+    "Le jeu social complet est intégré à ShenPulse et fonctionne sans maître du jeu humain.",
+    [
+      "Ajoutez les joueurs et générez une composition équilibrée.",
+      "Choisissez l’écran partagé ou les compagnons sur le réseau local.",
+      "Distribuez les rôles en privé puis laissez ShenPulse orchestrer les phases."
+    ]
+  ),
   "coin-pusher": integratedGuide(
     "Le jeu est intégré à ShenPulse : aucune installation externe n’est nécessaire.",
     ["Configure les cadeaux et les valeurs des pièces.", "Teste le Plinko et le poussoir.", "Lance la fenêtre de jeu avant le LIVE."]
@@ -415,6 +469,32 @@ const GAME_GUIDES = Object.freeze({
       "Garde BizHawk, le client local et ShenPulse ouverts pendant le LIVE."
     ],
     sources: []
+  },
+  fortnite: {
+    mode: "input",
+    summary:
+      "Aucun mod n’est installé : ShenPulse reproduit les séquences clavier du pack Fortnite officiel de Crowd Control dans la fenêtre du jeu.",
+    steps: [
+      "Lance Fortnite sur PC et charge une partie jouable.",
+      "Conserve les touches clavier standard attendues par le pack Crowd Control.",
+      "Configure les interactions puis teste-les pendant que Fortnite est ouvert.",
+      "Active la session de jeu avant le LIVE."
+    ],
+    notes: [
+      "ShenPulse refuse l’envoi si le processus Fortnite exact n’est pas ouvert.",
+      "Les effets ciblent uniquement FortniteClient-Win64-Shipping.exe et ne modifient aucun fichier du jeu.",
+      "Les commandes dépendent des touches standard du pack : ZQSD/WASD, Maj, Espace, Ctrl, R, B, M et 1 à 5."
+    ],
+    sources: [
+      {
+        label: "Pack Fortnite Crowd Control",
+        url: "https://crowdcontrol.live/game/fortnite/"
+      },
+      {
+        label: "Guide officiel des Input Disrupts",
+        url: "https://crowdcontrol.live/guides/disrupts"
+      }
+    ]
   },
   "gtav-montchiliad": {
     mode: "native",
@@ -582,10 +662,10 @@ function game(id, name, options = {}) {
     id,
     name,
     publisher: "ShenPulse",
-    version: "1.0.0",
+    version: options.version || "1.0.0",
     description: options.description || `Interactions TikTok LIVE configurables pour ${name}.`,
     platform: "Windows",
-    tags: [
+    tags: options.tags || [
       "abonnement requis",
       included ? "inclus" : "achat unique",
       "shenazenoverlay"
@@ -598,6 +678,7 @@ function game(id, name, options = {}) {
     price: included ? 0 : Number(options.price || 19.99),
     currency: "EUR",
     source: options.source || "ShenazenOverlay",
+    ...(options.ownerOnly === true ? { ownerOnly: true } : {}),
     connector: { ...(options.connector || { type: "demo" }) },
     effects: (options.effects || []).map((effect, index) =>
       typeof effect === "string"

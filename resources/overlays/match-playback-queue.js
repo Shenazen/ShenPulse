@@ -6,41 +6,46 @@
       throw new TypeError("MatchPlaybackQueue exige une fonction onStart.");
     }
 
-    const pending = [];
     let current = null;
-
-    const startNext = () => {
-      if (current || !pending.length) return;
-      current = pending.shift();
-      try {
-        onStart(current);
-      } catch {
-        current = null;
-        startNext();
-      }
-    };
 
     return {
       enqueue(payload) {
-        pending.push(payload);
-        const position = pending.length + (current ? 1 : 0);
-        startNext();
-        return position;
+        const previous = current;
+        current = payload;
+        try {
+          onStart(current, previous);
+        } catch {
+          if (current === payload) current = null;
+          return "failed";
+        }
+        if (!previous) return "started";
+        return previous.match === payload.match &&
+          previous.variant === payload.variant
+          ? "restarted"
+          : "replaced";
       },
-      complete() {
+      complete(requestId = "") {
         if (!current) return false;
+        if (
+          requestId &&
+          current.requestId &&
+          current.requestId !== requestId
+        ) {
+          return false;
+        }
         current = null;
-        startNext();
         return true;
       },
       clear() {
-        pending.length = 0;
+        const hadCurrent = Boolean(current);
+        current = null;
+        return hadCurrent;
       },
       snapshot() {
         return {
           active: Boolean(current),
           current,
-          pending: [...pending]
+          pending: []
         };
       }
     };

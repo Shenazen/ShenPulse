@@ -16,6 +16,7 @@ const root = path.join(__dirname, "..");
 const renderer = readRendererSource();
 const rendererCss = readRendererStyles();
 const overlayRuntime = readOverlayRuntimeSource();
+const overlayCss = readOverlayStyles();
 const mainIpc = fs.readFileSync(
   path.join(root, "src", "main", "ipc.js"),
   "utf8"
@@ -24,6 +25,91 @@ const mainCore = fs.readFileSync(
   path.join(root, "src", "main", "core.js"),
   "utf8"
 );
+const packageJson = JSON.parse(
+  fs.readFileSync(path.join(root, "package.json"), "utf8")
+);
+
+test("le Like Goal garde une géométrie et une police identiques dans TikTok Studio", () => {
+  assert.match(overlayCss, /@font-face\s*\{[\s\S]*font-family:\s*"Inter"/);
+  assert.match(overlayCss, /inter-latin-wght-normal\.woff2/);
+  assert.match(overlayCss, /format\("woff2"\)/);
+  assert.match(overlayCss, /font-optical-sizing:\s*none/);
+  assert.doesNotMatch(overlayCss, /font-weight:\s*(?:9[1-9][0-9]|1000)/);
+  assert.match(
+    overlayCss,
+    /#like-goal-view\.active > \.like-goal-widget\s*\{[\s\S]*flex:\s*0 0 1300px;[\s\S]*height:\s*200px;/
+  );
+  assert.match(overlayCss, /scale\(var\(--like-goal-viewport-scale, 1\)\)/);
+  assert.match(
+    overlayCss,
+    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.like-goal-content > strong\s*\{[\s\S]*font-size:\s*22px;/
+  );
+  assert.match(
+    overlayCss,
+    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.like-goal-content > small\s*\{[\s\S]*font-size:\s*18px;/
+  );
+  assert.match(overlayCss, /top:\s*calc\(26% - 16px\)/);
+  assert.match(overlayCss, /top:\s*calc\(var\(--like-goal-value-top\) - 16px\)/);
+  assert.match(overlayCss, /height:\s*32px;[\s\S]*transform-origin:\s*center/);
+  assert.doesNotMatch(
+    overlayCss,
+    /calc\(-50% \+ var\(--like-goal-(?:title|content)-y/
+  );
+  assert.match(overlayRuntime, /function configureLikeGoalViewport\(viewName, activeView\)/);
+  assert.match(overlayRuntime, /width \/ 1300, height \/ 200/);
+  assert.match(overlayRuntime, /new ResizeObserver\(synchronize\)/);
+  assert.match(overlayRuntime, /document\.fonts\?\.ready/);
+  assert.equal(
+    fs.existsSync(
+      path.join(root, "resources", "overlays", "fonts", "inter-latin-wght-normal.woff2")
+    ),
+    true
+  );
+});
+
+test("les sources TikTok Studio ne gardent plus un ancien moteur overlay en cache", () => {
+  const firebase = JSON.parse(
+    fs.readFileSync(path.join(root, "firebase.json"), "utf8")
+  );
+  const overlayHtml = fs.readFileSync(
+    path.join(root, "resources", "overlays", "index.html"),
+    "utf8"
+  );
+  const runtimeVersion = JSON.parse(
+    fs.readFileSync(
+      path.join(root, "resources", "overlays", "runtime-version.json"),
+      "utf8"
+    )
+  );
+  const rootHeaders = firebase.hosting.headers.find((entry) => entry.source === "/")?.headers || [];
+  const rootCacheControl = rootHeaders.find((entry) => entry.key === "Cache-Control")?.value || "";
+
+  assert.equal(runtimeVersion.version, packageJson.version);
+  assert.match(overlayHtml, new RegExp(`shenpulse-overlay-version" content="${packageJson.version}`));
+  assert.match(rootCacheControl, /no-store/);
+  assert.match(rootCacheControl, /max-age=0/);
+  assert.match(overlayRuntime, /function startOverlayRuntimeVersionMonitor\(\)/);
+  assert.match(overlayRuntime, /setInterval\(checkOverlayRuntimeVersion, 15000\)/);
+  assert.match(overlayRuntime, /url\.searchParams\.set\("runtime", overlayRuntimeVersion\)/);
+  assert.match(overlayRuntime, /fetch\(versionUrl, \{ cache: "no-store" \}\)/);
+});
+
+test("tous les overlays utilisent une scène native identique dans les sources navigateur", () => {
+  assert.match(overlayRuntime, /function configureNativeOverlayCanvas\(viewName, activeView, catalog\)/);
+  assert.match(overlayRuntime, /activeView\.classList\.add\("native-overlay-canvas"\)/);
+  assert.match(overlayRuntime, /configureNativeOverlayCanvas\(viewName, activeView, overlayCatalog\)/);
+  assert.match(overlayRuntime, /function mountNativeOverlayShell\(viewName, catalog\)/);
+  assert.match(overlayRuntime, /definition\?\.sourceSize \|\| \[1920, 1080\]/);
+  assert.match(overlayRuntime, /Math\.min\(1, viewportWidth \/ width, viewportHeight \/ height\)/);
+  assert.match(overlayRuntime, /url\.searchParams\.set\("native", "1"\)/);
+  assert.match(overlayRuntime, /forwardNativeOverlayShellMessage\(event\)/);
+  assert.match(
+    overlayRuntime,
+    /async function initialize\(\) \{\s*startOverlayRuntimeVersionMonitor\(\);\s*if \(mountNativeOverlayShell\(viewName, overlayCatalog\)\) return;/
+  );
+  assert.match(overlayCss, /\.native-overlay-shell > iframe\s*\{[\s\S]*transform: translate\(-50%, -50%\) scale/);
+  assert.match(overlayCss, /\.view\.active\.native-overlay-canvas\s*\{[\s\S]*var\(--native-canvas-scale, 1\)/);
+});
 
 test("chaque champ des configurations overlay possède une aide information", () => {
   const start = renderer.indexOf("function openWheelOverlayConfig");
@@ -129,11 +215,11 @@ test("enregistrer un overlay actualise l'URL publique affichée sans remplacer l
   );
 });
 
-test("les sources publiques utilisent une URL courte et chargent leur configuration distante", () => {
+test("les sources publiques gardent une URL courte puis synchronisent leur configuration à distance", () => {
   assert.match(renderer, /function isPublicRelayOverlayUrl\(url\)/);
   assert.match(
     renderer,
-    /isPublicRelayOverlayUrl\(url\)[\s\S]*!includePublicConfiguration[\s\S]*return url\.toString\(\)/
+    /includePublicConfiguration = false/
   );
   assert.match(
     renderer,
@@ -147,6 +233,9 @@ test("les sources publiques utilisent une URL courte et chargent leur configurat
     overlayRuntime,
     /applyRelayConfiguration\(relayDocument\?\.configurations\)/
   );
+  assert.match(overlayRuntime, /PUBLIC_RELAY_CACHE_PREFIX/);
+  assert.match(overlayRuntime, /const frameState = batch\.state/);
+  assert.match(overlayRuntime, /authoritativeState: Boolean\(frameState\)/);
   assert.match(
     overlayRuntime,
     /likeGoalInitialTarget = target;\s*likeGoalTarget = target;/
@@ -161,6 +250,52 @@ test("les sources publiques utilisent une URL courte et chargent leur configurat
     overlayRuntime,
     /relayDocument\?\.state\?\.overlaySession\?\.hasData !== true/
   );
+  assert.match(overlayRuntime, /const mutationTouchesRelayState =/);
+  assert.match(
+    overlayRuntime,
+    /Object\.prototype\.hasOwnProperty\.call\(mutationData, "state"\)/
+  );
+});
+
+test("les actions rapides publient une valeur absolue unique dans l'application et l'URL", () => {
+  const start = renderer.indexOf("async function performOverlayQuickAction");
+  const end = renderer.indexOf("async function handleAction", start);
+  const quickActions = renderer.slice(start, end);
+  const counterStart = quickActions.indexOf(
+    'if (["likeGoal", "coinJar", "winCounter"].includes(key))'
+  );
+  const timerStart = quickActions.indexOf(
+    '} else if (["timer", "multiplierTimer"].includes(key))',
+    counterStart
+  );
+  const counters = quickActions.slice(counterStart, timerStart);
+
+  assert.ok(counters.indexOf("await api.testAction") < counters.indexOf("await saveOverlayConfig"));
+  assert.match(counters, /const synchronizedCurrent = Number\(actionResult\?\.current\)/);
+  assert.match(counters, /operation:\s*"set"[\s\S]*current:\s*next\.current/);
+});
+
+test("le timer multiplicateur utilise exclusivement son canal dédié", () => {
+  assert.match(renderer, /type:\s*"overlay\.multiplier-timer"/);
+  assert.match(renderer, /postOverlayCardEvent\(key, "multiplier-timer", payload\)/);
+  assert.match(
+    renderer,
+    /const timerChannel = key === "multiplierTimer"[\s\S]*?"multiplier-timer"[\s\S]*?: "timer"/
+  );
+  assert.doesNotMatch(
+    renderer,
+    /id: "preview_multiplier_timer"[\s\S]{0,160}?type: "timer\.add"/
+  );
+});
+
+test("la roue affiche dans ShenPulse exactement le résultat diffusé à l’URL", () => {
+  const start = renderer.indexOf('if (key === "wheel")', renderer.indexOf("async function dispatchOverlayTest"));
+  const end = renderer.indexOf('throw new Error("Overlay inconnu.")', start);
+  const wheelTest = renderer.slice(start, end);
+
+  assert.match(wheelTest, /const result = await api\.testAction/);
+  assert.match(wheelTest, /postOverlayCardEvent\(key, "wheel", result\)/);
+  assert.doesNotMatch(wheelTest, /winnerIndex:\s*0/);
 });
 
 test("l'éditeur de roue sépare les tâches et garde un aperçu unique", () => {
@@ -419,6 +554,17 @@ test("les timers forcent les heures et dimensionnent titre et valeur séparémen
 
   assert.match(timerRenderer, /const value = showHours\s*\?/);
   assert.doesNotMatch(timerRenderer, /showHours && hours > 0/);
+  assert.match(overlayCss, /\[data-theme\]:not\(\[data-theme="classic"\]\) \.timer-panel\s*\{[\s\S]*width:\s*613\.2px;[\s\S]*height:\s*336px;/);
+  assert.match(overlayCss, /\[data-theme\]:not\(\[data-theme="classic"\]\) \.timer-panel > p\s*\{[\s\S]*font-size:\s*19\.8px;/);
+  assert.match(overlayCss, /\[data-theme\]:not\(\[data-theme="classic"\]\) \.timer-panel > strong\s*\{[\s\S]*font-size:\s*72px;/);
+  for (const name of ["timerDays", "timerHours", "timerMinutes", "timerSeconds"]) {
+    assert.match(renderer, new RegExp(`part\\("${name}"`));
+  }
+  assert.match(renderer, /function timerDurationParts\(totalSeconds = 0\)/);
+  assert.match(renderer, /function timerDurationTotalSeconds\(data, fallback = 0\)/);
+  assert.match(renderer, /value\("timerDays", 999\) \* 86_400/);
+  assert.match(renderer, /next\.seconds = timerDurationTotalSeconds\(data, next\.seconds\)/);
+  assert.doesNotMatch(renderer, /Durée initiale \(secondes\)/);
   for (const field of ["timerTitleScale", "timerValueScale"]) {
     assert.match(renderer, new RegExp(`"${field}"`));
     assert.match(overlayRuntime, new RegExp(`"${field}"`));
@@ -494,7 +640,10 @@ test("les apercus Match jouent leur animation en boucle dans le catalogue", () =
     overlayRuntime,
     /isStaticPreview \|\| previewMode === "animated"/
   );
-  assert.match(overlayRuntime, /if \(isCatalogPreview\) return/);
+  assert.match(
+    overlayRuntime,
+    /if \(isCatalogPreview\) \{[\s\S]*markOverlayReady\(\);[\s\S]*return;/
+  );
 });
 
 test("la carte Like Goal place son apercu compact au-dessus des details", () => {

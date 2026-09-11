@@ -488,6 +488,30 @@ dialog[data-variant="overlay-preview"] {
   font-size: 11px;
 }
 
+.timer-duration-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.timer-duration-part {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.timer-duration-part > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.timer-duration-part > input {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .overlay-config-fields .field input,
 .overlay-config-fields .field select,
 .wheel-config-editor .field input,
@@ -667,6 +691,10 @@ dialog[data-variant="overlay-preview"] {
 }
 
 @media (max-width: 620px) {
+  .timer-duration-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .overlay-editor-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -291,7 +291,14 @@ function confirmAction(
 async function perform(work, successMessage) {
   try {
     const result = await work();
-    if (successMessage) toast(successMessage);
+    const feedback = typeof successMessage === "function"
+      ? successMessage(result)
+      : successMessage;
+    if (typeof feedback === "string" && feedback) {
+      toast(feedback);
+    } else if (feedback?.title) {
+      toast(feedback.title, feedback.detail || "", feedback.isError === true);
+    }
     return result;
   } catch (error) {
     toast("Action impossible", error.message || String(error), true);
@@ -313,12 +320,22 @@ function acceptSnapshot(value) {
   return value;
 }
 
+function overlayRelayPageSignature(value) {
+  const relay = value?.publicOverlayRelay || {};
+  return {
+    enabled: relay.enabled !== false,
+    channelId: relay.channelId || "",
+    matchChannelId: relay.matchChannelId || "",
+    publicBaseUrl: relay.publicBaseUrl || ""
+  };
+}
+
 function overlayPageStateSignature(value) {
   const state = value?.state || {};
   return JSON.stringify({
     overlayUrls: value?.overlayUrls || {},
     localOverlayUrls: value?.localOverlayUrls || {},
-    publicOverlayRelay: value?.publicOverlayRelay || {},
+    publicOverlayRelay: overlayRelayPageSignature(value),
     profileId: state.session?.profileId || "",
     profiles: (state.profiles || []).map((profile) => [
       profile.id,
@@ -335,7 +352,7 @@ function overlayPageStableStateSignature(value) {
   return JSON.stringify({
     overlayUrls: value?.overlayUrls || {},
     localOverlayUrls: value?.localOverlayUrls || {},
-    publicOverlayRelay: value?.publicOverlayRelay || {},
+    publicOverlayRelay: overlayRelayPageSignature(value),
     profileId: state.session?.profileId || "",
     profiles: (state.profiles || []).map((profile) => [
       profile.id,

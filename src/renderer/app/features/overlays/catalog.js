@@ -63,7 +63,10 @@ function overlayUrl(
     const url = new URL(item.url);
     if (
       item.previewKind === "match" &&
-      url.searchParams.get("match") === "player"
+      (
+        url.searchParams.get("match") === "player" ||
+        /^\/m\/\d{12}\/[A-Za-z0-9_-]{24,128}\/?$/i.test(url.pathname)
+      )
     ) {
       return url.toString();
     }
@@ -364,6 +367,7 @@ function bindOverlayRuntimeFrames(root = document) {
         iframe.dataset.overlayPreviewReady = "true";
         frame.classList.add("overlay-runtime-frame--ready");
         completeDeferredOverlayPreview(iframe);
+        window.hydrateOverlayPreviewFrame?.(iframe);
       });
     }
     if (iframe?.dataset.overlaySrc) {

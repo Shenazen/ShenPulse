@@ -1,14 +1,29 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 const {
+  PUBLIC_OVERLAY_PROTOCOL_VERSION,
   createPublicOverlayConfigurations,
   createRelayState,
   publicMediaUrl,
   publicOverlayUrls,
   relayDatabaseUrl
 } = require("../src/shared/public-overlay-protocol");
+
+test("les règles Firebase acceptent le protocole public courant et l’ancienne application", () => {
+  const rules = fs.readFileSync(
+    path.join(__dirname, "..", "firebase", "database.rules.json"),
+    "utf8"
+  );
+  assert.equal(PUBLIC_OVERLAY_PROTOCOL_VERSION, 2);
+  assert.match(
+    rules,
+    /protocolVersion'\)\.val\(\) == 1 \|\| newData\.child\('protocolVersion'\)\.val\(\) == 2/
+  );
+});
 
 test("la configuration visuelle publique est stockée par overlay sans secrets locaux", () => {
   const configurations = createPublicOverlayConfigurations({

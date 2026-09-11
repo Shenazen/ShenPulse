@@ -75,6 +75,29 @@ function openActionEditor(row) {
           `<option value="${escapeHtml(value)}" ${value === current ? "selected" : ""}>${escapeHtml(label)}</option>`
       )
       .join("")}</select></label>`;
+  const groupedActionIds = new Set(
+    (Array.isArray(config.actionIds) ? config.actionIds : [])
+      .map(String)
+      .filter(Boolean)
+  );
+  const actionGroupMode = config.mode === "random" ? "random" : "all";
+  const groupedActionRows = flattenActions().filter(
+    ({ action }) =>
+      action?.id && String(action.id) !== String(currentAction.id || "")
+  );
+  const groupedActionCount = Math.max(1, groupedActionIds.size);
+  const actionGroupRandomCount = Math.min(
+    groupedActionCount,
+    Math.max(1, Math.floor(Number(config.randomCount) || 1))
+  );
+  const actionGroupPicker = groupedActionRows.length
+    ? groupedActionRows.map(({ rule: ownerRule, action }) => `
+      <label class="timer-action-option trigger-action-option" data-action-group-option data-searchable="${escapeHtml(`${ownerRule.name} ${actionTypeLabel(action.type)} ${actionDescription(action)}`.toLowerCase())}">
+        <input type="checkbox" name="groupActionIds" value="${escapeHtml(action.id)}" ${groupedActionIds.has(String(action.id)) ? "checked" : ""}>
+        <span class="timer-action-check">✓</span>
+        <span><strong>${escapeHtml(ownerRule.name)}</strong><small>${escapeHtml(actionTypeLabel(action.type))} · ${escapeHtml(actionDescription(action))}</small></span>
+      </label>`).join("")
+    : `<div class="timer-actions-empty">Créez d’abord au moins une autre action à exécuter.</div>`;
   const actionFields = [
     conditionalFields(
       "overlay.media",
@@ -136,7 +159,7 @@ function openActionEditor(row) {
           ["resume", "Reprendre"],
           ["reset", "Réinitialiser"]
         ].map(([value, label]) => `<option value="${value}" ${(config.operation || "add") === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-        ${field("seconds", "Secondes", config.seconds ?? 30, "number", 'min="-86400" max="86400"')}
+        ${field("seconds", "Secondes", config.seconds ?? 30, "number", 'min="-86399999" max="86399999"')}
         ${field("label", "Libellé", config.label || "TEMPS RESTANT", "text", "full")}
       </div>`
     ),
@@ -149,9 +172,22 @@ function openActionEditor(row) {
       </div>`
     ),
     conditionalFields(
+      "action.group",
+      `<div class="form-grid">
+        <label class="field"><span>Mode d’exécution</span><select name="actionGroupMode" data-action-group-mode>
+          <option value="all" ${actionGroupMode === "all" ? "selected" : ""}>Toutes les actions sélectionnées</option>
+          <option value="random" ${actionGroupMode === "random" ? "selected" : ""}>Un nombre obligatoire au hasard</option>
+        </select></label>
+        <label class="field" data-action-group-random-count><span>Nombre obligatoire à tirer</span><input name="actionGroupRandomCount" type="number" min="1" max="${groupedActionCount}" value="${actionGroupRandomCount}"><small data-action-group-random-count-help>Exactement ${actionGroupRandomCount} action${actionGroupRandomCount > 1 ? "s" : ""} sera${actionGroupRandomCount > 1 ? "ont" : ""} tirée${actionGroupRandomCount > 1 ? "s" : ""} à chaque exécution.</small></label>
+        <label class="field full"><span>Rechercher une action</span><input type="search" data-action-group-search placeholder="Nom, type ou configuration…"></label>
+        <div class="timer-action-picker trigger-action-picker full">${actionGroupPicker}</div>
+        <div class="field full"><small>Les actions sélectionnées démarrent ensemble. Une sous-action en erreur n’empêche pas les autres de s’exécuter. Les groupes peuvent appeler d’autres groupes ; ShenPulse bloque automatiquement les références circulaires.</small></div>
+      </div>`
+    ),
+    conditionalFields(
       "overlay.match",
       `<div class="form-grid">
-        <label class="field full"><span>Animation à lire</span><select name="matchName">${MATCH_OVERLAYS.map(([_key, label, value]) => `<option value="${escapeHtml(value)}" ${(config.match || "x2") === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select><small>Le lecteur Match unique attendra la fin de la vidéo en cours avant de lancer celle-ci.</small></label>
+        <label class="field full"><span>Animation à lire</span><select name="matchName">${MATCH_OVERLAYS.map(([_key, label, value]) => `<option value="${escapeHtml(value)}" ${(config.match || "x2") === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select><small>Le lecteur Match est exclusif : cette animation arrête la précédente et recommence immédiatement à zéro.</small></label>
         <label class="field"><span>Version</span><select name="matchVariant">${MATCH_VARIANTS.map(([value, label]) => `<option value="${escapeHtml(value)}" ${(config.variant || "tikcontrol") === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
         <label class="field"><span>Ajustement</span><select name="matchFit"><option value="contain" ${config.fit !== "cover" ? "selected" : ""}>Vidéo entière</option><option value="cover" ${config.fit === "cover" ? "selected" : ""}>Remplir la source</option></select></label>
       </div>`
@@ -331,6 +367,40 @@ function openActionEditor(row) {
           wheelId: data.get("wheelId") || "",
           choices: String(data.get("choices") || "").split(/\r?\n|,/).map((value) => value.trim()).filter(Boolean),
           color: data.get("wheelColor")
+        });
+      } else if (type === "action.group") {
+        const actionIds = [
+          ...new Set(
+            data.getAll("groupActionIds").map(String).filter(Boolean)
+          )
+        ];
+        if (!actionIds.length) {
+          throw new Error("Sélectionnez au moins une action à exécuter.");
+        }
+        if (
+          currentAction.id &&
+          actionIds.includes(String(currentAction.id))
+        ) {
+          throw new Error("Un groupe d’actions ne peut pas s’appeler lui-même.");
+        }
+        const mode = data.get("actionGroupMode") === "random"
+          ? "random"
+          : "all";
+        Object.assign(nextConfig, {
+          mode,
+          actionIds,
+          randomCount:
+            mode === "random"
+              ? Math.min(
+                  actionIds.length,
+                  Math.max(
+                    1,
+                    Math.floor(
+                      Number(data.get("actionGroupRandomCount")) || 1
+                    )
+                  )
+                )
+              : actionIds.length
         });
       } else if (type === "overlay.match") {
         Object.assign(nextConfig, {

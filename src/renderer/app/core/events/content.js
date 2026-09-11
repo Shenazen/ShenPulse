@@ -154,8 +154,21 @@ dialogBody.addEventListener("input", (event) => {
           !String(item.dataset.searchable || "").includes(query);
       });
   }
+  if (event.target.matches("[data-action-group-search]")) {
+    const query = event.target.value.trim().toLowerCase();
+    dialogBody
+      .querySelectorAll("[data-action-group-option]")
+      .forEach((item) => {
+        item.hidden =
+          Boolean(query) &&
+          !String(item.dataset.searchable || "").includes(query);
+      });
+  }
   if (event.target.matches('[name="randomCount"]')) {
     syncTriggerSelectionEditor();
+  }
+  if (event.target.matches('[name="actionGroupRandomCount"]')) {
+    syncActionGroupEditor();
   }
   if (event.target.closest("[data-overlay-config-editor]")) {
     scheduleOverlayLivePreview();
@@ -174,6 +187,12 @@ dialogBody.addEventListener("change", (event) => {
     event.target.matches("[data-trigger-selection-mode]")
   ) {
     syncTriggerSelectionEditor();
+  }
+  if (
+    event.target.matches('[name="groupActionIds"]') ||
+    event.target.matches("[data-action-group-mode]")
+  ) {
+    syncActionGroupEditor();
   }
   if (event.target.matches("[data-gift-trigger-mode]")) {
     syncGiftTriggerCondition(

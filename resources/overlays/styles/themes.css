@@ -53,16 +53,22 @@
 [data-theme]:not([data-theme="classic"]) .like-goal-content > strong {
   position: absolute;
   z-index: 4;
-  top: 26%;
+  top: calc(26% - 16px);
   right: 0;
   left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
   transform: translate(
     var(--like-goal-title-x, 0),
-    calc(-50% + var(--like-goal-title-y, 0px))
+    var(--like-goal-title-y, 0px)
   ) scale(var(--like-goal-title-scale, 1));
+  transform-origin: center;
   color: #fff;
-  font-size: clamp(15px, 1.7vw, 28px);
-  font-weight: 950;
+  font-size: 22px;
+  font-synthesis: none;
+  font-weight: 900;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -70,15 +76,18 @@
 [data-theme]:not([data-theme="classic"]) .like-goal-content > small {
   position: absolute;
   z-index: 4;
-  top: var(--like-goal-value-top);
+  top: calc(var(--like-goal-value-top) - 16px);
   right: 0;
   left: 0;
+  height: 32px;
   transform: translate(
     var(--like-goal-content-x, 0),
-    calc(-50% + var(--like-goal-content-y, 0px))
+    var(--like-goal-content-y, 0px)
   ) scale(var(--like-goal-content-scale, 1));
+  transform-origin: center;
   color: #fff;
-  font-size: clamp(13px, 1.4vw, 23px);
+  font-size: 18px;
+  font-synthesis: none;
   font-weight: 900;
   line-height: 1;
 }
@@ -195,7 +204,7 @@
   min-height: 0;
   color: #fff4ba;
   font-size: clamp(14px, 1.75vw, 22px);
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
   text-transform: uppercase;
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.78), 0 0 12px rgba(255, 216, 80, 0.28);
@@ -285,7 +294,7 @@
   overflow: hidden;
   color: #f8fafc;
   font-size: clamp(17px, 2.2vw, 30px);
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
   letter-spacing: 0.04em;
   text-align: center;
@@ -308,7 +317,7 @@
   color: var(--overlay-text, #fff);
   font-size: clamp(64px, 8vw, 112px);
   font-variant-numeric: tabular-nums;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 0.9;
   letter-spacing: 0.02em;
   text-align: center;
@@ -395,7 +404,7 @@
   top: 0;
   color: #f8fafc;
   font-size: clamp(18px, 3.2vw, 32px);
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -406,7 +415,7 @@
   color: var(--overlay-text, #fff);
   font-size: clamp(86px, 12vw, 144px);
   font-variant-numeric: tabular-nums;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 0.86;
 }
 
@@ -591,7 +600,7 @@
   color: var(--segment-text-color);
   font-family: var(--segment-font-family);
   font-size: clamp(8px, var(--segment-font-size), 34px);
-  font-weight: 950;
+  font-weight: 900;
   line-height: var(--segment-line-height);
   letter-spacing: var(--segment-letter-spacing);
   hyphens: auto;

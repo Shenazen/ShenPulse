@@ -239,6 +239,42 @@ const GAMES = [
         )
       };
     }
+  },
+  {
+    id: "brumelune",
+    selector: ".brume-home",
+    async exercise(window) {
+      const home = await evaluate(window, () => ({
+        backgroundImage: getComputedStyle(
+          document.querySelector(".brume-home")
+        ).backgroundImage,
+        createButton: document
+          .querySelector(".home-actions .primary")
+          ?.textContent?.trim(),
+        featureCount: document.querySelectorAll(".feature-row span").length,
+        title: document.querySelector(".home-copy h1")?.textContent?.trim()
+      }));
+      if (
+        !home.title?.includes("Brumelune") ||
+        home.createButton !== "Créer une partie" ||
+        home.featureCount < 3 ||
+        !home.backgroundImage.includes("brumelune")
+      ) {
+        throw new Error("L’accueil de Brumelune n’est pas complet.");
+      }
+      await evaluate(window, () =>
+        document.querySelector(".home-actions .primary")?.click()
+      );
+      await waitFor(window, () => Boolean(document.querySelector(".setup-shell")));
+      const setup = await evaluate(window, () => ({
+        playerRows: document.querySelectorAll(".player-row").length,
+        steps: document.querySelectorAll(".wizard-nav button").length
+      }));
+      if (setup.playerRows < 4 || setup.steps !== 4) {
+        throw new Error("L’assistant de création de Brumelune est incomplet.");
+      }
+      return { home, setup };
+    }
   }
 ];
 

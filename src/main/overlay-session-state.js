@@ -2,6 +2,7 @@
 
 const MAX_LEADERBOARD_ENTRIES = 100;
 const MAX_RECENT_EVENTS = 40;
+const MAX_TIMER_SECONDS = 86_399_999;
 
 function createDefaultOverlaySession() {
   return {
@@ -20,6 +21,11 @@ function createDefaultOverlaySession() {
     timerEndsAt: 0,
     timerPaused: false,
     timerLabel: "Temps restant",
+    multiplierTimerSeconds: 0,
+    multiplierTimerEndsAt: 0,
+    multiplierTimerPaused: false,
+    multiplierTimerMultiplier: 2,
+    multiplierTimerLabel: "Bonus actif",
     recentEvents: [],
     leaderboards: {
       donors: [],
@@ -36,6 +42,15 @@ function normalizeOverlaySession(value = {}) {
     finiteNumber(source.winCounterMultiplierUntil)
   );
   const multiplierActive = multiplierUntil > Date.now();
+  const multiplierTimerPaused = Boolean(source.multiplierTimerPaused);
+  const sourceMultiplierTimerEndsAt = Math.max(
+    0,
+    finiteNumber(source.multiplierTimerEndsAt || multiplierUntil)
+  );
+  const multiplierTimerEndsAt =
+    !multiplierTimerPaused && sourceMultiplierTimerEndsAt > Date.now()
+      ? sourceMultiplierTimerEndsAt
+      : 0;
   const leaderboards =
     source.leaderboards && typeof source.leaderboards === "object"
       ? source.leaderboards
@@ -59,6 +74,30 @@ function normalizeOverlaySession(value = {}) {
     timerEndsAt: Math.max(0, finiteNumber(source.timerEndsAt)),
     timerPaused: Boolean(source.timerPaused),
     timerLabel: String(source.timerLabel || defaults.timerLabel).slice(0, 100),
+    multiplierTimerSeconds:
+      multiplierTimerPaused || multiplierTimerEndsAt > 0
+        ? Math.max(
+            0,
+            finiteNumber(
+              source.multiplierTimerSeconds,
+              multiplierTimerEndsAt > 0
+                ? Math.ceil((multiplierTimerEndsAt - Date.now()) / 1000)
+                : 0
+            )
+          )
+        : 0,
+    multiplierTimerEndsAt,
+    multiplierTimerPaused,
+    multiplierTimerMultiplier: Math.max(
+      1,
+      finiteNumber(
+        source.multiplierTimerMultiplier,
+        source.winCounterMultiplier || defaults.multiplierTimerMultiplier
+      )
+    ),
+    multiplierTimerLabel: String(
+      source.multiplierTimerLabel || defaults.multiplierTimerLabel
+    ).slice(0, 100),
     recentEvents: Array.isArray(source.recentEvents)
       ? source.recentEvents.slice(0, MAX_RECENT_EVENTS)
       : [],
@@ -159,6 +198,9 @@ function applyOverlayOperation(
     ) {
       runtime.winCounterMultiplier = 1;
       runtime.winCounterMultiplierUntil = 0;
+      runtime.multiplierTimerSeconds = 0;
+      runtime.multiplierTimerEndsAt = 0;
+      runtime.multiplierTimerPaused = false;
     }
     if (operation === "multiplier") {
       const durationSeconds = Math.max(
@@ -167,6 +209,10 @@ function applyOverlayOperation(
       );
       runtime.winCounterMultiplier = Math.max(1, Math.abs(amount) || 2);
       runtime.winCounterMultiplierUntil = nowMs + durationSeconds * 1000;
+      runtime.multiplierTimerSeconds = durationSeconds;
+      runtime.multiplierTimerEndsAt = runtime.winCounterMultiplierUntil;
+      runtime.multiplierTimerPaused = false;
+      runtime.multiplierTimerMultiplier = runtime.winCounterMultiplier;
     } else {
       const resolvedAmount =
         operation === "random" && Math.random() < 0.5
@@ -187,12 +233,68 @@ function applyOverlayOperation(
         true
       );
     }
+  } else if (channel === "multiplier-timer") {
+    const parsedNow = Date.parse(now);
+    const nowMs = Number.isFinite(parsedNow) ? parsedNow : Date.now();
+    const configuredSeconds = Math.max(
+      -MAX_TIMER_SECONDS,
+      Math.min(MAX_TIMER_SECONDS, finiteNumber(payload.seconds))
+    );
+    const remainingSeconds = multiplierTimerRemainingSeconds(runtime, nowMs);
+    const multiplier = Math.max(
+      1,
+      finiteNumber(
+        payload.multiplier,
+        runtime.multiplierTimerMultiplier || 2
+      )
+    );
+    runtime.multiplierTimerMultiplier = multiplier;
+    if (operation === "reset") {
+      runtime.multiplierTimerSeconds = 0;
+      runtime.multiplierTimerEndsAt = 0;
+      runtime.multiplierTimerPaused = false;
+      runtime.winCounterMultiplier = 1;
+      runtime.winCounterMultiplierUntil = 0;
+    } else if (operation === "pause") {
+      runtime.multiplierTimerSeconds = remainingSeconds;
+      runtime.multiplierTimerEndsAt = 0;
+      runtime.multiplierTimerPaused = true;
+      runtime.winCounterMultiplier = 1;
+      runtime.winCounterMultiplierUntil = 0;
+    } else if (operation === "resume") {
+      runtime.multiplierTimerSeconds = remainingSeconds;
+      runtime.multiplierTimerEndsAt =
+        remainingSeconds > 0 ? nowMs + remainingSeconds * 1000 : 0;
+      runtime.multiplierTimerPaused = false;
+      runtime.winCounterMultiplier = remainingSeconds > 0 ? multiplier : 1;
+      runtime.winCounterMultiplierUntil = runtime.multiplierTimerEndsAt;
+    } else {
+      const nextSeconds = Math.max(
+        0,
+        operation === "set"
+          ? configuredSeconds
+          : remainingSeconds + configuredSeconds
+      );
+      runtime.multiplierTimerSeconds = nextSeconds;
+      if (operation === "set") runtime.multiplierTimerPaused = false;
+      runtime.multiplierTimerEndsAt =
+        nextSeconds > 0 && !runtime.multiplierTimerPaused
+          ? nowMs + nextSeconds * 1000
+          : 0;
+      runtime.winCounterMultiplier = nextSeconds > 0 ? multiplier : 1;
+      runtime.winCounterMultiplierUntil = runtime.multiplierTimerEndsAt;
+    }
+    if (Object.prototype.hasOwnProperty.call(payload, "label")) {
+      runtime.multiplierTimerLabel = String(
+        payload.label || createDefaultOverlaySession().multiplierTimerLabel
+      ).slice(0, 100);
+    }
   } else if (channel === "timer") {
     const parsedNow = Date.parse(now);
     const nowMs = Number.isFinite(parsedNow) ? parsedNow : Date.now();
     const configuredSeconds = Math.max(
-      -86400,
-      Math.min(86400, finiteNumber(payload.seconds))
+      -MAX_TIMER_SECONDS,
+      Math.min(MAX_TIMER_SECONDS, finiteNumber(payload.seconds))
     );
     const remainingSeconds = timerRemainingSeconds(runtime, nowMs);
     if (operation === "reset") {
@@ -239,6 +341,18 @@ function timerRemainingSeconds(runtime, nowMs = Date.now()) {
   return Math.max(
     0,
     Math.ceil((finiteNumber(runtime.timerEndsAt) - nowMs) / 1000)
+  );
+}
+
+function multiplierTimerRemainingSeconds(runtime, nowMs = Date.now()) {
+  if (runtime.multiplierTimerPaused || !runtime.multiplierTimerEndsAt) {
+    return Math.max(0, finiteNumber(runtime.multiplierTimerSeconds));
+  }
+  return Math.max(
+    0,
+    Math.ceil(
+      (finiteNumber(runtime.multiplierTimerEndsAt) - nowMs) / 1000
+    )
   );
 }
 
@@ -323,6 +437,7 @@ function finiteNumber(value, fallback = 0) {
 }
 
 module.exports = {
+  MAX_TIMER_SECONDS,
   applyOverlayOperation,
   createDefaultOverlaySession,
   finishOverlaySession,

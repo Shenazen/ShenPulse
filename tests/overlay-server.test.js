@@ -11,6 +11,7 @@ const {
   overlayViewAcceptsChannel,
   overlayViewRequiresPro
 } = require("../src/main/overlay-server");
+const { matchAccountNumber } = require("../src/main/match-access");
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -31,7 +32,13 @@ test("protège l'état local et accepte un événement authentifié", async () =
       overlayPort,
       apiPort,
       overlayToken: "overlay-secret",
-      apiToken: "api-secret"
+      apiToken: "api-secret",
+      account: { uid: "account-test-1" },
+      matchAccess: { accessKey: "a".repeat(32) },
+      publicOverlayRelay: {
+        publicBaseUrl: "https://shenpulse-overlays.web.app",
+        matchChannelId: "m".repeat(24)
+      }
     },
     goals: [],
     session: { running: false },
@@ -169,7 +176,7 @@ test("protège l'état local et accepte un événement authentifié", async () =
     };
     const proUrls = server.urls();
     assert.match(proUrls.matchEnigma, /match=enigma/);
-    assert.match(proUrls.matchPlayer, /match=player/);
+    assert.match(proUrls.matchPlayer, /\/match\/\d{12}\/a{32}$/);
     assert.match(proUrls.winCounter, /view=win-counter/);
     const proDocument = await fetch(proUrls.winCounter);
     assert.equal(proDocument.status, 200);
@@ -179,6 +186,87 @@ test("protège l'état local et accepte un événement authentifié", async () =
     assert.equal(protectedMatchVideo.status, 200);
     assert.equal(protectedMatchVideo.headers.get("cache-control"), "no-store");
     await protectedMatchVideo.body.cancel();
+    const matchDocument = await fetch(proUrls.matchPlayer);
+    assert.equal(matchDocument.status, 200);
+    assert.match(await matchDocument.text(), /<base href="\/overlay\/"/);
+    const invalidMatchDocument = await fetch(
+      proUrls.matchPlayer.replace(/\/match\/\d{12}\//, "/match/000000000000/")
+    );
+    assert.equal(invalidMatchDocument.status, 401);
+    const ticketResponse = await fetch(
+      `${proUrls.matchPlayer}/ticket?match=x2&variant=tikcontrol&fit=contain`
+    );
+    assert.equal(ticketResponse.status, 200);
+    const ticket = await ticketResponse.json();
+    assert.match(ticket.url, /^\/match-media\/[A-Za-z0-9_-]{32}$/);
+    assert.doesNotMatch(ticket.url, /x2|tikcontrol|\.webm/);
+    const ticketMedia = await fetch(
+      `http://127.0.0.1:${overlayPort}${ticket.url}`,
+      { headers: { Range: "bytes=0-127" } }
+    );
+    assert.equal(ticketMedia.status, 206);
+    assert.equal(ticketMedia.headers.get("content-length"), "128");
+    assert.match(ticketMedia.headers.get("content-range"), /^bytes 0-127\//);
+    assert.equal(ticketMedia.headers.get("cache-control"), "no-store");
+    await ticketMedia.body.cancel();
+
+    const matchBridge = `http://127.0.0.1:${overlayPort}/match-bridge/${
+      matchAccountNumber(state.settings.account.uid)
+    }/${state.settings.publicOverlayRelay.matchChannelId}/ticket`;
+    const bridgePreflight = await fetch(matchBridge, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "https://shenpulse-overlays.web.app",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Private-Network": "true"
+      }
+    });
+    assert.equal(bridgePreflight.status, 204);
+    assert.equal(
+      bridgePreflight.headers.get("access-control-allow-private-network"),
+      "true"
+    );
+    const bridgeTicketResponse = await fetch(
+      `${matchBridge}?match=x3&variant=gladiador&fit=cover`,
+      { headers: { Origin: "https://shenpulse-overlays.web.app" } }
+    );
+    assert.equal(bridgeTicketResponse.status, 200);
+    assert.equal(
+      bridgeTicketResponse.headers.get("access-control-allow-origin"),
+      "https://shenpulse-overlays.web.app"
+    );
+    const bridgeTicket = await bridgeTicketResponse.json();
+    assert.match(bridgeTicket.url, /^\/match-media\/[A-Za-z0-9_-]{32}$/);
+    const bridgeMedia = await fetch(
+      `http://127.0.0.1:${overlayPort}${bridgeTicket.url}`,
+      {
+        headers: {
+          Origin: "https://shenpulse-overlays.web.app",
+          Range: "bytes=0-63"
+        }
+      }
+    );
+    assert.equal(bridgeMedia.status, 206);
+    assert.equal(bridgeMedia.headers.get("content-length"), "64");
+    await bridgeMedia.body.cancel();
+    const refusedBridge = await fetch(
+      `${matchBridge}?match=x2&variant=tikcontrol`,
+      { headers: { Origin: "https://malicious.example" } }
+    );
+    assert.equal(refusedBridge.status, 403);
+
+    const protectedMatchEventStream = await fetch(
+      `${proUrls.matchPlayer}/events`
+    );
+    const protectedMatchReader = protectedMatchEventStream.body.getReader();
+    await protectedMatchReader.read();
+    state.settings.matchAccess.accessKey = "b".repeat(32);
+    server.refreshAccess();
+    const regenerated = new TextDecoder().decode(
+      (await protectedMatchReader.read()).value
+    );
+    assert.match(regenerated, /match-url-regenerated/);
+    await protectedMatchReader.cancel();
     const matchEventStream = await fetch(
       `http://127.0.0.1:${overlayPort}/events?view=match&token=overlay-secret`
     );
@@ -308,6 +396,46 @@ test("chaque source OBS ne reçoit que les canaux qui lui appartiennent", () => 
   assert.equal(
     overlayViewAcceptsChannel("like-goal", "event", { type: "like" }),
     true
+  );
+  assert.equal(
+    overlayViewAcceptsChannel(
+      "leaderboard",
+      "event",
+      { type: "gift" },
+      0,
+      "donors"
+    ),
+    true
+  );
+  assert.equal(
+    overlayViewAcceptsChannel(
+      "leaderboard",
+      "event",
+      { type: "like" },
+      0,
+      "donors"
+    ),
+    false
+  );
+  assert.equal(
+    overlayViewAcceptsChannel(
+      "leaderboard",
+      "event",
+      { type: "like" },
+      0,
+      "tappers"
+    ),
+    true
+  );
+  assert.equal(
+    overlayViewAcceptsChannel(
+      "leaderboard",
+      "event",
+      { type: "gift" },
+      0,
+      "tappers"
+    ),
+    false
   );
   assert.equal(
     overlayViewAcceptsChannel("match", "event", { type: "gift" }),

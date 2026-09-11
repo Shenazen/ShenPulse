@@ -72,7 +72,7 @@
 #like-goal-percent {
   margin-inline-start: .5em;
   color: var(--like-goal-percent-color, var(--overlay-secondary, #ff4f86));
-  font-weight: 950;
+  font-weight: 900;
 }
 
 #my-actions-view :is(.my-actions-shell strong, .my-actions-shell small, .my-actions-shell time),
@@ -121,19 +121,69 @@ body,
   height: 100%;
 }
 
+#overlay-root {
+  position: relative;
+}
+
+.view.active.native-overlay-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--native-canvas-width);
+  height: var(--native-canvas-height);
+  transform:
+    translate(-50%, -50%)
+    scale(var(--native-canvas-scale, 1));
+  transform-origin: center;
+}
+
+/*
+ * Like Goal est dessiné sur son canevas OBS natif. TikTok Studio, OBS et les
+ * aperçus ne redimensionnent ensuite qu'un seul bloc : les offsets des textes
+ * restent ainsi exactement solidaires du cadre, quelle que soit la viewport.
+ */
+#like-goal-view.active {
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+#like-goal-view.active > .like-goal-widget {
+  flex: 0 0 1300px;
+  width: 1300px;
+  height: 200px;
+  max-width: none;
+  aspect-ratio: auto;
+  transform:
+    translate(var(--overlay-x, 0), var(--overlay-y, 0))
+    scale(var(--like-goal-viewport-scale, 1))
+    scale(var(--overlay-scale, 1));
+}
+
 #timer-view.active,
 #multiplier-timer-view.active {
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
 [data-theme]:not([data-theme="classic"]) .timer-panel {
-  width: min(
-    calc(100vw - 36px),
-    calc((100vh - 24px) * 1.825)
-  );
-  max-height: calc(100vh - 24px);
+  flex: 0 0 613.2px;
+  width: 613.2px;
+  min-width: 613.2px;
+  height: 336px;
+  max-height: none;
+  aspect-ratio: auto;
   margin: 0;
+  padding: 162px 144px 135px;
+}
+
+[data-theme]:not([data-theme="classic"]) .timer-panel > p {
+  font-size: 19.8px;
+}
+
+[data-theme]:not([data-theme="classic"]) .timer-panel > strong {
+  font-size: 72px;
 }
 
 #leaderboard-view .leaderboard-widget {
@@ -239,7 +289,7 @@ body,
     radial-gradient(circle at 34% 26%, rgba(255, 255, 255, .88), transparent 15%),
     linear-gradient(145deg, #9b67e8, #13bde1 70%, #095378);
   color: #fff;
-  font-weight: 950;
+  font-weight: 900;
   text-shadow: 0 2px 4px rgba(0, 0, 0, .72);
 }
 
@@ -342,7 +392,7 @@ body,
   color: #fff1b1;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(15px, 3.2vw, 24px);
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: .055em;
   line-height: 1;
   text-align: center;
@@ -523,7 +573,7 @@ body,
   color: #fff4c7;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(12px, 2.7vw, 20px);
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: .025em;
   line-height: 1;
   text-align: center;
@@ -625,7 +675,7 @@ body,
   color: var(--leaderboard-score-color, #ff9ccc);
   font-size: var(--leaderboard-score-size);
   font-style: normal;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1;
   text-shadow: 0 2px 3px #000;
 }
@@ -731,4 +781,28 @@ body,
 :root[data-theme="terraria"] #leaderboard-view .leaderboard-widget {
   --leaderboard-title-top: 7%; --leaderboard-title-left: 25%; --leaderboard-title-right: 23%;
   --leaderboard-rows-top: 25.8%; --leaderboard-rows-right: 10%; --leaderboard-rows-bottom: 15%; --leaderboard-rows-left: 14%;
+}
+.native-overlay-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 120ms ease-out;
+}
+
+.overlay-booting .native-overlay-shell {
+  opacity: 0;
+}
+
+.native-overlay-shell > iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--native-overlay-width);
+  height: var(--native-overlay-height);
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+  transform: translate(-50%, -50%) scale(var(--native-overlay-scale, 1));
+  transform-origin: center;
 }

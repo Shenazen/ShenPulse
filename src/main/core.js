@@ -13,6 +13,7 @@ const {
 } = require("./game-round-timer");
 const { ObsClient } = require("./obs-client");
 const { OverlayServer } = require("./overlay-server");
+const { createMatchAccessKey } = require("./match-access");
 const { PublicOverlayRelay } = require("./public-overlay-relay");
 const {
   RuleEngine,
@@ -326,6 +327,24 @@ class ShenPulseCore extends EventEmitter {
     return { ...result, snapshot: this.snapshot() };
   }
 
+  async rotateMatchOverlayAccess() {
+    this.store.mutate((state) => {
+      state.settings.matchAccess = {
+        accessKey: createMatchAccessKey()
+      };
+    }, true);
+    await this.publicOverlayRelay.rotateMatchChannel();
+    this.overlayServer.refreshAccess();
+    this.#activity(
+      "success",
+      "overlay",
+      "URL Match régénérée",
+      "L’ancienne source Match a été révoquée immédiatement."
+    );
+    this.#changed();
+    return { snapshot: this.snapshot() };
+  }
+
   async startSession() {
     const currentState = this.store.getState();
     const tiktok = currentState.settings.tiktok || {};
@@ -335,6 +354,8 @@ class ShenPulseCore extends EventEmitter {
         state.session.running = false;
         state.session.startedAt = null;
         state.session.startedBy = "";
+        state.session.tiktokRoomId = "";
+        state.session.tiktokInterruptedAt = null;
         state.session.activeConnectionIds = [];
       });
       this.#activity(
@@ -357,6 +378,8 @@ class ShenPulseCore extends EventEmitter {
       state.session.running = true;
       state.session.startedAt = startedAt;
       state.session.startedBy = "manual";
+      state.session.tiktokRoomId = "";
+      state.session.tiktokInterruptedAt = null;
       resetSessionStatistics(state);
       resetOverlaySession(state, startedAt);
     });
@@ -380,6 +403,8 @@ class ShenPulseCore extends EventEmitter {
       state.session.running = false;
       state.session.startedAt = null;
       state.session.startedBy = "";
+      state.session.tiktokRoomId = "";
+      state.session.tiktokInterruptedAt = null;
       state.session.activeConnectionIds = [];
       finishOverlaySession(state, endedAt);
     });
@@ -562,8 +587,7 @@ class ShenPulseCore extends EventEmitter {
     const count = Math.max(
       1,
       Number(
-        overrides.count ??
-          (type === "like" ? 25 : type === "gift" ? 5 : 1)
+        overrides.count ?? defaultTestEventCount(type)
       )
     );
     const shared = {
@@ -886,14 +910,11 @@ class ShenPulseCore extends EventEmitter {
     );
     this.sourceHub.on("tiktok-status", ({ status, username, roomId }) => {
       let sessionTransition = "";
-      const session = this.store.getState().session;
-      const shouldStart = status === "live" && !session.running;
-      const shouldStop =
-        ["disconnected", "error", "offline"].includes(status) &&
-        session.running;
-      if (shouldStart || shouldStop) {
+      if (["disconnected", "error", "live", "offline"].includes(status)) {
         this.store.mutate((state) => {
-          sessionTransition = synchronizeSessionWithTikTok(state, status);
+          sessionTransition = synchronizeSessionWithTikTok(state, status, {
+            roomId
+          });
         });
       }
       const labels = {
@@ -931,16 +952,23 @@ class ShenPulseCore extends EventEmitter {
               serializeError(error).message
             )
           );
-      } else if (sessionTransition === "stopped") {
+      } else if (sessionTransition === "resumed") {
         this.overlayServer.publish(
           "session-state",
           this.store.getState().overlaySession
         );
         this.#activity(
-          "info",
+          "success",
           "session",
-          "Session TikTok terminée",
-          `@${username || "inconnu"} n’est plus en LIVE`
+          "Session TikTok reprise",
+          `Même LIVE détecté pour @${username || "inconnu"} : compteurs, classements et timers conservés.`
+        );
+      } else if (sessionTransition === "interrupted") {
+        this.#activity(
+          "warning",
+          "session",
+          "Connexion au LIVE interrompue",
+          `Reconnexion en cours pour @${username || "inconnu"} : les données du LIVE restent intactes.`
         );
       }
       this.#changed();
@@ -953,7 +981,7 @@ class ShenPulseCore extends EventEmitter {
         `${event.type} de ${event.user?.displayName || "viewer"}`
       );
     });
-    this.ruleEngine.on("action-result", ({ ok, action, error }) => {
+    this.ruleEngine.on("action-result", ({ ok, action, error, result }) => {
       this.store.mutateRuntime((state) => {
         if (ok) {
           if (state.session.running) {
@@ -964,6 +992,21 @@ class ShenPulseCore extends EventEmitter {
       });
       if (!ok) {
         this.#activity("error", "action", action.type, serializeError(error).message);
+      } else if (result?.partial) {
+        const failures = Array.isArray(result.failures) ? result.failures : [];
+        const detail = failures
+          .map((failure) =>
+            `${failure.actionName || failure.actionId || "Action"} : ${
+              failure.message || "erreur inconnue"
+            }`
+          )
+          .join(" · ");
+        this.#activity(
+          "warning",
+          "action",
+          "Groupe partiellement exécuté",
+          detail || `${Number(result.failed || 0)} sous-action(s) en erreur`
+        );
       }
       this.#changed(true);
     });
@@ -1191,25 +1234,80 @@ function wheelGiftTriggerMatches(wheel, event, gifts = []) {
   );
 }
 
-function synchronizeSessionWithTikTok(state, status, now = new Date().toISOString()) {
-  if (status === "live" && !state.session.running) {
-    state.session.running = true;
-    state.session.startedAt = now;
-    state.session.startedBy = "tiktok";
-    state.session.activeConnectionIds = Array.from(
-      new Set([...(state.session.activeConnectionIds || []), "source_tiktok"])
+function synchronizeSessionWithTikTok(
+  state,
+  status,
+  details = {},
+  now = new Date().toISOString()
+) {
+  // Compatibilité avec les anciens appels internes qui passaient directement
+  // l'horodatage en troisième argument.
+  if (typeof details === "string") {
+    now = details;
+    details = {};
+  }
+
+  const session = state.session;
+  const incomingRoomId = safeString(details.roomId || "", 160);
+  const currentRoomId = safeString(session.tiktokRoomId || "", 160);
+  const roomChanged = Boolean(
+    incomingRoomId && currentRoomId && incomingRoomId !== currentRoomId
+  );
+
+  if (status === "live") {
+    const wasInterrupted = Boolean(session.tiktokInterruptedAt);
+    const canResumeSameLive =
+      wasInterrupted &&
+      !roomChanged &&
+      (session.running || (session.startedBy === "tiktok" && session.startedAt));
+
+    if (canResumeSameLive) {
+      session.running = true;
+      session.tiktokRoomId = incomingRoomId || currentRoomId;
+      session.tiktokInterruptedAt = null;
+      session.activeConnectionIds = Array.from(
+        new Set([...(session.activeConnectionIds || []), "source_tiktok"])
+      );
+      if (state.overlaySession) {
+        state.overlaySession.active = true;
+        state.overlaySession.endedAt = null;
+        state.overlaySession.updatedAt = now;
+      }
+      return "resumed";
+    }
+
+    if (session.running && !roomChanged) {
+      session.tiktokRoomId = incomingRoomId || currentRoomId;
+      session.tiktokInterruptedAt = null;
+      session.activeConnectionIds = Array.from(
+        new Set([...(session.activeConnectionIds || []), "source_tiktok"])
+      );
+      return "";
+    }
+
+    session.running = true;
+    session.startedAt = now;
+    session.startedBy = "tiktok";
+    session.tiktokRoomId = incomingRoomId;
+    session.tiktokInterruptedAt = null;
+    session.activeConnectionIds = Array.from(
+      new Set([...(session.activeConnectionIds || []), "source_tiktok"])
     );
     resetSessionStatistics(state);
     resetOverlaySession(state, now);
     return "started";
   }
+
   if (
     ["disconnected", "error", "offline"].includes(status) &&
-    state.session.running
+    session.running &&
+    !session.tiktokInterruptedAt
   ) {
-    clearSessionState(state);
-    finishOverlaySession(state, now);
-    return "stopped";
+    session.tiktokInterruptedAt = now;
+    session.activeConnectionIds = (session.activeConnectionIds || []).filter(
+      (connectionId) => connectionId !== "source_tiktok"
+    );
+    return "interrupted";
   }
   return "";
 }
@@ -1292,7 +1390,13 @@ function clearSessionState(state) {
   state.session.running = false;
   state.session.startedAt = null;
   state.session.startedBy = "";
+  state.session.tiktokRoomId = "";
+  state.session.tiktokInterruptedAt = null;
   state.session.activeConnectionIds = [];
+}
+
+function defaultTestEventCount(type) {
+  return type === "like" ? 25 : 1;
 }
 
 function resolveLikeGoalCompletionChange(event, change = {}) {
@@ -1349,6 +1453,7 @@ function shouldRecordActivity(state, entry, nowMs = Date.now()) {
 module.exports = {
   ShenPulseCore,
   clearSessionState,
+  defaultTestEventCount,
   readMontChiliadCounterEvent,
   recordEventStatistics,
   resolveLikeGoalCompletionChange,

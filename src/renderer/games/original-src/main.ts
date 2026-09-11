@@ -3,6 +3,7 @@ import { createI18n } from 'vue-i18n'
 import CoinPusherGame from './components/games/CoinPusherGame.vue'
 import ConnectFourGame from './components/games/ConnectFourGame.vue'
 import DealOrNoDealGame from './components/games/DealOrNoDealGame.vue'
+import BrumeluneGame from './components/games/BrumeluneGame.vue'
 import {
   loadCoinPusherSettings,
   pushCoinPusherDrop,
@@ -19,12 +20,18 @@ import platformImageUrl from './assets/games/coin-pusher/platform-default.webp?u
 import { messages } from './i18n/messages'
 import './main.css'
 
-type GameId = 'coin-pusher' | 'connect-four' | 'deal-or-no-deal'
+type GameId = 'coin-pusher' | 'connect-four' | 'deal-or-no-deal' | 'brumelune'
 
 type ShenPulseApi = {
   getSnapshot: () => Promise<any>
   on: (channel: string, callback: (payload: any) => void) => () => void
   publishDealHostState?: (state: any) => Promise<any>
+  brumeluneLan?: {
+    start: (payload: any) => Promise<any>
+    update: (payload: any) => Promise<any>
+    poll: () => Promise<any>
+    stop: () => Promise<any>
+  }
 }
 
 declare global {
@@ -33,13 +40,19 @@ declare global {
   }
 }
 
-const api = window.shenPulse
+const api: ShenPulseApi | undefined = window.shenPulse || (import.meta.env.DEV
+  ? {
+      getSnapshot: async () => ({ state: { game: { connectorOverrides: {} }, settings: { language: 'fr' } } }),
+      on: () => () => {},
+    }
+  : undefined)
 const queryGameId = new URLSearchParams(window.location.search).get('gameId')
 const gameId = normalizeGameId(queryGameId)
 const components = {
   'coin-pusher': CoinPusherGame,
   'connect-four': ConnectFourGame,
   'deal-or-no-deal': DealOrNoDealGame,
+  'brumelune': BrumeluneGame,
 }
 
 void boot()
@@ -99,7 +112,7 @@ async function boot() {
 }
 
 function normalizeGameId(value: unknown): GameId | null {
-  if (value === 'coin-pusher' || value === 'connect-four' || value === 'deal-or-no-deal') {
+  if (value === 'coin-pusher' || value === 'connect-four' || value === 'deal-or-no-deal' || value === 'brumelune') {
     return value
   }
   return null
@@ -122,6 +135,8 @@ function migrateDesktopSettings(id: GameId, stored: Record<string, any>) {
     saveConnectFourSettings(stored)
     return
   }
+
+  if (id === 'brumelune') return
 
   saveDealOrNoDealSettings({
     ...stored,
@@ -168,6 +183,12 @@ function handleLiveEvent(id: GameId, event: any) {
 
 function handleGameEffect(id: GameId, payload: any) {
   const effectId = String(payload?.effectId || payload || '')
+  if (id === 'brumelune') {
+    window.dispatchEvent(new CustomEvent('shenpulse:brumelune-effect', {
+      detail: { effectId, payload },
+    }))
+    return
+  }
   if (id === 'coin-pusher') {
     if (effectId === 'reinitialiser-la-manche') {
       pushCoinPusherRoundCommand('reset')
@@ -262,6 +283,7 @@ function clickFirst(selector: string) {
 function gameTitle(id: GameId) {
   if (id === 'coin-pusher') return 'Coin Pusher Live · ShenPulse'
   if (id === 'connect-four') return 'Puissance 4 Arena · ShenPulse'
+  if (id === 'brumelune') return 'Veilleurs de Brumelune · ShenPulse'
   return 'DealOrNoDeal · ShenPulse'
 }
 

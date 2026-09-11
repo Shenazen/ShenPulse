@@ -15,7 +15,7 @@ function actionTypeOptions(currentType) {
   const canonicalCurrentType = canonicalActionType(currentType);
   const groups = [
     ["VISUEL & AUDIO", ["overlay.media", "audio.play"]],
-    ["INTERACTIONS", ["goal.add", "timer.add", "wheel.spin", "overlay.match", "chat.reply"]],
+    ["INTERACTIONS", ["goal.add", "timer.add", "wheel.spin", "action.group", "overlay.match", "chat.reply"]],
     ["INTÉGRATIONS", ["irl.shelly", "spotify.queue", "obs.request", "http.request", "websocket.send"]],
     ["SYSTÈME", ["system.keys", "system.open", "delay"]]
   ];

@@ -68,7 +68,10 @@ function adminVisibilityCatalog() {
       detail: `${pack.category || "Jeu interactif"} · ${
         pack.accessMode === "purchase" ? "achat séparé" : "inclus"
       }`,
-      icon: "◇"
+      icon: "◇",
+      ...(pack.ownerOnly === true
+        ? { defaultScope: "admin", ownerOnly: true }
+        : {})
     }))
   };
 }

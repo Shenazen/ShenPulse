@@ -46,7 +46,7 @@ const OVERLAY_FIELD_HELP = {
   likeGoalPercentColor: "Modifie uniquement la couleur du pourcentage du Like Goal.",
   minCoins: "Valeur minimale du bocal après une remise à zéro ou une mise à jour.",
   showBase: "Affiche ou masque la partie de support prévue par le design.",
-  seconds: "Temps chargé au démarrage de la source, avant les ajouts, retraits ou remises à zéro.",
+  seconds: "Durée chargée au démarrage. Les jours sont convertis en heures dans le timer, ou en minutes cumulées si l’affichage des heures est désactivé.",
   timerAutoStart: "Démarre automatiquement le compte à rebours dès que la source navigateur est chargée.",
   showHours: "Force le format heures:minutes:secondes, même lorsque le compteur contient moins d’une heure.",
   timerTitleScale: "Agrandit ou réduit uniquement le titre du timer, sans modifier le cadre ni la valeur.",
@@ -123,6 +123,43 @@ function overlaySelect(name, label, value, options, full = false, help = OVERLAY
 
 function overlayField(name, label, value = "", type = "text", extra = "", help = OVERLAY_FIELD_HELP[name] || "") {
   return `<label class="field ${extra.includes("full") ? "full" : ""}">${fieldLabelWithInfo(label, help)}<input name="${escapeHtml(name)}" type="${escapeHtml(type)}" value="${escapeHtml(value)}" ${extra.replace("full", "")}></label>`;
+}
+
+function timerDurationParts(totalSeconds = 0) {
+  const total = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  return {
+    days: Math.floor(total / 86_400),
+    hours: Math.floor((total % 86_400) / 3_600),
+    minutes: Math.floor((total % 3_600) / 60),
+    seconds: total % 60
+  };
+}
+
+function timerDurationTotalSeconds(data, fallback = 0) {
+  const names = ["timerDays", "timerHours", "timerMinutes", "timerSeconds"];
+  if (!names.some((name) => data.has(name))) return Math.max(0, Number(fallback) || 0);
+  const value = (name, maximum) => Math.min(
+    maximum,
+    Math.max(0, Math.floor(Number(data.get(name)) || 0))
+  );
+  return value("timerDays", 999) * 86_400
+    + value("timerHours", 23) * 3_600
+    + value("timerMinutes", 59) * 60
+    + value("timerSeconds", 59);
+}
+
+function overlayTimerDurationFields(totalSeconds = 0) {
+  const duration = timerDurationParts(totalSeconds);
+  const part = (name, label, value, maximum) => `<label class="timer-duration-part"><span>${label}</span><input name="${name}" type="number" value="${value}" min="0" max="${maximum}" step="1" inputmode="numeric"></label>`;
+  return `<div class="field full timer-duration-field">
+    ${fieldLabelWithInfo("Durée initiale", OVERLAY_FIELD_HELP.seconds)}
+    <div class="timer-duration-grid">
+      ${part("timerDays", "Jours", duration.days, 999)}
+      ${part("timerHours", "Heures", duration.hours, 23)}
+      ${part("timerMinutes", "Minutes", duration.minutes, 59)}
+      ${part("timerSeconds", "Secondes", duration.seconds, 59)}
+    </div>
+  </div>`;
 }
 
 function overlayActionSelect(name, label, selectedId = "") {

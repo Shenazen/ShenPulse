@@ -1,5 +1,8 @@
 "use strict";
 
+let likeGoalDisplayedCurrent = likeGoalCurrent;
+let likeGoalAnimationFrame = 0;
+
 /**
  * Alertes, audio, objectifs, flux et classements.
  *
@@ -205,7 +208,6 @@ function renderGoals() {
       </article>`;
     })
     .join("");
-  renderLikeGoal();
 }
 
 function cancelLikeGoalCompletion() {
@@ -214,23 +216,14 @@ function cancelLikeGoalCompletion() {
   likeGoalCompletionTimer = null;
 }
 
-function renderLikeGoal(options = {}) {
-  const preserveTarget =
-    options.preserveTarget ?? Boolean(likeGoalCompletionTimer);
-  const forceVisible = options.forceVisible === true;
-  const completion = globalThis.LikeGoalPolicy.resolveCompletion(
-    likeGoalCurrent,
-    likeGoalInitialTarget,
-    likeGoalWhenReached
-  );
-  if (!preserveTarget) likeGoalTarget = completion.target;
-  document
-    .getElementById("like-goal-view")
-    ?.classList.toggle(
-      "like-goal-reached-hidden",
-      forceVisible ? false : completion.hidden
-    );
-  const current = likeGoalCurrent;
+function cancelLikeGoalAnimation() {
+  if (!likeGoalAnimationFrame) return;
+  cancelAnimationFrame(likeGoalAnimationFrame);
+  likeGoalAnimationFrame = 0;
+}
+
+function paintLikeGoal(displayedCurrent) {
+  const current = Math.max(0, Math.round(Number(displayedCurrent || 0)));
   const target = likeGoalTarget;
   const progressRange = Math.max(1, target - likeGoalBaseline);
   const progress = Math.min(
@@ -258,6 +251,64 @@ function renderLikeGoal(options = {}) {
   if (bar) bar.style.width = `${progress}%`;
 }
 
+function animateLikeGoal() {
+  cancelLikeGoalAnimation();
+  const from = Number.isFinite(likeGoalDisplayedCurrent)
+    ? likeGoalDisplayedCurrent
+    : likeGoalCurrent;
+  const to = likeGoalCurrent;
+  const distance = Math.abs(to - from);
+  if (distance < 0.5) {
+    likeGoalDisplayedCurrent = to;
+    paintLikeGoal(to);
+    return;
+  }
+  const duration = Math.min(
+    850,
+    Math.max(260, 260 + Math.log10(distance + 1) * 140)
+  );
+  const startedAt = performance.now();
+  const tick = (now) => {
+    const progress = Math.min(1, Math.max(0, (now - startedAt) / duration));
+    const eased = 1 - Math.pow(1 - progress, 3);
+    likeGoalDisplayedCurrent = from + (to - from) * eased;
+    paintLikeGoal(likeGoalDisplayedCurrent);
+    if (progress < 1) {
+      likeGoalAnimationFrame = requestAnimationFrame(tick);
+      return;
+    }
+    likeGoalAnimationFrame = 0;
+    likeGoalDisplayedCurrent = to;
+    paintLikeGoal(to);
+  };
+  likeGoalAnimationFrame = requestAnimationFrame(tick);
+}
+
+function renderLikeGoal(options = {}) {
+  const preserveTarget =
+    options.preserveTarget ?? Boolean(likeGoalCompletionTimer);
+  const forceVisible = options.forceVisible === true;
+  const completion = globalThis.LikeGoalPolicy.resolveCompletion(
+    likeGoalCurrent,
+    likeGoalInitialTarget,
+    likeGoalWhenReached
+  );
+  if (!preserveTarget) likeGoalTarget = completion.target;
+  document
+    .getElementById("like-goal-view")
+    ?.classList.toggle(
+      "like-goal-reached-hidden",
+      forceVisible ? false : completion.hidden
+    );
+  if (options.animate === true) {
+    animateLikeGoal();
+    return;
+  }
+  cancelLikeGoalAnimation();
+  likeGoalDisplayedCurrent = likeGoalCurrent;
+  paintLikeGoal(likeGoalCurrent);
+}
+
 function renderLikeGoalChange(previousCurrent) {
   const previous = Math.max(0, Number(previousCurrent || 0));
   const completedTarget = Math.max(1, Number(likeGoalTarget || 1));
@@ -266,19 +317,19 @@ function renderLikeGoalChange(previousCurrent) {
 
   if (likeGoalCompletionTimer) {
     if (likeGoalCurrent >= completedTarget) {
-      renderLikeGoal({ preserveTarget: true, forceVisible: true });
+      renderLikeGoal({ preserveTarget: true, forceVisible: true, animate: true });
       return;
     }
     cancelLikeGoalCompletion();
   }
 
   if (!crossedTarget) {
-    renderLikeGoal();
+    renderLikeGoal({ animate: true });
     return;
   }
 
   likeGoalTarget = completedTarget;
-  renderLikeGoal({ preserveTarget: true, forceVisible: true });
+  renderLikeGoal({ preserveTarget: true, forceVisible: true, animate: true });
   likeGoalCompletionTimer = setTimeout(() => {
     likeGoalCompletionTimer = null;
     renderLikeGoal();
@@ -301,7 +352,7 @@ function updateLikeGoal(payload = {}) {
   renderLikeGoalChange(previousCurrent);
 }
 
-function addFeedEvent(event) {
+function addFeedEvent(event, options = {}) {
   const eventId = String(event?.id || "").trim();
   if (eventId && interactiveEventIds.has(eventId)) return;
   if (eventId) {
@@ -314,7 +365,7 @@ function addFeedEvent(event) {
   feed.unshift(event);
   feed = feed.slice(0, 6);
   renderFeed();
-  updateInteractiveWidgets(event);
+  if (options.skipInteractiveState !== true) updateInteractiveWidgets(event);
 }
 
 function renderFeed() {

@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { normalizeMatchAccess } = require("./match-access");
 const {
   createDefaultOverlaySession
 } = require("./overlay-session-state");
@@ -254,6 +255,7 @@ function createDefaultState() {
       apiToken: crypto.randomBytes(24).toString("base64url"),
       historyLimit: 2000,
       startOverlayServer: true,
+      matchAccess: normalizeMatchAccess(),
       publicOverlayRelay: {
         enabled: true,
         publicBaseUrl: "https://shenpulse-overlays.web.app",
@@ -261,6 +263,7 @@ function createDefaultState() {
           "https://shenazenoverlay-default-rtdb.firebaseio.com",
         apiKey: "AIzaSyDHcC8ngIhy2Av8N7J-XdCQq9G8KimGGJk",
         channelId: "",
+        matchChannelId: "",
         email: "",
         uid: "",
         passwordSecretId: "",
@@ -346,6 +349,8 @@ function createDefaultState() {
       running: false,
       startedAt: null,
       startedBy: "",
+      tiktokRoomId: "",
+      tiktokInterruptedAt: null,
       profileId: "profile_starter",
       activeGamePackId: "coin-pusher",
       game: {

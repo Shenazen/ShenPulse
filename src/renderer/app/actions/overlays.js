@@ -208,8 +208,13 @@ async function dispatchOverlayTest(key) {
     }
     const previewMessages = key === "multiplierTimer"
       ? [{
-          channel: "timer",
-          payload: { operation: "add", seconds: 30, label: "BONUS X2" }
+          channel: "multiplier-timer",
+          payload: {
+            operation: "add",
+            seconds: 30,
+            multiplier: 2,
+            label: "BONUS X2"
+          }
         }]
       : key === "winCounter"
         ? [{
@@ -325,14 +330,15 @@ async function dispatchOverlayTest(key) {
     const payload = {
       operation: "add",
       seconds: 30,
+      multiplier: Math.max(1, Number(overlayConfig(key).multiplier || 2)),
       label: "BONUS X2"
     };
     const result = await api.testAction({
       id: "preview_multiplier_timer",
-      type: "timer.add",
+      type: "overlay.multiplier-timer",
       config: payload
     });
-    postOverlayCardEvent(key, "timer", payload);
+    postOverlayCardEvent(key, "multiplier-timer", payload);
     return result;
   }
   if (key === "wheel") {
@@ -340,8 +346,6 @@ async function dispatchOverlayTest(key) {
     const wheel = config.wheels.find(
       (entry) => entry.id === config.selectedWheelId
     ) || config.wheels[0];
-    const choices = wheel.segments.map((segment) => segment.label);
-    const colors = wheel.segments.map((segment) => segment.color);
     const result = await api.testAction({
       id: "preview_wheel",
       type: "wheel.spin",
@@ -351,14 +355,7 @@ async function dispatchOverlayTest(key) {
         color: wheel.segments[0]?.color || "#ff6a00"
       }
     });
-    postOverlayCardEvent(key, "wheel", {
-      choices,
-      colors,
-      winnerIndex: 0,
-      winner: choices[0] || "Surprise !",
-      settings: wheel,
-      design: wheel.design
-    });
+    postOverlayCardEvent(key, "wheel", result);
     return result;
   }
   throw new Error("Overlay inconnu.");
@@ -424,15 +421,15 @@ function previewGuestOverlay(key) {
   if (key === "wheel") {
     const config = normalizeWheelConfig(overlayConfig("wheel"));
     const wheel = config.wheels.find(
-      (entry) => entry.id === config.selectedWheelId
-    ) || config.wheels[0];
+      (entry) => entry.id === config.selectedWheelId && entry.enabled !== false
+    ) || config.wheels.find((entry) => entry.enabled !== false) || config.wheels[0];
     const choices = wheel.segments.map((segment) => segment.label);
     return postOverlayCardEvent(key, "wheel", {
       choices,
       colors: wheel.segments.map((segment) => segment.color),
       winnerIndex: 0,
       winner: choices[0] || "Surprise !",
-      settings: wheel,
+      settings: wheel.settings || {},
       design: wheel.design
     });
   }
@@ -477,70 +474,87 @@ async function performOverlayQuickAction(key, operation, amount = 0) {
       : operation === "remove"
         ? -numericAmount
         : 0;
-    next.current = operation === "reset"
+    const fallbackCurrent = operation === "reset"
       ? 0
       : key === "winCounter" && config.allowNegative !== false
         ? current + delta
         : Math.max(0, current + delta);
+    const channel = key === "winCounter"
+      ? "win-counter"
+      : key === "likeGoal"
+        ? "like-goal"
+        : "coin-jar";
+    const actionResult = await api.testAction({
+      id: `quick_${key}_${cryptoId()}`,
+      type: key === "winCounter"
+        ? "overlay.win-counter"
+        : key === "likeGoal"
+          ? "overlay.like-goal"
+          : "overlay.coin-jar",
+      config: {
+        operation: operation === "reset" ? "reset" : "adjust",
+        amount: delta
+      }
+    });
+    const synchronizedCurrent = Number(actionResult?.current);
+    next.current = Number.isFinite(synchronizedCurrent)
+      ? synchronizedCurrent
+      : fallbackCurrent;
     await saveOverlayConfig(key, next, {
       rerender: false,
       updateCard: true
     });
-    if (key === "winCounter") {
-      await api.testAction({
-        id: `quick_win_${cryptoId()}`,
-        type: "overlay.win-counter",
-        config: {
-          operation: operation === "reset" ? "reset" : "adjust",
-          amount: delta
-        }
-      });
-      previewMessage = {
-        channel: "win-counter",
-        payload: {
-          operation: operation === "reset" ? "reset" : "adjust",
-          amount: delta
-        }
-      };
-    } else {
-      await api.testAction({
-        id: `quick_${key}_${cryptoId()}`,
-        type: key === "likeGoal" ? "overlay.like-goal" : "overlay.coin-jar",
-        config: {
-          operation: operation === "reset" ? "reset" : "adjust",
-          amount: delta
-        }
-      });
-      previewMessage = {
-        channel: key === "likeGoal" ? "like-goal" : "coin-jar",
-        payload: {
-          operation: operation === "reset" ? "reset" : "adjust",
-          amount: delta
-        }
-      };
-    }
+    previewMessage = {
+      channel,
+      // L'état IPC hydrate déjà l'iframe. Un second delta doublerait l'action ;
+      // une valeur absolue garde l'aperçu idempotent quelle que soit l'ordre.
+      payload: {
+        operation: "set",
+        amount: next.current,
+        current: next.current
+      }
+    };
   } else if (["timer", "multiplierTimer"].includes(key)) {
+    const timerChannel = key === "multiplierTimer"
+      ? "multiplier-timer"
+      : "timer";
+    const timerActionType = key === "multiplierTimer"
+      ? "overlay.multiplier-timer"
+      : "timer.add";
+    const timerMultiplier = Math.max(1, Number(config.multiplier || 2));
     if (operation === "pause") {
-      next.timerPaused = !config.timerPaused;
+      const actionResult = await api.testAction({
+        id: `quick_${key}_${cryptoId()}`,
+        type: timerActionType,
+        config: {
+          operation: !config.timerPaused ? "pause" : "resume",
+          seconds: 0,
+          label: config.title,
+          ...(key === "multiplierTimer"
+            ? { multiplier: timerMultiplier }
+            : {})
+        }
+      });
+      next.timerPaused = typeof actionResult?.paused === "boolean"
+        ? actionResult.paused
+        : !config.timerPaused;
+      if (Number.isFinite(Number(actionResult?.remainingSeconds))) {
+        next.seconds = Number(actionResult.remainingSeconds);
+      }
       await saveOverlayConfig(key, next, {
         rerender: false,
         updateCard: true
       });
-      await api.testAction({
-        id: `quick_timer_${cryptoId()}`,
-        type: "timer.add",
-        config: {
-          operation: next.timerPaused ? "pause" : "resume",
-          seconds: 0,
-          label: config.title
-        }
-      });
       previewMessage = {
-        channel: "timer",
+        channel: timerChannel,
         payload: {
-          operation: next.timerPaused ? "pause" : "resume",
-          seconds: 0,
-          label: config.title
+          operation: "set",
+          seconds: Number(next.seconds || 0),
+          paused: next.timerPaused,
+          label: config.title,
+          ...(key === "multiplierTimer"
+            ? { multiplier: timerMultiplier }
+            : {})
         }
       };
     } else {
@@ -549,28 +563,41 @@ async function performOverlayQuickAction(key, operation, amount = 0) {
         : operation === "remove"
           ? -numericAmount
           : 0;
-      next.seconds = operation === "reset"
+      const fallbackSeconds = operation === "reset"
         ? 0
         : Math.max(0, Number(config.seconds || 0) + delta);
+      const actionResult = await api.testAction({
+        id: `quick_${key}_${cryptoId()}`,
+        type: timerActionType,
+        config: {
+          operation: operation === "reset" ? "reset" : "add",
+          seconds: delta,
+          label: config.title,
+          ...(key === "multiplierTimer"
+            ? { multiplier: timerMultiplier }
+            : {})
+        }
+      });
+      next.seconds = Number.isFinite(Number(actionResult?.remainingSeconds))
+        ? Number(actionResult.remainingSeconds)
+        : fallbackSeconds;
+      if (typeof actionResult?.paused === "boolean") {
+        next.timerPaused = actionResult.paused;
+      }
       await saveOverlayConfig(key, next, {
         rerender: false,
         updateCard: true
       });
-      await api.testAction({
-        id: `quick_timer_${cryptoId()}`,
-        type: "timer.add",
-        config: {
-          operation: operation === "reset" ? "reset" : "add",
-          seconds: delta,
-          label: config.title
-        }
-      });
       previewMessage = {
-        channel: "timer",
+        channel: timerChannel,
         payload: {
-          operation: operation === "reset" ? "reset" : "add",
-          seconds: delta,
-          label: config.title
+          operation: "set",
+          seconds: next.seconds,
+          paused: next.timerPaused === true,
+          label: config.title,
+          ...(key === "multiplierTimer"
+            ? { multiplier: timerMultiplier }
+            : {})
         }
       };
     }

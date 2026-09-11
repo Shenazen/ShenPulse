@@ -436,12 +436,16 @@ class SourceHub extends EventEmitter {
         connection?.config?.username || state.settings.tiktok?.username || "";
       const previousStatus = state.settings.tiktok?.status;
       const previousRoomId = state.settings.tiktok?.roomId || "";
-      const roomId =
-        status === "live"
-          ? Object.prototype.hasOwnProperty.call(details, "roomId")
-            ? safeString(details.roomId || "", 160)
-            : previousRoomId
-          : "";
+      const reportedRoomId = Object.prototype.hasOwnProperty.call(
+        details,
+        "roomId"
+      )
+        ? safeString(details.roomId || "", 160)
+        : "";
+      // TikTok et certains relais omettent la salle pendant une coupure.
+      // Elle reste pourtant l'identité fiable qui permet de distinguer une
+      // reconnexion du même LIVE du démarrage du LIVE suivant.
+      const roomId = reportedRoomId || previousRoomId;
       changed =
         previousStatus !== status ||
         previousRoomId !== roomId;

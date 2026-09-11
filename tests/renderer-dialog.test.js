@@ -1054,6 +1054,9 @@ test("les interactions incomplètes sont signalées avant overlay et lancement",
 
 test("le simulateur utilise le cout catalogue du cadeau selectionne", () => {
   const app = readRendererSource();
+  const simulatorStart = app.indexOf("function renderActions");
+  const simulatorEnd = app.indexOf("function renderRules", simulatorStart);
+  const simulator = app.slice(simulatorStart, simulatorEnd);
   const start = app.indexOf('if (event.target.id === "simulator-form")');
   const end = app.indexOf('if (event.target.id !== "settings-form")', start);
   const submit = app.slice(start, end);
@@ -1061,6 +1064,9 @@ test("le simulateur utilise le cout catalogue du cadeau selectionne", () => {
   assert.match(submit, /values\.type === "gift" && selectedGift/);
   assert.match(submit, /selectedGift\.cost/);
   assert.doesNotMatch(submit, /value: Number\(values\.value \|\| 0\)/);
+  assert.match(simulator, /simulatorType === "gift" \? "Nombre de cadeaux"/);
+  assert.match(simulator, /simulatorType === "like" \? 25 : 1/);
+  assert.doesNotMatch(simulator, /simulatorType === "like" \? 25 : 5/);
 });
 
 test("dupliquer une action cree une regle independante", () => {

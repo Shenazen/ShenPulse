@@ -79,9 +79,30 @@ function assertAdminAccount(store) {
 }
 
 function snapshotForRenderer(snapshot, store) {
-  return hasAuthenticatedAccount(store)
+  const visibleSnapshot = canUseOwnerOnlyCatalog(store)
     ? snapshot
-    : createGuestSnapshot(snapshot);
+    : withoutOwnerOnlyPacks(snapshot);
+  return hasAuthenticatedAccount(store)
+    ? visibleSnapshot
+    : createGuestSnapshot(visibleSnapshot);
+}
+
+function canUseOwnerOnlyCatalog(store) {
+  try {
+    return assertAdminAccount(store);
+  } catch {
+    return false;
+  }
+}
+
+function withoutOwnerOnlyPacks(snapshot = {}) {
+  if (!(snapshot.packs || []).some((pack) => pack?.ownerOnly === true)) {
+    return snapshot;
+  }
+  return {
+    ...snapshot,
+    packs: snapshot.packs.filter((pack) => pack?.ownerOnly !== true)
+  };
 }
 
 function createGuestSnapshot(snapshot = {}) {
@@ -145,6 +166,7 @@ function createGuestSnapshot(snapshot = {}) {
     ...(state.settings || {}),
     account: emptyAccount(),
     admin: emptyAccount(),
+    matchAccess: { accessKey: "" },
     irl: { enabled: false, devices: [] },
     tiktok: {
       username: "",
@@ -232,6 +254,7 @@ function shouldSuppressRendererChannel(channel, store) {
 }
 
 module.exports = {
+  ADMIN_OWNER_EMAIL,
   assertAdminAccount,
   assertAuthenticatedAccount,
   createGuestSnapshot,

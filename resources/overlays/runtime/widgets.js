@@ -330,17 +330,42 @@ function updateWinCounter(payload = {}) {
   });
 }
 
-function hydrateOverlaySession(state = {}) {
+function hydrateOverlaySession(state = {}, options = {}) {
   const runtime = state.overlaySession || state;
   if (!runtime || runtime.hasData !== true) return false;
 
-  cancelLikeGoalCompletion();
-  likeGoalCurrent = Math.max(0, Number(runtime.likeGoalCurrent || 0));
-  coinJarCurrent = Math.max(
-    coinJarMinimum,
-    Number(runtime.coinJarCurrent || 0)
-  );
-  winCounter = Number(runtime.winCounterCurrent || 0);
+  if (viewName === "like-goal") {
+    const previousCurrent = likeGoalCurrent;
+    cancelLikeGoalCompletion();
+    likeGoalCurrent = Math.max(0, Number(runtime.likeGoalCurrent || 0));
+    if (options.animate === true && likeGoalCurrent !== previousCurrent) {
+      renderLikeGoalChange(previousCurrent);
+    } else {
+      renderLikeGoal();
+    }
+    return true;
+  }
+
+  if (viewName === "coin-jar") {
+    coinJarCurrent = Math.max(
+      coinJarMinimum,
+      Number(runtime.coinJarCurrent || 0)
+    );
+    const recentEvents = Array.isArray(runtime.recentEvents)
+      ? runtime.recentEvents
+      : [];
+    recentEvents
+      .filter((event) => event.type === "gift")
+      .slice(0, 40)
+      .reverse()
+      .forEach((event) => spawnCoinJarDrop(event));
+    renderCoinJar();
+    return true;
+  }
+
+  if (viewName === "win-counter") {
+    winCounter = Number(runtime.winCounterCurrent || 0);
+  }
   const multiplierUntil = Number(runtime.winCounterMultiplierUntil || 0);
   const multiplierSeconds = Math.max(
     0,
@@ -361,52 +386,65 @@ function hydrateOverlaySession(state = {}) {
       operation: "set",
       seconds: persistedTimerSeconds,
       paused: runtime.timerPaused === true,
-      label: runtime.timerLabel || "TEMPS RESTANT"
+      label: overlayTitle || runtime.timerLabel || "TEMPS RESTANT"
     });
   }
-  if (viewName === "multiplier-timer" && multiplierSeconds > 0) {
+  if (viewName === "multiplier-timer") {
+    const multiplierTimerEndsAt = Number(
+      runtime.multiplierTimerEndsAt || multiplierUntil || 0
+    );
+    const persistedMultiplierSeconds = runtime.multiplierTimerPaused
+      ? Math.max(0, Number(runtime.multiplierTimerSeconds || 0))
+      : multiplierTimerEndsAt > 0
+        ? Math.max(
+            0,
+            Math.ceil((multiplierTimerEndsAt - Date.now()) / 1000)
+          )
+        : multiplierSeconds;
     updateMultiplierTimer({
       operation: "set",
-      seconds: multiplierSeconds,
-      multiplier: winCounterMultiplier,
-      label: `WINS X${winCounterMultiplier}`
+      seconds: persistedMultiplierSeconds,
+      paused: runtime.multiplierTimerPaused === true,
+      multiplier:
+        runtime.multiplierTimerMultiplier || winCounterMultiplier,
+      label:
+        overlayTitle || runtime.multiplierTimerLabel || "BONUS ACTIF"
     });
   }
-  leaderboardScores.clear();
-  const entries = runtime.leaderboards?.[leaderboardKind] || [];
-  for (const entry of entries) {
-    const key = String(entry.id || entry.name || "");
-    if (!key) continue;
-    leaderboardScores.set(key, {
-      avatarUrl: safeLeaderboardAvatarUrl(entry.avatarUrl),
-      name: String(entry.name || "Viewer"),
-      score: Math.max(0, Number(entry.score || 0))
-    });
-  }
-  seedStaticLeaderboardPreview();
 
-  feed = Array.isArray(runtime.recentEvents)
-    ? runtime.recentEvents.slice(0, 6)
-    : [];
-  myActions = feed.slice(0, 5).map((event) => ({
-    icon: icons[event.type] || "\u26A1",
-    title: event.user?.displayName || event.user?.name || "Viewer",
-    detail: eventDetail(event),
-    at: new Date(event.timestamp || Date.now())
-  }));
-  if (viewName === "coin-jar") {
-    runtime.recentEvents
-      .filter((event) => event.type === "gift")
-      .slice(0, 40)
-      .reverse()
-      .forEach((event) => spawnCoinJarDrop(event));
+  if (viewName === "leaderboard") {
+    leaderboardScores.clear();
+    const entries = runtime.leaderboards?.[leaderboardKind] || [];
+    for (const entry of entries) {
+      const key = String(entry.id || entry.name || "");
+      if (!key) continue;
+      leaderboardScores.set(key, {
+        avatarUrl: safeLeaderboardAvatarUrl(entry.avatarUrl),
+        name: String(entry.name || "Viewer"),
+        score: Math.max(0, Number(entry.score || 0))
+      });
+    }
+    seedStaticLeaderboardPreview();
+    renderLeaderboard();
   }
-  renderLikeGoal();
-  renderCoinJar();
-  renderWinCounter();
-  renderLeaderboard();
-  renderFeed();
-  renderMyActions();
+
+  if (["feed", "my-actions"].includes(viewName)) {
+    feed = Array.isArray(runtime.recentEvents)
+      ? runtime.recentEvents.slice(0, 6)
+      : [];
+    if (viewName === "feed") renderFeed();
+    if (viewName === "my-actions") {
+      myActions = feed.slice(0, 5).map((event) => ({
+        icon: icons[event.type] || "\u26A1",
+        title: event.user?.displayName || event.user?.name || "Viewer",
+        detail: eventDetail(event),
+        at: new Date(event.timestamp || Date.now())
+      }));
+      renderMyActions();
+    }
+  }
+
+  if (viewName === "win-counter") renderWinCounter();
   return true;
 }
 
@@ -438,7 +476,7 @@ function addGameEffect(payload) {
   });
 }
 
-function updateTimer(payload) {
+function updateTimer(payload = {}) {
   revealOverlay();
   const operation = String(payload.operation || "add");
   if (operation === "set") {
@@ -454,8 +492,16 @@ function updateTimer(payload) {
   } else {
     timerSeconds = Math.max(0, timerSeconds + Number(payload.seconds || 0));
   }
-  document.getElementById("timer-label").textContent = payload.label || "TEMPS RESTANT";
-  document.getElementById("multiplier-timer-label").textContent = payload.label || "BONUS ACTIF";
+  const isMultiplierTimer = viewName === "multiplier-timer";
+  const label = document.getElementById(
+    isMultiplierTimer ? "multiplier-timer-label" : "timer-label"
+  );
+  if (label) {
+    label.textContent =
+      overlayTitle ||
+      payload.label ||
+      (isMultiplierTimer ? "BONUS ACTIF" : "TEMPS RESTANT");
+  }
   renderTimer();
   ensureTimerTicker();
 }
@@ -484,12 +530,17 @@ function renderTimer() {
   const value = showHours
     ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${seconds}`
     : `${String(hours * 60 + minutes).padStart(2, "0")}:${seconds}`;
-  for (const id of ["timer-value", "multiplier-timer-value"]) {
-    const element = document.getElementById(id);
+  const element = document.getElementById(
+    viewName === "multiplier-timer"
+      ? "multiplier-timer-value"
+      : "timer-value"
+  );
+  if (element) {
     element.textContent = value;
     element.classList.toggle("paused", timerPaused);
   }
-  document.getElementById("multiplier-value").textContent = `X${multiplierValue}`;
+  const multiplier = document.getElementById("multiplier-value");
+  if (multiplier) multiplier.textContent = `X${multiplierValue}`;
 }
 
 function spinWheel(payload) {

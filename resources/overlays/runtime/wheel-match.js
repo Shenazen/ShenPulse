@@ -327,9 +327,42 @@ function normalizedMatchPlayback(payload = {}) {
   };
 }
 
-function finishMatchPlayback() {
+function matchTicketUrl(payload = {}) {
+  const query = new URLSearchParams({
+    match: String(payload.match || ""),
+    variant: String(payload.variant || "tikcontrol"),
+    fit: payload.fit === "cover" ? "cover" : "contain"
+  });
+  if (matchSourceBasePath) {
+    return `${matchSourceBasePath}/ticket?${query.toString()}`;
+  }
+  if (!isPublicMatchSource) return "";
+  const source = publicMatchRelayDocument?.matchSource || {};
+  const localPort = Number(source.localPort || 0);
+  if (
+    source.enabled !== true ||
+    source.accountNumber !== publicMatchAccountNumber ||
+    !Number.isInteger(localPort) ||
+    localPort < 1 ||
+    localPort > 65_535
+  ) {
+    return "";
+  }
+  return `http://127.0.0.1:${localPort}/match-bridge/${encodeURIComponent(
+    publicMatchAccountNumber
+  )}/${encodeURIComponent(publicMatchChannel)}/ticket?${query.toString()}`;
+}
+
+function finishMatchPlayback(playbackId = "") {
   if (viewName !== "match" || matchName !== "player") return;
   const video = document.getElementById("match-video");
+  if (
+    playbackId &&
+    video?.dataset.matchPlaybackId &&
+    video.dataset.matchPlaybackId !== playbackId
+  ) {
+    return;
+  }
   const stage = video?.parentElement;
   stage?.classList.remove("playing");
   if (video) {
@@ -337,35 +370,59 @@ function finishMatchPlayback() {
     video.removeAttribute("src");
     video.load();
   }
-  matchPlaybackQueue?.complete();
+  matchPlaybackQueue?.complete(playbackId);
 }
 
-function startQueuedMatchPlayback(payload = {}) {
+async function startQueuedMatchPlayback(payload = {}) {
   const request = normalizedMatchPlayback(payload);
   const video = document.getElementById("match-video");
   const title = document.getElementById("match-title");
   if (!request || !video || !title) {
-    matchPlaybackQueue?.complete();
+    matchPlaybackQueue?.complete(request?.requestId || "");
     return;
   }
 
   const playbackId = request.requestId || `${Date.now()}-${request.match}`;
   video.dataset.matchPlaybackId = playbackId;
+  video.dataset.matchPlaybackLoading = "true";
   title.textContent = MATCH_VIDEO_LABELS[request.match];
   video.loop = false;
   video.autoplay = false;
   video.style.objectFit = request.fit;
   video.parentElement?.classList.add("has-video", "playing");
-  video.src = mediaUrl(`video/${request.match}-${request.variant}.webm`);
+  video.pause();
+  video.removeAttribute("src");
   video.load();
+
+  let source = mediaUrl(`video/${request.match}-${request.variant}.webm`);
+  if (matchSourceBasePath || isPublicMatchSource) {
+    try {
+      const ticketUrl = matchTicketUrl(request);
+      if (!ticketUrl) throw new Error("Lecteur Match local indisponible.");
+      const response = await fetch(ticketUrl, {
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error(`Ticket Match refusé (${response.status}).`);
+      const ticket = await response.json();
+      source = new URL(String(ticket.url || ""), ticketUrl).toString();
+      if (!source) throw new Error("Ticket Match incomplet.");
+    } catch {
+      finishMatchPlayback(playbackId);
+      return;
+    }
+  }
+  if (video.dataset.matchPlaybackId !== playbackId) return;
+  video.src = source;
+  video.load();
+  delete video.dataset.matchPlaybackLoading;
 
   const playFromStart = () => {
     if (video.dataset.matchPlaybackId !== playbackId) return;
     try {
       video.currentTime = 0;
-      video.play().catch(finishMatchPlayback);
+      video.play().catch(() => finishMatchPlayback(playbackId));
     } catch {
-      finishMatchPlayback();
+      finishMatchPlayback(playbackId);
     }
   };
   if (video.readyState >= 2) playFromStart();
@@ -503,8 +560,13 @@ function setupMatch() {
       matchPlaybackQueue = globalThis.MatchPlaybackQueue.create({
         onStart: startQueuedMatchPlayback
       });
-      video.addEventListener("ended", finishMatchPlayback);
-      video.addEventListener("error", finishMatchPlayback);
+      video.addEventListener("ended", () =>
+        finishMatchPlayback(video.dataset.matchPlaybackId || "")
+      );
+      video.addEventListener("error", () => {
+        if (video.dataset.matchPlaybackLoading === "true") return;
+        finishMatchPlayback(video.dataset.matchPlaybackId || "");
+      });
     }
     return;
   }

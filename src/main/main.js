@@ -43,11 +43,19 @@ function getApplicationVersion() {
   return String(app.getVersion()).trim();
 }
 
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) app.quit();
-
+const originalGamesSmokeRequested =
+  process.argv.includes("--original-games-smoke") ||
+  app.commandLine.hasSwitch("original-games-smoke");
 app.setName("ShenPulse");
 app.setAppUserModelId("ShenPulse.ShenPulse");
+if (originalGamesSmokeRequested) {
+  app.setPath(
+    "userData",
+    path.join(app.getPath("temp"), `shenpulse-original-games-smoke-${process.pid}`)
+  );
+}
+const gotLock = originalGamesSmokeRequested || app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
 
 function createWindow() {
   const iconPath = path.join(__dirname, "..", "..", "build", "shenpulse.ico");

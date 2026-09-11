@@ -68,7 +68,23 @@ async function handleContentAndCommerceAction({ action, target, id }) {
   }
   if (action === "test-action") {
     const row = findActionRow(target.dataset.rule, id, target.dataset.index);
-    return perform(() => testActionRow(row), "Action de test exécutée");
+    return perform(
+      () => testActionRow(row),
+      (result) => {
+        if (!result?.partial) return "Action de test exécutée";
+        const failures = Array.isArray(result.failures) ? result.failures : [];
+        return {
+          title: "Action partiellement exécutée",
+          detail: failures
+            .map((failure) =>
+              `${failure.actionName || failure.actionId || "Sous-action"} : ${
+                failure.message || "erreur inconnue"
+              }`
+            )
+            .join(" · ")
+        };
+      }
+    );
   }
   if (action === "duplicate-action") {
     const row = findActionRow(target.dataset.rule, id, target.dataset.index);

@@ -503,3 +503,75 @@ test("la migration répartit les anciennes règles sans perdre les profils", () 
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("un etat JSON corrompu est restaure depuis la derniere sauvegarde valide", () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-state-recovery-")
+  );
+  try {
+    const recovered = createDefaultState();
+    recovered.settings.overlayToken = "token-from-backup";
+    recovered.createdAt = "2026-09-02T15:50:50.438Z";
+    const newerButLowerPriority = createDefaultState();
+    newerButLowerPriority.settings.overlayToken = "token-from-manual-copy";
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-state.json.bak"),
+      JSON.stringify(recovered),
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-state.before-newer.json"),
+      JSON.stringify(newerButLowerPriority),
+      "utf8"
+    );
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-state.json"),
+      Buffer.alloc(4096)
+    );
+
+    createStore(directory).load();
+
+    const restored = JSON.parse(
+      fs.readFileSync(path.join(directory, "shenpulse-state.json"), "utf8")
+    );
+    assert.equal(restored.settings.overlayToken, "token-from-backup");
+    assert.equal(restored.createdAt, "2026-09-02T15:50:50.438Z");
+    assert.equal(
+      fs
+        .readdirSync(directory)
+        .filter((name) => name.startsWith("shenpulse-state.json.corrupt-"))
+        .length,
+      1
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("chaque ecriture conserve et valide la generation precedente", () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-state-backup-")
+  );
+  try {
+    const store = createStore(directory);
+    store.load();
+    store.flush();
+    const previous = fs.readFileSync(
+      path.join(directory, "shenpulse-state.json"),
+      "utf8"
+    );
+
+    store.set("settings.theme", "light");
+    store.flush();
+
+    const backup = fs.readFileSync(
+      path.join(directory, "shenpulse-state.json.bak"),
+      "utf8"
+    );
+    assert.equal(backup, previous);
+    assert.doesNotThrow(() => JSON.parse(backup));
+    assert.equal(store.getState().settings.theme, "light");
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});

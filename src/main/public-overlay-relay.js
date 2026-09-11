@@ -14,11 +14,16 @@ const {
   relayDatabaseUrl
 } = require("../shared/public-overlay-protocol");
 const { hasProOverlayAccess } = require("./overlay-server");
+const {
+  createMatchChannelId,
+  matchAccountNumber,
+  matchPublicSourcePath
+} = require("./match-access");
 
 const AUTH_BASE_URL = "https://identitytoolkit.googleapis.com/v1";
 const TOKEN_BASE_URL = "https://securetoken.googleapis.com/v1";
-const EVENT_BATCH_DELAY_MS = 40;
-const STATE_DELAY_MS = 350;
+const EVENT_BATCH_DELAY_MS = 16;
+const STATE_DELAY_MS = 80;
 const HEARTBEAT_MS = 45_000;
 const MAX_QUEUED_MESSAGES = 1_000;
 const MAX_BATCH_MESSAGES = 250;
@@ -43,6 +48,7 @@ class PublicOverlayRelay extends EventEmitter {
     this.connectPromise = null;
     this.eventQueue = [];
     this.pendingState = null;
+    this.publishedState = null;
     this.eventTimer = null;
     this.stateTimer = null;
     this.heartbeatTimer = null;
@@ -63,13 +69,25 @@ class PublicOverlayRelay extends EventEmitter {
 
   urls({ includeRestricted = false } = {}) {
     const config = this.configuration();
-    return publicOverlayUrls({
+    const state = this.store.getState();
+    const proAccess =
+      includeRestricted || hasProOverlayAccess(state);
+    const urls = publicOverlayUrls({
       baseUrl:
         config.publicBaseUrl || DEFAULT_PUBLIC_OVERLAY_BASE_URL,
       channelId: config.channelId,
-      proAccess:
-        includeRestricted || hasProOverlayAccess(this.store.getState())
+      proAccess
     });
+    const matchPath = matchPublicSourcePath({
+      accountUid: state.settings?.account?.uid,
+      channelId: config.matchChannelId
+    });
+    urls.matchPlayer = proAccess && matchPath
+      ? `${String(
+          config.publicBaseUrl || DEFAULT_PUBLIC_OVERLAY_BASE_URL
+        ).replace(/\/$/, "")}${matchPath}`
+      : "";
+    return urls;
   }
 
   status() {
@@ -80,6 +98,7 @@ class PublicOverlayRelay extends EventEmitter {
       connected: this.connected,
       lastError: this.lastError,
       channelId: config.channelId || "",
+      matchChannelId: config.matchChannelId || "",
       publicBaseUrl:
         config.publicBaseUrl || DEFAULT_PUBLIC_OVERLAY_BASE_URL,
       updatedAt: this.statusUpdatedAt || ""
@@ -107,9 +126,10 @@ class PublicOverlayRelay extends EventEmitter {
     this.#clearTimers();
     if (this.connected) {
       try {
-        await this.#write({
-          presence: this.#presence(false)
-        });
+        await Promise.all([
+          this.#write({ presence: this.#presence(false) }),
+          this.#writeMatchLink(false)
+        ]);
       } catch {
         // La fermeture de l'application ne doit jamais être bloquée par le cloud.
       }
@@ -166,12 +186,34 @@ class PublicOverlayRelay extends EventEmitter {
       state.settings.publicOverlayRelay.channelId = channelId;
     }, true);
     this.eventQueue = [];
+    this.publishedState = null;
     this.pendingState = createRelayState(this.store.getState(), {
       baseUrl: this.configuration().publicBaseUrl
     });
     if (this.running && this.configuration().enabled !== false) {
       this.connected = false;
       await this.#connect();
+    }
+    return {
+      urls: this.urls(),
+      status: this.status()
+    };
+  }
+
+  async rotateMatchChannel() {
+    const currentChannel = this.configuration().matchChannelId;
+    if (this.connected && currentChannel) {
+      try {
+        await this.#deleteChannel(currentChannel);
+      } catch {
+        // La nouvelle URL reste générée si l'ancien alias est déjà hors ligne.
+      }
+    }
+    this.store.mutate((state) => {
+      state.settings.publicOverlayRelay.matchChannelId = createMatchChannelId();
+    }, true);
+    if (this.running && this.configuration().enabled !== false) {
+      await this.#writeMatchLink(true);
     }
     return {
       urls: this.urls(),
@@ -191,6 +233,8 @@ class PublicOverlayRelay extends EventEmitter {
       apiKey: current.apiKey || DEFAULT_FIREBASE_API_KEY,
       channelId:
         current.channelId || crypto.randomBytes(24).toString("base64url"),
+      matchChannelId:
+        current.matchChannelId || createMatchChannelId(),
       email: current.email || "",
       uid: current.uid || "",
       passwordSecretId: current.passwordSecretId || "",
@@ -213,13 +257,17 @@ class PublicOverlayRelay extends EventEmitter {
       this.store.getState(),
       { baseUrl: this.configuration().publicBaseUrl }
     );
-    await this.#write({
-      ownerUid: this.configuration().uid,
-      protocolVersion: PUBLIC_OVERLAY_PROTOCOL_VERSION,
-      state,
-      configurations,
-      presence: this.#presence(true)
-    });
+    await Promise.all([
+      this.#write({
+        ownerUid: this.configuration().uid,
+        protocolVersion: PUBLIC_OVERLAY_PROTOCOL_VERSION,
+        state,
+        configurations,
+        presence: this.#presence(true)
+      }),
+      this.#writeMatchLink(true)
+    ]);
+    this.publishedState = state;
     if (!this.running) return;
     this.connected = true;
     this.reconnectAttempt = 0;
@@ -360,13 +408,17 @@ class PublicOverlayRelay extends EventEmitter {
     });
   }
 
-  async #write(values, retry = true) {
+  async #write(
+    values,
+    retry = true,
+    channelId = this.configuration().channelId
+  ) {
     const token = await this.#ensureToken();
     const config = this.configuration();
     const response = await this.fetch(
       `${relayDatabaseUrl(
         config.databaseUrl,
-        config.channelId
+        channelId
       )}?auth=${encodeURIComponent(token)}`,
       {
         method: "PATCH",
@@ -381,7 +433,7 @@ class PublicOverlayRelay extends EventEmitter {
     if ((response.status === 401 || response.status === 403) && retry) {
       this.idToken = "";
       await this.#ensureToken(true);
-      return this.#write(values, false);
+      return this.#write(values, false, channelId);
     }
     if (!response.ok) {
       const detail = (await response.text()).slice(0, 500);
@@ -394,19 +446,23 @@ class PublicOverlayRelay extends EventEmitter {
   }
 
   async #deleteCurrentChannel(retry = true) {
+    return this.#deleteChannel(this.configuration().channelId, retry);
+  }
+
+  async #deleteChannel(channelId, retry = true) {
     const token = await this.#ensureToken();
     const config = this.configuration();
     const response = await this.fetch(
       `${relayDatabaseUrl(
         config.databaseUrl,
-        config.channelId
+        channelId
       )}?auth=${encodeURIComponent(token)}`,
       { method: "DELETE" }
     );
     if ((response.status === 401 || response.status === 403) && retry) {
       this.idToken = "";
       await this.#ensureToken(true);
-      return this.#deleteCurrentChannel(false);
+      return this.#deleteChannel(channelId, false);
     }
     if (!response.ok) {
       throw new Error(
@@ -428,23 +484,33 @@ class PublicOverlayRelay extends EventEmitter {
     const includesConfiguration = messages.some(
       (message) => message?.channel === "configuration"
     );
+    const state = createRelayState(this.store.getState(), {
+      baseUrl: this.configuration().publicBaseUrl
+    });
+    const configurations = includesConfiguration
+      ? createPublicOverlayConfigurations(this.store.getState(), {
+          baseUrl: this.configuration().publicBaseUrl
+        })
+      : null;
     try {
       await this.#write({
         lastBatch: {
           id,
+          sequence: this.batchSequence,
           createdAt: new Date().toISOString(),
+          state,
+          ...(configurations ? { configurations } : {}),
           messages
         },
+        // Le lot et l'état racine doivent former une seule image atomique.
+        // Sinon Firebase peut livrer le lot puis réappliquer l'ancien état.
+        state,
         ...(includesConfiguration
-          ? {
-              configurations: createPublicOverlayConfigurations(
-                this.store.getState(),
-                { baseUrl: this.configuration().publicBaseUrl }
-              )
-            }
+          ? { configurations }
           : {}),
         presence: this.#presence(true)
       });
+      this.publishedState = state;
     } catch (error) {
       this.eventQueue.unshift(...messages);
       throw error;
@@ -463,10 +529,14 @@ class PublicOverlayRelay extends EventEmitter {
     const state = this.pendingState;
     this.pendingState = null;
     try {
-      await this.#write({
-        state,
-        presence: this.#presence(true)
-      });
+      await Promise.all([
+        this.#write({
+          state,
+          presence: this.#presence(true)
+        }),
+        this.#writeMatchLink(true)
+      ]);
+      this.publishedState = state;
     } catch (error) {
       this.pendingState = state;
       throw error;
@@ -476,9 +546,10 @@ class PublicOverlayRelay extends EventEmitter {
   #startHeartbeat() {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
-      this.#write({ presence: this.#presence(true) }).catch((error) =>
-        this.#connectionFailed(error)
-      );
+      Promise.all([
+        this.#write({ presence: this.#presence(true) }),
+        this.#writeMatchLink(true)
+      ]).catch((error) => this.#connectionFailed(error));
     }, HEARTBEAT_MS);
     this.heartbeatTimer.unref?.();
   }
@@ -489,6 +560,30 @@ class PublicOverlayRelay extends EventEmitter {
       updatedAt: new Date().toISOString(),
       appVersion: this.appVersion
     };
+  }
+
+  #matchSource() {
+    const state = this.store.getState();
+    const port = Number(state.settings?.overlayPort || 0);
+    return {
+      enabled: hasProOverlayAccess(state),
+      accountNumber: matchAccountNumber(state.settings?.account?.uid),
+      localPort:
+        Number.isInteger(port) && port >= 1 && port <= 65_535 ? port : 0
+    };
+  }
+
+  #writeMatchLink(connected) {
+    const config = this.configuration();
+    return this.#write(
+      {
+        sourceChannel: config.channelId,
+        matchSource: this.#matchSource(),
+        presence: this.#presence(connected)
+      },
+      true,
+      config.matchChannelId
+    );
   }
 
   #connectionFailed(error) {

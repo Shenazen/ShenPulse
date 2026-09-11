@@ -9,6 +9,9 @@
 
 function renderGameInstallation(pack, unlocked) {
   const integrated = pack.guide?.mode === "integrated";
+  if (pack.guide?.mode === "input") {
+    return renderInputGameInstallation(pack, unlocked);
+  }
   if (integrated && CONFIGURABLE_INTEGRATED_GAMES.has(pack.id)) {
     return renderIntegratedGameSettings(pack, unlocked);
   }
@@ -78,11 +81,53 @@ function renderGameInstallation(pack, unlocked) {
   </div>`;
 }
 
+function renderInputGameInstallation(pack, unlocked) {
+  const configuredLayout = String(
+    snapshot.state.game.connectorOverrides?.[pack.id]?.keyLayout ||
+      pack.connector?.keyLayout ||
+      "wasd"
+  ).toLowerCase();
+  return `<div class="game-simple-step">
+    <section class="game-primary-panel game-install-simple">
+      <header><div><span>⌨ CONTRÔLE CIBLÉ</span><h3>Aucun mod à installer</h3><p>ShenPulse envoie uniquement les séquences clavier vérifiées au processus Fortnite officiel.</p></div><span class="game-step-count">PRIVÉ</span></header>
+      ${renderGamePageMessage(pack, "installation")}
+      <div class="game-install-state ready">
+        <span>✓</span>
+        <div>
+          <strong>Fortnite reste intact</strong>
+          <p>Aucun fichier du jeu n’est modifié. Si Fortnite n’est pas ouvert ou perd sa fenêtre, l’envoi est refusé ou interrompu.</p>
+        </div>
+      </div>
+      <label class="field full">
+        <span>Touches de déplacement utilisées dans Fortnite</span>
+        <select data-fortnite-key-layout>
+          <option value="wasd" ${configuredLayout === "wasd" ? "selected" : ""}>WASD — séquence Crowd Control originale</option>
+          <option value="azerty" ${configuredLayout === "azerty" ? "selected" : ""}>ZQSD — clavier français</option>
+        </select>
+        <small>Les autres touches restent Maj, Espace, Ctrl, R, B, M et 1 à 5.</small>
+      </label>
+      <footer class="game-panel-actions">
+        <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Détecter Fortnite ouvert</button>
+        <button class="button" data-action="save-fortnite-input-layout" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Enregistrer les touches</button>
+        <button class="button primary" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Continuer vers les interactions →</button>
+      </footer>
+    </section>
+    <aside class="game-novice-note">
+      <span>⌁</span>
+      <strong>Réservé au propriétaire</strong>
+      <p>Ce jeu n’est transmis au rendu que pour votre compte propriétaire vérifié. Le connecteur ne reconnaît que FortniteClient-Win64-Shipping.exe.</p>
+      <small>Lancez Fortnite et chargez une partie avant de tester un effet.</small>
+    </aside>
+  </div>`;
+}
+
 function renderGameLaunch(pack, unlocked) {
   const integrated = pack.guide?.mode === "integrated";
+  const inputDriven = pack.guide?.mode === "input";
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
   const canLaunch = unlocked && (integrated || Boolean(installation));
+  const ready = unlocked && (inputDriven || canLaunch);
   const mappings = gameMappedEffects(pack);
   const runningSession = activeGameSession();
   const sessionActive = runningSession?.packId === pack.id;
@@ -95,7 +140,9 @@ function renderGameLaunch(pack, unlocked) {
     : roundSettings
       ? roundSettings.durationMinutes * 60
       : 0;
-  const launchDescription = managedMinecraft
+  const launchDescription = inputDriven
+    ? "Ouvrez Fortnite depuis Epic Games, chargez une partie puis activez la session. ShenPulse ne lancera ni ne modifiera le jeu."
+    : managedMinecraft
     ? "Démarrez le serveur depuis ShenPulse, ouvrez Minecraft puis rejoignez 127.0.0.1. Les interactions du mode choisi seront déjà chargées."
     : "Lancez le jeu depuis ShenPulse. Une fois votre partie chargée, les interactions configurées seront prêtes à fonctionner.";
   const launchButtonLabel = managedMinecraft
@@ -106,14 +153,16 @@ function renderGameLaunch(pack, unlocked) {
       <header><div><span>▶ DÉMARRAGE</span><h3>Tout est prêt pour jouer</h3><p>${escapeHtml(launchDescription)}</p></div></header>
       ${renderGamePageMessage(pack, "launch")}
       <div class="game-start-readiness">
-        <article class="${canLaunch ? "ready" : ""}"><span>${canLaunch ? "✓" : "1"}</span><div><strong>${canLaunch ? "Jeu prêt" : "Installation nécessaire"}</strong><small>${canLaunch ? "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
+        <article class="${ready ? "ready" : ""}"><span>${ready ? "✓" : "1"}</span><div><strong>${ready ? inputDriven ? "Connecteur prêt" : "Jeu prêt" : "Installation nécessaire"}</strong><small>${ready ? inputDriven ? "Fortnite sera détecté au moment du test." : "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
         <article class="${mappings.length ? "ready" : ""}"><span>${mappings.length ? "✓" : "2"}</span><div><strong>${mappings.length ? `${mappings.length} interaction${mappings.length > 1 ? "s" : ""} configurée${mappings.length > 1 ? "s" : ""}` : "Interactions facultatives"}</strong><small>${mappings.length ? "Vos déclencheurs sont enregistrés." : "Vous pourrez en ajouter à tout moment."}</small></div></article>
         <article class="${sessionActive ? "ready" : ""}"><span>${sessionActive ? "✓" : "3"}</span><div><strong>${sessionActive ? "Session de jeu active" : "Session de jeu arrêtée"}</strong><small>${sessionActive ? "Les interactions restent actives sur toutes les pages." : "Activez-la pour autoriser les interactions de ce jeu."}</small></div></article>
       </div>
       <footer class="game-panel-actions">
-        ${canLaunch ? "" : `<button class="button" data-action="game-step" data-value="installation">← Revenir à l’installation</button>`}
+        ${ready ? "" : `<button class="button" data-action="game-step" data-value="installation">← Revenir à l’installation</button>`}
         ${sessionActive
           ? `<button class="button danger game-launch-button" data-action="stop-game-session">■ Arrêter la session de jeu</button>`
+          : inputDriven
+            ? `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions Fortnite</button>`
           : canLaunch
             ? `<button class="button primary game-launch-button" data-action="launch-game" data-id="${escapeHtml(pack.id)}" ${launchBusy ? "disabled" : ""}>${launchBusy ? "… Démarrage du serveur" : integrated ? "▶ Ouvrir le jeu et activer" : escapeHtml(launchButtonLabel)}</button>`
             : `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions</button>`}
@@ -150,7 +199,7 @@ function renderGameLaunch(pack, unlocked) {
       : `<aside class="game-novice-note">
           <span>▶</span>
           <strong>Après le lancement</strong>
-          <p>Chargez simplement votre partie. ShenPulse reconnaît automatiquement le jeu préparé et utilise votre profil actif.</p>
+          <p>${inputDriven ? "Gardez Fortnite au premier plan. Chaque interaction est arrêtée si la fenêtre cible ne peut plus être reconnue." : "Chargez simplement votre partie. ShenPulse reconnaît automatiquement le jeu préparé et utilise votre profil actif."}</p>
         </aside>`}
   </div>`;
 }

@@ -54,6 +54,10 @@ test("l’inventaire admin reprend exactement les pages déclarées par ShenPuls
   assert.match(source, /canAccessCatalogItem\("navigation", page\.id\)/);
   assert.match(source, /function canAccessOverlay\(item\)/);
   assert.match(source, /function canAccessGame\(pack\)/);
+  assert.match(
+    source,
+    /pack\.ownerOnly !== true \|\| isVerifiedAdminSession\(\)/
+  );
   assert.match(source, /function canAccessActionType\(type\)/);
   assert.match(source, /function visibleNavigationEntries\(\)/);
   assert.match(source, /ensureCurrentPageAccess\(\)/);

@@ -408,12 +408,14 @@ function registerIpc({
       "audio.play",
       "goal.add",
       "timer.add",
+      "overlay.multiplier-timer",
       "wheel.spin",
       "overlay.match",
       "game.effect",
       "overlay.like-goal",
       "overlay.coin-jar",
       "overlay.win-counter",
+      "action.group",
       "obs.request",
       "http.request",
       "websocket.send",
@@ -488,6 +490,9 @@ function registerIpc({
   handle("server:restart", () => core.restartServers());
   handle("overlay:public-urls-rotate", () =>
     core.rotatePublicOverlayChannel()
+  );
+  handle("overlay:match-url-rotate", () =>
+    core.rotateMatchOverlayAccess()
   );
 
   handle("entity:upsert", (_event, collection, item) => {
@@ -953,6 +958,18 @@ function registerIpc({
     const nextSnapshot = await core.startGameSession(targetId);
     return { ...result, snapshot: nextSnapshot };
   });
+  handle("game:brumelune-lan:start", (_event, payload) =>
+    gameRuntime.startBrumeluneLan(sanitizeEntity(payload || {}))
+  );
+  handle("game:brumelune-lan:update", (_event, payload) =>
+    gameRuntime.updateBrumeluneLan(sanitizeEntity(payload || {}))
+  );
+  handle("game:brumelune-lan:poll", () =>
+    gameRuntime.pollBrumeluneLan()
+  );
+  handle("game:brumelune-lan:stop", () =>
+    gameRuntime.stopBrumeluneLan()
+  );
   handle("game:round-settings:save", (_event, packId, incoming) =>
     core.saveGameRoundSettings(
       safeString(packId, 160),
@@ -1066,6 +1083,14 @@ function sanitizeGameConfiguration(packId, value) {
     sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)
       ? sanitized
       : {};
+  if (safeString(packId, 160) === "fortnite") {
+    return {
+      keyLayout:
+        String(input.keyLayout || "").toLowerCase() === "azerty"
+          ? "azerty"
+          : "wasd"
+    };
+  }
   if (safeString(packId, 160) !== "coin-pusher") return next;
   for (const field of ["platformImageUrl", "plinkoImageUrl"]) {
     if (Object.prototype.hasOwnProperty.call(input, field)) {
