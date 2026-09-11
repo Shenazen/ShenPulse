@@ -4,6 +4,7 @@ import CoinPusherGame from './components/games/CoinPusherGame.vue'
 import ConnectFourGame from './components/games/ConnectFourGame.vue'
 import DealOrNoDealGame from './components/games/DealOrNoDealGame.vue'
 import BrumeluneGame from './components/games/BrumeluneGame.vue'
+import ThiercelieuxGame from './components/games/ThiercelieuxGame.vue'
 import {
   loadCoinPusherSettings,
   pushCoinPusherDrop,
@@ -20,12 +21,14 @@ import platformImageUrl from './assets/games/coin-pusher/platform-default.webp?u
 import { messages } from './i18n/messages'
 import './main.css'
 
-type GameId = 'coin-pusher' | 'connect-four' | 'deal-or-no-deal' | 'brumelune'
+type GameId = 'coin-pusher' | 'connect-four' | 'deal-or-no-deal' | 'brumelune' | 'thiercelieux'
 
 type ShenPulseApi = {
   getSnapshot: () => Promise<any>
   on: (channel: string, callback: (payload: any) => void) => () => void
   publishDealHostState?: (state: any) => Promise<any>
+  publishThiercelieuxHostState?: (state: any) => Promise<any>
+  setGameWindowFormat?: (gameId: string, format: 'portrait' | 'landscape') => Promise<any>
   brumeluneLan?: {
     start: (payload: any) => Promise<any>
     update: (payload: any) => Promise<any>
@@ -53,6 +56,7 @@ const components = {
   'connect-four': ConnectFourGame,
   'deal-or-no-deal': DealOrNoDealGame,
   'brumelune': BrumeluneGame,
+  'thiercelieux': ThiercelieuxGame,
 }
 
 void boot()
@@ -83,7 +87,9 @@ async function boot() {
 
     const app = createApp({
       name: 'OriginalShenazenGameHost',
-      render: () => h(components[gameId]),
+      render: () => h(components[gameId], gameId === 'thiercelieux'
+        ? { initialSettings: storedSettings }
+        : {}),
     })
     app.use(i18n)
     app.mount('#app')
@@ -97,6 +103,11 @@ async function boot() {
       const updatedSettings = payload?.state?.game?.connectorOverrides?.[gameId]
       if (!updatedSettings || typeof updatedSettings !== 'object') return
       migrateDesktopSettings(gameId, updatedSettings)
+      if (gameId === 'thiercelieux') {
+        window.dispatchEvent(new CustomEvent('shenpulse:thiercelieux-settings', {
+          detail: updatedSettings,
+        }))
+      }
     })
     if (gameId === 'deal-or-no-deal' && api.publishDealHostState) {
       const publishPrivateState = (state: any) => {
@@ -112,7 +123,7 @@ async function boot() {
 }
 
 function normalizeGameId(value: unknown): GameId | null {
-  if (value === 'coin-pusher' || value === 'connect-four' || value === 'deal-or-no-deal' || value === 'brumelune') {
+  if (value === 'coin-pusher' || value === 'connect-four' || value === 'deal-or-no-deal' || value === 'brumelune' || value === 'thiercelieux') {
     return value
   }
   return null
@@ -136,7 +147,7 @@ function migrateDesktopSettings(id: GameId, stored: Record<string, any>) {
     return
   }
 
-  if (id === 'brumelune') return
+  if (id === 'brumelune' || id === 'thiercelieux') return
 
   saveDealOrNoDealSettings({
     ...stored,
@@ -158,6 +169,7 @@ function numberList(value: unknown) {
 }
 
 function handleLiveEvent(id: GameId, event: any) {
+  if (id === 'thiercelieux') return
   if (id !== 'coin-pusher' || event?.type !== 'gift') return
   const count = Math.max(1, Math.round(Number(event?.data?.count || 1)))
   const diamondValue = Math.max(0, Number(event?.data?.value || 0))
@@ -185,6 +197,12 @@ function handleGameEffect(id: GameId, payload: any) {
   const effectId = String(payload?.effectId || payload || '')
   if (id === 'brumelune') {
     window.dispatchEvent(new CustomEvent('shenpulse:brumelune-effect', {
+      detail: { effectId, payload },
+    }))
+    return
+  }
+  if (id === 'thiercelieux') {
+    window.dispatchEvent(new CustomEvent('shenpulse:thiercelieux-effect', {
       detail: { effectId, payload },
     }))
     return
@@ -284,6 +302,7 @@ function gameTitle(id: GameId) {
   if (id === 'coin-pusher') return 'Coin Pusher Live · ShenPulse'
   if (id === 'connect-four') return 'Puissance 4 Arena · ShenPulse'
   if (id === 'brumelune') return 'Veilleurs de Brumelune · ShenPulse'
+  if (id === 'thiercelieux') return 'Les Loups-Garous de Thiercelieux · ShenPulse'
   return 'DealOrNoDeal · ShenPulse'
 }
 

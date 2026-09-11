@@ -27,7 +27,9 @@ const {
 } = require("../src/main/game-runtime");
 const {
   sanitizeGameConfiguration,
-  sanitizeDealOrNoDealHostState
+  sanitizeDealOrNoDealHostState,
+  sanitizeThiercelieuxCommand,
+  sanitizeThiercelieuxHostState
 } = require("../src/main/ipc");
 
 const root = path.join(__dirname, "..");
@@ -631,6 +633,7 @@ test("la sauvegarde Enhanced archive l’emplacement 15 avant remplacement si le
 
 test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () => {
   assert.ok(INTEGRATED_GAME_IDS.includes("deal-or-no-deal"));
+  assert.ok(INTEGRATED_GAME_IDS.includes("thiercelieux"));
   const runtime = fs.readFileSync(
     path.join(root, "src", "main", "game-runtime.js"),
     "utf8"
@@ -662,6 +665,10 @@ test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () =
     path.join(originalGamesDirectory, "DealOrNoDealGame.vue"),
     "utf8"
   );
+  const thiercelieux = fs.readFileSync(
+    path.join(originalGamesDirectory, "ThiercelieuxGame.vue"),
+    "utf8"
+  );
   assert.match(coinPusher, /createCoinPusher3dRenderer/);
   assert.match(coinPusher, /coin-pusher-webgl/);
   assert.match(connectFour, /arena-stage\.png/);
@@ -670,6 +677,58 @@ test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () =
   assert.match(dealOrNoDeal, /class="case-box"/);
   assert.match(dealOrNoDeal, /ref="premiumBasePriceRef"/);
   assert.match(dealOrNoDeal, /ref="premiumEntryPriceRef"/);
+  assert.match(thiercelieux, /format-portrait/);
+  assert.match(thiercelieux, /format-landscape/);
+  assert.match(thiercelieux, /setGameWindowFormat/);
+  assert.match(thiercelieux, /class="moon-table"/);
+  assert.match(thiercelieux, /class="board-card"/);
+  assert.match(thiercelieux, /publishThiercelieuxHostState/);
+  assert.match(thiercelieux, /startAmbience/);
+  assert.match(thiercelieux, /handleBoardCard/);
+  assert.match(thiercelieux, /queueNightResults/);
+  assert.match(thiercelieux, /currentPrivateResult/);
+  assert.match(thiercelieux, /RÉSULTAT DE VOTRE ACTION/);
+  assert.doesNotMatch(thiercelieux, /class="guide-panel"|class="runtime-tabs"|class="guide-controls"/);
+  assert.doesNotMatch(thiercelieux, /lobbyTab|simulateGift|v-model="config\.giftName"/);
+  const thiercelieuxSettings = fs.readFileSync(
+    path.join(
+      root,
+      "src",
+      "renderer",
+      "app",
+      "features",
+      "games",
+      "settings-thiercelieux.js"
+    ),
+    "utf8"
+  );
+  assert.match(thiercelieuxSettings, /giftPickerField\("thiercelieuxGiftName"/);
+  assert.match(thiercelieuxSettings, /data-thiercelieux-manual-name/);
+  assert.match(thiercelieuxSettings, /data-thiercelieux-role-select/);
+  assert.match(thiercelieuxSettings, /handleThiercelieuxRegistrationEvent/);
+  assert.match(thiercelieuxSettings, /thiercelieux-buy-extension/);
+  assert.match(thiercelieuxSettings, /thiercelieux-settings-extensions/);
+  assert.match(thiercelieuxSettings, /THIERCELIEUX_EXTENSION_ARTWORK/);
+  assert.match(thiercelieuxSettings, /renderThiercelieuxLivePanel/);
+  assert.match(thiercelieuxSettings, /THIERCELIEUX_PACKS\.filter\(\(\[packId\]\) => ownedPacks\.has\(packId\)\)/);
+  assert.match(thiercelieuxSettings, /hasProductEntitlement/);
+  assert.match(thiercelieuxSettings, /THIERCELIEUX_MIN_PLAYERS = 3/);
+  assert.match(thiercelieuxSettings, /thiercelieuxRecommendedRoles\(players\.length/);
+  assert.doesNotMatch(thiercelieuxSettings, /impose huit joueurs/);
+  assert.match(
+    fs.readFileSync(
+      path.join(root, "src", "main", "game-runtime.js"),
+      "utf8"
+    ),
+    /sanitizeThiercelieuxEntitlements/
+  );
+  assert.match(
+    fs.readFileSync(
+      path.join(root, "src", "renderer", "games", "original-src", "domain", "thiercelieuxEngine.mjs"),
+      "utf8"
+    ),
+    /Côte à côte/
+  );
   assert.match(
     dealOrNoDeal,
     /font-size:\s*calc\(3\.14rem \* var\(--premium-entry-amount-scale,\s*1\)\)/
@@ -707,8 +766,14 @@ test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () =
     "utf8"
   );
   assert.match(preload, /publishDealHostState:[\s\S]*game:deal-host-state/);
+  assert.match(preload, /publishThiercelieuxHostState:[\s\S]*game:thiercelieux-host-state/);
+  assert.match(preload, /sendThiercelieuxCommand:[\s\S]*game:thiercelieux-command/);
+  assert.match(preload, /setGameWindowFormat:[\s\S]*game:window-format/);
   assert.match(preload, /"deal-host-state"/);
   assert.match(ipc, /handle\("game:deal-host-state"/);
+  assert.match(ipc, /handle\("game:thiercelieux-host-state"/);
+  assert.match(ipc, /handle\("game:thiercelieux-command"/);
+  assert.match(ipc, /handle\("game:window-format"/);
   const host = fs.readFileSync(
     path.join(root, "src", "renderer", "games", "host.js"),
     "utf8"
@@ -760,6 +825,54 @@ test("le suivi privé DealOrNoDeal conserve seulement les boîtes valides", () =
   ]);
   assert.equal(state.bankerRequestText, "Offre test");
   assert.equal(state.bonusValue, 123);
+});
+
+test("la régie Thiercelieux filtre son état privé et ses commandes", () => {
+  const state = sanitizeThiercelieuxHostState({
+    screen: "game",
+    phase: "night",
+    dialogue: "Annonce du maître du jeu",
+    players: [
+      { id: "p1", name: "Alice", seat: 99, alive: true, selected: true },
+      { id: "", name: "Fantôme", seat: 2 }
+    ],
+    availableTargets: [
+      { id: "p2", name: "Bob", seat: 2, alive: true }
+    ],
+    resultPending: true,
+    resultUnlocked: true,
+    resultPlayerId: "p1",
+    resultPlayerName: "Alice",
+    resultSeat: 1,
+    remainingSeconds: 99999
+  });
+  assert.equal(state.phase, "night");
+  assert.equal(state.dialogue, "Annonce du maître du jeu");
+  assert.deepEqual(state.players, [
+    { id: "p1", name: "Alice", seat: 8, alive: true, selected: true, disabled: false, status: "" }
+  ]);
+  assert.equal(state.availableTargets[0].id, "p2");
+  assert.equal(state.resultPending, true);
+  assert.equal(state.resultUnlocked, true);
+  assert.equal(state.resultPlayerName, "Alice");
+  assert.equal(state.remainingSeconds, 3600);
+  assert.deepEqual(sanitizeThiercelieuxCommand({
+    type: "select-target",
+    playerId: "p2",
+    multiple: true,
+    ignored: "secret"
+  }), {
+    type: "select-target",
+    playerId: "p2",
+    choice: "",
+    multiple: true
+  });
+  assert.equal(sanitizeThiercelieuxCommand({ type: "reveal-result" }).type, "reveal-result");
+  assert.equal(sanitizeThiercelieuxCommand({ type: "confirm-result" }).type, "confirm-result");
+  assert.throws(
+    () => sanitizeThiercelieuxCommand({ type: "delete-everything" }),
+    /inconnue/
+  );
 });
 
 test("l’identité visuelle Windows utilise les assets ShenPulse transparents", () => {

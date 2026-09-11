@@ -5,6 +5,9 @@ const {
   gameCheatAccessGrantMap,
   isValidGameCheatEmail
 } = require("../shared/game-cheat-access");
+const {
+  THIERCELIEUX_EXTENSION_PRODUCTS
+} = require("../shared/thiercelieux-products");
 
 const ADMIN_EMAIL = "alexandre.leuridan@gmail.com";
 const FIREBASE_API_KEY = "AIzaSyDHcC8ngIhy2Av8N7J-XdCQq9G8KimGGJk";
@@ -158,7 +161,7 @@ class AdminService {
     const errors = {};
     let commerce;
     if (commerceResult.status === "fulfilled") {
-      commerce = commerceResult.value;
+      commerce = normalizeCommerceState(commerceResult.value);
     } else {
       errors.commerce = normalizeAdminModuleError(
         commerceResult.reason,
@@ -243,10 +246,10 @@ class AdminService {
     } else {
       body.catalog = normalizeCommerceCatalog(incoming.catalog);
     }
-    return this.#api("/api/admin/commerce", {
+    return normalizeCommerceState(await this.#api("/api/admin/commerce", {
       method: "PUT",
       body
-    });
+    }));
   }
 
   async grantTrial(incoming = {}) {
@@ -608,6 +611,19 @@ function normalizeCommerceCatalog(value) {
       trialEligible: Boolean(raw.trialEligible)
     };
   }
+  for (const product of THIERCELIEUX_EXTENSION_PRODUCTS) {
+    const current = products[product.id] || {};
+    products[product.id] = {
+      accessMode: "purchase",
+      baseAmount: product.price.toFixed(2),
+      currency: product.currency,
+      enabled: current.enabled !== false,
+      id: product.id,
+      sortOrder: Number(current.sortOrder || 500),
+      title: product.name,
+      trialEligible: false
+    };
+  }
   for (const tier of ["pro", "premium"]) {
     const raw = candidate.subscriptions?.[tier];
     if (!raw || typeof raw !== "object") continue;
@@ -654,6 +670,22 @@ function normalizeCommerceCatalog(value) {
     updatedAt: String(candidate.updatedAt || ""),
     updatedByEmail: String(candidate.updatedByEmail || ""),
     updatedByUid: String(candidate.updatedByUid || "")
+  };
+}
+
+function normalizeCommerceState(value) {
+  const candidate = value && typeof value === "object" ? value : {};
+  const catalog = normalizeCommerceCatalog(candidate.catalog || {});
+  const channels = {};
+  for (const channel of ["draft", "prod", "test"]) {
+    channels[channel] = normalizeCommerceCatalog(
+      candidate.channels?.[channel] || catalog
+    );
+  }
+  return {
+    ...candidate,
+    catalog,
+    channels
   };
 }
 
@@ -898,6 +930,7 @@ module.exports = {
   PUBLIC_VISIBILITY_SECTIONS,
   VISIBILITY_SECTIONS,
   normalizeCommerceCatalog,
+  normalizeCommerceState,
   commerceStateFromPublicConfig,
   normalizePublicVisibility,
   normalizeSiteSettings,

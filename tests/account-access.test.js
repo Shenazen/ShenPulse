@@ -265,6 +265,14 @@ test("coupe les événements privés envoyés au rendu en mode invité", () => {
     true
   );
   assert.equal(
+    shouldSuppressRendererChannel("thiercelieux-host-state", guestStore),
+    true
+  );
+  assert.equal(
+    shouldSuppressRendererChannel("thiercelieux-command", guestStore),
+    true
+  );
+  assert.equal(
     shouldSuppressRendererChannel("state-changed", guestStore),
     false
   );

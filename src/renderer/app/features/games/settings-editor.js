@@ -1,4 +1,7 @@
 function renderIntegratedGameFields(pack, config) {
+  if (pack.id === "thiercelieux") {
+    return renderThiercelieuxGameFields(pack, config);
+  }
   if (pack.id === "coin-pusher") {
     const activePanel = [
       "general",
@@ -199,23 +202,30 @@ function renderIntegratedGameFields(pack, config) {
 }
 
 function renderIntegratedGameSettings(pack, unlocked) {
-  const config = integratedGameSettings(pack.id);
+  const storedConfig = integratedGameSettings(pack.id);
+  const config = pack.id === "thiercelieux"
+    ? thiercelieuxAccessibleConfiguration(storedConfig, pack)
+    : storedConfig;
   const coinPusher = pack.id === "coin-pusher";
+  const thiercelieux = pack.id === "thiercelieux";
+  const setup = thiercelieux
+    ? thiercelieuxSetupState(config)
+    : { ready: true, errors: [] };
   return `<div class="integrated-game-config-page">
     ${pack.id === "deal-or-no-deal" ? renderDealPrivateMonitor() : ""}
     <form class="integrated-game-settings" data-integrated-game-settings="${escapeHtml(pack.id)}">
     <section class="game-interaction-toolbar integrated-settings-heading">
-      <div><span>⚙ RÉGLAGES DU JEU</span><h3>Configurer ${escapeHtml(pack.name)}</h3><p>Chaque rubrique regroupe une seule partie du jeu. Les changements restent propres au profil ${escapeHtml(overlayProfileName())}.</p></div>
+      <div><span>${thiercelieux ? "☾ RÉGIE DU VILLAGE" : "⚙ RÉGLAGES DU JEU"}</span><h3>${thiercelieux ? "Préparer" : "Configurer"} ${escapeHtml(pack.name)}</h3><p>${thiercelieux ? "Inscriptions, joueurs, personnages et règles se préparent ici. La fenêtre du jeu reste un plateau épuré." : "Chaque rubrique regroupe une seule partie du jeu. Les changements restent propres au profil " + escapeHtml(overlayProfileName()) + "."}</p></div>
       <div class="integrated-settings-profile"><small>PROFIL ACTIF</small><strong>${escapeHtml(overlayProfileName())}</strong></div>
     </section>
     ${renderGamePageMessage(pack, "installation")}
     ${renderIntegratedGameFields(pack, config)}
     <footer class="game-step-footer integrated-settings-actions">
-      <div><strong>Jeu local prêt</strong><small>Aucune installation externe n’est nécessaire.</small></div>
+      <div><strong>${thiercelieux ? (setup.ready ? "Village prêt" : "Régie à compléter") : "Jeu local prêt"}</strong><small>${thiercelieux ? (setup.errors[0] || "La fenêtre n'affichera que le déroulé de la partie.") : "Aucune installation externe n’est nécessaire."}</small></div>
       <button class="button" type="submit" ${unlocked ? "" : "disabled"}>Enregistrer</button>
       ${coinPusher
         ? `<button class="button primary" type="button" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Continuer vers les interactions →</button>`
-        : `<button class="button primary game-launch-button" type="submit" data-launch-after-save="true" ${unlocked ? "" : "disabled"}>▶ Enregistrer et ouvrir le jeu</button>
+        : `<button class="button primary game-launch-button" type="submit" data-launch-after-save="true" ${unlocked && (!thiercelieux || setup.ready) ? "" : "disabled"}>▶ ${thiercelieux ? "Ouvrir le plateau" : "Enregistrer et ouvrir le jeu"}</button>
           <button class="button ghost" type="button" data-action="game-step" data-value="launch" ${unlocked ? "" : "disabled"}>Voir le démarrage →</button>`}
     </footer>
     </form>
@@ -255,6 +265,9 @@ function integratedSettingsFromForm(gameId, data) {
       ? Math.min(maximum, Math.max(minimum, value))
       : fallback;
   };
+  if (gameId === "thiercelieux") {
+    return thiercelieuxConfigurationFromForm(data, current);
+  }
   if (gameId === "coin-pusher") {
     const scoreSlots = integratedNumberList(data.get("scoreSlots"))
       .map((value) => Math.max(-9999, Math.min(9999, Math.round(value))))

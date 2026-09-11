@@ -3,6 +3,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 let latestDealHostState = null;
+let latestThiercelieuxHostState = null;
 
 const connectorOverrides = {
   "coin-pusher": {
@@ -106,6 +107,42 @@ const connectorOverrides = {
       premiumEntryCost: 1000,
       rewardMultiplier: 2.5
     }
+  },
+  thiercelieux: {
+    orientation: "portrait",
+    assignmentMode: "manual",
+    runMode: "hybrid",
+    rulesMode: "official",
+    packs: ["base"],
+    selectedVariantIds: [],
+    captainEnabled: true,
+    allowSolitary: true,
+    cameraEnabled: false,
+    spectatorEnabled: true,
+    debateSeconds: 180,
+    voteSeconds: 60,
+    revealSeconds: 20,
+    audioEnabled: false,
+    saveEnabled: true,
+    giftName: "Rose",
+    giftId: "5655",
+    giftValue: 1,
+    giftQuantity: 1,
+    activePlayers: Array.from({ length: 5 }, (_value, index) => ({
+      id: `smoke-player-${index + 1}`,
+      userId: `smoke-user-${index + 1}`,
+      name: `Villageois ${index + 1}`,
+      avatarUrl: "",
+      seat: index + 1,
+      connected: true
+    })),
+    roleIds: [
+      "simple-loup-garou",
+      "voyante",
+      "sorciere",
+      "simple-villageois",
+      "simple-villageois"
+    ]
   }
 };
 
@@ -125,8 +162,14 @@ contextBridge.exposeInMainWorld("shenPulse", {
     return { ok: true };
   },
   getSmokeDealHostState: async () => latestDealHostState,
+  publishThiercelieuxHostState: async (state) => {
+    latestThiercelieuxHostState = state;
+    return { ok: true };
+  },
+  getSmokeThiercelieuxHostState: async () => latestThiercelieuxHostState,
+  setGameWindowFormat: async () => ({ ok: true }),
   on: (channel, callback) => {
-    if (!["game-effect", "live-event", "state-changed"].includes(channel)) {
+    if (!["game-effect", "live-event", "state-changed", "thiercelieux-command"].includes(channel)) {
       return () => {};
     }
     const listener = (_event, payload) => callback(payload);

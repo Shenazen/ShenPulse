@@ -241,6 +241,113 @@ const GAMES = [
     }
   },
   {
+    id: "thiercelieux",
+    selector: ".thiercelieux-table",
+    async exercise(window) {
+      const ready = await evaluate(window, () => ({
+        cards: document.querySelectorAll(".board-card").length,
+        configControls: document.querySelectorAll(
+          '[name="thiercelieuxGiftName"], [name="thiercelieuxOrientation"], [data-thiercelieux-role-select]'
+        ).length,
+        guidePanels: document.querySelectorAll(".guide-panel, .runtime-tabs, .guide-controls").length,
+        heading: document.querySelector(".phase-title strong")?.textContent?.trim()
+      }));
+      if (
+        ready.cards !== 5 ||
+        ready.configControls !== 0 ||
+        ready.guidePanels !== 0 ||
+        !ready.heading
+      ) {
+        throw new Error("Le plateau animé Thiercelieux n'a pas reçu sa composition épurée.");
+      }
+      const readyHostState = await evaluate(window, () => window.shenPulse.getSmokeThiercelieuxHostState());
+      if (!readyHostState?.canStart || readyHostState?.screen !== "ready") {
+        throw new Error("La régie ShenPulse ne reçoit pas l'état prêt du plateau.");
+      }
+      await evaluate(window, () => window.dispatchEvent(new CustomEvent("shenpulse:thiercelieux-command", { detail: { type: "start" } })));
+      await waitFor(window, () => Boolean(document.querySelector(".phase-reveal .board-card.current")));
+      await evaluate(window, () => document.querySelector(".board-card.current")?.click());
+      await waitFor(window, () => document.querySelector(".board-card.current")?.classList.contains("revealed"));
+      const reveal = await evaluate(window, () => ({
+        roleVisible: Boolean(document.querySelector(".card-front strong")?.textContent?.trim()),
+        cards: document.querySelectorAll(".board-card").length,
+        powerFontSize: Number.parseFloat(getComputedStyle(document.querySelector(".card-front > p")).fontSize),
+        roleFontSize: Number.parseFloat(getComputedStyle(document.querySelector(".card-front strong")).fontSize)
+      }));
+      if (
+        !reveal.roleVisible ||
+        reveal.cards !== 5 ||
+        reveal.powerFontSize < 12 ||
+        reveal.roleFontSize < 17
+      ) {
+        throw new Error("La distribution privée Thiercelieux est incomplète.");
+      }
+      for (let index = 0; index < reveal.cards; index += 1) {
+        if (index > 0) await evaluate(window, () => document.querySelector(".board-card.current")?.click());
+        await waitFor(window, () => document.querySelector(".board-card.current")?.classList.contains("revealed"));
+        await evaluate(window, () => document.querySelector(".board-card.current")?.click());
+      }
+      await waitFor(window, () => document.querySelector(".thiercelieux-table")?.classList.contains("phase-night-intro"));
+      await evaluate(window, () => window.dispatchEvent(new CustomEvent("shenpulse:thiercelieux-command", { detail: { type: "begin-night" } })));
+      await waitFor(window, () => Boolean(document.querySelector(".board-card.selectable")));
+      await evaluate(window, () => document.querySelector(".board-card.selectable")?.click());
+      const live = await evaluate(window, async () => ({
+        ...(await window.shenPulse.getSmokeThiercelieuxHostState()),
+        publicGuidePanels: document.querySelectorAll(".guide-panel, .guide-controls, .runtime-tabs").length
+      }));
+      if (
+        live?.screen !== "game" ||
+        live?.phase !== "night" ||
+        !live?.dialogue ||
+        !live?.expected ||
+        !live?.availableTargets?.some((player) => player.selected) ||
+        live.publicGuidePanels !== 0
+      ) {
+        throw new Error("La régie distante ou les interactions par carte sont incomplètes.");
+      }
+      await evaluate(window, () => window.dispatchEvent(new CustomEvent("shenpulse:thiercelieux-command", { detail: { type: "validate-night" } })));
+      await waitFor(window, async () => Boolean((await window.shenPulse.getSmokeThiercelieuxHostState())?.resultPending));
+      const lockedResult = await evaluate(window, async () => {
+        const state = await window.shenPulse.getSmokeThiercelieuxHostState();
+        return {
+          availableTargets: state.availableTargets?.length || 0,
+          dialogue: state.dialogue,
+          expected: state.expected,
+          playerName: state.resultPlayerName,
+          revealed: document.querySelector(".board-card.current")?.classList.contains("revealed") || false,
+          title: document.querySelector(".phase-title strong")?.textContent?.trim()
+        };
+      });
+      if (
+        lockedResult.availableTargets !== 0 ||
+        lockedResult.revealed ||
+        lockedResult.title !== "Résultat privé" ||
+        /Simple Loup-Garou|est Loup-Garou/.test(`${lockedResult.dialogue} ${lockedResult.expected}`)
+      ) {
+        throw new Error("Le résultat privé de la Voyante fuit vers la régie ou s'affiche avant son geste.");
+      }
+      await evaluate(window, () => document.querySelector(".board-card.current")?.click());
+      await waitFor(window, () => document.querySelector(".board-card.current")?.classList.contains("revealed"));
+      const privateResult = await evaluate(window, () => {
+        const front = document.querySelector(".board-card.current .result-front");
+        const paragraph = front?.querySelector("p");
+        return {
+          fontSize: Number.parseFloat(getComputedStyle(paragraph).fontSize),
+          text: front?.textContent?.trim() || ""
+        };
+      });
+      if (!privateResult.text.includes("Simple Loup-Garou") || privateResult.fontSize < 14) {
+        throw new Error("La Voyante ne peut pas lire clairement le personnage de la carte choisie.");
+      }
+      window.webContents.invalidate();
+      await delay(950);
+      window.thiercelieuxPrivateResultCapture = await window.webContents.capturePage();
+      await evaluate(window, () => document.querySelector(".board-card.current")?.click());
+      await waitFor(window, async () => !(await window.shenPulse.getSmokeThiercelieuxHostState())?.resultPending);
+      return { ready, reveal, live, lockedResult, privateResult };
+    }
+  },
+  {
     id: "brumelune",
     selector: ".brume-home",
     async exercise(window) {
@@ -280,7 +387,8 @@ const GAMES = [
 
 async function runOriginalGamesSmoke({
   BrowserWindow,
-  outputDirectory
+  outputDirectory,
+  gameId = ""
 }) {
   const host = path.join(
     __dirname,
@@ -299,12 +407,20 @@ async function runOriginalGamesSmoke({
   await fs.promises.writeFile(progressPath, "", "utf8");
   const results = [];
 
-  for (const game of GAMES) {
+  const selectedGames = gameId
+    ? GAMES.filter((game) => game.id === gameId)
+    : GAMES;
+  if (!selectedGames.length) {
+    throw new Error(`Jeu smoke inconnu : ${gameId}.`);
+  }
+
+  for (const game of selectedGames) {
     await appendProgress(progressPath, `${game.id}: démarrage`);
     const errors = [];
+    const portraitSmoke = game.id === "thiercelieux";
     const window = new BrowserWindow({
-      width: 1440,
-      height: 900,
+      width: portraitSmoke ? 706 : 1440,
+      height: portraitSmoke ? 897 : 900,
       show: false,
       backgroundColor: "#050611",
       webPreferences: {
@@ -350,6 +466,12 @@ async function runOriginalGamesSmoke({
       const image = await window.webContents.capturePage();
       const screenshot = path.join(outputDirectory, `${game.id}.png`);
       await fs.promises.writeFile(screenshot, image.toPNG());
+      if (window.thiercelieuxPrivateResultCapture) {
+        await fs.promises.writeFile(
+          path.join(outputDirectory, `${game.id}-private-result.png`),
+          window.thiercelieuxPrivateResultCapture.toPNG()
+        );
+      }
       results.push({
         assertions,
         consoleErrors: errors.filter(

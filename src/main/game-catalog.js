@@ -35,6 +35,9 @@ const {
   FORTNITE_EFFECTS,
   FORTNITE_INTERACTION_CATALOG_VERSION
 } = require("./fortnite-catalog");
+const {
+  THIERCELIEUX_EXTENSION_PRODUCTS
+} = require("../shared/thiercelieux-products");
 
 const LOCAL_BRIDGE = Object.freeze({
   type: "tcp",
@@ -200,6 +203,28 @@ const COIN_PUSHER_DEFAULT_MAPPINGS = Object.freeze(
 );
 
 const INTERNAL_GAMES = [
+  game("thiercelieux", "Les Loups-Garous de Thiercelieux", {
+    artwork: "catalog/thiercelieux-landscape.png",
+    included: true,
+    requiresPro: true,
+    source: "ShenPulse · orchestration originale",
+    description:
+      "Mode social complet pour 3 à 8 joueurs : composition adaptative, file LIVE par cadeau, rôles privés, guide dynamique, caméra facultative, pronostics et sauvegarde continue.",
+    tags: [
+      "abonnement requis",
+      "inclus",
+      "jeu local",
+      "rôles cachés",
+      "portrait ou paysage"
+    ],
+    addOns: THIERCELIEUX_EXTENSION_PRODUCTS,
+    effects: [
+      "Ouvrir inscriptions",
+      "Fermer inscriptions",
+      "Ajouter temps",
+      "Hurlement"
+    ]
+  }),
   game("brumelune", "Veilleurs de Brumelune", {
     artwork: "catalog/brumelune.png",
     included: true,
@@ -427,6 +452,14 @@ const EXTERNAL_GUIDE_URLS = Object.freeze({
 });
 
 const GAME_GUIDES = Object.freeze({
+  thiercelieux: integratedGuide(
+    "La régie sociale est intégrée à ShenPulse avec des illustrations originales et sans contenu graphique officiel non autorisé.",
+    [
+      "Configurez le cadeau d’entrée et constituez la file LIVE.",
+      "Installez jusqu’à huit joueurs, choisissez les extensions et le format portrait ou paysage.",
+      "Distribuez les personnages en privé puis suivez le guide dynamique du maître du jeu."
+    ]
+  ),
   brumelune: integratedGuide(
     "Le jeu social complet est intégré à ShenPulse et fonctionne sans maître du jeu humain.",
     [
@@ -689,7 +722,16 @@ function game(id, name, options = {}) {
     interactionCatalogVersion: Number(
       options.interactionCatalogVersion || 0
     ),
-    installerVersion: String(options.installerVersion || "")
+    installerVersion: String(options.installerVersion || ""),
+    addOns: (options.addOns || []).map((addOn) => ({
+      id: String(addOn.id || ""),
+      packId: String(addOn.packId || ""),
+      name: String(addOn.name || ""),
+      price: Number(addOn.price || 0),
+      currency: String(addOn.currency || "EUR"),
+      description: String(addOn.description || ""),
+      includes: (addOn.includes || []).map(String)
+    }))
   };
 }
 

@@ -88,6 +88,10 @@ contextBridge.exposeInMainWorld("shenPulse", {
   configureGame: (id, config) => invoke("game:configure", id, config),
   publishDealHostState: (state) =>
     invoke("game:deal-host-state", state),
+  publishThiercelieuxHostState: (state) =>
+    invoke("game:thiercelieux-host-state", state),
+  sendThiercelieuxCommand: (command) =>
+    invoke("game:thiercelieux-command", command),
   brumeluneLan: {
     start: (payload) => invoke("game:brumelune-lan:start", payload),
     update: (payload) => invoke("game:brumelune-lan:update", payload),
@@ -111,6 +115,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
   getGameRuntimeStatus: (id) => invoke("game:runtime-status", id),
   installGame: (id) => invoke("game:install", id),
   launchGame: (id) => invoke("game:launch", id),
+  setGameWindowFormat: (id, format) =>
+    invoke("game:window-format", id, format),
   testObs: () => invoke("obs:test"),
   connectSpotify: () => invoke("spotify:connect"),
   disconnectSpotify: () => invoke("spotify:disconnect"),
@@ -133,6 +139,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
       "playback",
       "game-effect",
       "deal-host-state",
+      "thiercelieux-host-state",
+      "thiercelieux-command",
       "game-install-progress",
       "game-round-timeout",
       "overlay-completion-fired",

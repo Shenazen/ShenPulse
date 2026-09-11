@@ -82,6 +82,52 @@ function integratedGameSettings(gameId) {
       rewardsEnabled: false,
       rewards: { horizontal: 0, vertical: 0, diagonal: 0 }
     },
+    "thiercelieux": {
+      schemaVersion: 1,
+      orientation: "landscape",
+      assignmentMode: "random",
+      runMode: "hybrid",
+      rulesMode: "official",
+      packs: ["base"],
+      selectedVariantIds: [],
+      buildingsEnabled: false,
+      eventsEnabled: false,
+      captainEnabled: true,
+      allowSolitary: true,
+      cameraEnabled: false,
+      spectatorEnabled: true,
+      spectatorMode: "detective",
+      debateSeconds: 180,
+      voteSeconds: 60,
+      revealSeconds: 20,
+      revealEliminatedRoles: true,
+      audioEnabled: true,
+      saveEnabled: true,
+      giftName: "",
+      giftId: "",
+      giftImage: "",
+      giftValue: 0,
+      giftQuantity: 1,
+      registrationOpen: true,
+      registrationMinutes: 120,
+      seats: 8,
+      priorityMode: "arrival",
+      giftGuaranteesSeat: false,
+      allowDuplicateEntries: false,
+      keepQueueAfterGame: true,
+      queue: [],
+      activePlayers: [],
+      roleIds: [
+        "simple-loup-garou",
+        "simple-loup-garou",
+        "voyante",
+        "sorciere",
+        "chasseur",
+        "cupidon",
+        "petite-fille",
+        "simple-villageois"
+      ]
+    },
     "deal-or-no-deal": {
       boxValues: [
         1, 5, 10, 20, 30, 49, 88, 90, 99, 100, 149, 199,
@@ -165,6 +211,19 @@ function integratedGameSettings(gameId) {
       ...defaults["connect-four"].rewards,
       ...(saved.rewards || {})
     };
+  }
+  if (gameId === "thiercelieux") {
+    for (const key of [
+      "packs",
+      "selectedVariantIds",
+      "queue",
+      "activePlayers",
+      "roleIds"
+    ]) {
+      merged[key] = Array.isArray(saved[key])
+        ? structuredClone(saved[key])
+        : structuredClone(defaults.thiercelieux[key]);
+    }
   }
   if (gameId === "deal-or-no-deal") {
     const savedBoxValues = integratedNumberList(saved.boxValues);

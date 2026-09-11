@@ -2,6 +2,8 @@
 
 const PRIVATE_RENDERER_CHANNELS = new Set([
   "deal-host-state",
+  "thiercelieux-host-state",
+  "thiercelieux-command",
   "game-effect",
   "game-install-progress",
   "game-round-timeout",

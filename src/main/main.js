@@ -160,9 +160,15 @@ async function bootstrap() {
     const outputDirectory = outputArgument
       ? path.resolve(outputArgument.slice(outputArgument.indexOf("=") + 1))
       : path.join(app.getPath("temp"), "shenpulse-original-games");
+    const gameArgument = process.argv.find((argument) =>
+      argument.startsWith("--original-games-smoke-game=")
+    );
     await runOriginalGamesSmoke({
       BrowserWindow,
-      outputDirectory
+      outputDirectory,
+      gameId: gameArgument
+        ? gameArgument.slice(gameArgument.indexOf("=") + 1)
+        : ""
     });
     quitting = true;
     app.exit(0);

@@ -80,6 +80,35 @@ content.addEventListener("input", (event) => {
 });
 
 content.addEventListener("change", (event) => {
+  if (event.target.matches('[name="thiercelieuxPack"]')) {
+    const form = event.target.closest(
+      '[data-integrated-game-settings="thiercelieux"]'
+    );
+    const pack = snapshot.packs.find((item) => item.id === "thiercelieux");
+    if (!form || !pack || !requireGameAccess(pack)) return;
+    integratedSettingsPanels.set("thiercelieux", "extensions");
+    perform(async () => {
+      const config = integratedSettingsFromForm(
+        "thiercelieux",
+        new FormData(form)
+      );
+      snapshot = await api.configureGame("thiercelieux", config);
+      render();
+    }, event.target.checked ? "Extension activée" : "Extension désactivée")
+      .catch(() => {});
+    return;
+  }
+  if (event.target.matches("[data-thiercelieux-role-select]")) {
+    syncThiercelieuxRolePreview(event.target);
+    return;
+  }
+  if (event.target.matches('[name="thiercelieuxGiftQuantity"]')) {
+    syncThiercelieuxGiftPreview(
+      event.target.closest('[data-integrated-game-settings="thiercelieux"]')
+        ?.querySelector("[data-gift-picker-root]")
+    );
+    return;
+  }
   const artworkFileInput = event.target.closest(
     "[data-coin-pusher-artwork-file]"
   );
@@ -325,6 +354,15 @@ document.body.addEventListener("click", (event) => {
       name: giftChoice.dataset.giftChoice,
       imageUrl: giftChoice.dataset.giftImage
     });
+    syncThiercelieuxGiftPreview(root, {
+      id: giftChoice.dataset.giftId,
+      name: giftChoice.dataset.giftChoice,
+      imageUrl: giftChoice.dataset.giftImage,
+      cost: giftForIdentity(
+        giftChoice.dataset.giftChoice,
+        giftChoice.dataset.giftId
+      )?.cost || 0
+    });
     const results = root?.querySelector("[data-gift-results]");
     if (results) results.hidden = true;
     return;
@@ -337,6 +375,7 @@ document.body.addEventListener("click", (event) => {
     if (input) input.value = "";
     if (idInput) idInput.value = "";
     updateGiftPickerSelection(root);
+    syncThiercelieuxGiftPreview(root);
     const results = root?.querySelector("[data-gift-results]");
     if (results) results.hidden = true;
     return;

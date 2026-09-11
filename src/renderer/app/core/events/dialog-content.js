@@ -241,13 +241,21 @@ content.addEventListener("submit", async (event) => {
       event.submitter?.dataset.launchAfterSave === "true";
     const data = new FormData(integratedSettingsForm);
     await perform(async () => {
+      const nextConfig = integratedSettingsFromForm(gameId, data);
+      if (launchAfterSave && gameId === "thiercelieux") {
+        const setup = thiercelieuxSetupState(nextConfig);
+        if (!setup.ready) throw new Error(setup.errors[0]);
+      }
       snapshot = await api.configureGame(
         gameId,
-        integratedSettingsFromForm(gameId, data)
+        nextConfig
       );
       if (launchAfterSave) {
         const result = await api.launchGame(gameId);
         if (result?.snapshot) acceptSnapshot(result.snapshot);
+        if (gameId === "thiercelieux") {
+          integratedSettingsPanels.set("thiercelieux", "live");
+        }
       }
       gamePageMessages.set(gameId, {
         type: "success",
@@ -416,6 +424,12 @@ api.on("deal-host-state", (state) => {
   syncDealPrivateMonitor();
 });
 
+api.on("thiercelieux-host-state", (state) => {
+  thiercelieuxHostState =
+    state && typeof state === "object" ? state : null;
+  syncThiercelieuxLivePanel();
+});
+
 api.on("state-changed", (value) => {
   const overlaySessionChanged =
     overlaySessionLifecycleSignature(snapshot) !==
@@ -493,6 +507,13 @@ api.on("overlay-completion-fired", (entry) => {
 });
 
 api.on("live-event", (event) => {
+  void handleThiercelieuxRegistrationEvent(event).catch((error) =>
+    toast(
+      "Inscription Thiercelieux impossible",
+      error.message || String(error),
+      true
+    )
+  );
   liveEvents.unshift(event);
   liveEvents = liveEvents.slice(0, 100);
   postOverlayPreviewEvent("event", event);
@@ -501,6 +522,16 @@ api.on("live-event", (event) => {
     renderNavigation();
     syncChrome();
   }
+});
+
+api.on("game-effect", (payload) => {
+  void handleThiercelieuxControlEffect(payload).catch((error) =>
+    toast(
+      "Commande Thiercelieux impossible",
+      error.message || String(error),
+      true
+    )
+  );
 });
 
 api.on("playback", (payload) => {

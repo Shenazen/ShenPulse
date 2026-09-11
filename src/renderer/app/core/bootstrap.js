@@ -133,6 +133,7 @@ let gameInstallBusyId = "";
 let gameLaunchProgress = null;
 let gameLaunchBusyId = "";
 let dealOrNoDealHostState = null;
+let thiercelieuxHostState = null;
 const integratedSettingsPanels = new Map();
 const gamePageMessages = new Map();
 const COIN_PUSHER_ARTWORK_MAX_SOURCE_BYTES = 20 * 1024 * 1024;
@@ -487,7 +488,8 @@ const MINECRAFT_MODE_IDS = Object.freeze([
 const CONFIGURABLE_INTEGRATED_GAMES = new Set([
   "coin-pusher",
   "connect-four",
-  "deal-or-no-deal"
+  "deal-or-no-deal",
+  "thiercelieux"
 ]);
 
 const DEFAULT_GAME_JOURNEY = Object.freeze([

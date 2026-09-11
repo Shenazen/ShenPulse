@@ -15,6 +15,15 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "open-game",
   "open-minecraft-mode",
   "close-game",
+  "thiercelieux-buy-extension",
+  "thiercelieux-live-command",
+  "thiercelieux-add-manual",
+  "thiercelieux-move-queue",
+  "thiercelieux-promote-player",
+  "thiercelieux-remove-queue",
+  "thiercelieux-remove-player",
+  "thiercelieux-fill-guests",
+  "thiercelieux-auto-compose",
   "add-coin-pusher-tier",
   "remove-coin-pusher-tier",
   "add-coin-pusher-gift-rule",
@@ -114,6 +123,177 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     gameEffectCategory = "all";
     render();
     content.scrollTop = 0;
+    return;
+  }
+  if (action.startsWith("thiercelieux-")) {
+    const form = target.closest('[data-integrated-game-settings="thiercelieux"]');
+    const pack = snapshot.packs.find((item) => item.id === "thiercelieux");
+    if (!form || !pack || !requireGameAccess(pack)) return;
+    if (action === "thiercelieux-live-command") {
+      const command = String(target.dataset.command || "");
+      if (!command) return;
+      await perform(
+        () => api.sendThiercelieuxCommand({
+          type: command,
+          playerId: id || "",
+          choice: String(target.dataset.choice || ""),
+          multiple: target.dataset.multiple === "true"
+        }),
+        "Commande envoyée au plateau"
+      );
+      return;
+    }
+    if (action === "thiercelieux-buy-extension") {
+      const extension = (pack.addOns || []).find(
+        (item) => item.id === id
+      );
+      if (!extension) {
+        return toast(
+          "Extension indisponible",
+          "Cette extension n’existe plus dans le catalogue ShenPulse.",
+          true
+        );
+      }
+      if (hasProductEntitlement(extension.id)) {
+        return toast(
+          "Extension déjà achetée",
+          `${extension.name} est déjà débloquée sur votre compte.`
+        );
+      }
+      return openThiercelieuxExtensionPurchaseDialog(pack, extension);
+    }
+    const manualName = String(
+      form.querySelector("[data-thiercelieux-manual-name]")?.value || ""
+    ).trim();
+    await perform(async () => {
+      const config = integratedSettingsFromForm(
+        "thiercelieux",
+        new FormData(form)
+      );
+      config.queue = Array.isArray(config.queue) ? config.queue : [];
+      config.activePlayers = Array.isArray(config.activePlayers)
+        ? config.activePlayers.slice(0, 8)
+        : [];
+
+      if (action === "thiercelieux-add-manual") {
+        if (!manualName) throw new Error("Saisissez le nom de l'invité.");
+        const entry = thiercelieuxQueueEntry(
+          config,
+          { user: { displayName: manualName, name: manualName } },
+          { manual: true }
+        );
+        config.queue.push(entry);
+      }
+
+      if (action === "thiercelieux-move-queue") {
+        const index = config.queue.findIndex((entry) => entry.id === id);
+        const direction = Number(target.dataset.direction) < 0 ? -1 : 1;
+        const destination = Math.max(
+          0,
+          Math.min(config.queue.length - 1, index + direction)
+        );
+        if (index >= 0 && destination !== index) {
+          [config.queue[index], config.queue[destination]] = [
+            config.queue[destination],
+            config.queue[index]
+          ];
+        }
+      }
+
+      if (action === "thiercelieux-promote-player") {
+        if (config.activePlayers.length >= THIERCELIEUX_MAX_PLAYERS) {
+          throw new Error("Les huit sièges sont déjà occupés.");
+        }
+        const entry = config.queue.find((candidate) => candidate.id === id);
+        if (!entry) throw new Error("Cette inscription est introuvable.");
+        if (!config.activePlayers.some((player) => player.userId === entry.userId)) {
+          entry.status = "in-game";
+          config.activePlayers.push({
+            id: thiercelieuxFreshId("player"),
+            queueEntryId: entry.id,
+            userId: entry.userId,
+            name: entry.displayName,
+            avatarUrl: entry.avatarUrl || "",
+            seat: config.activePlayers.length + 1,
+            connected: entry.connected !== false
+          });
+          config.roleIds = thiercelieuxRecommendedRoles(
+            config.activePlayers.length,
+            new Set(config.packs || ["base"])
+          );
+        }
+      }
+
+      if (action === "thiercelieux-remove-queue") {
+        config.queue = config.queue.filter((entry) => entry.id !== id);
+      }
+
+      if (action === "thiercelieux-remove-player") {
+        const player = config.activePlayers.find((candidate) => candidate.id === id);
+        config.activePlayers = config.activePlayers.filter(
+          (candidate) => candidate.id !== id
+        );
+        config.activePlayers.forEach((candidate, index) => {
+          candidate.seat = index + 1;
+        });
+        const source = config.queue.find(
+          (entry) => entry.id === player?.queueEntryId
+        );
+        if (source) source.status = "waiting";
+        config.roleIds = thiercelieuxRecommendedRoles(
+          config.activePlayers.length,
+          new Set(config.packs || ["base"])
+        );
+      }
+
+      if (action === "thiercelieux-fill-guests") {
+        while (config.activePlayers.length < THIERCELIEUX_MAX_PLAYERS) {
+          const number = config.activePlayers.length + 1;
+          const entry = thiercelieuxQueueEntry(
+            config,
+            { user: { displayName: `Invité ${number}`, name: `invite-${number}` } },
+            { manual: true }
+          );
+          entry.status = "in-game";
+          config.queue.push(entry);
+          config.activePlayers.push({
+            id: thiercelieuxFreshId("player"),
+            queueEntryId: entry.id,
+            userId: entry.userId,
+            name: entry.displayName,
+            avatarUrl: "",
+            seat: number,
+            connected: false
+          });
+        }
+        config.roleIds = thiercelieuxRecommendedRoles(
+          config.activePlayers.length,
+          new Set(config.packs || ["base"])
+        );
+      }
+
+      if (action === "thiercelieux-auto-compose") {
+        config.roleIds = thiercelieuxRecommendedRoles(
+          config.activePlayers.length,
+          new Set(config.packs || ["base"])
+        );
+      }
+
+      snapshot = await api.configureGame(pack.id, config);
+      integratedSettingsPanels.set(
+        pack.id,
+        action === "thiercelieux-auto-compose"
+          ? "roles"
+          : action === "thiercelieux-remove-player" || action === "thiercelieux-fill-guests"
+            ? "village"
+            : "registration"
+      );
+      render();
+    }, action === "thiercelieux-auto-compose"
+      ? "Composition équilibrée"
+      : action === "thiercelieux-promote-player"
+        ? "Joueur placé dans le village"
+        : "Régie Thiercelieux mise à jour");
     return;
   }
   if (

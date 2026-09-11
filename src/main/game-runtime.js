@@ -10,6 +10,7 @@ const {
   BrowserWindow,
   dialog,
   nativeImage,
+  screen,
   shell
 } = require("electron");
 const {
@@ -17,6 +18,9 @@ const {
   isIntegratedGame
 } = require("./game-installer-manifest");
 const { BrumeluneLanService } = require("./brumelune-lan-service");
+const {
+  sanitizeThiercelieuxEntitlements
+} = require("../shared/thiercelieux-products");
 
 const ASSET_ORIGIN = "https://shenpulse.leuridan.fr";
 const ASSET_SECRET = "shenpulse-installer-assets-v1-local-fallback";
@@ -79,6 +83,48 @@ class GameRuntimeService {
       autoClickerRunning: this.#minecraftAutoClickerRunning(gameId),
       installation
     };
+  }
+
+  setGameWindowFormat(gameId, format) {
+    this.assertAccess(gameId);
+    if (!isIntegratedGame(gameId)) {
+      throw new Error("Ce format est réservé aux jeux intégrés.");
+    }
+    const gameWindow = this.gameWindows.get(gameId);
+    if (!gameWindow || gameWindow.isDestroyed()) {
+      return { ok: false, gameId, reason: "window-not-open" };
+    }
+    const orientation = format === "portrait" ? "portrait" : "landscape";
+    const display = screen.getDisplayMatching(gameWindow.getBounds());
+    const area = display.workArea;
+    const preferred = orientation === "portrait"
+      ? { width: 720, height: 1080, minWidth: 620, minHeight: 720 }
+      : { width: 1360, height: 860, minWidth: 980, minHeight: 680 };
+    const width = Math.min(preferred.width, area.width);
+    const height = Math.min(preferred.height, area.height);
+    gameWindow.setMinimumSize(
+      Math.min(preferred.minWidth, area.width),
+      Math.min(preferred.minHeight, area.height)
+    );
+    gameWindow.setBounds({
+      x: area.x + Math.round((area.width - width) / 2),
+      y: area.y + Math.round((area.height - height) / 2),
+      width,
+      height
+    }, true);
+    return { ok: true, gameId, format: orientation, width, height };
+  }
+
+  sendThiercelieuxCommand(command) {
+    this.assertAccess("thiercelieux");
+    const gameWindow = this.gameWindows.get("thiercelieux");
+    if (!gameWindow || gameWindow.isDestroyed()) {
+      throw new Error(
+        "Ouvrez d’abord le plateau Thiercelieux depuis la page du jeu."
+      );
+    }
+    gameWindow.webContents.send("thiercelieux-command", command);
+    return { ok: true, gameId: "thiercelieux" };
   }
 
   minecraftConnectionStatus(gameId) {
@@ -396,6 +442,15 @@ class GameRuntimeService {
 
   async launch(gameId) {
     this.assertAccess(gameId);
+    if (gameId === "thiercelieux") {
+      this.store.mutate((state) => {
+        state.game.connectorOverrides.thiercelieux =
+          sanitizeThiercelieuxEntitlements(
+            state.game.connectorOverrides?.thiercelieux || {},
+            state
+          );
+      }, true);
+    }
     if (isIntegratedGame(gameId)) {
       return this.#launchIntegrated(gameId);
     }
@@ -1139,11 +1194,12 @@ class GameRuntimeService {
       "shenpulse.ico"
     );
     const icon = nativeImage.createFromPath(iconPath);
+    const supportsPortrait = gameId === "thiercelieux";
     const gameWindow = new BrowserWindow({
       width: 1280,
       height: 820,
-      minWidth: 980,
-      minHeight: 680,
+      minWidth: supportsPortrait ? 620 : 980,
+      minHeight: supportsPortrait ? 720 : 680,
       title: `ShenPulse · ${gameId}`,
       backgroundColor: "#070914",
       icon: icon.isEmpty() ? undefined : icon,
@@ -1164,6 +1220,7 @@ class GameRuntimeService {
       "coin-pusher",
       "connect-four",
       "deal-or-no-deal",
+      "thiercelieux",
       "brumelune"
     ]).has(gameId);
     gameWindow.loadFile(

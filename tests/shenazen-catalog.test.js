@@ -30,16 +30,29 @@ const {
 
 const root = path.join(__dirname, "..");
 
-test("conserve les jeux existants et ajoute Fortnite et Brumelune sans doublon", () => {
+test("conserve les jeux existants et ajoute Fortnite, Brumelune et Thiercelieux sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 39);
-  assert.equal(new Set(games.map((game) => game.id)).size, 39);
+  assert.equal(games.length, 40);
+  assert.equal(new Set(games.map((game) => game.id)).size, 40);
   assert.equal(
-    games.filter((game) => !["fortnite", "brumelune"].includes(game.id)).length,
+    games.filter((game) => !["fortnite", "brumelune", "thiercelieux"].includes(game.id)).length,
     37
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(games.find((game) => game.id === "brumelune")?.source, "ShenPulse Original");
+  assert.equal(games.find((game) => game.id === "thiercelieux")?.included, true);
+  assert.match(games.find((game) => game.id === "thiercelieux")?.description || "", /3 à 8 joueurs/);
+  assert.deepEqual(
+    games.find((game) => game.id === "thiercelieux")?.addOns.map(
+      ({ packId, price }) => ({ packId, price })
+    ),
+    [
+      { packId: "nouvelle-lune", price: 3.99 },
+      { packId: "village", price: 3.99 },
+      { packId: "personnages", price: 3.99 },
+      { packId: "25-ans", price: 3.99 }
+    ]
+  );
   assert.ok(games.some((game) => game.id === "gtav-montchiliad"));
   assert.equal(
     games.find((game) => game.id === "gtav-montchiliad")?.installerVersion,

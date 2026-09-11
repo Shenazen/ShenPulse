@@ -53,13 +53,16 @@ function hasActivePaidPremium() {
   );
 }
 
-function gameEntitlement(pack) {
-  if (pack.accessMode === "included") {
-    return { gameId: pack.id, source: "included", status: "active" };
-  }
+function productEntitlement(productId) {
+  const id = String(productId || "").trim();
+  if (!id) return null;
   return (snapshot.state.commerce?.gameEntitlements || []).find((entry) => {
-    if (typeof entry === "string") return entry === pack.id;
-    if (!entry || entry.gameId !== pack.id) return false;
+    if (typeof entry === "string") return entry === id;
+    if (!entry) return false;
+    const entryId = String(
+      entry.productId || entry.gameId || entry.id || ""
+    ).trim();
+    if (entryId !== id) return false;
     const status = String(entry.status || "").trim().toLowerCase();
     const source = String(entry.source || "").trim().toLowerCase();
     if (source === "trial" || status === "trial") {
@@ -71,7 +74,18 @@ function gameEntitlement(pack) {
         status
       )
     );
-  });
+  }) || null;
+}
+
+function hasProductEntitlement(productId) {
+  return Boolean(productEntitlement(productId));
+}
+
+function gameEntitlement(pack) {
+  if (pack.accessMode === "included") {
+    return { gameId: pack.id, source: "included", status: "active" };
+  }
+  return productEntitlement(pack.id);
 }
 
 function hasGameEntitlement(pack) {
@@ -209,6 +223,92 @@ function openGamePurchaseDialog(pack) {
       } else {
         throw new Error(
           "L’achat n’a pas pu être confirmé. Aucun accès n’a été modifié."
+        );
+      }
+    }
+  });
+}
+
+function openThiercelieuxExtensionPurchaseDialog(pack, extension) {
+  const price = gamePrice({
+    ...extension,
+    accessMode: "purchase"
+  });
+  const includes = (extension.includes || [])
+    .map((item) => `<li><span>✓</span><div><strong>${escapeHtml(item)}</strong><small>Débloqué définitivement dans la régie du village.</small></div></li>`)
+    .join("");
+  openEditor({
+    title: `Acheter ${extension.name}`,
+    kicker: "EXTENSION · ACHAT UNIQUE · PAIEMENT PAYPAL",
+    variant: "game-purchase",
+    submitLabel: `Acheter pour ${price}`,
+    pendingLabel: "Ouverture de PayPal…",
+    successMessage: "",
+    body: `
+      <div class="game-purchase-dialog thiercelieux-extension-purchase">
+        <div class="game-purchase-visual">
+          <img src="${escapeHtml(thiercelieuxExtensionArtwork(extension.packId))}" alt="${escapeHtml(extension.name)}">
+          <div>
+            <small>EXTENSION THIERCELIEUX</small>
+            <strong>${escapeHtml(extension.name)}</strong>
+          </div>
+        </div>
+        <div class="game-purchase-copy">
+          <span class="game-purchase-badge">ACHAT UNIQUE</span>
+          <h3>Débloquez toute l’extension</h3>
+          <p>${escapeHtml(extension.description || "Nouveaux contenus pour vos parties de Thiercelieux.")}</p>
+          <div class="game-purchase-price">
+            <span>Prix de l’extension</span>
+            <strong>${escapeHtml(price)}</strong>
+            <small>Paiement unique, conservé sur votre compte ShenPulse</small>
+          </div>
+          <ul class="game-purchase-facts">
+            ${includes}
+            <li><span>✓</span><div><strong>Paiement sécurisé par PayPal</strong><small>Les contenus apparaissent automatiquement après validation.</small></div></li>
+          </ul>
+        </div>
+      </div>`,
+    onSubmit: async () => {
+      const response = await api.account.startGameCheckout({
+        productId: extension.id
+      });
+      const result = response?.result || response;
+      if (response?.snapshot) {
+        acceptSnapshot(response.snapshot);
+        currentPage = "games";
+      }
+      if (result?.alreadyPurchased || result?.checkoutCompleted) {
+        const current = integratedGameSettings("thiercelieux");
+        snapshot = await api.configureGame("thiercelieux", {
+          ...current,
+          packs: [
+            ...new Set([
+              "base",
+              ...(current.packs || []),
+              extension.packId
+            ])
+          ]
+        });
+        integratedSettingsPanels.set("thiercelieux", "extensions");
+      }
+      if (result?.cancelled) {
+        toast(
+          "Achat annulé",
+          `Aucun paiement n’a été enregistré pour ${extension.name}.`
+        );
+      } else if (result?.alreadyPurchased) {
+        toast(
+          "Extension déjà achetée",
+          `${extension.name} est déjà débloquée sur votre compte ShenPulse.`
+        );
+      } else if (result?.checkoutCompleted) {
+        toast(
+          "Extension débloquée",
+          `Tout le contenu de ${extension.name} est maintenant disponible.`
+        );
+      } else {
+        throw new Error(
+          "L’achat n’a pas pu être confirmé. Aucun contenu n’a été débloqué."
         );
       }
     }

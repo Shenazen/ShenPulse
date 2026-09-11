@@ -17,6 +17,9 @@ const {
   applyTrialGrant,
   applyTrialRevocation
 } = require("./trial-access");
+const {
+  sanitizeThiercelieuxEntitlements
+} = require("../shared/thiercelieux-products");
 
 function localServerSettingsSignature(settings = {}) {
   return JSON.stringify([
@@ -689,7 +692,10 @@ function registerIpc({
   handle("game:configure", (_event, packId, config) => {
     const targetId = safeString(packId, 160);
     requireGameAccess(targetId);
-    const next = sanitizeGameConfiguration(targetId, config);
+    let next = sanitizeGameConfiguration(targetId, config);
+    if (targetId === "thiercelieux") {
+      next = sanitizeThiercelieuxEntitlements(next, store.getState());
+    }
     if (next.secret) {
       const current =
         store.getState().game.connectorOverrides?.[targetId]?.secretId || "";
@@ -710,6 +716,18 @@ function registerIpc({
     const state = sanitizeDealOrNoDealHostState(incoming);
     notify(core, "deal-host-state", state);
     return { ok: true };
+  });
+  handle("game:thiercelieux-host-state", (_event, incoming) => {
+    requireGameAccess("thiercelieux");
+    const state = sanitizeThiercelieuxHostState(incoming);
+    notify(core, "thiercelieux-host-state", state);
+    return { ok: true };
+  });
+  handle("game:thiercelieux-command", (_event, incoming) => {
+    requireGameAccess("thiercelieux");
+    return gameRuntime.sendThiercelieuxCommand(
+      sanitizeThiercelieuxCommand(incoming)
+    );
   });
   handle("game:initialize-interactions", (_event, packId) => {
     const result = core.gameHub.initializeDefaultInteractions(
@@ -958,6 +976,14 @@ function registerIpc({
     const nextSnapshot = await core.startGameSession(targetId);
     return { ...result, snapshot: nextSnapshot };
   });
+  handle("game:window-format", (_event, packId, format) => {
+    const targetId = safeString(packId, 160);
+    requireGameAccess(targetId);
+    return gameRuntime.setGameWindowFormat(
+      targetId,
+      safeString(format, 20)
+    );
+  });
   handle("game:brumelune-lan:start", (_event, payload) =>
     gameRuntime.startBrumeluneLan(sanitizeEntity(payload || {}))
   );
@@ -1170,6 +1196,114 @@ function sanitizeDealOrNoDealHostState(value) {
   };
 }
 
+const THIERCELIEUX_COMMAND_TYPES = new Set([
+  "start",
+  "resume",
+  "reveal-card",
+  "confirm-reveal",
+  "reveal-result",
+  "confirm-result",
+  "begin-night",
+  "select-target",
+  "set-choice",
+  "toggle-heal",
+  "validate-night",
+  "skip-night",
+  "repeat",
+  "toggle-pause",
+  "open-discussion",
+  "open-vote",
+  "confirm-vote",
+  "abstain-vote",
+  "death-target",
+  "skip-death",
+  "elect-captain",
+  "continue-verdict",
+  "new-round",
+  "toggle-music"
+]);
+
+function sanitizeThiercelieuxCommand(value) {
+  const payload =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+  const type = safeString(payload.type, 40);
+  if (!THIERCELIEUX_COMMAND_TYPES.has(type)) {
+    throw new Error("Commande Thiercelieux inconnue.");
+  }
+  return {
+    type,
+    playerId: safeString(payload.playerId, 160),
+    choice: safeString(payload.choice, 80),
+    multiple: payload.multiple === true
+  };
+}
+
+function sanitizeThiercelieuxHostState(value) {
+  const payload =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+  const sanitizePlayer = (player) => ({
+    id: safeString(player?.id, 160),
+    name: safeString(player?.name, 100),
+    seat: Math.max(1, Math.min(8, Math.round(Number(player?.seat) || 1))),
+    alive: player?.alive !== false,
+    selected: player?.selected === true,
+    disabled: player?.disabled === true,
+    status: safeString(player?.status, 80)
+  });
+  const players = (Array.isArray(payload.players) ? payload.players : [])
+    .slice(0, 8)
+    .map(sanitizePlayer)
+    .filter((player) => player.id && player.name);
+  const availableTargets = (Array.isArray(payload.availableTargets)
+    ? payload.availableTargets
+    : [])
+    .slice(0, 8)
+    .map(sanitizePlayer)
+    .filter((player) => player.id && player.name);
+  return {
+    screen: safeString(payload.screen, 30) || "ready",
+    phase: safeString(payload.phase, 40) || "ready",
+    phaseTitle: safeString(payload.phaseTitle, 140),
+    stepLabel: safeString(payload.stepLabel, 100),
+    title: safeString(payload.title, 160),
+    dialogue: safeString(payload.dialogue, 1200),
+    expected: safeString(payload.expected, 500),
+    privateAlert: safeString(payload.privateAlert, 500),
+    currentPlayerId: safeString(payload.currentPlayerId, 160),
+    currentPlayerName: safeString(payload.currentPlayerName, 100),
+    currentSeat: Math.max(0, Math.min(8, Math.round(Number(payload.currentSeat) || 0))),
+    revealIndex: Math.max(0, Math.min(8, Math.round(Number(payload.revealIndex) || 0))),
+    revealTotal: Math.max(0, Math.min(8, Math.round(Number(payload.revealTotal) || 0))),
+    revealUnlocked: payload.revealUnlocked === true,
+    resultPending: payload.resultPending === true,
+    resultUnlocked: payload.resultUnlocked === true,
+    resultPlayerId: safeString(payload.resultPlayerId, 160),
+    resultPlayerName: safeString(payload.resultPlayerName, 100),
+    resultSeat: Math.max(0, Math.min(8, Math.round(Number(payload.resultSeat) || 0))),
+    canStart: payload.canStart === true,
+    hasSavedGame: payload.hasSavedGame === true,
+    paused: payload.paused === true,
+    audioEnabled: payload.audioEnabled !== false,
+    remainingSeconds: Math.max(0, Math.min(3600, Math.round(Number(payload.remainingSeconds) || 0))),
+    currentVoterId: safeString(payload.currentVoterId, 160),
+    action: safeString(payload.action, 80),
+    multipleTargets: payload.multipleTargets === true,
+    requiresChoice: payload.requiresChoice === true,
+    choice: safeString(payload.choice, 80),
+    healSelected: payload.healSelected === true,
+    canSkip: payload.canSkip !== false,
+    players,
+    availableTargets,
+    winnerLabel: safeString(payload.winnerLabel, 200),
+    error: safeString(payload.error, 500),
+    updatedAt: Math.max(0, Number(payload.updatedAt) || Date.now())
+  };
+}
+
 function notify(core, channel, value) {
   core.notifyRenderer(channel, value);
 }
@@ -1188,5 +1322,7 @@ module.exports = {
   sanitizeEntity,
   sanitizeGameConfiguration,
   sanitizeDealOrNoDealHostState,
+  sanitizeThiercelieuxCommand,
+  sanitizeThiercelieuxHostState,
   cleanTikTokUsername
 };
