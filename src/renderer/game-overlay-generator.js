@@ -340,12 +340,14 @@ var ShenPulseGameOverlay = (() => {
     canvas.height = OVERLAY_HEIGHT;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas indisponible.");
-    const entries = options.entries.filter((entry) => String(entry.label || "").trim()).slice(0, 42);
+    const entries = options.entries.filter((entry) => String(entry.label || "").trim());
     if (!entries.length) throw new Error("Active au moins une interaction complete avant de telecharger l overlay.");
     await ensureMinecraftOverlayFont();
     const preparedItems = await prepareMinecraftStyledOverlayItems(entries);
     const winItems = preparedItems.filter((item) => item.effect.kind === "win");
-    const effectItems = groupOverlayEffectItems(preparedItems.filter((item) => item.effect.kind !== "win"));
+    const effectItems = groupOverlayEffectItems(
+      preparedItems.filter((item) => item.effect.kind !== "win")
+    ).slice(0, Math.max(0, 42 - winItems.length));
     const positiveWins = sortWinItems(winItems.filter((item) => item.effect.winTone !== "negative" && item.effect.winTone !== "random"));
     const negativeWins = sortWinItems(winItems.filter((item) => item.effect.winTone === "negative" || item.effect.winTone === "random"));
     if (options.model === 1) {
@@ -383,7 +385,9 @@ var ShenPulseGameOverlay = (() => {
       ensureMinecraftOverlayFont()
     ]);
     const winItems = items.filter((item) => item.effect.kind === "win");
-    const effectItems = groupOverlayEffectItems(items.filter((item) => item.effect.kind !== "win"));
+    const effectItems = groupOverlayEffectItems(
+      items.filter((item) => item.effect.kind !== "win")
+    ).slice(0, Math.max(0, 42 - winItems.length));
     const positiveWins = sortWinItems(winItems.filter((item) => item.effect.winTone !== "negative" && item.effect.winTone !== "random"));
     const negativeWins = sortWinItems(winItems.filter((item) => item.effect.winTone === "negative" || item.effect.winTone === "random"));
     if (options.model === 1) {
@@ -416,6 +420,7 @@ var ShenPulseGameOverlay = (() => {
     const items = activeMappings.map((mapping) => {
       const gift = mapping.triggerType === "gift" ? findGiftTriggerOption(mapping.giftTrigger, giftOptions) : null;
       const giftLabel = gift?.name || triggerLabel(mapping);
+      const effect = detectOverlayEffect(mapping);
       const badge = {
         colors: gift?.colors?.length ? gift.colors : triggerColors(mapping.triggerType),
         giftImage: null,
@@ -427,8 +432,9 @@ var ShenPulseGameOverlay = (() => {
       };
       return {
         ...badge,
+        actionLabels: [effect.label],
         badges: [badge],
-        effect: detectOverlayEffect(mapping)
+        effect
       };
     });
     const images = await Promise.all(items.map((item) => loadOverlayImage(item.giftImageUrl)));
@@ -474,13 +480,19 @@ var ShenPulseGameOverlay = (() => {
         triggerType
       };
       const effectImageUrl = String(entry.effectImageUrl || "").trim();
+      const actionLabels = mergeOverlayActionLabels(
+        Array.isArray(entry.actionLabels) && entry.actionLabels.length
+          ? entry.actionLabels
+          : [entry.label]
+      );
       const effect = withOverlayImage(detectWinEffect([], mapping.title) || {
         imageUrl: effectImageUrl || void 0,
         kind: "command",
-        label: compactTitle(entry.label, "ACTION")
+        label: actionLabels[0] || "ACTION"
       }, effectImageUrl);
       return {
         ...badge,
+        actionLabels,
         badgeLayout: entry.badgeLayout,
         badges: [badge],
         effect,
@@ -508,8 +520,15 @@ var ShenPulseGameOverlay = (() => {
         continue;
       }
       existing.badges = mergeOverlayBadges([...existing.badges, ...item.badges]);
+      existing.actionLabels = mergeOverlayActionLabels([
+        ...existing.actionLabels,
+        ...item.actionLabels
+      ]);
     }
     return Array.from(groups.values());
+  }
+  function mergeOverlayActionLabels(labels) {
+    return Array.from(new Set(labels.map((label) => compactTitle(label, "ACTION"))));
   }
   function overlayEffectGroupKey(item) {
     const explicitGroupKey = String(item.groupKey || "").trim().toLowerCase();
@@ -543,7 +562,10 @@ var ShenPulseGameOverlay = (() => {
     if (badge.triggerType === "likes") return 2;
     if (badge.triggerType === "subscribe") return 3;
     if (badge.triggerType === "share") return 4;
-    return 5;
+    if (badge.triggerType === "chat") return 5;
+    if (badge.triggerType === "join") return 6;
+    if (badge.triggerType === "raid") return 7;
+    return 8;
   }
   function mappingReady(mapping) {
     if (mapping.triggerType === "gift") return mapping.giftTrigger !== "none";
@@ -1064,8 +1086,11 @@ var ShenPulseGameOverlay = (() => {
     ctx.lineWidth = 1;
     ctx.strokeStyle = "rgba(148, 163, 184, 0.055)";
     ctx.stroke();
-    const badges = mergeOverlayBadges(item.badges).slice(0, 3);
-    const badgeSize = clamp(Math.min(height * 0.56, width * (badges.length > 1 ? 0.3 : 0.46)), 32, 78);
+    const actionLines = overlayActionTextLines(item);
+    const badges = mergeOverlayBadges(item.badges).slice(0, 6);
+    const badgeHeightRatio = actionLines.length > 2 ? 0.4 : 0.5;
+    const badgeWidthRatio = badges.length > 1 ? 0.9 / badges.length : 0.46;
+    const badgeSize = clamp(Math.min(height * badgeHeightRatio, width * badgeWidthRatio), 18, 78);
     const badgeGap = Math.max(3, badgeSize * 0.06);
     const badgesWidth = badges.length * badgeSize + Math.max(0, badges.length - 1) * badgeGap;
     const badgeStartX = x + (width - badgesWidth) / 2;
@@ -1073,51 +1098,77 @@ var ShenPulseGameOverlay = (() => {
     badges.forEach((badge, badgeIndex) => {
       drawTriggerBadge(ctx, badge, badgeStartX + badgeIndex * (badgeSize + badgeGap), badgeY, badgeSize);
     });
-    drawModelOneInteractionLabel(
+    drawOverlayActionLines(
       ctx,
-      item.effect.label,
+      actionLines,
       x + width / 2,
       y + height - clamp(height * 0.09, 7, 13),
       width - 8,
-      modelOneActionColor(item.effect.label),
-      height
+      {
+        cardHeight: height,
+        fontFamily: FONT_FAMILY,
+        lineWidthRatio: 0.18,
+        maxFontSize: 22
+      }
     );
     ctx.restore();
   }
-  function drawModelOneInteractionLabel(ctx, label, x, baselineY, maxWidth, color, cardHeight) {
-    const words = String(label || "ACTION").trim().replace(/\s+/g, " ").toUpperCase().split(" ").filter(Boolean);
-    const primary = words.shift() || "ACTION";
-    const secondary = words.join(" ");
-    const primarySize = clamp(cardHeight * 0.18, 12, 25);
-    const secondarySize = clamp(cardHeight * 0.14, 10, 19);
-    const secondaryY = baselineY;
-    const primaryY = secondary ? secondaryY - secondarySize * 1.08 : secondaryY;
-    drawOutlinedText(ctx, primary, x, primaryY, {
-      align: "center",
-      color,
-      fontFamily: FONT_FAMILY,
-      fontSize: primarySize,
-      lineWidth: clamp(primarySize * 0.16, 3, 5),
-      maxWidth
-    });
-    if (secondary) {
-      drawOutlinedText(ctx, secondary, x, secondaryY, {
+  function overlayActionTextLines(item) {
+    const labels = mergeOverlayActionLabels(
+      item.actionLabels?.length ? item.actionLabels : [item.effect.label]
+    );
+    const firstWords = String(labels[0] || "ACTION").split(" ").filter(Boolean);
+    const primary = firstWords.shift() || "ACTION";
+    const secondary = firstWords.join(" ");
+    if (labels.length === 1) {
+      return [
+        { color: "#ff354d", label: primary },
+        ...(secondary ? [{ color: "#ffffff", label: secondary }] : [])
+      ];
+    }
+    if (labels.length === 2 && secondary) {
+      return [
+        { color: "#ff354d", label: primary },
+        { color: "#ffffff", label: secondary },
+        { color: "#f4da3d", label: labels[1] }
+      ];
+    }
+    const visibleLabels = labels.length <= 3
+      ? labels
+      : [...labels.slice(0, 2), `ET ${labels.length - 2} AUTRES ACTIONS`];
+    return visibleLabels.map((label, index) => ({
+      color: index === 1 ? "#ffffff" : index === 2
+        ? "#f4da3d"
+        : "#ff354d",
+      label
+    }));
+  }
+  function drawOverlayActionLines(ctx, lines, x, baselineY, maxWidth, options) {
+    const lineCount = Math.max(1, lines.length);
+    let fontSize = clamp(
+      Math.min(options.cardHeight * 0.145, options.cardHeight * 0.42 / lineCount),
+      9,
+      options.maxFontSize
+    );
+    while (
+      lines.some((line) =>
+        measureText(ctx, line.label, fontSize, options.fontFamily) > maxWidth
+      ) && fontSize > 9
+    ) {
+      fontSize -= 1;
+    }
+    const lineHeight = fontSize * 1.12;
+    const startY = baselineY - (lineCount - 1) * lineHeight;
+    lines.forEach((line, index) => {
+      drawOutlinedText(ctx, line.label, x, startY + index * lineHeight, {
         align: "center",
-        color: "#ffffff",
-        fontFamily: FONT_FAMILY,
-        fontSize: secondarySize,
-        lineWidth: clamp(secondarySize * 0.18, 3, 4.5),
+        color: line.color,
+        fontFamily: options.fontFamily,
+        fontSize,
+        lineWidth: clamp(fontSize * options.lineWidthRatio, 2.5, 5),
         maxWidth
       });
-    }
-  }
-  function modelOneActionColor(label) {
-    const value = String(label || "").toUpperCase();
-    if (/MORT|KILL|TROU|PERD|RETIR|RECHERCHE/.test(value)) return "#ff354d";
-    if (/TP|TELEPORT|WARP/.test(value)) return "#ff4255";
-    if (/HORDE|TEMPETE|FREEZE|FROZEN|WEATHER|RAIN|ORAGE|THUNDER/.test(value)) return "#43d4ee";
-    if (/GAGNE|AJOUT|HEAL|VIE|INVINC|BONUS|WIN/.test(value)) return "#49e879";
-    return "#f4da3d";
+    });
   }
   function drawBottomPanel(ctx, items, logo, assets) {
     ctx.save();
@@ -1210,13 +1261,11 @@ var ShenPulseGameOverlay = (() => {
     drawSoftGroundShadow(ctx, centerX, y + height * 0.72, iconSize * 0.92, iconSize * 0.18);
     drawEffectIcon(ctx, item.effect, centerX, centerY, iconSize, assets);
     drawTriggerBadges(ctx, item.badges, x, y, width, height, giftSize, item.badgeLayout);
-    drawStackedOutlinedText(ctx, item.effect.label, centerX, y + height - clamp(height * 0.08, 8, 18), width - 4, {
-      align: "center",
-      color: "#ffffff",
+    drawOverlayActionLines(ctx, overlayActionTextLines(item), centerX, y + height - clamp(height * 0.08, 8, 18), width - 4, {
+      cardHeight: height,
       fontFamily: MINECRAFT_FONT_FAMILY,
-      fontSize: clamp(Math.min(width * 0.19, height * 0.24), 16, 34),
-      lineWidth: clamp(Math.min(width, height) * 0.055, 5, 10),
-      maxLines: 2
+      lineWidthRatio: 0.2,
+      maxFontSize: clamp(Math.min(width * 0.19, height * 0.24), 16, 34)
     });
     ctx.restore();
   }
@@ -1380,6 +1429,14 @@ var ShenPulseGameOverlay = (() => {
     }
     if (badge.triggerType === "chat") {
       drawSymbolBadge(ctx, x, y, size, "#38bdf8", "#0f172a", "#");
+      return;
+    }
+    if (badge.triggerType === "join") {
+      drawSymbolBadge(ctx, x, y, size, "#14b8a6", "#164e63", "+");
+      return;
+    }
+    if (badge.triggerType === "raid") {
+      drawSymbolBadge(ctx, x, y, size, "#f97316", "#7c2d12", "!");
       return;
     }
     drawGiftBadge(ctx, badge, x, y, size);
@@ -2004,6 +2061,8 @@ var ShenPulseGameOverlay = (() => {
     if (mapping.triggerType === "follow") return "Follow";
     if (mapping.triggerType === "share") return "Share";
     if (mapping.triggerType === "subscribe") return "Subscribe";
+    if (mapping.triggerType === "join") return "Join";
+    if (mapping.triggerType === "raid") return "Raid";
     return "Gift";
   }
   function triggerColors(triggerType) {
@@ -2012,6 +2071,8 @@ var ShenPulseGameOverlay = (() => {
     if (triggerType === "follow") return ["#22c55e", "#064e3b"];
     if (triggerType === "share") return ["#a78bfa", "#312e81"];
     if (triggerType === "subscribe") return ["#f59e0b", "#7c2d12"];
+    if (triggerType === "join") return ["#14b8a6", "#164e63"];
+    if (triggerType === "raid") return ["#f97316", "#7c2d12"];
     return ["#14b8a6", "#0f172a"];
   }
   function ensureMinecraftOverlayFont() {

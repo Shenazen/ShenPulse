@@ -34,6 +34,7 @@ import {
   COIN_PUSHER_PLINKO_RIGHT as PLINKO_RIGHT,
   COIN_PUSHER_PLINKO_TOP as PLINKO_TOP,
   COIN_PUSHER_PUSHER_BASE_Y as PUSHER_BASE_Y,
+  COIN_PUSHER_PUSHER_FACE_OFFSET,
   COIN_PUSHER_PUSHER_TRAVEL as PUSHER_TRAVEL,
   COIN_PUSHER_SHELF_DEPTH_SCALE,
   COIN_PUSHER_SHELF_EDGE as SHELF_EDGE,
@@ -177,6 +178,16 @@ const MAX_PARTICLES = 520
 const MAX_PENDING_TONES = 10
 const MAX_MYSTERY_REVEAL_QUEUE = 8
 const AUDIO_TONE_INTERVAL_MS = 24
+const FULL_PUSH_EXTEND_SECONDS = 1.2
+const FULL_PUSH_HOLD_SECONDS = 0.28
+const FULL_PUSH_RETRACT_SECONDS = 0.72
+const FULL_PUSH_SETTLE_SECONDS = 0.48
+const FULL_PUSH_SCORE_SECONDS = 0.72
+const FULL_PUSH_CYCLE_SECONDS = FULL_PUSH_EXTEND_SECONDS * 2
+  + FULL_PUSH_HOLD_SECONDS * 2
+  + FULL_PUSH_RETRACT_SECONDS * 2
+  + FULL_PUSH_SETTLE_SECONDS
+  + FULL_PUSH_SCORE_SECONDS
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const fallbackCanvasRef = ref<HTMLCanvasElement | null>(null)
@@ -200,6 +211,8 @@ const sideGuardProgress = ref(settings.value.sideLossEnabled ? 0 : 1)
 const scoreMultiplier = ref(1)
 const scoreMultiplierSeconds = ref(0)
 const specialAnnouncement = ref('')
+const fullPushActive = ref(false)
+const fullPushFinishAfter = ref(false)
 const latestDropObjectLabel = ref('PIÈCES')
 const latestDropPresentedCount = ref(0)
 const mysteryRevealActive = ref(false)
@@ -219,6 +232,7 @@ const pendingTones: PendingTone[] = []
 const seenDropIds = new Map<string, number>()
 const avatarCache = new Map<string, HTMLImageElement | null>()
 const mysteryRevealQueue: MysteryRevealJob[] = []
+const fullPushTargetCoinIds = new Set<string>()
 let mysteryOverflowResolved = 0
 let pegs = createCoinPusherPegs(
   COIN_PUSHER_COIN_RADIUS_MAX * settings.value.coinScale,
@@ -229,6 +243,12 @@ let lastFrameAt = 0
 let pusherClock = 0
 let pusherY = PUSHER_BASE_Y
 let previousPusherY = PUSHER_BASE_Y
+let fullPushElapsed = 0
+let fullPushStartY = PUSHER_BASE_Y
+let fullPushTargetY = PUSHER_BASE_Y + PUSHER_TRAVEL
+let fullPushPendingSpawnCount = 0
+let fullPushResumePhase: RoundPhase = 'playing'
+let fullPushWaitingForEffects = false
 let spawnClock = 0
 let latestDropTimer = 0
 let specialAnnouncementTimer = 0
@@ -266,7 +286,7 @@ const effectiveScoreSlots = computed(() => adaptiveScoreSlots(
   settings.value.coinScale,
 ))
 const sideGuardRequested = computed(() => (
-  !settings.value.sideLossEnabled || sideGuardSeconds.value > 0
+  !settings.value.sideLossEnabled || sideGuardSeconds.value > 0 || fullPushActive.value
 ))
 const sideGuardSolid = computed(() => (
   !settings.value.sideLossEnabled || sideGuardProgress.value >= 0.55
@@ -278,6 +298,8 @@ const timerLabel = computed(() => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 const phaseLabel = computed(() => {
+  if (fullPushFinishAfter.value) return 'POUSSÉE FINALE'
+  if (fullPushActive.value) return 'POUSSÉE MAX'
   if (roundPhase.value === 'paused') return 'PAUSE'
   if (roundPhase.value === 'finished') return 'TERMINÉ'
   return 'LIVE'
@@ -341,11 +363,12 @@ function frame(now: number) {
   const delta = Math.min(0.034, rawDelta || 0.016)
   lastFrameAt = now
 
-  if (roundPhase.value === 'playing') {
-    updateRound(delta)
+  if (roundPhase.value === 'playing' || fullPushActive.value) {
+    if (roundPhase.value === 'playing' && !fullPushFinishAfter.value) updateRound(delta)
     updateActiveEffects(delta)
-    updatePusher(delta)
-    updateSpawnQueue(delta)
+    if (fullPushActive.value) updateFullPush(delta)
+    else updatePusher(delta)
+    if (!fullPushFinishAfter.value) updateSpawnQueue(delta)
     updateCoins(delta)
     flushScoreFrameBatches()
     updateParticles(delta)
@@ -402,6 +425,66 @@ function updatePusher(delta: number) {
   pusherY = PUSHER_BASE_Y + PUSHER_TRAVEL * eased
   const forwardVelocity = Math.max(0, (pusherY - previousPusherY) / Math.max(0.001, delta))
   pusherPower.value = Math.min(1, forwardVelocity / 115)
+}
+
+function updateFullPush(delta: number) {
+  if (fullPushWaitingForEffects) {
+    previousPusherY = pusherY
+    pusherY = PUSHER_BASE_Y
+    pusherPower.value = 0
+    if (!mysteryRevealActive.value && !mysteryRevealQueue.length) {
+      fullPushWaitingForEffects = false
+      completeFullPushCycle()
+    }
+    return
+  }
+
+  const previousY = pusherY
+  fullPushElapsed = Math.min(FULL_PUSH_CYCLE_SECONDS, fullPushElapsed + delta)
+  const firstHoldAt = FULL_PUSH_EXTEND_SECONDS
+  const firstRetractAt = firstHoldAt + FULL_PUSH_HOLD_SECONDS
+  const settleAt = firstRetractAt + FULL_PUSH_RETRACT_SECONDS
+  const secondExtendAt = settleAt + FULL_PUSH_SETTLE_SECONDS
+  const secondHoldAt = secondExtendAt + FULL_PUSH_EXTEND_SECONDS
+  const secondRetractAt = secondHoldAt + FULL_PUSH_HOLD_SECONDS + FULL_PUSH_SCORE_SECONDS
+
+  if (fullPushElapsed < firstHoldAt) {
+    pusherY = lerp(
+      fullPushStartY,
+      fullPushTargetY,
+      smoothStep(fullPushElapsed / FULL_PUSH_EXTEND_SECONDS),
+    )
+  } else if (fullPushElapsed < firstRetractAt) {
+    pusherY = fullPushTargetY
+  } else if (fullPushElapsed < settleAt) {
+    pusherY = lerp(
+      fullPushTargetY,
+      PUSHER_BASE_Y,
+      smoothStep((fullPushElapsed - firstRetractAt) / FULL_PUSH_RETRACT_SECONDS),
+    )
+  } else if (fullPushElapsed < secondExtendAt) {
+    pusherY = PUSHER_BASE_Y
+  } else if (fullPushElapsed < secondHoldAt) {
+    pusherY = lerp(
+      PUSHER_BASE_Y,
+      fullPushTargetY,
+      smoothStep((fullPushElapsed - secondExtendAt) / FULL_PUSH_EXTEND_SECONDS),
+    )
+  } else if (fullPushElapsed < secondRetractAt) {
+    pusherY = fullPushTargetY
+  } else {
+    pusherY = lerp(
+      fullPushTargetY,
+      PUSHER_BASE_Y,
+      smoothStep((fullPushElapsed - secondRetractAt) / FULL_PUSH_RETRACT_SECONDS),
+    )
+  }
+
+  previousPusherY = previousY
+  const forwardVelocity = Math.max(0, (pusherY - previousY) / Math.max(0.001, delta))
+  pusherPower.value = Math.min(1, forwardVelocity / 115)
+
+  if (fullPushElapsed >= FULL_PUSH_CYCLE_SECONDS) completeFullPushCycle()
 }
 
 function updateSpawnQueue(delta: number) {
@@ -930,9 +1013,11 @@ function spawnCoin(
   warmAvatar(avatarUrl)
   burst(coin.x, coin.y + 10, '#f8d776', 4, 52)
   tone(360 + Math.random() * 80, 0.035, 0.025)
+  return coin
 }
 
 function enqueueDrop(input: CoinPusherDropEvent | Record<string, any>) {
+  if (roundPhase.value === 'finished' || fullPushFinishAfter.value) return
   const drop = normalizeCoinPusherDrop(input as CoinPusherDropEvent)
   const dropId = String((drop as any).eventId || (drop as any).id || '')
   const now = Date.now()
@@ -2165,29 +2250,180 @@ function applyRoundCommand(value: unknown) {
   if (command.command === 'end') finishRound()
   if (command.command === 'reset') resetRound(true)
   if (command.command === 'start') resetRound(true)
+  if (command.command === 'push') startFullPush(false)
 }
 
 function pauseRound() {
-  if (roundPhase.value !== 'playing') return
+  if (roundPhase.value !== 'playing' || fullPushFinishAfter.value) return
   roundPhase.value = 'paused'
 }
 
 function resumeRound() {
-  if (roundPhase.value === 'finished') return
+  if (roundPhase.value === 'finished' || fullPushFinishAfter.value) return
   roundPhase.value = 'playing'
   void resumeAudio()
 }
 
 function finishRound() {
   if (roundPhase.value === 'finished') return
-  roundPhase.value = 'finished'
   timeRemainingMs.value = 0
-  cancelMysteryReveals()
+  startFullPush(true)
+}
+
+function startFullPush(finishAfter: boolean) {
+  if (roundPhase.value === 'finished') return
+  if (fullPushActive.value) {
+    if (finishAfter && !fullPushFinishAfter.value) {
+      fullPushFinishAfter.value = true
+      fullPushPendingSpawnCount = Number.POSITIVE_INFINITY
+      timeRemainingMs.value = 0
+      for (const coin of coins) {
+        if (!coin.scored) fullPushTargetCoinIds.add(coin.id)
+      }
+      announceSpecial('POUSSÉE FINALE · TOUS LES POINTS VONT ÊTRE COMPTÉS')
+    }
+    return
+  }
+
+  fullPushResumePhase = roundPhase.value
+  fullPushActive.value = true
+  fullPushFinishAfter.value = finishAfter
+  fullPushPendingSpawnCount = finishAfter
+    ? Number.POSITIVE_INFINITY
+    : spawnQueue.reduce((sum, batch) => sum + batch.remaining, 0)
+  fullPushTargetCoinIds.clear()
+  for (const coin of coins) {
+    if (!coin.scored) fullPushTargetCoinIds.add(coin.id)
+  }
+  prepareFullPushCycle()
+  announceSpecial(finishAfter
+    ? 'POUSSÉE FINALE · TOUS LES POINTS VONT ÊTRE COMPTÉS'
+    : 'POUSSÉE COMPLÈTE DU PLATEAU')
+  void resumeAudio()
+}
+
+function prepareFullPushCycle() {
+  removeScoredFallingCoins()
+  let availableSlots = Math.max(0, Math.floor(settings.value.maxCoins - coins.length))
+  while (
+    availableSlots > 0
+    && spawnQueue.length
+    && (fullPushFinishAfter.value || fullPushPendingSpawnCount > 0)
+  ) {
+    const batch = spawnQueue[0]
+    const coin = spawnCoin(batch.drop, batch.remaining, batch.kind)
+    fullPushTargetCoinIds.add(coin.id)
+    batch.remaining -= 1
+    availableSlots -= 1
+    if (Number.isFinite(fullPushPendingSpawnCount)) fullPushPendingSpawnCount -= 1
+    if (batch.remaining <= 0) spawnQueue.shift()
+  }
+
+  for (const coin of coins) {
+    if (coin.scored || !fullPushTargetCoinIds.has(coin.id)) continue
+    if (coin.phase !== 'plinko' && coin.phase !== 'settling') continue
+    coin.phase = 'pusher'
+    coin.dropProgress = 0
+    coin.plinkoProgressY = PLINKO_EXIT_Y
+    coin.stackFalling = false
+    coin.stackHeight = 0
+    coin.stackLevel = 0
+    coin.vx *= 0.2
+    coin.vy = 0
+    coin.y = PLINKO_EXIT_Y
+  }
+
+  const maximumRadius = coins.reduce(
+    (maximum, coin) => fullPushTargetCoinIds.has(coin.id)
+      ? Math.max(maximum, coin.radius)
+      : maximum,
+    COIN_PUSHER_COIN_RADIUS_MAX * settings.value.coinScale,
+  )
+  fullPushStartY = pusherY
+  fullPushTargetY = SHELF_EDGE
+    + maximumRadius / COIN_PUSHER_SHELF_DEPTH_SCALE
+    + 4
+    - COIN_PUSHER_PUSHER_FACE_OFFSET
+  fullPushElapsed = 0
+  fullPushWaitingForEffects = false
+  sideGuardProgress.value = 1
+  burst(WIDTH / 2, SHELF_TOP + 82, '#fbbf24', 54, 180)
+  tone(220, 0.18, 0.06, 3, 'full-push-start')
+}
+
+function completeFullPushCycle() {
+  pusherY = PUSHER_BASE_Y
+  previousPusherY = PUSHER_BASE_Y
+  pusherPower.value = 0
+  flushScoreFrameBatches()
+
+  const scoredIds = new Set(
+    coins.filter((coin) => coin.scored).map((coin) => coin.id),
+  )
+  for (const id of scoredIds) fullPushTargetCoinIds.delete(id)
+  removeScoredFallingCoins()
+
+  const targetCoinsRemain = coins.some((coin) => (
+    !coin.scored && fullPushTargetCoinIds.has(coin.id)
+  ))
+  const pendingTargetSpawns = fullPushFinishAfter.value
+    ? spawnQueue.length > 0
+    : fullPushPendingSpawnCount > 0 && spawnQueue.length > 0
+
+  if (targetCoinsRemain || pendingTargetSpawns) {
+    prepareFullPushCycle()
+    return
+  }
+
+  if (
+    fullPushFinishAfter.value
+    && (mysteryRevealActive.value || mysteryRevealQueue.length)
+  ) {
+    fullPushWaitingForEffects = true
+    return
+  }
+
+  if (fullPushFinishAfter.value) {
+    completeFinishedRound()
+    return
+  }
+  stopFullPush()
+}
+
+function removeScoredFallingCoins() {
+  for (let index = coins.length - 1; index >= 0; index -= 1) {
+    if (coins[index].phase === 'falling' && coins[index].scored) coins.splice(index, 1)
+  }
+}
+
+function stopFullPush() {
+  fullPushActive.value = false
+  fullPushFinishAfter.value = false
+  fullPushWaitingForEffects = false
+  fullPushElapsed = 0
+  fullPushPendingSpawnCount = 0
+  fullPushTargetCoinIds.clear()
+  pusherY = PUSHER_BASE_Y
+  previousPusherY = PUSHER_BASE_Y
+  pusherClock = 0
+  pusherPower.value = 0
+  roundPhase.value = fullPushResumePhase
+}
+
+function completeFinishedRound() {
+  fullPushActive.value = false
+  fullPushFinishAfter.value = false
+  fullPushWaitingForEffects = false
+  fullPushElapsed = 0
+  fullPushPendingSpawnCount = 0
+  fullPushTargetCoinIds.clear()
+  roundPhase.value = 'finished'
   burst(WIDTH / 2, 214, '#fbbf24', 120, 230)
   tone(720, 0.34, 0.075)
 }
 
 function resetRound(play = true) {
+  stopFullPush()
   cancelMysteryReveals()
   coins.splice(0)
   spawnQueue.splice(0)
@@ -2479,6 +2715,15 @@ function randomInteger(minimum: number, maximum: number) {
   return min + Math.floor(Math.random() * Math.max(1, max - min + 1))
 }
 
+function lerp(start: number, end: number, progress: number) {
+  return start + (end - start) * Math.max(0, Math.min(1, progress))
+}
+
+function smoothStep(progress: number) {
+  const value = Math.max(0, Math.min(1, progress))
+  return value * value * (3 - 2 * value)
+}
+
 function prizePercentForRank(index: number) {
   return Math.max(0, Number(settings.value.winnerPrizePercents[index]) || 0)
 }
@@ -2700,7 +2945,7 @@ function playerAvatarStyle(player: ScorePlayer) {
   >
     <section
       class="coin-pusher-stage"
-      :class="[`is-${roundPhase}`, { 'has-mystery-reveal': mysteryRevealActive }]"
+      :class="[`is-${roundPhase}`, { 'has-mystery-reveal': mysteryRevealActive, 'is-full-push': fullPushActive }]"
     >
       <canvas
         ref="canvasRef"
@@ -2730,13 +2975,13 @@ function playerAvatarStyle(player: ScorePlayer) {
           </div>
         </div>
 
-        <div class="round-timer" :class="{ paused: roundPhase === 'paused', finished: roundPhase === 'finished' }">
+        <div class="round-timer" :class="{ paused: roundPhase === 'paused', finished: roundPhase === 'finished' || fullPushFinishAfter }">
           <span><i></i>{{ phaseLabel }}</span>
           <strong>{{ timerLabel }}</strong>
         </div>
 
         <div class="host-controls">
-          <button type="button" :title="roundPhase === 'playing' ? 'Mettre en pause' : 'Reprendre'" @click="togglePause">
+          <button type="button" :disabled="fullPushFinishAfter" :title="roundPhase === 'playing' ? 'Mettre en pause' : 'Reprendre'" @click="togglePause">
             <Pause v-if="roundPhase === 'playing'" :size="15" />
             <Play v-else :size="15" />
           </button>

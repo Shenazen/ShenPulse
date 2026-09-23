@@ -159,6 +159,9 @@ function renderGameLaunch(pack, unlocked) {
       </div>
       <footer class="game-panel-actions">
         ${ready ? "" : `<button class="button" data-action="game-step" data-value="installation">← Revenir à l’installation</button>`}
+        ${pack.id === "coin-pusher"
+          ? `<button type="button" class="button" data-action="trigger-effect" data-id="pousser-le-plateau" data-pack="coin-pusher" title="Fait sortir entièrement le poussoir et vide le plateau" ${sessionActive ? "" : "disabled"}>⇥ Poussée complète</button>`
+          : ""}
         ${sessionActive
           ? `<button class="button danger game-launch-button" data-action="stop-game-session">■ Arrêter la session de jeu</button>`
           : inputDriven
@@ -205,17 +208,17 @@ function renderGameLaunch(pack, unlocked) {
 }
 
 function renderGameOverlays(pack, unlocked) {
-  if (pack.id === "cult-of-the-lamb") {
+  if (GAME_OVERLAY_GENERATOR_ONLY_IDS.has(pack.id)) {
     return `<div class="game-overlays-page">
       <section class="game-interaction-toolbar">
-        <div><span>◇ CULT OF THE LAMB</span><h3>Aucun overlay requis</h3><p>Les interactions Cult of the Lamb s’exécutent directement dans le jeu. Aucun timer, compteur de WINS, multiplicateur ou roue ne doit être ajouté à OBS pour ce pack.</p></div>
-        <span class="badge success">JEU DIRECT</span>
+        <div><span>▱ OVERLAY DES CADEAUX</span><h3>Générer l’overlay des interactions</h3><p>Créez une image à partir des cadeaux associés aux interactions actives de ${escapeHtml(pack.name)}. Aucun autre overlay n’est proposé pour ce jeu.</p></div>
+        <span class="game-step-count">1 DISPONIBLE</span>
       </section>
-      <section class="empty-state game-overlay-empty-state">
-        <div><span class="empty-icon">✓</span><h2>Configuration visuelle inutile</h2><p>Continuez vers le démarrage : ShenPulse transmettra les interactions au mod Cult of the Lamb sans source navigateur supplémentaire.</p></div>
+      <section class="game-overlay-composer-layout game-overlay-composer-layout--generator-only">
+        ${renderGameInteractionOverlayCard(pack, unlocked)}
       </section>
       <footer class="game-step-footer">
-        <div><strong>Interactions intégrées au jeu</strong><small>Aucun élément de la capture OBS n’est nécessaire.</small></div>
+        <div><strong>Générateur lié à ${escapeHtml(pack.name)}</strong><small>Enregistré uniquement pour ${escapeHtml(overlayProfileName())}.</small></div>
         <button class="button primary" data-action="game-step" data-value="launch" ${unlocked ? "" : "disabled"}>Continuer vers le démarrage →</button>
       </footer>
     </div>`;
@@ -312,7 +315,18 @@ function gameOverlayTriggerType(rule) {
   if (type === "like") return "likes";
   if (type === "message") return "chat";
   if (type === "subscription") return "subscribe";
-  if (["gift", "likes", "chat", "follow", "share", "subscribe"].includes(type)) {
+  if (
+    [
+      "gift",
+      "likes",
+      "chat",
+      "follow",
+      "share",
+      "subscribe",
+      "join",
+      "raid"
+    ].includes(type)
+  ) {
     return type;
   }
   return "chat";
@@ -320,13 +334,20 @@ function gameOverlayTriggerType(rule) {
 
 function gameInteractionOverlayEntries(pack) {
   const mappedEntries = gameMappedEffects(pack)
-    .filter((row) => row.rule.enabled !== false)
+    .filter(
+      (row) =>
+        row.rule.enabled !== false &&
+        (!GAME_OVERLAY_GENERATOR_ONLY_IDS.has(pack.id) ||
+          gameOverlayTriggerType(row.rule) === "gift")
+    )
     .map((row) => {
       const effect = pack.effects.find(
         (item) => item.id === row.action.config?.effectId
       );
       if (!effect || effect.available === false) return null;
-      const giftName = ruleGiftName(row.rule);
+      const giftCondition = ruleGiftCondition(row.rule);
+      const giftName = giftCondition?.value || "";
+      const gift = giftForIdentity(giftName, giftCondition?.giftId);
       const triggerType = gameOverlayTriggerType(row.rule);
       return {
         effectId: effect.id,
@@ -334,7 +355,10 @@ function gameInteractionOverlayEntries(pack) {
         title: row.rule.gameInteraction?.title || effect.name,
         trigger: triggerLabel(row.rule),
         triggerType,
-        triggerKey: giftName || triggerLabel(row.rule),
+        triggerKey:
+          triggerType === "gift" && giftCondition?.giftId
+            ? String(giftCondition.giftId)
+            : giftName || triggerLabel(row.rule),
         likeAmount:
           triggerType === "likes"
             ? Math.max(1, Number(row.rule.trigger?.threshold || 1))
@@ -346,12 +370,13 @@ function gameInteractionOverlayEntries(pack) {
           parameters: row.action.config?.parameters || {}
         })}`,
         effectImageUrl: effect.image || "",
-        giftImageUrl: giftForName(giftName)?.imageUrl || "",
+        giftImageUrl:
+          gift?.imageUrl || String(giftCondition?.giftImageUrl || ""),
         giftLabel: giftName || triggerLabel(row.rule)
       };
     })
     .filter(Boolean);
-  if (pack.id !== "coin-pusher") return mappedEntries.slice(0, 42);
+  if (pack.id !== "coin-pusher") return mappedEntries;
 
   const config = integratedGameSettings("coin-pusher");
   const giftEntries = config.giftRules
@@ -412,7 +437,94 @@ function gameInteractionOverlayEntries(pack) {
     ...specialEntries,
     ...tierEntries,
     ...mappedEntries
-  ].slice(0, 42);
+  ];
+}
+
+function gameOverlayEntryEffectIdentity(entry) {
+  return String(
+    entry?.groupKey || entry?.effectId || entry?.title || "interaction"
+  ).toLowerCase();
+}
+
+function gameOverlayEntryActionLabels(entries) {
+  return [...new Set(
+    entries.map((entry) => String(entry?.title || "").trim()).filter(Boolean)
+  )];
+}
+
+function groupGameOverlayEntriesByGift(entries) {
+  const groupedEntries = entries.filter((entry) => !entry.isWinEffect);
+  const parents = groupedEntries.map((_, index) => index);
+  const find = (index) => {
+    while (parents[index] !== index) {
+      parents[index] = parents[parents[index]];
+      index = parents[index];
+    }
+    return index;
+  };
+  const join = (left, right) => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parents[rightRoot] = leftRoot;
+  };
+  const effectOwners = new Map();
+  const triggerOwners = new Map();
+  groupedEntries.forEach((entry, index) => {
+    const effectIdentity = gameOverlayEntryEffectIdentity(entry);
+    const triggerIdentity = gameOverlayEntryTriggerIdentity(entry);
+    if (effectOwners.has(effectIdentity)) join(index, effectOwners.get(effectIdentity));
+    if (triggerOwners.has(triggerIdentity)) join(index, triggerOwners.get(triggerIdentity));
+    effectOwners.set(effectIdentity, index);
+    triggerOwners.set(triggerIdentity, index);
+  });
+
+  const connectedGroups = new Map();
+  groupedEntries.forEach((entry, index) => {
+    const root = find(index);
+    const group = connectedGroups.get(root) || [];
+    group.push(entry);
+    connectedGroups.set(root, group);
+  });
+  const records = [...connectedGroups.values()].map((group) => {
+    const firstIndex = entries.indexOf(group[0]);
+    const actionLabels = gameOverlayEntryActionLabels(group);
+    const groupKey = `overlay-group-${firstIndex}`;
+    const seenTriggers = new Set();
+    const triggerEntries = group.filter((entry) => {
+      const identity = gameOverlayEntryTriggerIdentity(entry);
+      if (seenTriggers.has(identity)) return false;
+      seenTriggers.add(identity);
+      return true;
+    });
+    return {
+      index: firstIndex,
+      entries: triggerEntries.map((entry) => ({
+        ...entry,
+        actionLabels,
+        groupKey,
+        badgeLayout: triggerEntries.length > 1 ? "top-row" : "corners",
+        effectImageUrl: group[0].effectImageUrl
+      }))
+    };
+  });
+  entries.forEach((entry, index) => {
+    if (entry.isWinEffect) records.push({ index, entries: [entry] });
+  });
+  return records
+    .sort((left, right) => left.index - right.index)
+    .flatMap((record) => record.entries);
+}
+
+function gameOverlayRenderedCaseCount(entries) {
+  const cases = new Set();
+  entries.forEach((entry, index) => {
+    cases.add(
+      entry.isWinEffect
+        ? `win:${index}`
+        : gameOverlayEntryEffectIdentity(entry)
+    );
+  });
+  return cases.size;
 }
 
 function gtaInteractionOverlayEntries(pack) {
@@ -433,7 +545,9 @@ function renderGameInteractionOverlayCard(pack, unlocked) {
     <div class="gta-interaction-overlay-preview" style="--gta-overlay-background:${escapeHtml(color)}">
       ${previewEntries.length
         ? previewEntries.map((entry) => `<span><i>${entry.giftImageUrl ? `<img src="${escapeHtml(entry.giftImageUrl)}" alt="">` : "🎁"}</i><strong>${escapeHtml(entry.title)}</strong><small>${escapeHtml(entry.trigger)}</small></span>`).join("")
-        : "<em>Activez au moins une interaction GTA pour générer le fond.</em>"}
+        : GAME_OVERLAY_GENERATOR_ONLY_IDS.has(pack.id)
+          ? `<em>Activez au moins une interaction déclenchée par un cadeau pour générer l’overlay ${escapeHtml(pack.name)}.</em>`
+          : "<em>Activez au moins une interaction GTA pour générer le fond.</em>"}
     </div>
     <div class="gta-overlay-instructions">
       <span><b>1</b>Téléchargez l’image après avoir réglé vos interactions.</span>

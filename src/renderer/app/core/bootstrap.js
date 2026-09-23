@@ -479,6 +479,12 @@ const AUTOMATED_GAME_INSTALLERS = new Set([
   "terraria"
 ]);
 
+const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set([
+  "cult-of-the-lamb",
+  "stardew-valley",
+  "terraria"
+]);
+
 const MINECRAFT_LAUNCHER_ID = "minecraft";
 const MINECRAFT_MODE_IDS = Object.freeze([
   "minecraft-bedrock-box",

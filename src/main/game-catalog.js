@@ -110,7 +110,7 @@ const COIN_PUSHER_EFFECTS = Object.freeze([
     id: "pousser-le-plateau",
     code: "pousser-le-plateau",
     name: "Pousser le plateau",
-    description: "Déclenche une poussée supplémentaire dans la machine.",
+    description: "Fait sortir complètement le poussoir pour vider le plateau et compter les dernières pièces.",
     category: "Machine",
     icon: "⇥",
     available: true,

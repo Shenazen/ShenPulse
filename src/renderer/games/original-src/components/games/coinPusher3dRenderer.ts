@@ -256,6 +256,15 @@ const GALACTIC_COIN_RIM_COLORS = [
 const PUSHER_FACE_LOCAL_Z = COIN_PUSHER_PUSHER_FACE_OFFSET * 5.82 / (SHELF_EDGE - SHELF_TOP)
 const PUSHER_TRAVEL_LOCAL_Z = COIN_PUSHER_PUSHER_TRAVEL * 5.82 / (SHELF_EDGE - SHELF_TOP)
 const PUSHER_REAR_LOCAL_Z = -0.54 - PUSHER_TRAVEL_LOCAL_Z - 0.16
+const PUSHER_DECK_REAR_LOCAL_Z = PUSHER_REAR_LOCAL_Z + 0.04
+// The standard pusher body is deep enough for its normal travel. The special
+// full sweep goes much farther, so a telescopic cover must bridge the newly
+// exposed well instead of revealing the empty cabinet behind the moving deck.
+const PUSHER_GAP_REAR_ANCHOR_Z = (
+  logicalShelfZ(PUSHER_BASE_Y + COIN_PUSHER_PUSHER_TRAVEL)
+  + PUSHER_DECK_REAR_LOCAL_Z
+)
+const PUSHER_GAP_FRONT_OVERLAP = 0.08
 const MAX_RENDERED_OBJECT_SCALE = (
   COIN_PUSHER_COIN_RADIUS_MAX * COIN_PUSHER_MAX_COIN_SCALE / 66
 )
@@ -465,6 +474,9 @@ class SceneRenderer implements CoinPusher3dRenderer {
   private readonly plinkoTextureState = createSurfaceTextureState()
   private readonly pointTexture: THREE.CanvasTexture
   private readonly poseByCoinId = new Map<string, CoinPose>()
+  private readonly pusherGapSurface: THREE.Mesh
+  private readonly pusherGapSurfaceMaterial: THREE.MeshPhysicalMaterial
+  private readonly pusherGapTrim: THREE.Mesh
   private readonly pusherGroup = new THREE.Group()
   private readonly pusherGlowMaterial: THREE.MeshStandardMaterial
   private pegSignature = ''
@@ -661,6 +673,16 @@ class SceneRenderer implements CoinPusher3dRenderer {
       polygonOffsetUnits: -1,
       roughness: 0.68,
     })
+    this.pusherGapSurfaceMaterial = new THREE.MeshPhysicalMaterial({
+      clearcoat: 0.58,
+      clearcoatRoughness: 0.32,
+      color: 0x263b52,
+      emissive: 0x071827,
+      emissiveIntensity: 0.12,
+      envMapIntensity: 0.7,
+      metalness: 0.72,
+      roughness: 0.42,
+    })
     this.plinkoMaterial = new THREE.MeshPhysicalMaterial({
       clearcoat: 0.18,
       clearcoatRoughness: 0.56,
@@ -709,6 +731,8 @@ class SceneRenderer implements CoinPusher3dRenderer {
     this.pointTexture = createSoftPointTexture()
 
     this.platformSurface = this.buildMachine()
+    this.pusherGapSurface = this.buildPusherGapSurface()
+    this.pusherGapTrim = this.buildPusherGapTrim()
     this.buildSideGuards()
     this.ensurePegs()
     this.buildGalacticTheme()
@@ -839,7 +863,9 @@ class SceneRenderer implements CoinPusher3dRenderer {
     this.syncParticles(frame.particles)
     this.syncFloatingScores(frame.floatingScores)
 
-    this.pusherGroup.position.z = logicalShelfZ(frame.pusherY)
+    const pusherWorldZ = logicalShelfZ(frame.pusherY)
+    this.pusherGroup.position.z = pusherWorldZ
+    this.updatePusherGap(pusherWorldZ)
     this.updateSideGuards(
       frame.sideGuardProgress,
       frame.sideLossEnabled,
@@ -1315,6 +1341,46 @@ class SceneRenderer implements CoinPusher3dRenderer {
 
     this.machineRoot.add(this.scoreGroup)
     return platform
+  }
+
+  private buildPusherGapSurface() {
+    const surface = new THREE.Mesh(
+      new THREE.BoxGeometry(6.04, 0.05, 1),
+      this.pusherGapSurfaceMaterial,
+    )
+    surface.position.set(0, 2.965, PUSHER_GAP_REAR_ANCHOR_Z)
+    surface.scale.z = 0.001
+    surface.receiveShadow = true
+    surface.visible = false
+    this.machineRoot.add(surface)
+    return surface
+  }
+
+  private buildPusherGapTrim() {
+    const trim = new THREE.Mesh(
+      new THREE.BoxGeometry(6.12, 0.055, 0.055),
+      this.goldMaterial,
+    )
+    trim.position.set(0, 2.974, PUSHER_GAP_REAR_ANCHOR_Z)
+    trim.castShadow = true
+    trim.receiveShadow = true
+    trim.visible = false
+    this.machineRoot.add(trim)
+    return trim
+  }
+
+  private updatePusherGap(pusherWorldZ: number) {
+    const movingDeckRearZ = pusherWorldZ + PUSHER_DECK_REAR_LOCAL_Z
+    const exposedDepth = Math.max(0, movingDeckRearZ - PUSHER_GAP_REAR_ANCHOR_Z)
+    const visible = exposedDepth > 0.006
+    this.pusherGapSurface.visible = visible
+    this.pusherGapTrim.visible = visible
+    if (!visible) return
+
+    const coveredDepth = exposedDepth + PUSHER_GAP_FRONT_OVERLAP
+    this.pusherGapSurface.position.z = PUSHER_GAP_REAR_ANCHOR_Z + coveredDepth / 2
+    this.pusherGapSurface.scale.z = coveredDepth
+    this.pusherGapTrim.position.z = movingDeckRearZ - PUSHER_GAP_FRONT_OVERLAP / 2
   }
 
   private buildSideGuards() {
@@ -2523,6 +2589,7 @@ class SceneRenderer implements CoinPusher3dRenderer {
         ? isGalactic ? 0xf7f1ff : 0xe8edf2
         : isGalactic ? 0x07070c : 0x111827,
     )
+    this.pusherGapSurfaceMaterial.color.setHex(isGalactic ? 0x5a5263 : 0x263b52)
     this.plinkoMaterial.color.setHex(
       this.plinkoTextureState.texture
         ? isGalactic ? 0xf7f2ff : 0xf1f4f7
@@ -2533,9 +2600,11 @@ class SceneRenderer implements CoinPusher3dRenderer {
     )
     this.platformMaterial.emissive.setHex(isGalactic ? 0x030108 : 0x071827)
     this.movingDeckSurfaceMaterial.emissive.setHex(isGalactic ? 0x020106 : 0x03111d)
+    this.pusherGapSurfaceMaterial.emissive.setHex(isGalactic ? 0x13091d : 0x071827)
     this.plinkoMaterial.emissive.setHex(isGalactic ? 0x020106 : 0x030815)
     this.platformMaterial.needsUpdate = true
     this.movingDeckSurfaceMaterial.needsUpdate = true
+    this.pusherGapSurfaceMaterial.needsUpdate = true
     this.plinkoMaterial.needsUpdate = true
     this.galacticPlinkoSurfaceMaterial.needsUpdate = true
   }

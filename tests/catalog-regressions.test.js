@@ -599,6 +599,32 @@ test("tous les jeux réutilisent le générateur historique ShenazenOverlay", ()
   assert.match(gameOverlayGenerator, /PressStart2P-Regular\.ttf/);
 });
 
+test("Cult of the Lamb, Stardew Valley et Terraria affichent uniquement le générateur de cadeaux", () => {
+  assert.match(
+    renderer,
+    /const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set\(\[\s*"cult-of-the-lamb",\s*"stardew-valley",\s*"terraria"\s*\]\)/
+  );
+  const branchStart = renderer.indexOf(
+    "if (GAME_OVERLAY_GENERATOR_ONLY_IDS.has(pack.id))"
+  );
+  const genericOverlaysStart = renderer.indexOf(
+    "const items = gameOverlayItemsFor(pack);",
+    branchStart
+  );
+  const generatorOnlyBranch = renderer.slice(branchStart, genericOverlaysStart);
+  assert.ok(branchStart >= 0 && genericOverlaysStart > branchStart);
+  assert.match(
+    generatorOnlyBranch,
+    /Aucun autre overlay n’est proposé pour ce jeu\.[\s\S]*game-overlay-composer-layout--generator-only[\s\S]*renderGameInteractionOverlayCard\(pack, unlocked\)/
+  );
+  assert.doesNotMatch(generatorOnlyBranch, /renderOverlayCard|overlay-catalog-grid/);
+  assert.match(
+    renderer,
+    /!GAME_OVERLAY_GENERATOR_ONLY_IDS\.has\(pack\.id\) \|\|\s*gameOverlayTriggerType\(row\.rule\) === "gift"/
+  );
+  assert.doesNotMatch(renderer, /Aucun overlay requis/);
+});
+
 test("le bouton des sources suit la visibilité de sa page", () => {
   assert.match(
     renderer,

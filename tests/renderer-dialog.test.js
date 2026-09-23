@@ -11,6 +11,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 test("les boutons d'annulation ferment le dialogue sans valider le formulaire", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
@@ -75,22 +76,67 @@ test("Minecraft affiche les réglages de manche et bloque un second jeu actif", 
   assert.match(preload, /game-round-timeout/);
 });
 
-test("Cult of the Lamb ne propose aucun overlay OBS inutile", () => {
+test("Cult of the Lamb propose uniquement le générateur d’overlay des cadeaux", () => {
   const app = readRendererSource();
   const renderStart = app.indexOf("function renderGameOverlays(pack, unlocked)");
-  const renderEnd = app.indexOf(
-    "function renderGameOverlaysLegacy",
+  const genericOverlaysStart = app.indexOf(
+    "const items = gameOverlayItemsFor(pack);",
     renderStart
   );
-  const itemStart = app.indexOf("function gameOverlayItemsFor(pack)");
-  const itemEnd = app.indexOf(
-    "function gameInteractionOverlayBackground",
-    itemStart
+  const generatorOnlyBranch = app.slice(renderStart, genericOverlaysStart);
+
+  assert.match(app, /GAME_OVERLAY_GENERATOR_ONLY_IDS[\s\S]*"cult-of-the-lamb"/);
+  assert.match(generatorOnlyBranch, /renderGameInteractionOverlayCard\(pack, unlocked\)/);
+  assert.doesNotMatch(generatorOnlyBranch, /renderOverlayCard|overlay-catalog-grid/);
+});
+
+test("une interaction conserve le visuel du cadeau homonyme choisi par son identifiant", () => {
+  const foundationsPath = path.join(
+    __dirname,
+    "..",
+    "src",
+    "renderer",
+    "app",
+    "core",
+    "ui-foundations.js"
+  );
+  const foundations = fs.readFileSync(foundationsPath, "utf8");
+  const relevantSource = foundations.slice(
+    0,
+    foundations.indexOf("function asNumber")
+  );
+  const context = {
+    giftCatalogById: new Map([
+      ["cheap", { id: "cheap", name: "Je t'aime", imageUrl: "cheap.webp" }],
+      ["selected", { id: "selected", name: "Je t'aime", imageUrl: "selected.webp" }]
+    ]),
+    giftCatalogByName: new Map([
+      ["je t'aime", { id: "cheap", name: "Je t'aime", imageUrl: "cheap.webp" }]
+    ]),
+    triggerLabel: () => "Cadeau · Je t'aime"
+  };
+  vm.runInNewContext(
+    `${relevantSource}\n` +
+      `globalThis.result = triggerPill({` +
+      `trigger: { type: "gift" },` +
+      `conditions: [{ field: "data.giftName", operator: "equals", value: "Je t'aime", giftId: "selected" }]` +
+      `});`,
+    context
   );
 
-  assert.match(app.slice(renderStart, renderEnd), /pack\.id === "cult-of-the-lamb"/);
-  assert.match(app.slice(renderStart, renderEnd), /Aucun overlay requis/);
-  assert.match(app.slice(itemStart, itemEnd), /pack\.id === "cult-of-the-lamb"\s*\?\s*\[\]/);
+  assert.match(context.result, /src="selected\.webp"/);
+  assert.doesNotMatch(context.result, /src="cheap\.webp"/);
+
+  const app = readRendererSource();
+  const overlayEntries = app.slice(
+    app.indexOf("function gameInteractionOverlayEntries(pack)"),
+    app.indexOf("function gtaInteractionOverlayEntries(pack)")
+  );
+  assert.match(
+    overlayEntries,
+    /giftForIdentity\(giftName, giftCondition\?\.giftId\)/
+  );
+  assert.match(overlayEntries, /gift\?\.imageUrl \|\| String\(giftCondition\?\.giftImageUrl/);
 });
 
 test("le compte ShenPulse remplace les commandes LIVE avant authentification", () => {

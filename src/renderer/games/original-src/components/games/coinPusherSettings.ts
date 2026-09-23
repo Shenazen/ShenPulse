@@ -181,7 +181,7 @@ export type CoinPusherDropInput = {
   viewerId?: unknown
 }
 
-export type CoinPusherRoundCommandType = 'start' | 'pause' | 'resume' | 'end' | 'reset'
+export type CoinPusherRoundCommandType = 'start' | 'pause' | 'resume' | 'end' | 'reset' | 'push'
 
 export type CoinPusherRoundCommand = {
   command: CoinPusherRoundCommandType
@@ -1257,7 +1257,13 @@ function coinPusherGiftRuleKey(rule: CoinPusherGiftRule) {
 }
 
 function normalizeRoundCommandType(value: unknown): CoinPusherRoundCommandType {
-  if (value === 'pause' || value === 'resume' || value === 'end' || value === 'reset') {
+  if (
+    value === 'pause'
+    || value === 'resume'
+    || value === 'end'
+    || value === 'reset'
+    || value === 'push'
+  ) {
     return value
   }
   return 'start'

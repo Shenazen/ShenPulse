@@ -212,6 +212,10 @@ function handleGameEffect(id: GameId, payload: any) {
       pushCoinPusherRoundCommand('reset')
       return
     }
+    if (effectId === 'pousser-le-plateau') {
+      pushCoinPusherRoundCommand('push')
+      return
+    }
     if (effectId === 'ralentir-le-poussoir') {
       const current = loadCoinPusherSettings()
       saveCoinPusherSettings({ pusherSpeed: Math.max(0.35, current.pusherSpeed * 0.65) })

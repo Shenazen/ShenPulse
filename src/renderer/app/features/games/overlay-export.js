@@ -311,10 +311,325 @@ function drawGtaInteractionOverlayLayout(context, prepared, model) {
   });
 }
 
+function normalizedOverlayTriggerType(rule) {
+  const type = String(rule?.trigger?.type || "").trim();
+  if (type === "like") return "likes";
+  if (type === "message") return "chat";
+  if (type === "subscription") return "subscribe";
+  return [
+    "gift",
+    "likes",
+    "chat",
+    "follow",
+    "share",
+    "subscribe",
+    "join",
+    "raid"
+  ].includes(type)
+    ? type
+    : "";
+}
+
+function triggeredOverlayActionKey(row) {
+  return String(
+    row?.action?.id || `${row?.rule?.id || "rule"}:${row?.actionIndex || 0}`
+  );
+}
+
+function triggeredOverlayActions() {
+  const rows = flattenActions().filter(
+    ({ action }) =>
+      action?.enabled !== false && canAccessActionType(action?.type)
+  );
+  const rowsByActionId = new Map(
+    rows
+      .filter(({ action }) => action?.id)
+      .map((row) => [String(row.action.id), row])
+  );
+  const entriesByAction = new Map();
+
+  for (const triggerRule of snapshot?.state?.rules || []) {
+    const triggerType = normalizedOverlayTriggerType(triggerRule);
+    if (
+      triggerRule.enabled === false ||
+      !hasAutomaticTrigger(triggerRule) ||
+      !triggerType
+    ) {
+      continue;
+    }
+    const selectedIds = triggerRule.actionSelection?.actionIds;
+    const triggeredRows = Array.isArray(selectedIds)
+      ? [...new Set(selectedIds.map(String).filter(Boolean))]
+          .map((actionId) => rowsByActionId.get(actionId))
+          .filter(Boolean)
+      : rows.filter((row) => row.rule.id === triggerRule.id);
+
+    for (const row of triggeredRows) {
+      const key = triggeredOverlayActionKey(row);
+      const current = entriesByAction.get(key) || {
+        ...row,
+        triggerRules: []
+      };
+      if (!current.triggerRules.some((rule) => rule.id === triggerRule.id)) {
+        current.triggerRules.push(triggerRule);
+      }
+      entriesByAction.set(key, current);
+    }
+  }
+  return [...entriesByAction.values()];
+}
+
+function overlayTriggerKey(rule, triggerType = normalizedOverlayTriggerType(rule)) {
+  if (triggerType === "gift") {
+    const condition = ruleGiftCondition(rule);
+    return String(
+      condition?.giftId || condition?.value || ruleGiftValueLabel(rule) ||
+        triggerLabel(rule)
+    );
+  }
+  if (triggerType === "chat") {
+    const messageCondition = (rule?.conditions || []).find(
+      (condition) => condition.field === "data.message"
+    );
+    return String(messageCondition?.value || triggerLabel(rule));
+  }
+  return String(triggerLabel(rule));
+}
+
+function overlayTriggerGift(rule) {
+  const condition = ruleGiftCondition(rule);
+  const name = String(condition?.value || ruleGiftValueLabel(rule) || "Cadeau");
+  const gift = giftForIdentity(name, condition?.giftId);
+  return {
+    id: String(gift?.id || condition?.giftId || ""),
+    imageUrl: String(gift?.imageUrl || condition?.giftImageUrl || ""),
+    name
+  };
+}
+
+function overlayActionLabel(row) {
+  const ownerName = String(row?.rule?.name || "Action").trim();
+  const siblingCount = (row?.rule?.actions || []).length;
+  return siblingCount > 1
+    ? `${ownerName} · ${actionTypeLabel(row.action.type)}`
+    : ownerName;
+}
+
+function overlayActionEffectImageUrl(action, pack) {
+  const config = action?.config || {};
+  if (["game.effect", "overlay.win-counter"].includes(action?.type)) {
+    return String(
+      (pack?.effects || []).find((effect) => effect.id === config.effectId)
+        ?.image || ""
+    );
+  }
+  if (canonicalActionType(action?.type) !== "overlay.media") return "";
+  const media = mediaLibraryEntry(config.mediaUrl);
+  const source = String(media?.previewUrl || media?.url || config.mediaUrl || "");
+  const kind = media?.kind || mediaKindFromUrl(source);
+  return ["image", "gif"].includes(kind) ? resolvedMediaUrl(source) : "";
+}
+
+function overlayEntriesForTriggeredAction(row, pack) {
+  const actionKey = triggeredOverlayActionKey(row);
+  const label = overlayActionLabel(row);
+  const effectImageUrl = overlayActionEffectImageUrl(row.action, pack);
+  const seenTriggers = new Set();
+  return row.triggerRules.map((triggerRule) => {
+    const triggerType = normalizedOverlayTriggerType(triggerRule);
+    const gift = triggerType === "gift" ? overlayTriggerGift(triggerRule) : null;
+    return {
+      effectId: `global-action-${actionKey}`,
+      isWinEffect: false,
+      title: label,
+      trigger: triggerLabel(triggerRule),
+      triggerType,
+      triggerKey:
+        triggerType === "gift" && gift?.id
+          ? gift.id
+          : overlayTriggerKey(triggerRule, triggerType),
+      likeAmount:
+        triggerType === "likes"
+          ? Math.max(1, Number(triggerRule.trigger?.threshold || 1))
+          : 0,
+      groupKey: `global-action:${actionKey}`,
+      badgeLayout: row.triggerRules.length > 1 ? "top-row" : "corners",
+      effectImageUrl,
+      giftImageUrl: gift?.imageUrl || "",
+      giftLabel: gift?.name || triggerLabel(triggerRule)
+    };
+  }).filter((entry) => {
+    const identity = gameOverlayEntryTriggerIdentity(entry);
+    if (seenTriggers.has(identity)) return false;
+    seenTriggers.add(identity);
+    return true;
+  });
+}
+
+function gameOverlayEntryTriggerIdentity(entry) {
+  const triggerType = String(entry?.triggerType || "");
+  if (triggerType === "likes") {
+    return `likes:${Math.max(1, Math.round(Number(entry?.likeAmount) || 1))}`;
+  }
+  if (["follow", "share", "subscribe", "join", "raid"].includes(triggerType)) {
+    return triggerType;
+  }
+  if (triggerType !== "gift") {
+    return `${triggerType}:${String(entry?.triggerKey || "").toLowerCase()}`;
+  }
+  const gift = giftForIdentity(entry?.giftLabel, entry?.triggerKey);
+  const identity = String(
+    gift?.id || entry?.triggerKey || normalizeGiftName(entry?.giftLabel)
+  );
+  return `gift:${identity.toLowerCase()}`;
+}
+
+function mergeGameOverlayEntries(gameEntries, additionalEntries) {
+  const merged = [...gameEntries];
+  for (const entry of additionalEntries) {
+    const identity = gameOverlayEntryTriggerIdentity(entry);
+    let matchingIndex = -1;
+    merged.forEach((candidate, index) => {
+      if (gameOverlayEntryTriggerIdentity(candidate) === identity) {
+        matchingIndex = index;
+      }
+    });
+    merged.splice(matchingIndex < 0 ? merged.length : matchingIndex + 1, 0, entry);
+  }
+  return merged;
+}
+
+function overlayTriggerPickerVisual(rule) {
+  const triggerType = normalizedOverlayTriggerType(rule);
+  const gift = triggerType === "gift" ? overlayTriggerGift(rule) : null;
+  const iconType = triggerType === "likes" ? "like" : triggerType;
+  return eventIconMarkup(iconType, {
+    giftId: gift?.id,
+    giftName: gift?.name,
+    imageUrl: gift?.imageUrl
+  });
+}
+
+function overlayActionPickerVisual(row, pack) {
+  const imageUrl = overlayActionEffectImageUrl(row.action, pack);
+  if (imageUrl) {
+    return `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy">`;
+  }
+  return `<span>${escapeHtml(
+    ACTION_TYPE_ICONS[canonicalActionType(row.action.type)] || "◆"
+  )}</span>`;
+}
+
+function openGameOverlayDownloadChoice(pack, model = 1) {
+  const actionRows = triggeredOverlayActions();
+  const selectedModel = Number(model) === 2 ? 2 : 1;
+  openEditor({
+    title: "Composer l’overlay à télécharger",
+    kicker: `OVERLAY ${String(pack.name || "DU JEU").toUpperCase()}`,
+    variant: "game-overlay-choice",
+    body: `<div class="game-overlay-choice-dialog">
+      <div class="game-overlay-choice-intro">
+        <span>↓</span>
+        <div><strong>Que voulez-vous afficher sur le modèle ${selectedModel} ?</strong><p>Les interactions du jeu restent la base de l’image. Vous pouvez aussi y ajouter les actions de ce profil qui possèdent un déclencheur actif.</p></div>
+      </div>
+      <div class="game-overlay-choice-grid">
+        <button type="button" data-action="download-game-overlay-only" data-id="${escapeHtml(pack.id)}" data-model="${selectedModel}">
+          <span class="game-overlay-choice-icon">🎮</span>
+          <strong>Interactions du jeu uniquement</strong>
+          <small>Télécharger immédiatement l’overlay sans ajouter d’action générale.</small>
+          <em>↓ Télécharger</em>
+        </button>
+        <button type="button" data-action="open-game-overlay-action-picker" data-id="${escapeHtml(pack.id)}" data-model="${selectedModel}" ${actionRows.length ? "" : "disabled"}>
+          <span class="game-overlay-choice-icon">✦</span>
+          <strong>Interactions + actions</strong>
+          <small>${actionRows.length ? `${actionRows.length} action${actionRows.length > 1 ? "s" : ""} avec déclencheur disponible${actionRows.length > 1 ? "s" : ""}.` : "Aucune action avec un déclencheur actif dans ce profil."}</small>
+          <em>Choisir les actions →</em>
+        </button>
+      </div>
+    </div>`
+  });
+}
+
+function openGameOverlayActionPicker(pack, model = 1) {
+  const actionRows = triggeredOverlayActions();
+  const rawGameEntries = gameInteractionOverlayEntries(pack);
+  const gameEntries = groupGameOverlayEntriesByGift(rawGameEntries);
+  const gameTriggerIdentities = new Set(
+    gameEntries.map(gameOverlayEntryTriggerIdentity)
+  );
+  const selectedModel = Number(model) === 2 ? 2 : 1;
+  const cards = actionRows.map((row) => {
+    const triggerEntries = overlayEntriesForTriggeredAction(row, pack);
+    const joinsGameTrigger = triggerEntries.some(
+      (entry) =>
+        gameTriggerIdentities.has(gameOverlayEntryTriggerIdentity(entry))
+    );
+    return `<label class="game-overlay-action-option">
+      <input type="checkbox" name="overlayAction" value="${escapeHtml(triggeredOverlayActionKey(row))}">
+      <span class="game-overlay-action-check">✓</span>
+      <span class="game-overlay-action-visual">${overlayActionPickerVisual(row, pack)}</span>
+      <span class="game-overlay-action-copy">
+        <strong>${escapeHtml(overlayActionLabel(row))}</strong>
+        <small>${escapeHtml(actionTypeLabel(row.action.type))} · ${escapeHtml(actionDescription(row.action))}</small>
+        <span class="game-overlay-action-triggers">${row.triggerRules.map((rule) => `<i title="${escapeHtml(triggerLabel(rule))}">${overlayTriggerPickerVisual(rule)}<b>${escapeHtml(triggerLabel(rule))}</b></i>`).join("")}</span>
+        ${joinsGameTrigger ? '<em class="game-overlay-merge-note">↳ Déclencheur déjà présent : regroupé avec l’interaction du jeu</em>' : ""}
+      </span>
+    </label>`;
+  }).join("");
+  openEditor({
+    title: "Choisir les actions à ajouter",
+    kicker: `MODÈLE ${selectedModel} · ${String(pack.name || "OVERLAY").toUpperCase()}`,
+    variant: "game-overlay-actions",
+    submitLabel: "Ajouter et télécharger",
+    pendingLabel: "Création de l’overlay…",
+    successMessage: `Overlay modèle ${selectedModel} téléchargé`,
+    body: `<div class="game-overlay-action-picker">
+      <header><div><strong>${actionRows.length} action${actionRows.length > 1 ? "s" : ""} disponible${actionRows.length > 1 ? "s" : ""}</strong><p>Chaque carte montre l’action et ses déclencheurs. Les cadeaux, follows et paliers de likes identiques seront réunis dans une seule case.</p></div><span>${gameOverlayRenderedCaseCount(gameEntries)}/42 cases du jeu</span></header>
+      <div class="game-overlay-action-list">${cards}</div>
+    </div>`,
+    onSubmit: async (data) => {
+      const selectedKeys = new Set(data.getAll("overlayAction").map(String));
+      if (!selectedKeys.size) {
+        throw new Error("Choisissez au moins une action à ajouter à l’overlay.");
+      }
+      const additionalEntries = actionRows
+        .filter((row) => selectedKeys.has(triggeredOverlayActionKey(row)))
+        .flatMap((row) => overlayEntriesForTriggeredAction(row, pack));
+      const composedEntries = groupGameOverlayEntriesByGift(
+        mergeGameOverlayEntries(rawGameEntries, additionalEntries)
+      );
+      const caseCount = gameOverlayRenderedCaseCount(composedEntries);
+      if (caseCount > 42) {
+        throw new Error(
+          `Cet overlay accepte 42 cases maximum. Retirez au moins ${caseCount - 42} action${caseCount - 42 > 1 ? "s" : ""}.`
+        );
+      }
+      await downloadComposedGameInteractionOverlay(
+        pack.id,
+        selectedModel,
+        additionalEntries
+      );
+    }
+  });
+}
+
 async function downloadGameInteractionOverlay(packId, model = 1) {
+  return downloadComposedGameInteractionOverlay(packId, model, []);
+}
+
+async function downloadComposedGameInteractionOverlay(
+  packId,
+  model = 1,
+  additionalEntries = []
+) {
   const pack = snapshot.packs.find((item) => item.id === packId);
   if (!pack) throw new Error("Jeu introuvable.");
-  const entries = gameInteractionOverlayEntries(pack);
+  const entries = groupGameOverlayEntriesByGift(
+    mergeGameOverlayEntries(
+      gameInteractionOverlayEntries(pack),
+      additionalEntries
+    )
+  );
   if (!entries.length) {
     throw new Error("Activez au moins une interaction avant de télécharger l’overlay.");
   }
@@ -328,7 +643,9 @@ async function downloadGameInteractionOverlay(packId, model = 1) {
   const canvas = await ShenPulseGameOverlay.renderMinecraftStyledOverlay({
     backgroundColor: gameInteractionOverlayBackground(pack.id),
     entries: entries.map((entry) => ({
+      actionLabels: entry.actionLabels,
       effectImageUrl: entry.effectImageUrl,
+      badgeLayout: entry.badgeLayout,
       giftImageUrl: entry.giftImageUrl,
       giftLabel: entry.giftLabel,
       groupKey: entry.groupKey,

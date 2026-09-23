@@ -49,7 +49,10 @@ function giftForIdentity(name, id = "") {
 function eventIconMarkup(type, options = {}) {
   const kind = String(type || "").toLocaleLowerCase("fr");
   const imageUrl =
-    options.imageUrl || (kind === "gift" ? giftForName(options.giftName)?.imageUrl : "");
+    options.imageUrl ||
+    (kind === "gift"
+      ? giftForIdentity(options.giftName, options.giftId)?.imageUrl
+      : "");
   if (imageUrl) {
     return `<span class="event-visual event-${escapeHtml(kind)}"><img src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></span>`;
   }
@@ -67,12 +70,16 @@ function eventIconMarkup(type, options = {}) {
   return `<span class="event-visual event-${escapeHtml(kind || "other")}"><svg viewBox="0 0 24 24" aria-hidden="true">${paths[kind] || '<circle cx="12" cy="12" r="7"/>'}</svg></span>`;
 }
 
-function ruleGiftName(rule) {
+function ruleGiftCondition(rule) {
   return (rule?.conditions || []).find(
     (condition) =>
       condition.field === "data.giftName" &&
       String(condition.operator || "equals") === "equals"
-  )?.value || "";
+  ) || null;
+}
+
+function ruleGiftName(rule) {
+  return ruleGiftCondition(rule)?.value || "";
 }
 
 const GIFT_VALUE_OPERATOR_OPTIONS = [
@@ -132,9 +139,13 @@ function triggerPill(rule) {
     return `<span class="trigger-pill trigger-manual">${eventIconMarkup("manual")}<span>Lancement manuel</span></span>`;
   }
   const type = rule?.trigger?.type || "*";
-  const giftName = type === "gift" ? ruleGiftName(rule) : "";
+  const giftCondition = type === "gift" ? ruleGiftCondition(rule) : null;
+  const giftName = giftCondition?.value || "";
+  const gift = giftForIdentity(giftName, giftCondition?.giftId);
   return `<span class="trigger-pill">${eventIconMarkup(type, {
-    giftName
+    giftId: giftCondition?.giftId,
+    giftName,
+    imageUrl: gift?.imageUrl || giftCondition?.giftImageUrl
   })}<span>${escapeHtml(triggerLabel(rule))}</span></span>`;
 }
 

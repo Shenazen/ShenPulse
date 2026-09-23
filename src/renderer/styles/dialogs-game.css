@@ -692,3 +692,289 @@ dialog[data-variant="game-purchase"] .dialog-actions .primary {
 .game-interaction-editor .gift-picker-results {
   z-index: 10070;
 }
+
+dialog[data-variant="game-overlay-choice"] {
+  width: min(780px, calc(100vw - 48px));
+  border-color: rgba(34, 211, 238, 0.34);
+  background:
+    radial-gradient(circle at 92% 4%, rgba(168, 85, 247, 0.14), transparent 32%),
+    #0b1020;
+}
+
+dialog[data-variant="game-overlay-actions"] {
+  width: min(980px, calc(100vw - 48px));
+  border-color: rgba(34, 211, 238, 0.34);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(34, 211, 238, 0.1), transparent 30%),
+    #0b1020;
+}
+
+.game-overlay-choice-dialog,
+.game-overlay-action-picker {
+  display: grid;
+  gap: 18px;
+}
+
+.game-overlay-choice-intro {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 15px 17px;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.06);
+}
+
+.game-overlay-choice-intro > span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(34, 211, 238, 0.26), rgba(139, 92, 246, 0.18));
+  color: #a5f3fc;
+  font-size: 25px;
+  font-weight: 950;
+}
+
+.game-overlay-choice-intro strong,
+.game-overlay-action-picker > header strong {
+  font-size: 13px;
+}
+
+.game-overlay-choice-intro p,
+.game-overlay-action-picker > header p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.game-overlay-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.game-overlay-choice-grid > button {
+  display: grid;
+  min-height: 214px;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid rgba(100, 116, 170, 0.36);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(34, 211, 238, 0.055), transparent 52%),
+    rgba(11, 16, 32, 0.82);
+  color: var(--text);
+  text-align: left;
+  transition: 160ms ease;
+}
+
+.game-overlay-choice-grid > button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(34, 211, 238, 0.55);
+  background-color: rgba(20, 29, 51, 0.94);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24);
+}
+
+.game-overlay-choice-grid > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.game-overlay-choice-icon {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  place-items: center;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  border-radius: 13px;
+  background: rgba(34, 211, 238, 0.08);
+  font-size: 24px;
+}
+
+.game-overlay-choice-grid strong {
+  font-size: 14px;
+}
+
+.game-overlay-choice-grid small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.game-overlay-choice-grid em {
+  color: #67e8f9;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.game-overlay-action-picker > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 11px;
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.game-overlay-action-picker > header > span {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.14);
+  color: #c4b5fd;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.game-overlay-action-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.game-overlay-action-option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 25px 54px minmax(0, 1fr);
+  align-items: start;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid rgba(100, 116, 170, 0.32);
+  border-radius: 12px;
+  background: rgba(7, 11, 24, 0.68);
+  cursor: pointer;
+  transition: 150ms ease;
+}
+
+.game-overlay-action-option:hover,
+.game-overlay-action-option:has(input:checked) {
+  border-color: rgba(34, 211, 238, 0.48);
+  background: rgba(34, 211, 238, 0.07);
+  box-shadow: inset 3px 0 0 rgba(34, 211, 238, 0.72);
+}
+
+.game-overlay-action-option > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.game-overlay-action-check {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  margin-top: 2px;
+  border: 1px solid rgba(100, 116, 170, 0.52);
+  border-radius: 7px;
+  color: transparent;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.game-overlay-action-option input:checked + .game-overlay-action-check {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.18);
+  color: #67e8f9;
+}
+
+.game-overlay-action-visual {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.2), rgba(34, 211, 238, 0.09));
+  font-size: 23px;
+}
+
+.game-overlay-action-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-overlay-action-copy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.game-overlay-action-copy > strong,
+.game-overlay-action-copy > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-overlay-action-copy > strong {
+  font-size: 11px;
+}
+
+.game-overlay-action-copy > small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.game-overlay-action-triggers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.game-overlay-action-triggers > i {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px 4px 4px;
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.08);
+  font-style: normal;
+}
+
+.game-overlay-action-triggers .event-visual {
+  width: 20px;
+  height: 20px;
+}
+
+.game-overlay-action-triggers b {
+  overflow: hidden;
+  color: #ddd6fe;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-overlay-merge-note {
+  color: #5eead4;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .game-overlay-choice-grid,
+  .game-overlay-action-list {
+    grid-template-columns: 1fr;
+  }
+
+  .game-overlay-choice-grid > button {
+    min-height: 180px;
+  }
+}

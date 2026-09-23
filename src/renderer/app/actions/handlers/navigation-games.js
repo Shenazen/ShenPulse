@@ -38,6 +38,8 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "set-game-overlay-background",
   "save-game-round-settings",
   "download-game-interaction-overlay",
+  "download-game-overlay-only",
+  "open-game-overlay-action-picker",
   "save-game-interactions",
   "toggle-game-interaction",
   "add-game-interaction",
@@ -497,12 +499,27 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     ) {
       return;
     }
+    return openGameOverlayDownloadChoice(
+      pack,
+      Number(target.dataset.model || 1)
+    );
+  }
+  if (action === "download-game-overlay-only") {
+    const pack = snapshot.packs.find((item) => item.id === id);
+    if (!pack) throw new Error("Jeu introuvable.");
+    const model = Number(target.dataset.model || 1);
+    dialog.close();
     return perform(
-      () => downloadGameInteractionOverlay(
-        id,
-        Number(target.dataset.model || 1)
-      ),
-      `Overlay modèle ${Number(target.dataset.model || 1)} téléchargé`
+      () => downloadGameInteractionOverlay(id, model),
+      `Overlay modèle ${model} téléchargé`
+    );
+  }
+  if (action === "open-game-overlay-action-picker") {
+    const pack = snapshot.packs.find((item) => item.id === id);
+    if (!pack) throw new Error("Jeu introuvable.");
+    return openGameOverlayActionPicker(
+      pack,
+      Number(target.dataset.model || 1)
     );
   }
   if (action === "save-game-interactions") {
