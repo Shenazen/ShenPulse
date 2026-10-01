@@ -42,7 +42,7 @@ npm 11.9.0, Electron 43.2.0, electron-builder 26.15.3 et WACK
 - la page d'accueil, `/docs` et le téléchargement public répondent HTTP 200 ;
   l'installateur re-téléchargé correspond exactement à l'artefact local.
 
-L'audit complet de l'outillage de développement signale huit vulnérabilités
+L'audit complet de l'outillage de développement signale sept vulnérabilités
 élevées. Elles ne sont pas présentes dans les dépendances embarquées et
 devront être résorbées lors d'une mise à jour séparée de l'outillage.
 
@@ -70,15 +70,15 @@ Le package Store est volontairement non signé : Partner Center le signe après
 certification. L'installateur direct `.exe` n'a pas de signature Authenticode
 publique ; Windows peut donc afficher un avertissement SmartScreen.
 
-Le Windows App Certification Kit est installé, mais `appcert.exe` exige une
-élévation administrateur indisponible dans la session de release
-(`L'opération demandée nécessite une élévation`). Aucun rapport WACK 1.0.14 n'a
-donc été produit. Le vol privé Partner Center et la soumission Store en
-production restent bloqués jusqu'à l'obtention d'un résultat global `PASS` et
-au smoke test de la version distribuée par ce vol.
+Le Windows App Certification Kit 10.0.26100.7705 a contrôlé le package
+1.0.14.0 avec un résultat global `PASS`. Le rapport complet est conservé dans
+`.artifacts/wack/ShenPulse-1.0.14-WACK-20261001.xml`. Son unique échec
+individuel concerne le contrôle facultatif `Fichiers exécutables bloqués` ; il
+n'invalide pas le résultat global, comme pour la version 1.0.13.
 
 Le fichier `.appxupload` est prêt pour le produit Partner Center
-`9NDR71Z41ZJG` après levée de ce blocage.
+`9NDR71Z41ZJG`. Le vol privé et son smoke test restent obligatoires avant la
+soumission Store en production.
 
 ## Déploiements
 
