@@ -30,6 +30,9 @@ async function handleAction(target) {
     })();
     pendingAccountLogoutPromise = logoutOperation;
     accountSession = signedOutAccountSession();
+    for (const key of Object.keys(matchVideoPaths)) {
+      delete matchVideoPaths[key];
+    }
     gameCheatAccessAllowed = false;
     liveEvents = [];
     adminSession = {

@@ -364,7 +364,7 @@ test("les cartes montrent les aperçus Pro mais masquent leurs sources verrouill
     /classList\.toggle\("overlay-idle-hidden", !isCatalogPreview && !showWhenIdle\)/
   );
   assert.doesNotMatch(renderer, /Overlay réservé/);
-  assert.match(renderer, /L’aperçu et tous les réglages restent accessibles/);
+  assert.match(renderer, /L’aperçu et les réglages restent accessibles/);
   assert.match(renderer, /Configurer l’aperçu/);
   assert.match(rendererCss, /\.overlay-catalog-card\.locked[\s\S]*rgba\(249,\s*115,\s*22/);
 });
@@ -372,7 +372,7 @@ test("les cartes montrent les aperçus Pro mais masquent leurs sources verrouill
 test("les timers gardent seulement les commandes icone lecture pause et reset", () => {
   const timerActions =
     renderer.match(
-      /if \(\["timer", "multiplierTimer"\]\.includes\(item\.key\)\) \{([\s\S]*?)\n  \}\n  const definitions/
+      /if \(\["timer", "multiplierTimer"\]\.includes\(item\.key\)\) \{([\s\S]*?)\r?\n  \}\r?\n  const definitions/
     )?.[1] || "";
 
   assert.match(timerActions, /data-operation="pause"/);
@@ -428,18 +428,22 @@ test("les vidéos Match utilisent un lecteur local exclusif et protégé par com
         definition.url === "https://public.invalid/m/123/channel"
     )
   );
-  assert.match(renderer, /Toujours garder actif/);
-  assert.match(renderer, /Source Lien protégée/);
-  assert.match(renderer, /L’URL HTTPS contient le numéro unique du compte/);
-  assert.match(renderer, /ShenPulse doit rester ouvert avec un abonnement Pro actif/);
-  assert.match(renderer, /Chaque nouvel appui arrête la vidéo active et relance la nouvelle à 0/);
+  assert.match(renderer, /Utiliser les 8 Matchs comme fichiers vidéo temporaires/);
+  assert.match(renderer, /Fichier vidéo WebM/);
+  assert.match(renderer, /Copier le chemin/);
+  assert.match(renderer, /Fichier temporaire prêt/);
+  assert.doesNotMatch(renderer, /data-value="\$\{escapeHtml\(matchVideoPath\)\}"/);
+  assert.doesNotMatch(renderer, /code\.textContent = filePath/);
+  assert.doesNotMatch(renderer, /copyButton\.dataset\.value = filePath/);
+  assert.match(renderer, /Pro ou Premium actif/);
+  assert.match(renderer, /data-action="prepare-match-video"/);
+  assert.match(renderer, /api\.prepareMatchVideo/);
   assert.match(renderer, /Régénérer l’URL Match/);
   assert.match(renderer, /type: "overlay\.match"/);
   assert.match(overlayRuntime, /matchPlaybackQueue\?\.enqueue\(request\)/);
   assert.match(overlayRuntime, /matchTicketUrl\(request\)/);
   assert.match(overlayRuntime, /\/match-bridge\//);
   assert.match(overlayRuntime, /video\.addEventListener\("ended", \(\) =>/);
-  assert.doesNotMatch(renderer, /download-match-video|exportMatchVideo/);
   assert.match(firebaseConfig, /media\/video\/\*\*/);
 });
 
@@ -502,11 +506,12 @@ test("les objectifs gardent leur cadre devant la progression et les timers n'ont
   assert.doesNotMatch(overlayCss, /\.timer-line/);
 });
 
-test("les matchs expliquent leur source Lien protégée et les super fans ne deviennent pas des abonnements", () => {
+test("les matchs expliquent leur source Vidéo et les super fans ne deviennent pas des abonnements", () => {
   assert.match(renderer, /function renderMatchOverlayGuide\(\)/);
   assert.match(renderer, /Largeur<\/strong> · 1080 px/);
   assert.match(renderer, /Hauteur<\/strong> · 1920 px/);
-  assert.match(renderer, /Toujours garder actif<\/strong> · activé/);
+  assert.match(renderer, /Format<\/strong> · WebM transparent/);
+  assert.match(renderer, /Boucle<\/strong> · selon votre usage/);
   assert.doesNotMatch(sourceHub, /WebcastEvent\.SUPER_FAN/);
   assert.match(sourceHub, /WebcastSubNotifyMessage: "subscribe"/);
   assert.match(sourceHub, /tiktokDecodedEventType\(messageType, event\)/);

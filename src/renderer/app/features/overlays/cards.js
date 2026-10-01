@@ -86,6 +86,8 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
   const url = accountReady && allowed ? overlayUrl(item) : "";
   const size = overlaySourceSize(item);
   const isMatchOverlay = item.previewKind === "match";
+  const matchVariant = isMatchOverlay ? selectedOverlayDesign(item) : "";
+  const matchVideoPath = isMatchOverlay ? (matchVideoPaths[item.key] || "") : "";
   const categoryLabel = {
     counters: "Compteurs",
     rankings: "Classements",
@@ -115,7 +117,7 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
       <p>${escapeHtml(item.description)}</p>
       <div class="overlay-card-meta">
         <span class="overlay-source-size">
-          <small>${isMatchOverlay ? "Source Lien protégée" : "Source OBS recommandée"}</small>
+          <small>${isMatchOverlay ? "Fichier vidéo WebM" : "Source OBS recommandée"}</small>
           <span class="overlay-source-dimensions">
             <span><small>Largeur</small><strong>${size.width} px</strong></span>
             <span><small>Hauteur</small><strong>${size.height} px</strong></span>
@@ -133,15 +135,18 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
           </div>`}
       ${allowed || !accountReady
         ? ""
-        : `<div class="overlay-locked-actions"><span>L’aperçu et tous les réglages restent accessibles. Seule l’URL OBS est protégée.</span><div><button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer l’aperçu</button><button class="button small warning" data-navigate="membership">Voir les abonnements</button></div></div>`}
+        : `<div class="overlay-locked-actions"><span>L’aperçu et les réglages restent accessibles. Le fichier vidéo temporaire et l’automatisation nécessitent Pro ou Premium.</span><div><button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer l’aperçu</button><button class="button small warning" data-navigate="membership">Voir les abonnements</button></div></div>`}
     </div>
     ${allowed && accountReady
       ? `<div class="overlay-card-footer">
-          <div class="url-field"><code>${escapeHtml(url)}</code><button class="button small" data-action="copy" data-value="${escapeHtml(url)}">${isMatchOverlay ? "Copier l’URL Match" : "Copier"}</button></div>
+          ${isMatchOverlay
+            ? `<div class="url-field match-video-path-field"><span data-match-video-status>${matchVideoPath ? "Fichier temporaire prêt" : "Fichier temporaire non préparé"}</span><button class="button small" data-action="copy-match-video-path" data-id="${escapeHtml(item.key)}" ${matchVideoPath ? "" : "disabled"}>Copier le chemin</button></div>`
+            : `<div class="url-field"><code>${escapeHtml(url)}</code><button class="button small" data-action="copy" data-value="${escapeHtml(url)}">Copier</button></div>`}
           <div class="entity-actions">
+            ${isMatchOverlay ? `<button class="button small primary" type="button" data-action="prepare-match-video" data-id="${escapeHtml(item.key)}" data-variant="${escapeHtml(matchVariant)}">Préparer le fichier vidéo</button>` : ""}
             <button class="button small primary" data-action="preview-overlay" data-id="${escapeHtml(item.key)}">${isMatchOverlay ? "Relancer à 0" : "Tester en direct"}</button>
             <button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer</button>
-            <button class="button small" data-action="open-url" data-value="${escapeHtml(url)}">Ouvrir</button>
+            ${isMatchOverlay ? "" : `<button class="button small" data-action="open-url" data-value="${escapeHtml(url)}">Ouvrir</button>`}
             ${isMatchOverlay ? "" : `<button class="button small ghost" data-action="copy" data-value="${escapeHtml(localOverlayUrl(item))}">OBS local</button>`}
           </div>
         </div>`
@@ -153,6 +158,22 @@ function overlayCardElement(key) {
   return [...content.querySelectorAll("[data-overlay-card]")].find(
     (card) => card.dataset.overlayCard === key
   ) || null;
+}
+
+function updateMatchVideoPathUi(key, filePath = "") {
+  const card = overlayCardElement(key);
+  const status = card?.querySelector("[data-match-video-status]");
+  const copyButton = card?.querySelector(
+    '.match-video-path-field [data-action="copy-match-video-path"]'
+  );
+  if (status) {
+    status.textContent = filePath
+      ? "Fichier temporaire prêt"
+      : "Fichier temporaire non préparé";
+  }
+  if (copyButton) {
+    copyButton.disabled = !filePath;
+  }
 }
 
 function publicOverlayRelayPresentation(relay = snapshot?.publicOverlayRelay || {}) {
@@ -270,17 +291,28 @@ function updateOverlayCardConfigUi(key, config) {
   const card = overlayCardElement(key);
   if (!item || !card) return;
 
-  const url = overlayUrl(item, config);
-  const footer = card.querySelector(".overlay-card-footer");
-  const code = footer?.querySelector(".url-field code");
-  if (code) code.textContent = url;
-  footer
-    ?.querySelectorAll(
-      '.url-field [data-action="copy"], [data-action="open-url"]'
-    )
-    .forEach((button) => {
-      button.dataset.value = url;
-    });
+  if (item.previewKind !== "match") {
+    const url = overlayUrl(item, config);
+    const footer = card.querySelector(".overlay-card-footer");
+    const code = footer?.querySelector(".url-field code");
+    if (code) code.textContent = url;
+    footer
+      ?.querySelectorAll(
+        '.url-field [data-action="copy"], [data-action="open-url"]'
+      )
+      .forEach((button) => {
+        button.dataset.value = url;
+      });
+  }
+
+  const matchVideoButton = card.querySelector(
+    '[data-action="prepare-match-video"]'
+  );
+  if (matchVideoButton && config.variant) {
+    matchVideoButton.dataset.variant = config.variant;
+    delete matchVideoPaths[key];
+    updateMatchVideoPathUi(key);
+  }
 
   if (["timer", "multiplierTimer"].includes(key)) {
     const toggle = card.querySelector(
@@ -299,7 +331,16 @@ function updateOverlayCardConfigUi(key, config) {
 
 function previewOverlayDesignSelection(item, value) {
   overlayDesignSelections[item.key] = value;
-  const frame = overlayCardElement(item.key)?.querySelector(
+  const card = overlayCardElement(item.key);
+  const matchVideoButton = card?.querySelector(
+    '[data-action="prepare-match-video"]'
+  );
+  if (matchVideoButton) {
+    matchVideoButton.dataset.variant = value;
+    delete matchVideoPaths[item.key];
+    updateMatchVideoPathUi(item.key);
+  }
+  const frame = card?.querySelector(
     '[data-overlay-runtime-preview="true"]'
   );
   if (!frame) return;

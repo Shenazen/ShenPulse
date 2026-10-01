@@ -71,6 +71,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
   restartServers: () => invoke("server:restart"),
   rotatePublicOverlayUrls: () => invoke("overlay:public-urls-rotate"),
   rotateMatchOverlayUrl: () => invoke("overlay:match-url-rotate"),
+  prepareMatchVideo: (options) =>
+    invoke("overlay:match-video-prepare", options),
   upsert: (collection, item) => invoke("entity:upsert", collection, item),
   remove: (collection, id) => invoke("entity:remove", collection, id),
   saveConnection: (connection) => invoke("connection:save", connection),

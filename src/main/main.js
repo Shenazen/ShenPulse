@@ -22,6 +22,8 @@ const {
   orderInteractionAuditEffects
 } = require("./interaction-audit-plan");
 const { registerIpc } = require("./ipc");
+const { MatchVideoCache } = require("./match-video-export");
+const { hasProOverlayAccess } = require("./overlay-server");
 const { StateStore } = require("./store");
 const { StoreUpdateService } = require("./store-update-service");
 const {
@@ -36,6 +38,7 @@ let store = null;
 let accountService = null;
 let storeUpdateService = null;
 let ipcController = null;
+let matchVideoCache = null;
 let activeInteractionAudit = null;
 let quitting = false;
 
@@ -46,9 +49,19 @@ function getApplicationVersion() {
 const originalGamesSmokeRequested =
   process.argv.includes("--original-games-smoke") ||
   app.commandLine.hasSwitch("original-games-smoke");
+const smokeUserDataArgument = process.argv.find((argument) =>
+  String(argument).startsWith("--shenpulse-smoke-user-data-dir=")
+);
 app.setName("ShenPulse");
 app.setAppUserModelId("ShenPulse.ShenPulse");
-if (originalGamesSmokeRequested) {
+if (smokeUserDataArgument) {
+  app.setPath(
+    "userData",
+    path.resolve(
+      smokeUserDataArgument.slice(smokeUserDataArgument.indexOf("=") + 1)
+    )
+  );
+} else if (originalGamesSmokeRequested) {
   app.setPath(
     "userData",
     path.join(app.getPath("temp"), `shenpulse-original-games-smoke-${process.pid}`)
@@ -190,10 +203,22 @@ async function bootstrap() {
   });
   storeUpdateService = new StoreUpdateService({ app, shell });
   const adminService = new AdminService({ store, accountService });
+  const resourcesDirectory = path.join(__dirname, "..", "..", "resources");
+  matchVideoCache = new MatchVideoCache({
+    resourcesDirectory,
+    cacheDirectory: path.join(
+      app.getPath("temp"),
+      "ShenPulse",
+      "match-videos"
+    ),
+    hasAccess: () => hasProOverlayAccess(store.getState())
+  });
+  await matchVideoCache.reconcile();
+  matchVideoCache.startMonitoring();
   createWindow();
   core = new ShenPulseCore({
     store,
-    resourcesDirectory: path.join(__dirname, "..", "..", "resources"),
+    resourcesDirectory,
     notifyRenderer,
     appVersion: getApplicationVersion()
   });
@@ -215,6 +240,7 @@ async function bootstrap() {
     adminService,
     gameRuntime,
     storeUpdateService,
+    matchVideoCache,
     getWindow: () => mainWindow
   });
   await core.initialize();
@@ -292,7 +318,10 @@ app.on("before-quit", (event) => {
     gameRuntime?.dispose() || Promise.resolve()
   ])
     .catch(() => {})
-    .finally(() => app.quit());
+    .finally(() => {
+      matchVideoCache?.dispose();
+      app.quit();
+    });
 });
 
 app.on("window-all-closed", () => {

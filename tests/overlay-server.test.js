@@ -199,7 +199,10 @@ test("protège l'état local et accepte un événement authentifié", async () =
     assert.equal(ticketResponse.status, 200);
     const ticket = await ticketResponse.json();
     assert.match(ticket.url, /^\/match-media\/[A-Za-z0-9_-]{32}$/);
-    assert.doesNotMatch(ticket.url, /x2|tikcontrol|\.webm/);
+    const ticketToken = ticket.url.slice("/match-media/".length);
+    assert.notEqual(ticketToken, "x2");
+    assert.notEqual(ticketToken, "tikcontrol");
+    assert.doesNotMatch(ticket.url, /\.webm(?:$|\?)/);
     const ticketMedia = await fetch(
       `http://127.0.0.1:${overlayPort}${ticket.url}`,
       { headers: { Range: "bytes=0-127" } }

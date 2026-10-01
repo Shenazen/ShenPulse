@@ -1,7 +1,8 @@
 "use strict";
 
 const fs = require("node:fs");
-const { clipboard, dialog, ipcMain, shell } = require("electron");
+const path = require("node:path");
+const { clipboard, dialog, ipcMain, net, shell } = require("electron");
 const { id, safeString } = require("./utils");
 const {
   assertAdminAccount,
@@ -39,6 +40,7 @@ function registerIpc({
   adminService,
   gameRuntime,
   storeUpdateService,
+  matchVideoCache,
   getWindow
 }) {
   const guestAllowedChannels = new Set([
@@ -98,6 +100,7 @@ function registerIpc({
     try {
       const result = await operation();
       await core.resumeAccountWorkspace();
+      await matchVideoCache.reconcile();
       notify(core, "state-changed", core.snapshot());
       return result;
     } catch (error) {
@@ -106,9 +109,10 @@ function registerIpc({
     }
   };
 
-  handle("snapshot:get", () =>
-    snapshotForRenderer(core.snapshot(), store)
-  );
+  handle("snapshot:get", async () => {
+    await matchVideoCache.reconcile();
+    return snapshotForRenderer(core.snapshot(), store);
+  });
   handle("updates:check", (_event, incoming) =>
     storeUpdateService.check({ force: incoming?.force === true })
   );
@@ -116,6 +120,7 @@ function registerIpc({
   handle("account:status", async () => {
     const previousUid = store.getActiveAccountUid?.() || "";
     const result = await accountService.status();
+    await matchVideoCache.reconcile();
     const nextUid = store.getActiveAccountUid?.() || "";
     if (previousUid !== nextUid) {
       await core.suspendAccountWorkspace();
@@ -167,6 +172,7 @@ function registerIpc({
       const result = await accountService.startSubscriptionCheckout({
         tier: safeString(incoming?.tier, 20)
       });
+      await matchVideoCache.reconcile();
       notify(core, "state-changed", core.snapshot());
       return {
         result,
@@ -181,6 +187,7 @@ function registerIpc({
   });
   handle("account:subscription-stop", async () => {
     const result = await accountService.stopSubscription();
+    await matchVideoCache.reconcile();
     notify(core, "state-changed", core.snapshot());
     return {
       result,
@@ -206,6 +213,7 @@ function registerIpc({
   });
   handle("account:sync-entitlements", async () => {
     const result = await accountService.syncEntitlements();
+    await matchVideoCache.reconcile();
     notify(core, "state-changed", core.snapshot());
     return result;
   });
@@ -220,6 +228,7 @@ function registerIpc({
     await core.suspendAccountWorkspace();
     adminService.logout();
     const result = accountService.logout();
+    await matchVideoCache.clear();
     await core.resumeAccountWorkspace();
     notify(core, "state-changed", core.snapshot());
     return result;
@@ -253,6 +262,7 @@ function registerIpc({
     if (applyTrialGrant(store, result)) {
       notify(core, "state-changed", core.snapshot());
     }
+    await matchVideoCache.reconcile();
     return result;
   });
   handle("admin:trial-update", async (_event, incoming) => {
@@ -265,6 +275,7 @@ function registerIpc({
     if (removed || applied) {
       notify(core, "state-changed", core.snapshot());
     }
+    await matchVideoCache.reconcile();
     return result;
   });
   handle("admin:trial-revoke", async (_event, incoming) => {
@@ -278,6 +289,7 @@ function registerIpc({
     ) {
       notify(core, "state-changed", core.snapshot());
     }
+    await matchVideoCache.reconcile();
     return result;
   });
   handle("premium-seat:assign", async (_event, incoming) => {
@@ -287,6 +299,7 @@ function registerIpc({
         254
       )
     });
+    await matchVideoCache.reconcile();
     notify(core, "state-changed", core.snapshot());
     return { result, snapshot: core.snapshot() };
   });
@@ -294,13 +307,21 @@ function registerIpc({
     await core.refreshGiftCatalog();
     return core.giftCatalog.search(safeString(query, 200), Number(limit));
   });
-  handle("catalog:sounds", (_event, incoming) =>
-    searchMyInstantsSounds({
-      query: safeString(incoming?.query, 80),
-      page: Number(incoming?.page) || 1,
-      locale: safeString(incoming?.locale || "fr", 10)
-    })
-  );
+  handle("catalog:sounds", (_event, incoming) => {
+    const browserSession = getWindow()?.webContents?.session;
+    const fetchImpl = (url, options) =>
+      browserSession?.fetch
+        ? browserSession.fetch(url, options)
+        : net.fetch(url, options);
+    return searchMyInstantsSounds(
+      {
+        query: safeString(incoming?.query, 80),
+        page: Number(incoming?.page) || 1,
+        locale: safeString(incoming?.locale || "fr", 10)
+      },
+      { fetchImpl }
+    );
+  });
   handle("catalog:media", (_event, incoming) =>
     searchWikimediaMedia({
       query: safeString(incoming?.query, 80),
@@ -496,6 +517,10 @@ function registerIpc({
   );
   handle("overlay:match-url-rotate", () =>
     core.rotateMatchOverlayAccess()
+  );
+
+  handle("overlay:match-video-prepare", (_event, incoming) =>
+    matchVideoCache.prepare(incoming)
   );
 
   handle("entity:upsert", (_event, collection, item) => {

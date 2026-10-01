@@ -11,7 +11,8 @@ const {
   dedupeLocalizedGifts,
   extractMyInstantsSounds,
   fetchFrenchTikTokGifts,
-  normalizeWikimediaMediaPayload
+  normalizeWikimediaMediaPayload,
+  searchMyInstantsSounds
 } = require("../src/main/catalogs");
 
 const resourcesDirectory = path.join(__dirname, "..", "resources");
@@ -78,6 +79,33 @@ test("importe les résultats sonores du catalogue web MyInstants", () => {
     sounds[0].url,
     "https://www.myinstants.com/media/sounds/air-horn.mp3"
   );
+});
+
+test("charge MyInstants avec une requête de navigateur compatible", async () => {
+  let requestedUrl = "";
+  let requestedOptions = null;
+  const result = await searchMyInstantsSounds(
+    { query: "air horn", page: 2, locale: "fr-FR" },
+    {
+      fetchImpl: async (url, options) => {
+        requestedUrl = url;
+        requestedOptions = options;
+        return {
+          ok: true,
+          async text() {
+            return `<button onclick="share('Air Horn', '/fr/instant/air-horn/', '/media/sounds/air-horn.mp3', 'air-horn')"></button>`;
+          }
+        };
+      }
+    }
+  );
+
+  assert.match(requestedUrl, /\/fr\/search\/\?name=air%20horn&page=2$/);
+  assert.match(requestedOptions.headers["User-Agent"], /Chrome\//);
+  assert.match(requestedOptions.headers["Accept-Language"], /^fr-FR/);
+  assert.equal(requestedOptions.redirect, "follow");
+  assert.equal(result.sounds.length, 1);
+  assert.equal(result.sounds[0].name, "Air Horn");
 });
 
 test("normalise les images et GIF du catalogue web Wikimedia Commons", () => {

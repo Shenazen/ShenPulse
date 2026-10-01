@@ -206,6 +206,18 @@ test("la barre supérieure permet de créer, modifier et supprimer les profils",
   assert.match(app, /data-profile-action="edit"/);
   assert.match(app, /data-profile-action="delete"/);
   assert.match(app, /api\.remove\("profiles"/);
+  const profileActions = app.slice(
+    app.indexOf('const target = event.target.closest("[data-profile-action]")'),
+    app.indexOf('content.addEventListener("submit"')
+  );
+  assert.doesNotMatch(
+    profileActions,
+    /if \(action === "create" \|\| action === "edit"\) \{\s*dialog\.close\(\)/
+  );
+  assert.match(
+    profileActions,
+    /if \(action === "create" \|\| action === "edit"\) \{\s*openProfileEditor/
+  );
 });
 
 test("les sons, le TTS, Spotify et les cadeaux utilisent les services globaux", () => {

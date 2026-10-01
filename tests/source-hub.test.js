@@ -204,6 +204,20 @@ test("prépare un cadeau du connecteur TikTok pour le moteur ShenPulse", () => {
   assert.equal(payload.channelUsername, "creator");
 });
 
+test("conserve l'identifiant stable du viewer TikTok", () => {
+  const payload = tiktokConnectorPayload("follow", {
+    user: { id: "user-42", uniqueId: "alice", nickname: "Alice" }
+  });
+  const event = normalizeEvent(
+    { event: "follow", data: payload },
+    "source_tiktok"
+  );
+
+  assert.equal(payload.userId, "user-42");
+  assert.equal(event.user.id, "user-42");
+  assert.equal(event.user.name, "alice");
+});
+
 test("recupere aussi le cout moderne du cadeau TikTok", () => {
   const payload = tiktokConnectorPayload("gift", {
     giftName: "TikTok Universe",

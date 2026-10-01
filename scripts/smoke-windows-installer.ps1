@@ -70,7 +70,7 @@ try {
     Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
     Start-Process `
         -FilePath $installedExecutable `
-        -ArgumentList @("--user-data-dir=$userDataRoot") `
+        -ArgumentList @("--shenpulse-smoke-user-data-dir=$userDataRoot") `
         -WorkingDirectory $installRoot `
         -WindowStyle Hidden | Out-Null
     Start-Sleep -Seconds 5

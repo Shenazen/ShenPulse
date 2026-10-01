@@ -602,6 +602,14 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
       uniqueId,
     160
   );
+  const userId = safeString(
+    user.id ||
+      user.userId ||
+      event.userId ||
+      event.user_id ||
+      uniqueId,
+    120
+  );
   const gift = {
     ...(event.extendedGiftInfo || {}),
     ...(event.giftDetails || {}),
@@ -613,6 +621,7 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
       160
     ),
     channelUsername: safeString(channelUsername, 80),
+    userId,
     uniqueId,
     nickname,
     profilePictureUrl: preferredImageUrl(

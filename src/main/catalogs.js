@@ -220,7 +220,7 @@ async function searchMyInstantsSounds({
   query = "",
   page = 1,
   locale = "fr"
-} = {}) {
+} = {}, { fetchImpl = fetch } = {}) {
   const language = normalizeMyInstantsLanguage(locale);
   const region = language === "fr" ? "fr" : "us";
   const pageNumber = Math.min(20, Math.max(1, Number(page) || 1));
@@ -228,11 +228,20 @@ async function searchMyInstantsSounds({
   const requestUrl = cleanQuery
     ? `https://www.myinstants.com/${language}/search/?name=${encodeURIComponent(cleanQuery)}&page=${pageNumber}`
     : `https://www.myinstants.com/${language}/index/${region}/?page=${pageNumber}`;
-  const response = await fetch(requestUrl, {
+  const response = await fetchImpl(requestUrl, {
     headers: {
-      Accept: "text/html,application/xhtml+xml",
-      "User-Agent": "Mozilla/5.0 ShenPulse/1.0"
-    }
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language":
+        language === "fr"
+          ? "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7"
+          : "en-US,en;q=0.9",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+        "Chrome/140.0.0.0 Safari/537.36"
+    },
+    redirect: "follow"
   });
   if (!response.ok) {
     throw new Error(`Bibliothèque de sons indisponible (${response.status}).`);

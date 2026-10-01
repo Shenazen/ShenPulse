@@ -173,7 +173,7 @@ function Start-And-Stop-Version {
     Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
     Start-Process `
         -FilePath $Executable `
-        -ArgumentList @("--user-data-dir=$UserDataDirectory") `
+        -ArgumentList @("--shenpulse-smoke-user-data-dir=$UserDataDirectory") `
         -WorkingDirectory (Split-Path -Parent $Executable) `
         -WindowStyle Hidden | Out-Null
     Start-Sleep -Seconds 5

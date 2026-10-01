@@ -670,40 +670,31 @@ function openOverlayConfigLegacy(item) {
 }
 
 function renderMatchOverlayGuide() {
-  const sourceUrl = snapshot?.overlayUrls?.matchPlayer || "";
-  let accountNumber = "—";
-  try {
-    accountNumber = new URL(sourceUrl).pathname.split("/").filter(Boolean)[1] || "—";
-  } catch {
-    // La source reste indisponible tant que le compte ou l'accès Pro manque.
-  }
   return `<aside class="match-overlay-guide">
     <header>
-      <span aria-hidden="true">LIVE</span>
+      <span aria-hidden="true">WEBM</span>
       <div>
-        <strong>Comment utiliser ces animations de matchs&nbsp;?</strong>
-        <p>Un seul lecteur protégé reçoit toutes les animations. Une nouvelle demande remplace la vidéo en cours et repart à zéro.</p>
+        <strong>Utiliser les 8 Matchs comme fichiers vidéo temporaires</strong>
+        <p>Avec Pro ou Premium, ShenPulse prépare le design choisi dans son cache privé et permet de copier son chemin sans jamais l’afficher.</p>
       </div>
       <div class="match-overlay-guide-actions">
-        <small>Compte n° ${escapeHtml(accountNumber)}</small>
-        <button type="button" class="button tiny ghost" data-action="rotate-match-overlay-url">Régénérer l’URL Match</button>
+        <small>Accès Pro / Premium</small>
       </div>
     </header>
     <ol>
-      <li><b>1</b><span>Copiez l’<strong>URL du lecteur Match</strong> depuis n’importe quelle carte. C’est volontairement la même URL pour les huit animations.</span></li>
-      <li><b>2</b><span>Dans TikTok LIVE Studio, ajoutez cette URL <strong>une seule fois</strong> avec <strong>Ajouter une source → Lien</strong>.</span></li>
-      <li><b>3</b><span>Laissez cette source visible et active. Elle reste transparente au repos ; les boutons et automatisations ShenPulse lancent les vidéos.</span></li>
+      <li><b>1</b><span>Choisissez le design sur une carte Match puis cliquez sur <strong>Préparer le fichier vidéo</strong>.</span></li>
+      <li><b>2</b><span>Cliquez sur <strong>Copier le chemin</strong>, puis collez-le dans le sélecteur de fichier de TikTok LIVE Studio, OBS ou votre autre logiciel. Le chemin reste masqué dans ShenPulse.</span></li>
+      <li><b>3</b><span>Répétez l’opération pour les Matchs utiles. Le cache est contrôlé régulièrement et définitivement supprimé dès que le compte n’a plus d’abonnement <strong>Pro ou Premium actif</strong>.</span></li>
       <li class="match-overlay-source-settings">
         <b>4</b>
         <span>
-          Réglages recommandés de la source Lien&nbsp;:
+          Réglages recommandés de la source Vidéo&nbsp;:
           <small><strong>Largeur</strong> · 1080 px</small>
           <small><strong>Hauteur</strong> · 1920 px</small>
-          <small><strong>Toujours garder actif</strong> · activé</small>
-          <small>Chaque nouvel appui arrête la vidéo active et relance la nouvelle à 0.</small>
-          <small>L’URL HTTPS contient le numéro unique du compte et un canal Match révocable, sans adresse locale visible.</small>
-          <small>ShenPulse doit rester ouvert avec un abonnement Pro actif. L’accès est revérifié en continu.</small>
-          <small>Les fichiers vidéo ne sont jamais exposés par une URL de stockage directe.</small>
+          <small><strong>Format</strong> · WebM transparent</small>
+          <small><strong>Boucle</strong> · selon votre usage</small>
+          <small>Le fichier vidéo est autonome et se lance avec les commandes du logiciel de diffusion.</small>
+          <small>Les actions ShenPulse continuent à piloter le lecteur Match interne pour les déclenchements automatiques.</small>
         </span>
       </li>
     </ol>

@@ -141,7 +141,6 @@ dialog.addEventListener("click", async (event) => {
     (item) => item.id === target.dataset.id
   );
   if (action === "create" || action === "edit") {
-    dialog.close();
     openProfileEditor(action === "edit" ? profile : null);
     return;
   }

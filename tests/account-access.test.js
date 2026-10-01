@@ -309,6 +309,7 @@ test("l’interface invitée reste navigable mais verrouille données et command
   assert.doesNotMatch(guestChannels, /settings:save/);
   assert.doesNotMatch(guestChannels, /entity:upsert/);
   assert.doesNotMatch(guestChannels, /sound:upload/);
+  assert.doesNotMatch(guestChannels, /overlay:match-video-prepare/);
 });
 
 test("le visiteur peut essayer localement les designs et animations d’overlays", () => {
@@ -322,6 +323,7 @@ test("le visiteur peut essayer localement les designs et animations d’overlays
     renderer.indexOf("async function previewOverlay")
   );
   assert.match(guestActions, /"preview-overlay"/);
+  assert.doesNotMatch(guestActions, /"prepare-match-video"/);
   assert.match(renderer, /control\.matches\("\[data-overlay-design\]"\)/);
   assert.match(renderer, /Essai local et temporaire/);
   assert.match(

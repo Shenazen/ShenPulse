@@ -319,6 +319,11 @@ async function perform(work, successMessage) {
 
 function acceptSnapshot(value) {
   snapshot = value;
+  if (typeof hasProAccess === "function" && !hasProAccess()) {
+    for (const key of Object.keys(matchVideoPaths)) {
+      delete matchVideoPaths[key];
+    }
+  }
   if (value?.state?.settings?.siteVisibility) {
     siteVisibility = value.state.settings.siteVisibility;
   }

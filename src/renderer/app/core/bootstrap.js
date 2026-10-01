@@ -238,6 +238,7 @@ const MATCH_OVERLAYS = overlayCatalog.matches.map(({ key, name, match }) => [
 ]);
 
 const overlayDesignSelections = Object.create(null);
+const matchVideoPaths = Object.create(null);
 
 const SUBSCRIPTION_PLANS = [
   {
