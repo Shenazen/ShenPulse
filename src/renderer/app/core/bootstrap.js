@@ -470,6 +470,7 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  "euro-truck-simulator-2",
   "gtav-montchiliad",
   "pokemon-red-blue",
   "minecraft-bedrock-box",

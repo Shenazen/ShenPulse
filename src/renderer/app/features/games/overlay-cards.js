@@ -12,9 +12,6 @@ function renderGameInstallation(pack, unlocked) {
   if (pack.guide?.mode === "input") {
     return renderInputGameInstallation(pack, unlocked);
   }
-  if (pack.guide?.mode === "crowd-control-mod") {
-    return renderCrowdControlModInstallation(pack, unlocked);
-  }
   if (integrated && CONFIGURABLE_INTEGRATED_GAMES.has(pack.id)) {
     return renderIntegratedGameSettings(pack, unlocked);
   }
@@ -84,35 +81,6 @@ function renderGameInstallation(pack, unlocked) {
   </div>`;
 }
 
-function renderCrowdControlModInstallation(pack, unlocked) {
-  const guideUrl = pack.guide?.sources?.[0]?.url || "";
-  return `<div class="game-simple-step">
-    <section class="game-primary-panel game-install-simple">
-      <header><div><span>↓ INSTALLATION DU PONT LOCAL</span><h3>Préparer ${escapeHtml(pack.name)}</h3><p>Le plugin officiel Crowd Control relie le jeu à ShenPulse par une connexion locale. Aucun fichier du jeu n’est distribué par ShenPulse.</p></div><span class="game-step-count">PORT 51337</span></header>
-      ${renderGamePageMessage(pack, "installation")}
-      <div class="game-install-state ready">
-        <span>1</span>
-        <div><strong>Installer le plugin officiel</strong><p>Utilisez une fois l’installation automatique Crowd Control pour Euro Truck Simulator 2.</p></div>
-      </div>
-      <div class="game-install-state ready">
-        <span>2</span>
-        <div><strong>Lancer le jeu avec ShenPulse</strong><p>Fermez ensuite Crowd Control, ouvrez ETS2 sur Steam et chargez une partie. ShenPulse utilisera seul le port local du plugin.</p></div>
-      </div>
-      <footer class="game-panel-actions">
-        <button class="button" data-action="open-url" data-value="${escapeHtml(guideUrl)}" ${guideUrl ? "" : "disabled"}>Ouvrir le guide officiel</button>
-        <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Tester la connexion au jeu</button>
-        <button class="button primary" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Continuer vers les interactions →</button>
-      </footer>
-    </section>
-    <aside class="game-novice-note">
-      <span>⚠</span>
-      <strong>Version Steam recommandée</strong>
-      <p>Le pack officiel est testé sur Steam. Le mode Convoy n’est pas officiellement validé.</p>
-      <small>Gardez ShenPulse ouvert pendant toute la session LIVE.</small>
-    </aside>
-  </div>`;
-}
-
 function renderInputGameInstallation(pack, unlocked) {
   const configuredLayout = String(
     snapshot.state.game.connectorOverrides?.[pack.id]?.keyLayout ||
@@ -160,7 +128,7 @@ function renderGameLaunch(pack, unlocked) {
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
   const canLaunch = unlocked && (integrated || Boolean(installation));
-  const ready = unlocked && (inputDriven || crowdControlMod || canLaunch);
+  const ready = unlocked && (inputDriven || canLaunch);
   const mappings = gameMappedEffects(pack);
   const runningSession = activeGameSession();
   const sessionActive = runningSession?.packId === pack.id;

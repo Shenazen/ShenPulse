@@ -115,6 +115,7 @@ test("reprend les 30 interactions actives du pack Crowd Control Euro Truck Simul
 
   assert.ok(game);
   assert.equal(game.guide.mode, "crowd-control-mod");
+  assert.equal(game.installerVersion, "1.0.4");
   assert.deepEqual(game.connector, {
     type: "tcp-server",
     host: "127.0.0.1",

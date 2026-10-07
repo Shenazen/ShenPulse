@@ -61,6 +61,7 @@ test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
     Object.keys(GAME_INSTALLERS).sort(),
     [
       "cult-of-the-lamb",
+      "euro-truck-simulator-2",
       "gtav-montchiliad",
       "minecraft-bedrock-box",
       "minecraft-sandbox-3",
@@ -372,6 +373,26 @@ test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’éd
   assert.throws(
     () => safeInstallerAssetUrl("https://example.com/asset.zip"),
     /non autorisé/
+  );
+});
+
+test("Euro Truck Simulator 2 installe le plugin officiel Crowd Control en un clic", () => {
+  const installer = GAME_INSTALLERS["euro-truck-simulator-2"];
+  assert.equal(installer.version, "1.0.4");
+  assert.equal(installer.autoDetect, true);
+  assert.equal(installer.unattended, true);
+  assert.deepEqual(installer.steamAppIds, ["227300"]);
+  assert.deepEqual(installer.executables, ["bin/win_x64/eurotrucks2.exe"]);
+  assert.equal(installer.assets.length, 1);
+  assert.equal(installer.assets[0].targetPath, "bin/win_x64/plugins");
+  assert.equal(installer.assets[0].size, 181790);
+  assert.equal(
+    installer.assets[0].sha256,
+    "e144ab89e14c538baa72c7219c92dc93688f737f9a8f12f14b9b5cdac8c30795"
+  );
+  assert.match(
+    safeInstallerAssetUrl(installer.assets[0].url),
+    /^https:\/\/one-click\.crowdcontrol\.live\/TruckSimulator\/TruckSimulator-CC\.zip\?ver=1\.0\.4$/
   );
 });
 

@@ -407,7 +407,11 @@ class GameRuntimeService {
               }
             : undefined,
           source: assets.some((asset) => asset.url)
-            ? "backblaze-b2"
+            ? assets.every((asset) =>
+                String(asset.url || "").includes("backblazeb2.com")
+              )
+              ? "backblaze-b2"
+              : "official-download"
             : "shenpulse-private-assets"
         };
       });
@@ -1774,7 +1778,8 @@ function safeInstallerAssetUrl(value) {
     url.protocol !== "https:" ||
     !(
       url.hostname === "backblazeb2.com" ||
-      url.hostname.endsWith(".backblazeb2.com")
+      url.hostname.endsWith(".backblazeb2.com") ||
+      url.hostname === "one-click.crowdcontrol.live"
     )
   ) {
     throw new Error("Hôte de téléchargement d’installation non autorisé.");
@@ -2336,7 +2341,7 @@ async function detectInstalledGame(gameId, manifest, previousPath = "") {
       manifest.executables || [],
       false
     );
-    if (executable) return path.dirname(executable);
+    if (executable) return candidate;
   }
   return "";
 }

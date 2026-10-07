@@ -333,6 +333,7 @@ const INTERNAL_GAMES = [
       "mod PC",
       "Steam"
     ],
+    installerVersion: "1.0.4",
     connector: EURO_TRUCK_SIMULATOR_2_BRIDGE,
     effects: EURO_TRUCK_SIMULATOR_2_EFFECTS,
     defaultMappings: EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
@@ -570,7 +571,7 @@ const GAME_GUIDES = Object.freeze({
       "Le plugin local Euro Truck Simulator 2 se connecte à ShenPulse sur le port 51337 et reçoit les interactions TikTok LIVE configurées.",
     journey: ["installation", "interactions", "overlays", "launch"],
     steps: [
-      "Installe le plugin Euro Truck Simulator 2 depuis le parcours officiel Crowd Control.",
+      "Laisse ShenPulse détecter Euro Truck Simulator 2 et installer automatiquement le plugin officiel Crowd Control.",
       "Ferme Crowd Control pour libérer le port local 51337, puis configure les cadeaux dans ShenPulse.",
       "Prépare si besoin la fiche d’interactions pour ton overlay LIVE.",
       "Lance Euro Truck Simulator 2 sur Steam, charge une partie puis active la session ShenPulse."
