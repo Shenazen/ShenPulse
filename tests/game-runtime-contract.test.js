@@ -407,7 +407,10 @@ test("Demonologist détecte Steam et mémorise son dossier sans modifier le jeu"
   assert.equal(installer.unattended, true);
   assert.deepEqual(installer.steamAppIds, ["1929610", "2302560"]);
   assert.deepEqual(installer.executables, ["Demonologist.exe"]);
-  assert.equal(installer.waitForWindowProcess, "Demonologist");
+  assert.equal(
+    installer.waitForWindowProcess,
+    "Shivers-Win64-Shipping"
+  );
   assert.deepEqual(installer.assets, []);
   assert.equal(typeof detectInstalledGame, "function");
 });

@@ -341,7 +341,7 @@ const INTERNAL_GAMES = [
     installerVersion: "1.0.0",
     connector: {
       type: "windows-input",
-      processName: "Demonologist.exe",
+      processName: "Shivers-Win64-Shipping.exe",
       keyLayout: "wasd"
     },
     effects: DEMONOLOGIST_EFFECTS,
@@ -609,7 +609,7 @@ const GAME_GUIDES = Object.freeze({
     ],
     notes: [
       "Aucun fichier du jeu n’est téléchargé ni modifié.",
-      "Les commandes sont envoyées uniquement à Demonologist.exe et s’arrêtent si sa fenêtre ne peut plus être ciblée.",
+      "Les commandes sont envoyées uniquement à la fenêtre de jeu Demonologist (Shivers-Win64-Shipping.exe) et s’arrêtent si elle ne peut plus être ciblée.",
       "Le pack officiel recommande le plein écran sans bordure ou le mode fenêtré."
     ],
     sources: [

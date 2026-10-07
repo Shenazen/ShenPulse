@@ -137,7 +137,10 @@ test("branche Demonologist sur son processus Windows sans modifier le jeu", asyn
   const pack = hub.listPacks().find((entry) => entry.id === "demonologist");
   assert.ok(pack);
   assert.equal(pack.connector.type, "windows-input");
-  assert.equal(pack.connector.processName, "Demonologist.exe");
+  assert.equal(
+    pack.connector.processName,
+    "Shivers-Win64-Shipping.exe"
+  );
   assert.equal(pack.guide.mode, "input");
   assert.equal(pack.installerVersion, "1.0.0");
   assert.equal(pack.included, true);
@@ -153,8 +156,8 @@ test("branche Demonologist sur son processus Windows sans modifier le jeu", asyn
   assert.deepEqual(
     calls.map((call) => [call.operation, call.processName]),
     [
-      ["status", "Demonologist.exe"],
-      ["play", "Demonologist.exe"]
+      ["status", "Shivers-Win64-Shipping.exe"],
+      ["play", "Shivers-Win64-Shipping.exe"]
     ]
   );
   assert.equal(calls[1].keyLayout, "azerty");
@@ -172,7 +175,10 @@ test("l’étape Installation propose le bouton commun aux jeux Input Disrupts",
 test("le démarrage de Demonologist lance le jeu avant d’activer sa session", () => {
   const renderer = readRendererSource();
   const installer = GAME_INSTALLERS.demonologist;
-  assert.equal(installer.waitForWindowProcess, "Demonologist");
+  assert.equal(
+    installer.waitForWindowProcess,
+    "Shivers-Win64-Shipping"
+  );
   assert.match(renderer, /demonologistAutoLaunch = pack\.id === "demonologist"/);
   assert.match(renderer, /▶ Lancer Demonologist et activer/);
   assert.match(renderer, /demonologistAutoLaunch && ready[\s\S]*?data-action="launch-game"/);
