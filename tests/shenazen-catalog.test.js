@@ -33,16 +33,20 @@ const {
   EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
   EURO_TRUCK_SIMULATOR_2_EFFECTS
 } = require("../src/main/euro-truck-simulator-2-catalog");
+const {
+  RESIDENT_EVIL_3_DEFAULT_MAPPINGS,
+  RESIDENT_EVIL_3_EFFECTS
+} = require("../src/main/resident-evil-3-catalog");
 
 const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 41);
-  assert.equal(new Set(games.map((game) => game.id)).size, 41);
+  assert.equal(games.length, 42);
+  assert.equal(new Set(games.map((game) => game.id)).size, 42);
   assert.equal(
     games.filter((game) => !["fortnite", "thiercelieux"].includes(game.id)).length,
-    39
+    40
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(games.find((game) => game.id === "thiercelieux")?.included, true);
@@ -174,6 +178,64 @@ test("reprend les 30 interactions actives du pack Crowd Control Euro Truck Simul
       ["steering_chaos", 12],
       ["horn_spam", 8],
       ["camera_chaos", 10]
+    ]
+  );
+});
+
+test("reprend les 67 interactions du pack Crowd Control Resident Evil 3 recommandé", () => {
+  const game = loadShenazenGameCatalog(path.join(root, "resources")).find(
+    (entry) => entry.id === "resident-evil-3"
+  );
+
+  assert.ok(game);
+  assert.equal(game.guide.mode, "native");
+  assert.equal(game.installerVersion, "2.1.2");
+  assert.deepEqual(game.connector, {
+    type: "tcp-server",
+    host: "127.0.0.1",
+    port: 58431,
+    timeoutMs: 12000,
+    durationMultiplier: 1000,
+    expectResponse: true
+  });
+  assert.equal(RESIDENT_EVIL_3_EFFECTS.length, 67);
+  assert.equal(RESIDENT_EVIL_3_DEFAULT_MAPPINGS.length, 67);
+  assert.equal(
+    new Set(RESIDENT_EVIL_3_EFFECTS.map((effect) => effect.code)).size,
+    67
+  );
+  assert.ok(
+    RESIDENT_EVIL_3_DEFAULT_MAPPINGS.every((mapping) =>
+      RESIDENT_EVIL_3_EFFECTS.some(
+        (effect) => effect.id === mapping.effectId
+      )
+    )
+  );
+  assert.ok(
+    RESIDENT_EVIL_3_EFFECTS.every(
+      (effect) =>
+        effect.available === true &&
+        effect.service === "native" &&
+        effect.image.startsWith(
+          "https://resources.crowdcontrol.live/images/ResidentEvil3/"
+        )
+    )
+  );
+  assert.deepEqual(
+    RESIDENT_EVIL_3_EFFECTS
+      .filter((effect) => effect.duration > 0)
+      .map((effect) => [effect.code, effect.duration]),
+    [
+      ["ohko", 30],
+      ["invul", 60],
+      ["wide", 30],
+      ["narrow", 30],
+      ["giant", 30],
+      ["tiny", 30],
+      ["egiant", 30],
+      ["etiny", 30],
+      ["efast", 15],
+      ["eslow", 15]
     ]
   );
 });

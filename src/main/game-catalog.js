@@ -49,6 +49,11 @@ const {
   EURO_TRUCK_SIMULATOR_2_INTERACTION_CATALOG_VERSION
 } = require("./euro-truck-simulator-2-catalog");
 const {
+  RESIDENT_EVIL_3_DEFAULT_MAPPINGS,
+  RESIDENT_EVIL_3_EFFECTS,
+  RESIDENT_EVIL_3_INTERACTION_CATALOG_VERSION
+} = require("./resident-evil-3-catalog");
+const {
   THIERCELIEUX_EXTENSION_PRODUCTS
 } = require("../shared/thiercelieux-products");
 
@@ -99,6 +104,15 @@ const EURO_TRUCK_SIMULATOR_2_BRIDGE = Object.freeze({
   type: "tcp-server",
   host: "127.0.0.1",
   port: 51337,
+  timeoutMs: 12000,
+  durationMultiplier: 1000,
+  expectResponse: true
+});
+
+const RESIDENT_EVIL_3_BRIDGE = Object.freeze({
+  type: "tcp-server",
+  host: "127.0.0.1",
+  port: 58431,
   timeoutMs: 12000,
   durationMultiplier: 1000,
   expectResponse: true
@@ -354,6 +368,28 @@ const INTERNAL_GAMES = [
     defaultMappings: EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
     interactionCatalogVersion:
       EURO_TRUCK_SIMULATOR_2_INTERACTION_CATALOG_VERSION
+  }),
+  game("resident-evil-3", "Resident Evil 3", {
+    artworkUrl:
+      "https://resources.crowdcontrol.live/images/ResidentEvil3/box.jpg",
+    included: true,
+    requiresPro: true,
+    source: "Crowd Control · Resident Evil 3 (2020)",
+    description:
+      "Transforme les cadeaux TikTok LIVE en soins, dégâts, armes, munitions, effets temporaires et apparitions d’ennemis dans Resident Evil 3.",
+    tags: [
+      "abonnement requis",
+      "inclus",
+      "Crowd Control",
+      "mod PC",
+      "Steam"
+    ],
+    installerVersion: "2.1.2",
+    connector: RESIDENT_EVIL_3_BRIDGE,
+    effects: RESIDENT_EVIL_3_EFFECTS,
+    defaultMappings: RESIDENT_EVIL_3_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      RESIDENT_EVIL_3_INTERACTION_CATALOG_VERSION
   }),
   game("gtav-montchiliad", "GTA V Mont Chiliad", {
     artwork: "catalog/gtav-montchiliad.png",
@@ -630,6 +666,34 @@ const GAME_GUIDES = Object.freeze({
       {
         label: "Catalogue officiel des interactions",
         url: "https://crowdcontrol.live/games/eurotrucksimulator2"
+      }
+    ]
+  },
+  "resident-evil-3": {
+    mode: "native",
+    summary:
+      "ShenPulse détecte Resident Evil 3, installe automatiquement REFramework et le mod d’interactions officiel, puis reçoit les cadeaux TikTok LIVE sur le port local 58431.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Ferme Resident Evil 3, puis laisse ShenPulse détecter son dossier Steam et installer le mod officiel recommandé.",
+      "Associe les cadeaux TikTok aux interactions souhaitées dans ShenPulse.",
+      "Prépare si besoin la fiche d’interactions destinée à ton overlay LIVE.",
+      "Lance Resident Evil 3 depuis ShenPulse, charge une sauvegarde jouable puis teste un effet."
+    ],
+    notes: [
+      "L’installation recommandée cible la version actuelle de Resident Evil 3 ; l’ancienne branche dx11_non-rt n’est pas sélectionnée automatiquement.",
+      "Le mod utilise REFramework et peut demander le runtime Bureau .NET 8 sur Windows.",
+      "Certains effets dépendent du personnage, de l’inventaire, des ennemis présents ou de la progression. Ils peuvent être temporairement indisponibles dans un menu, une cinématique ou un chargement.",
+      "La touche Inser ouvre le menu REFramework dans le jeu si un diagnostic est nécessaire."
+    ],
+    sources: [
+      {
+        label: "Guide officiel Crowd Control · Resident Evil 3",
+        url: "https://crowdcontrol.live/guides/residentevil3?pack=ResidentEvil3"
+      },
+      {
+        label: "Catalogue officiel Resident Evil 3",
+        url: "https://crowdcontrol.live/games/residentevil3"
       }
     ]
   },

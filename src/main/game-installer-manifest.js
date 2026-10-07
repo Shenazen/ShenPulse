@@ -41,6 +41,8 @@ const TERRARIA_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/terraria/1.0.0";
 const EURO_TRUCK_SIMULATOR_2_ASSET_BASE =
   "https://one-click.crowdcontrol.live/TruckSimulator";
+const RESIDENT_EVIL_3_ASSET_BASE =
+  "https://one-click.crowdcontrol.live/RE3remake";
 const GAME_INSTALLERS = Object.freeze({
   demonologist: {
     version: "1.0.0",
@@ -83,6 +85,30 @@ const GAME_INSTALLERS = Object.freeze({
         sha256:
           "e144ab89e14c538baa72c7219c92dc93688f737f9a8f12f14b9b5cdac8c30795",
         url: `${EURO_TRUCK_SIMULATOR_2_ASSET_BASE}/TruckSimulator-CC.zip?ver=1.0.4`
+      }
+    ]
+  },
+  "resident-evil-3": {
+    version: "2.1.2",
+    title: "Resident Evil 3",
+    targetLabel: "dossier contenant re3.exe",
+    autoDetect: true,
+    unattended: true,
+    directoryNames: ["RE3", "Resident Evil 3"],
+    steamAppIds: ["952060"],
+    executables: ["re3.exe"],
+    launchExecutables: ["re3.exe"],
+    warning:
+      "Resident Evil 3 doit être fermé. ShenPulse sauvegarde les fichiers remplacés puis installe REFramework et le mod officiel Crowd Control 2.1.2, configuré sur le port local 58431.",
+    assets: [
+      {
+        id: "mod",
+        fileName: "RE3net-CC-2.1.2.zip",
+        action: "extract",
+        size: 20825046,
+        sha256:
+          "34a5b87eeff7b0fddf7e3069a7af4de42c6c3448ce2c0896f4c64db78fd44fba",
+        url: `${RESIDENT_EVIL_3_ASSET_BASE}/RE3net-CC.zip?ver=2.1.2`
       }
     ]
   },

@@ -472,6 +472,7 @@ const EVENT_LABELS = {
 const AUTOMATED_GAME_INSTALLERS = new Set([
   "demonologist",
   "euro-truck-simulator-2",
+  "resident-evil-3",
   "gtav-montchiliad",
   "pokemon-red-blue",
   "minecraft-bedrock-box",

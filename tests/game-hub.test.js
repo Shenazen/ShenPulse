@@ -596,6 +596,76 @@ test("initialise et exécute les catalogues Stardew Valley et Terraria", async (
   }
 });
 
+test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async () => {
+  const state = {
+    session: { activeGamePackId: "resident-evil-3" },
+    commerce: {
+      subscription: {
+        tier: "pro",
+        source: "subscription",
+        status: "active"
+      },
+      gameEntitlements: []
+    },
+    game: {
+      recentPacks: [],
+      interactionCatalogVersions: {},
+      interactionRulesByPack: {},
+      connectorOverrides: {
+        "resident-evil-3": { port: 0 }
+      }
+    },
+    rules: []
+  };
+  const store = {
+    getState: () => state,
+    mutate: (callback) => callback(state)
+  };
+  const resourcesDirectory = path.join(__dirname, "..", "resources");
+  const hub = new GameHub({
+    store,
+    resourcesDirectory,
+    packsDirectory: path.join(resourcesDirectory, "packs")
+  });
+  hub.loadPacks();
+
+  const pack = hub
+    .listPacks()
+    .find((entry) => entry.id === "resident-evil-3");
+  assert.equal(pack.connector.type, "tcp-server");
+  assert.equal(pack.connector.port, 58431);
+  assert.equal(pack.effects.length, 67);
+  assert.equal(
+    hub.initializeDefaultInteractions("resident-evil-3").added,
+    67
+  );
+
+  const status = await hub.prepareConnection("resident-evil-3");
+  const frames = [];
+  const client = mockSimpleTcpGame(status.port, frames);
+  await connected(client);
+  try {
+    await hub.trigger(
+      "re3-damage",
+      { user: { displayName: "JillFan" } },
+      { packId: "resident-evil-3" }
+    );
+    await hub.trigger(
+      "re3-invincible",
+      { user: { displayName: "CarlosFan" } },
+      { packId: "resident-evil-3" }
+    );
+    assert.equal(frames[0].code, "damage");
+    assert.equal(frames[0].viewer, "JillFan");
+    assert.equal(frames[1].code, "invul");
+    assert.equal(frames[1].viewer, "CarlosFan");
+    assert.equal(frames[1].duration, 60_000);
+  } finally {
+    client.destroy();
+    await hub.disconnectAll();
+  }
+});
+
 function mockSimpleTcpGame(port, frames) {
   const client = net.createConnection({
     host: "127.0.0.1",
