@@ -21,9 +21,12 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "thiercelieux-move-queue",
   "thiercelieux-promote-player",
   "thiercelieux-remove-queue",
-  "thiercelieux-remove-player",
+  "thiercelieux-clear-queue",
+  "thiercelieux-requeue-player",
+  "thiercelieux-delete-player",
   "thiercelieux-fill-guests",
   "thiercelieux-auto-compose",
+  "thiercelieux-randomize-roles",
   "add-coin-pusher-tier",
   "remove-coin-pusher-tier",
   "add-coin-pusher-gift-rule",
@@ -167,6 +170,29 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     const manualName = String(
       form.querySelector("[data-thiercelieux-manual-name]")?.value || ""
     ).trim();
+    if (
+      action === "thiercelieux-clear-queue" &&
+      !(await confirmAction(
+        "Supprimer toutes les inscriptions de la file d’attente ? Les joueurs déjà placés dans le village seront conservés.",
+        { title: "Vider la file d’attente", confirmLabel: "Tout supprimer" }
+      ))
+    ) {
+      return;
+    }
+    if (action === "thiercelieux-delete-player") {
+      const playerName = String(
+        target.closest(".thiercelieux-seat")?.querySelector("strong")?.textContent ||
+          "ce joueur"
+      ).trim();
+      if (
+        !(await confirmAction(
+          `Retirer définitivement ${playerName} du village ? Cette personne ne sera pas remise dans la file d’attente.`,
+          { title: "Retirer le joueur", confirmLabel: "Retirer complètement" }
+        ))
+      ) {
+        return;
+      }
+    }
     await perform(async () => {
       const config = integratedSettingsFromForm(
         "thiercelieux",
@@ -221,7 +247,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
           });
           config.roleIds = thiercelieuxRecommendedRoles(
             config.activePlayers.length,
-            new Set(config.packs || ["base"])
+            thiercelieuxRolePoolIds(config, new Set(config.packs || ["base"]))
           );
         }
       }
@@ -230,8 +256,21 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
         config.queue = config.queue.filter((entry) => entry.id !== id);
       }
 
-      if (action === "thiercelieux-remove-player") {
+      if (action === "thiercelieux-clear-queue") {
+        const activeQueueEntryIds = new Set(
+          config.activePlayers.map((player) => player.queueEntryId).filter(Boolean)
+        );
+        config.queue = config.queue.filter((entry) =>
+          activeQueueEntryIds.has(entry.id)
+        );
+      }
+
+      if (
+        action === "thiercelieux-requeue-player" ||
+        action === "thiercelieux-delete-player"
+      ) {
         const player = config.activePlayers.find((candidate) => candidate.id === id);
+        if (!player) throw new Error("Ce joueur est introuvable.");
         config.activePlayers = config.activePlayers.filter(
           (candidate) => candidate.id !== id
         );
@@ -241,10 +280,32 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
         const source = config.queue.find(
           (entry) => entry.id === player?.queueEntryId
         );
-        if (source) source.status = "waiting";
+        if (action === "thiercelieux-requeue-player") {
+          if (source) {
+            source.status = "waiting";
+          } else {
+            const restoredEntry = thiercelieuxQueueEntry(
+              config,
+              {
+                user: {
+                  id: player.userId,
+                  name: player.name,
+                  displayName: player.name,
+                  avatarUrl: player.avatarUrl || ""
+                }
+              },
+              { manual: player.connected === false }
+            );
+            config.queue.push(restoredEntry);
+          }
+        } else {
+          config.queue = config.queue.filter(
+            (entry) => entry.id !== player.queueEntryId
+          );
+        }
         config.roleIds = thiercelieuxRecommendedRoles(
           config.activePlayers.length,
-          new Set(config.packs || ["base"])
+          thiercelieuxRolePoolIds(config, new Set(config.packs || ["base"]))
         );
       }
 
@@ -270,32 +331,51 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
         }
         config.roleIds = thiercelieuxRecommendedRoles(
           config.activePlayers.length,
-          new Set(config.packs || ["base"])
+          thiercelieuxRolePoolIds(config, new Set(config.packs || ["base"]))
         );
       }
 
       if (action === "thiercelieux-auto-compose") {
         config.roleIds = thiercelieuxRecommendedRoles(
           config.activePlayers.length,
-          new Set(config.packs || ["base"])
+          thiercelieuxRolePoolIds(config, new Set(config.packs || ["base"]))
         );
+      }
+
+      if (action === "thiercelieux-randomize-roles") {
+        for (let index = config.roleIds.length - 1; index > 0; index -= 1) {
+          const destination = Math.floor(Math.random() * (index + 1));
+          [config.roleIds[index], config.roleIds[destination]] = [
+            config.roleIds[destination],
+            config.roleIds[index]
+          ];
+        }
+        config.assignmentMode = "manual";
       }
 
       snapshot = await api.configureGame(pack.id, config);
       integratedSettingsPanels.set(
         pack.id,
-        action === "thiercelieux-auto-compose"
+        action === "thiercelieux-auto-compose" || action === "thiercelieux-randomize-roles"
           ? "roles"
-          : action === "thiercelieux-remove-player" || action === "thiercelieux-fill-guests"
+          : action === "thiercelieux-requeue-player" || action === "thiercelieux-delete-player" || action === "thiercelieux-fill-guests"
             ? "village"
             : "registration"
       );
       render();
     }, action === "thiercelieux-auto-compose"
       ? "Composition équilibrée"
-      : action === "thiercelieux-promote-player"
-        ? "Joueur placé dans le village"
-        : "Régie Thiercelieux mise à jour");
+      : action === "thiercelieux-randomize-roles"
+        ? "Nouvelle attribution aléatoire générée"
+      : action === "thiercelieux-clear-queue"
+        ? "Liste d'inscription vidée"
+        : action === "thiercelieux-promote-player"
+          ? "Joueur placé dans le village"
+          : action === "thiercelieux-requeue-player"
+            ? "Joueur remis dans la file d'attente"
+            : action === "thiercelieux-delete-player"
+              ? "Joueur retiré définitivement"
+              : "Régie Thiercelieux mise à jour");
     return;
   }
   if (

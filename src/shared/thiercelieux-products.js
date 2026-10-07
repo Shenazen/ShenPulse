@@ -6,6 +6,7 @@ const THIERCELIEUX_EXTENSION_PRODUCTS = Object.freeze([
   Object.freeze({
     id: "thiercelieux-extension-nouvelle-lune",
     packId: "nouvelle-lune",
+    kind: "extension",
     name: "Nouvelle Lune",
     price: THIERCELIEUX_EXTENSION_PRICE,
     currency: "EUR",
@@ -19,6 +20,7 @@ const THIERCELIEUX_EXTENSION_PRODUCTS = Object.freeze([
   Object.freeze({
     id: "thiercelieux-extension-le-village",
     packId: "village",
+    kind: "extension",
     name: "Le Village",
     price: THIERCELIEUX_EXTENSION_PRICE,
     currency: "EUR",
@@ -28,20 +30,22 @@ const THIERCELIEUX_EXTENSION_PRODUCTS = Object.freeze([
   Object.freeze({
     id: "thiercelieux-extension-personnages",
     packId: "personnages",
+    kind: "extension",
     name: "Personnages",
     price: THIERCELIEUX_EXTENSION_PRICE,
     currency: "EUR",
-    description: "16 personnages avancés et leurs conditions de victoire.",
-    includes: Object.freeze(["16 personnages avancés"])
+    description: "16 rôles cachés, le Loup-Garou Blanc réédité et les cartes bonus compatibles.",
+    includes: Object.freeze(["16 rôles cachés", "Loup-Garou Blanc réédité", "Cartes bonus compatibles"])
   }),
   Object.freeze({
     id: "thiercelieux-extension-25-ans",
     packId: "25-ans",
+    kind: "anniversary-pack",
     name: "Édition 25 ans",
     price: THIERCELIEUX_EXTENSION_PRICE,
     currency: "EUR",
-    description: "4 personnages anniversaire pour enrichir les compositions.",
-    includes: Object.freeze(["4 personnages anniversaire"])
+    description: "4 personnages inédits et 6 personnages spéciaux réédités.",
+    includes: Object.freeze(["4 personnages inédits", "6 personnages spéciaux réédités", "4 scénarios physiques"])
   })
 ]);
 
@@ -82,6 +86,16 @@ const THIERCELIEUX_ROLE_PACKS = Object.freeze({
   "singe-savant": "25-ans",
   marionnettiste: "25-ans",
   "puissante-mere-des-loups": "25-ans"
+});
+
+const THIERCELIEUX_ROLE_PACK_ACCESS = Object.freeze({
+  "loup-garou-blanc": Object.freeze(["village", "personnages"]),
+  "idiot-du-village": Object.freeze(["nouvelle-lune", "25-ans"]),
+  "bouc-emissaire": Object.freeze(["nouvelle-lune", "25-ans"]),
+  "montreur-ours": Object.freeze(["personnages", "25-ans"]),
+  "juge-begue": Object.freeze(["personnages", "25-ans"]),
+  comedien: Object.freeze(["personnages", "25-ans"]),
+  "servante-devouee": Object.freeze(["personnages", "25-ans"])
 });
 
 const THIERCELIEUX_VARIANT_IDS = Object.freeze([
@@ -146,23 +160,38 @@ function ownedThiercelieuxPackIds(state = {}, nowMs = Date.now()) {
 function sanitizeThiercelieuxEntitlements(config = {}, state = {}) {
   const ownedPacks = ownedThiercelieuxPackIds(state);
   const requestedPacks = Array.isArray(config.packs) ? config.packs : ["base"];
-  const packs = [...new Set(["base", ...requestedPacks])].filter((packId) =>
+  const contentMode = config.contentMode === "extensions" || (!Object.hasOwn(config, "contentMode") && requestedPacks.some((packId) => packId !== "base"))
+    ? "extensions"
+    : "classic";
+  const entitledPacks = [...new Set(["base", ...requestedPacks])].filter((packId) =>
     ownedPacks.has(String(packId))
   );
+  const packs = contentMode === "classic" ? ["base"] : entitledPacks;
   const enabledPacks = new Set(packs);
+  const includeBaseRoles = contentMode === "classic" || config.includeBaseRoles !== false;
+  const rolePacks = contentMode === "classic"
+    ? new Set(["base"])
+    : new Set(packs.filter((packId) => packId !== "base"));
+  if (includeBaseRoles) rolePacks.add("base");
+  const rolePackIds = (roleId) => THIERCELIEUX_ROLE_PACK_ACCESS[roleId] || [THIERCELIEUX_ROLE_PACKS[roleId]].filter(Boolean);
+  const fallbackRoleId = Object.keys(THIERCELIEUX_ROLE_PACKS).find((roleId) =>
+    rolePackIds(roleId).some((packId) => rolePacks.has(packId))
+  ) || "";
   const roleIds = (Array.isArray(config.roleIds) ? config.roleIds : [])
     .slice(0, 8)
     .map((roleId) => {
       const normalized = String(roleId || "");
-      const rolePack = THIERCELIEUX_ROLE_PACKS[normalized];
-      return rolePack && ownedPacks.has(rolePack) && enabledPacks.has(rolePack)
+      const accessiblePacks = rolePackIds(normalized);
+      return accessiblePacks.some((packId) => ownedPacks.has(packId)) && accessiblePacks.some((packId) => rolePacks.has(packId))
         ? normalized
-        : "simple-villageois";
+        : fallbackRoleId;
     });
   const nouvelleLuneEnabled = enabledPacks.has("nouvelle-lune");
   const villageEnabled = enabledPacks.has("village");
   return {
     ...config,
+    contentMode,
+    includeBaseRoles,
     packs,
     roleIds,
     selectedVariantIds: nouvelleLuneEnabled
@@ -179,6 +208,7 @@ module.exports = {
   THIERCELIEUX_EXTENSION_PRICE,
   THIERCELIEUX_EXTENSION_PRODUCTS,
   THIERCELIEUX_ROLE_PACKS,
+  THIERCELIEUX_ROLE_PACK_ACCESS,
   THIERCELIEUX_VARIANT_IDS,
   activeProductEntitlement,
   entitlementProductId,

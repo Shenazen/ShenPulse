@@ -66,13 +66,22 @@ export const ROLE_CATALOG = Object.freeze([
 ])
 
 export const ROLE_BY_ID = Object.freeze(Object.fromEntries(ROLE_CATALOG.map((entry) => [entry.id, entry])))
+export const ROLE_PACK_ACCESS = Object.freeze({
+  'loup-garou-blanc': Object.freeze(['village', 'personnages']),
+  'idiot-du-village': Object.freeze(['nouvelle-lune', '25-ans']),
+  'bouc-emissaire': Object.freeze(['nouvelle-lune', '25-ans']),
+  'montreur-ours': Object.freeze(['personnages', '25-ans']),
+  'juge-begue': Object.freeze(['personnages', '25-ans']),
+  'comedien': Object.freeze(['personnages', '25-ans']),
+  'servante-devouee': Object.freeze(['personnages', '25-ans']),
+})
 
 // Les règles officielles ne donnent pas un « résultat » après chaque geste.
 // Cette table distingue les informations à montrer immédiatement de celles qui
 // restent cachées jusqu'à l'aube ou qui sont déjà connues par le choix du joueur.
 export const ACTION_REVEAL_POLICY = Object.freeze({
   steal: 'private-actor',
-  actor: 'none',
+  actor: 'private-actor',
   lovers: 'private-targets',
   'inspect-role': 'private-actor',
   fox: 'private-actor',
@@ -142,6 +151,8 @@ export const EVENTS = Object.freeze(Array.from({ length: 36 }, (_, index) => Obj
 export const DEFAULT_CONFIG = Object.freeze({
   orientation: 'landscape',
   assignmentMode: 'random',
+  contentMode: 'extensions',
+  includeBaseRoles: true,
   runMode: 'hybrid',
   rulesMode: 'official',
   packs: ['base', 'nouvelle-lune', 'personnages', '25-ans'],
@@ -158,9 +169,11 @@ export const DEFAULT_CONFIG = Object.freeze({
   revealSeconds: 20,
   allowRoleReview: false,
   revealEliminatedRoles: true,
+  showPlayerAvatarOnCardBack: false,
   voteMode: 'secret',
   tieMode: 'captain-then-none',
   audioEnabled: true,
+  ambienceVolume: 70,
   saveEnabled: true,
   giftName: 'Côte à côte',
   giftId: '',
@@ -182,15 +195,22 @@ export function createId(prefix = 'item') {
 
 export function normalizeConfig(config = {}) {
   const merged = { ...DEFAULT_CONFIG, ...config }
+  const requestedPacks = Array.isArray(merged.packs) ? merged.packs : []
+  const contentMode = merged.contentMode === 'extensions' || (!Object.hasOwn(config, 'contentMode') && requestedPacks.some((pack) => pack !== 'base')) ? 'extensions' : 'classic'
   return {
     ...merged,
     orientation: merged.orientation === 'portrait' ? 'portrait' : 'landscape',
     assignmentMode: merged.assignmentMode === 'manual' ? 'manual' : 'random',
+    contentMode,
+    includeBaseRoles: contentMode === 'classic' || merged.includeBaseRoles !== false,
     runMode: ['automatic', 'manual', 'hybrid'].includes(merged.runMode) ? merged.runMode : 'hybrid',
     rulesMode: merged.rulesMode === 'custom' ? 'custom' : 'official',
     packs: [...new Set(['base', ...(Array.isArray(merged.packs) ? merged.packs : [])])].filter((pack) => ['base', 'nouvelle-lune', 'village', 'personnages', '25-ans'].includes(pack)),
     selectedVariantIds: [...new Set(Array.isArray(merged.selectedVariantIds) ? merged.selectedVariantIds : [])].filter((id) => VARIANTS.some((variant) => variant.id === id)),
     spectatorMode: merged.spectatorMode === 'omniscient' ? 'omniscient' : 'detective',
+    revealEliminatedRoles: merged.revealEliminatedRoles !== false,
+    showPlayerAvatarOnCardBack: merged.showPlayerAvatarOnCardBack === true,
+    ambienceVolume: clamp(Math.round(Number(merged.ambienceVolume)), 0, 100),
     debateSeconds: clamp(Math.round(Number(merged.debateSeconds)), 30, 1800),
     voteSeconds: clamp(Math.round(Number(merged.voteSeconds)), 15, 600),
     revealSeconds: clamp(Math.round(Number(merged.revealSeconds)), 5, 120),
@@ -325,15 +345,27 @@ export function validateSetup({ players = [], roleIds = [], config = {} } = {}) 
   const normalized = normalizeConfig(config)
   const errors = []
   const warnings = []
+  const rolePacks = normalized.contentMode === 'classic'
+    ? new Set(['base'])
+    : new Set(normalized.packs.filter((pack) => pack !== 'base'))
+  if (normalized.contentMode === 'extensions' && normalized.includeBaseRoles) rolePacks.add('base')
   if (players.length < MIN_ACTIVE_PLAYERS) errors.push(`Ajoutez au moins ${MIN_ACTIVE_PLAYERS} joueurs à la partie.`)
   if (players.length > MAX_ACTIVE_PLAYERS) errors.push('La partie ne peut jamais dépasser huit joueurs actifs.')
   if (roleIds.length !== players.length) errors.push('Le nombre de personnages doit correspondre au nombre de joueurs.')
   if (players.length >= MIN_ACTIVE_PLAYERS && players.length < MAX_ACTIVE_PLAYERS) warnings.push(`Village compact à ${players.length} joueurs : la composition est adaptée à cet effectif.`)
   for (const roleId of roleIds) {
     const selected = ROLE_BY_ID[roleId]
+    const accessiblePacks = selected ? rolePackIds(selected) : []
     if (!selected) errors.push(`Personnage inconnu : ${roleId}.`)
-    else if (!normalized.packs.includes(selected.pack)) errors.push(`${selected.name} nécessite l’extension ${selected.pack}.`)
+    else if (!accessiblePacks.some((pack) => normalized.packs.includes(pack))) errors.push(`${selected.name} nécessite l’une de ses extensions compatibles.`)
+    else if (!accessiblePacks.some((pack) => rolePacks.has(pack))) errors.push(`${selected.name} n’appartient pas au pool de personnages choisi.`)
     else if (selected.camp === 'solitary' && !normalized.allowSolitary) errors.push(`${selected.name} est solitaire.`)
+  }
+  for (const roleId of new Set(roleIds)) {
+    const selectedCount = roleIds.filter((id) => id === roleId).length
+    if (selectedCount > 1 && !['simple-villageois', 'simple-loup-garou', 'deux-soeurs', 'trois-freres'].includes(roleId)) {
+      errors.push(`${ROLE_BY_ID[roleId]?.name || roleId} ne peut être présent qu’une fois.`)
+    }
   }
   for (const group of [{ id: 'deux-soeurs', count: 2 }, { id: 'trois-freres', count: 3 }]) {
     const selectedCount = roleIds.filter((id) => id === group.id).length
@@ -359,10 +391,10 @@ export function createGame({ players = [], roleIds = [], config = {}, random = M
     config: normalizedConfig, phase: 'reveal', day: roles.includes('ange') ? 1 : 0, night: 0, revealIndex: 0,
     players: players.slice(0, MAX_ACTIVE_PLAYERS).map((source, index) => createPlayer(source, roles[index], index, normalizedConfig)),
     centerRoles: roleIds.includes('voleur') ? ['simple-villageois', 'simple-loup-garou'] : [],
-    nightQueue: [], nightCursor: 0, pendingAttacks: [], pendingDeaths: [], deathTriggers: [], votes: {},
+    nightQueue: [], nightCursor: 0, pendingAttacks: [], delayedAttacks: [], pendingDeaths: [], deathTriggers: [], votes: {},
     protectedId: null, lastProtectedId: null, wolfVictimId: null, ravenTargetId: null, lovers: [], captainId: null,
     dawnAnnouncements: [], eventDeck: shuffle(EVENTS.map((entry) => entry.id), random), eventCursor: 0, currentEvent: null, eventHistory: [],
-    flags: { wolfHasDied: false, villagePowersDisabled: false, secondVoteAvailable: false },
+    flags: { wolfHasDied: false, villagePowersDisabled: false, secondVoteAvailable: false, scapegoatTie: false },
     history: [history('game', 'Partie créée ; distribution privée ouverte.', { roleCount: roleIds.length })],
     privateMessages: {}, spectatorPredictions: [], winners: [], winnerLabel: '', finished: false,
   }
@@ -397,6 +429,9 @@ export function startNight(game) {
   game.phase = 'night'
   game.votes = {}
   game.pendingAttacks = []
+  const delayedNow = (game.delayedAttacks || []).filter((attack) => Number(attack.dueNight) <= game.night)
+  game.delayedAttacks = (game.delayedAttacks || []).filter((attack) => Number(attack.dueNight) > game.night)
+  game.pendingAttacks.push(...delayedNow.map(({ targetId, cause }) => ({ targetId, cause })))
   game.pendingDeaths = []
   game.dawnAnnouncements = []
   game.currentEvent = null
@@ -419,7 +454,7 @@ export function buildNightQueue(game) {
     if (selected.action === 'wolf-vote' || (selected.camp === 'wolves' && ['big-wolf', 'infect', 'suppress-power'].includes(selected.action))) continue
     steps.push(stepFor(player, selected))
   }
-  const wolf = alive.find((player) => getRole(player.roleId).camp === 'wolves' || player.camp === 'wolves')
+  const wolf = alive.find(isWolfPackMember)
   if (wolf) steps.push({ id: createId('step'), actorId: wolf.id, roleId: 'simple-loup-garou', action: 'wolf-vote', order: 150, collective: true })
   for (const player of alive) {
     const selected = getRole(player.roleId)
@@ -436,13 +471,16 @@ export function availableTargets(game, step = currentNightStep(game)) {
   if (!step) return []
   const actor = requirePlayer(game, step.actorId)
   const alive = game.players.filter((player) => player.alive)
-  if (step.action === 'wolf-vote') return alive.filter((player) => player.camp !== 'wolves' && getRole(player.roleId).camp !== 'wolves')
+  if (step.action === 'wolf-vote' || step.action === 'big-wolf') return alive.filter((player) => !isWolfPackMember(player))
   if (step.action === 'white-wolf') return alive.filter((player) => player.id !== actor.id && player.camp === 'wolves')
   if (step.action === 'protect') return alive.filter((player) => player.id !== game.lastProtectedId)
   if (step.action === 'lovers') return alive
   if (step.action === 'infect') return game.wolfVictimId ? alive.filter((player) => player.id === game.wolfVictimId) : []
-  if (step.action === 'recognize' || step.action === 'bear' || step.action === 'observe-wolves' || step.action === 'spiritism') return []
+  if (step.action === 'suppress-power') return alive.filter((player) => player.id !== actor.id && !isWolfPackMember(player))
+  if (['recognize', 'bear', 'observe-wolves', 'spiritism', 'judge-sign', 'choose-camp', 'steal'].includes(step.action)) return []
   if (step.action === 'fox') return alive
+  if (step.action === 'charm') return alive.filter((player) => player.id !== actor.id && !player.statuses.includes('charmed'))
+  if (step.action === 'monkey') return alive.filter((player) => player.id !== actor.id && !(actor.monkeyInspectedIds || []).includes(player.id))
   return alive.filter((player) => player.id !== actor.id)
 }
 
@@ -456,7 +494,11 @@ export function submitNightAction(game, payload = {}) {
   if (!payload.skip && targets.length && !targetId && !targetIds.length && step.action !== 'lovers' && step.action !== 'witch') throw new Error('Choisissez une cible autorisée.')
   if (targetId && !targets.some((target) => target.id === targetId)) throw new Error('Cette cible n’est pas autorisée.')
   if (targetIds.some((id) => !targets.some((target) => target.id === id))) throw new Error('Une des cibles n’est pas autorisée.')
-  if (!payload.skip) applyNightAction(game, actor, step, { ...payload, targetId, targetIds })
+  if (!payload.skip && step.action === 'charm' && targetIds.length !== Math.min(2, targets.length)) throw new Error('Le Joueur de Flûte doit choisir deux nouvelles personnes.')
+  if (!payload.skip && step.action === 'actor' && !['inspect-role', 'protect', 'raven'].includes(payload.choice)) throw new Error('Choisissez le pouvoir du Comédien.')
+  if (!payload.skip && step.action === 'spiritism' && !/^spirit-[1-5]$/.test(String(payload.choice || ''))) throw new Error('Choisissez une question de Spiritisme.')
+  const outcome = !payload.skip ? applyNightAction(game, actor, step, { ...payload, targetId, targetIds }) : null
+  if (outcome?.repeat) game.nightQueue.splice(game.nightCursor + 1, 0, stepFor(actor, getRole(actor.roleId)))
   game.history.push(history('night-action', `${getRole(step.roleId).name} a validé son étape.`, { actorId: actor.id, action: step.action, skipped: Boolean(payload.skip) }, 'secret'))
   game.nightCursor += 1
   if (!currentNightStep(game)) prepareDawn(game)
@@ -495,7 +537,7 @@ export function prepareDawn(game) {
   const bear = game.players.find((player) => player.alive && player.roleId === 'montreur-ours')
   if (bear) {
     bear.statuses = bear.statuses.filter((status) => status !== 'bear-growl')
-    if (bear.statuses.includes('infected') || seatNeighbors(game, bear).some((player) => player.camp === 'wolves')) {
+    if (bear.statuses.includes('infected') || seatNeighbors(game, bear).some(isWolfPackMember)) {
       bear.statuses.push('bear-growl')
       pushDawnAnnouncement(game, 'L’ours grogne : il sent un Loup-Garou près du Montreur d’Ours.')
     }
@@ -541,7 +583,8 @@ export function resolveDeathTrigger(game, targetId) {
     touch(game)
     return
   }
-  if (trigger.kind === 'colossus' && target.camp !== 'wolves') throw new Error('Le Colosse doit emporter un Loup-Garou.')
+  if (trigger.kind === 'scapegoat') throw new Error('Choisissez puis validez tous les votants autorisés.')
+  if (trigger.kind === 'colossus' && !isWolfPackMember(target)) throw new Error('Le Colosse doit emporter un Loup-Garou.')
   queueDeath(game, target.id, trigger.kind)
   game.deathTriggers.shift()
   resolveDeaths(game)
@@ -550,9 +593,25 @@ export function resolveDeathTrigger(game, targetId) {
   touch(game)
 }
 
+export function resolveScapegoatVoters(game, targetIds = []) {
+  const trigger = game.deathTriggers[0]
+  if (!trigger || trigger.kind !== 'scapegoat') throw new Error('Le choix du Bouc Émissaire n’est pas attendu.')
+  const voters = [...new Set(Array.isArray(targetIds) ? targetIds.map(String) : [])]
+  if (!voters.length) throw new Error('Le Bouc Émissaire doit autoriser au moins une personne à voter.')
+  if (voters.some((id) => !requirePlayer(game, id).alive)) throw new Error('Tous les votants choisis doivent être vivants.')
+  game.restrictedVoterIds = voters
+  game.restrictedVoteDay = game.day + 1
+  game.deathTriggers.shift()
+  game.phase = game.deathTriggers.length ? 'death-trigger' : 'verdict'
+  game.history.push(history('scapegoat', 'Le Bouc Émissaire a choisi les votants autorisés pour le prochain jour.', { voterIds: voters }, 'secret'))
+  touch(game)
+}
+
 export function skipDeathTrigger(game) {
-  const trigger = game.deathTriggers.shift()
+  const trigger = game.deathTriggers[0]
   if (!trigger) return
+  if (trigger.kind === 'scapegoat') throw new Error('Le Bouc Émissaire doit choisir au moins un votant pour le lendemain.')
+  game.deathTriggers.shift()
   if (trigger.kind === 'servant') {
     queueDeath(game, trigger.victimId, 'vote')
     resolveDeaths(game)
@@ -590,10 +649,21 @@ export function beginVote(game) {
   touch(game)
 }
 
+export function beginSecondVote(game) {
+  ensurePlayable(game)
+  if (game.phase !== 'verdict' || !game.flags.secondVoteAvailable) throw new Error('Le second vote du Juge Bègue n’est pas disponible.')
+  game.flags.secondVoteAvailable = false
+  game.phase = 'vote'
+  game.votes = {}
+  game.history.push(history('phase', 'Le Juge Bègue déclenche immédiatement un second vote sans débat.', { day: game.day }))
+  touch(game)
+}
+
 export function submitVote(game, voterId, targetId) {
   if (game.phase !== 'vote') throw new Error('Le vote n’est pas ouvert.')
   const voter = requirePlayer(game, voterId)
   if (!voter.alive || voter.statuses.includes('no-vote')) throw new Error('Ce joueur ne peut pas voter.')
+  if (game.restrictedVoteDay === game.day && Array.isArray(game.restrictedVoterIds) && !game.restrictedVoterIds.includes(voter.id)) throw new Error('Le Bouc Émissaire n’a pas autorisé ce joueur à voter aujourd’hui.')
   if (targetId) {
     const target = requirePlayer(game, targetId)
     if (!target.alive || game.lovers.includes(voterId) && game.lovers.includes(targetId)) throw new Error('Ce vote est interdit.')
@@ -614,8 +684,15 @@ export function resolveVote(game) {
   let tied = Object.keys(totals).filter((id) => totals[id] === high)
   let condemnedId = tied.length === 1 ? tied[0] : null
   if (tied.length > 1 && game.captainId && tied.includes(game.votes[game.captainId])) condemnedId = game.votes[game.captainId]
-  if (!condemnedId && tied.length > 1) condemnedId = game.players.find((player) => player.alive && player.roleId === 'bouc-emissaire')?.id || null
+  if (!condemnedId && tied.length > 1) {
+    condemnedId = game.players.find((player) => player.alive && player.roleId === 'bouc-emissaire')?.id || null
+    game.flags.scapegoatTie = Boolean(condemnedId)
+  }
   if (condemnedId) eliminateByVote(game, condemnedId)
+  if (game.restrictedVoteDay === game.day) {
+    game.restrictedVoteDay = null
+    game.restrictedVoterIds = []
+  }
   game.phase = game.deathTriggers.length ? 'death-trigger' : 'verdict'
   game.history.push(history('vote', condemnedId ? `${requirePlayer(game, condemnedId).name} est désigné par le vote.` : 'Le vote ne désigne personne.', { totals, tied, condemnedId }))
   checkVictory(game)
@@ -629,6 +706,7 @@ export function finishVerdict(game) {
     const angel = game.players.find((player) => player.alive && player.roleId === 'ange')
     if (angel) { angel.roleId = 'simple-villageois'; angel.camp = 'village'; addPrivate(game, angel.id, 'Votre chance est passée : vous devenez Simple Villageois.') }
   }
+  game.flags.secondVoteAvailable = false
   game.phase = 'night-intro'
   touch(game)
 }
@@ -661,7 +739,7 @@ export function guideForStep(game, step = currentNightStep(game)) {
     actor: ['Le Comédien se réveille et choisit le pouvoir qu’il incarnera cette nuit.', 'Choisir un pouvoir disponible.'],
     lovers: ['Cupidon se réveille et désigne deux Amoureux.', 'Sélectionner exactement deux joueurs.'],
     'inspect-role': ['La Voyante se réveille et désigne une personne.', 'Montrer secrètement le personnage de la cible.'],
-    fox: ['Le Renard se réveille et désigne trois voisins vivants.', 'Indiquer seulement si un Loup-Garou est présent.'],
+    fox: ['Le Renard se réveille et désigne le centre d’un groupe de trois voisins vivants.', 'Indiquer seulement si un Loup-Garou est présent dans ce trio.'],
     recognize: [`Les ${selected.name} se réveillent et se reconnaissent.`, 'Confirmer quand ils se sont rendormis.'],
     'choose-model': ['L’Enfant Sauvage se réveille et choisit son modèle.', 'Sélectionner un joueur vivant.'],
     'choose-camp': ['Le Chien-Loup choisit secrètement sa nature.', 'Choisir Villageois ou Loup-Garou.'],
@@ -678,7 +756,7 @@ export function guideForStep(game, step = currentNightStep(game)) {
     witch: ['La Sorcière découvre la victime de la meute.', 'Utiliser aucune, une ou les deux potions.'],
     spiritism: ['La Gitane prépare une question de Spiritisme.', 'Choisir la question du lendemain.'],
     monkey: ['Le Singe Savant peut commencer son inspection.', 'Inspecter ou passer.'],
-    charm: ['Le Joueur de Flûte charme deux nouvelles personnes.', 'Sélectionner jusqu’à deux cibles.'],
+    charm: ['Le Joueur de Flûte charme deux nouvelles personnes.', 'Sélectionner exactement deux cibles quand elles sont disponibles.'],
   }[step.action] || ['Le personnage se réveille.', 'Valider son action.']
   return { ...step, title: selected.name, phrase: guide[0], expected: guide[1], targets: availableTargets(game, step).map((player) => ({ id: player.id, name: player.name, seat: player.seat })), privateAlert: privateAlert(game, step), canSkip: !['wolf-vote', 'lovers', 'choose-model', 'choose-camp'].includes(step.action) }
 }
@@ -711,7 +789,7 @@ export function checkVictory(game) {
   const lovers = alive.filter((player) => game.lovers.includes(player.id))
   if (lovers.length === 2 && alive.length === 2 && lovers[0].camp !== lovers[1].camp) return finishGame(game, 'Les Amoureux de camps opposés gagnent ensemble.', lovers.map((player) => player.id))
   const wolves = alive.filter((player) => player.camp === 'wolves')
-  if (!wolves.length && alive.length) return finishGame(game, 'Le Village remporte la partie.', alive.filter((player) => player.camp === 'village').map((player) => player.id))
+  if (!alive.some(isWolfPackMember) && alive.length) return finishGame(game, 'Le Village remporte la partie.', alive.filter((player) => player.camp === 'village').map((player) => player.id))
   if (wolves.length && wolves.length >= alive.length - wolves.length) return finishGame(game, 'Les Loups-Garous prennent le contrôle du village.', wolves.map((player) => player.id))
   return ''
 }
@@ -721,11 +799,20 @@ export function hydrateGame(serialized) {
   const game = typeof serialized === 'string' ? JSON.parse(serialized) : structuredClone(serialized)
   if (game?.schemaVersion !== THIERCELIEUX_SCHEMA_VERSION) throw new Error('Sauvegarde incompatible.')
   game.config = normalizeConfig(game.config)
+  game.flags ||= {}
+  game.flags.secondVoteAvailable = game.flags.secondVoteAvailable === true
   game.dawnAnnouncements ||= []
   game.eventDeck ||= EVENTS.map((entry) => entry.id)
   game.eventCursor = Math.max(0, Number(game.eventCursor) || 0)
   game.currentEvent ||= null
   game.eventHistory ||= []
+  game.delayedAttacks ||= []
+  game.restrictedVoterIds ||= []
+  game.restrictedVoteDay ||= null
+  for (const player of game.players || []) {
+    player.usedActorPowers ||= []
+    player.monkeyInspectedIds ||= []
+  }
   return game
 }
 
@@ -735,7 +822,8 @@ export function exportGameSummary(game) {
 
 function createPlayer(source, roleId, index, config) {
   const selected = getRole(roleId)
-  return { id: String(source.id || createId('player')), userId: source.userId || '', name: String(source.name || `Joueur ${index + 1}`).slice(0, 50), avatarUrl: String(source.avatarUrl || ''), seat: Number(source.seat || index + 1), connected: source.connected !== false, initialRoleId: selected.id, roleId: selected.id, camp: selected.camp, alive: true, roleConfirmed: false, cardRevealed: false, rolePublic: selected.id === 'villageois-villageois', powerEnabled: true, statuses: [], buildingId: '', modelId: null, previousTargetId: null, charges: selected.id === 'sorciere' ? { heal: true, poison: true } : { main: ['once', 'limited'].includes(selected.frequency) ? 1 : null }, rulesMode: config.rulesMode }
+  const mainCharges = selected.id === 'comedien' ? 3 : ['once', 'limited'].includes(selected.frequency) ? 1 : null
+  return { id: String(source.id || createId('player')), userId: source.userId || '', name: String(source.name || `Joueur ${index + 1}`).slice(0, 50), avatarUrl: String(source.avatarUrl || ''), seat: Number(source.seat || index + 1), connected: source.connected !== false, initialRoleId: selected.id, roleId: selected.id, camp: selected.camp, alive: true, roleConfirmed: false, cardRevealed: false, rolePublic: selected.id === 'villageois-villageois', powerEnabled: true, statuses: [], buildingId: '', modelId: null, previousTargetId: null, usedActorPowers: [], monkeyInspectedIds: [], charges: selected.id === 'sorciere' ? { heal: true, poison: true } : { main: mainCharges }, rulesMode: config.rulesMode }
 }
 
 function applyNightAction(game, actor, step, payload) {
@@ -768,6 +856,19 @@ function applyNightAction(game, actor, step, payload) {
   }
   if (step.action === 'choose-model' && target) { actor.modelId = target.id; actor.charges.main = 0 }
   if (step.action === 'choose-camp') { actor.camp = payload.choice === 'wolves' ? 'wolves' : 'village'; actor.charges.main = 0; addPrivate(game, actor.id, `Vous choisissez le camp ${CAMPS[actor.camp].name}.`) }
+  if (step.action === 'judge-sign') {
+    game.flags.secondVoteAvailable = true
+    actor.charges.main = 0
+  }
+  if (step.action === 'actor' && target) {
+    actor.usedActorPowers ||= []
+    if (actor.usedActorPowers.includes(payload.choice)) throw new Error('Ce pouvoir du Comédien a déjà été utilisé.')
+    actor.usedActorPowers.push(payload.choice)
+    actor.charges.main = Math.max(0, Number(actor.charges.main || 0) - 1)
+    if (payload.choice === 'inspect-role') addPrivate(game, actor.id, `${target.name} est ${getRole(target.roleId).name}.`)
+    if (payload.choice === 'protect') game.protectedId = target.id
+    if (payload.choice === 'raven') game.ravenTargetId = target.id
+  }
   if (step.action === 'lovers') {
     if (payload.targetIds.length !== 2) throw new Error('Cupidon doit choisir exactement deux Amoureux.')
     game.lovers = payload.targetIds
@@ -778,7 +879,7 @@ function applyNightAction(game, actor, step, payload) {
   if (step.action === 'bear') actor.statuses = actor.statuses.filter((status) => status !== 'bear-growl')
   if (step.action === 'fox') {
     const selectedIds = payload.targetIds.length ? payload.targetIds : target ? seatTriplet(game, target).map((player) => player.id) : []
-    const hasWolf = selectedIds.some((id) => requirePlayer(game, id).camp === 'wolves')
+    const hasWolf = selectedIds.some((id) => isWolfPackMember(requirePlayer(game, id)))
     addPrivate(game, actor.id, hasWolf ? 'Au moins un Loup-Garou se trouve dans ce groupe.' : 'Aucun Loup-Garou dans ce groupe : votre pouvoir est perdu.')
     if (!hasWolf) actor.powerEnabled = false
   }
@@ -792,17 +893,25 @@ function applyNightAction(game, actor, step, payload) {
     if (payload.poisonTargetId && actor.charges.poison) { const poisoned = requirePlayer(game, payload.poisonTargetId); if (!poisoned.alive) throw new Error('La potion vise un joueur vivant.'); game.pendingAttacks.push({ targetId: poisoned.id, cause: 'witch' }); actor.charges.poison = false }
   }
   if (step.action === 'monkey' && target) {
+    actor.monkeyInspectedIds ||= []
+    actor.monkeyInspectedIds.push(target.id)
     addPrivate(game, actor.id, `${target.name} est ${getRole(target.roleId).name}.`)
-    if (target.camp === 'wolves') game.pendingAttacks.push({ targetId: actor.id, cause: 'monkey' })
-    actor.charges.main = 0
+    if (target.camp === 'wolves') {
+      game.pendingAttacks.push({ targetId: actor.id, cause: 'monkey' })
+      actor.charges.main = 0
+    } else if (availableTargets(game, step).length) return { repeat: true }
+    else actor.charges.main = 0
   }
+  if (step.action === 'spiritism') pushDawnAnnouncement(game, `Spiritisme : la question ${String(payload.choice || '').replace('spirit-', 'n°')} a été choisie pour ce jour.`)
   if (step.action === 'steal' && payload.choice && game.centerRoles.includes(payload.choice)) { actor.roleId = payload.choice; actor.camp = getRole(payload.choice).camp; actor.charges.main = 0 }
+  return null
 }
 
 function isNightRoleActive(game, player, selected) {
   if (['none', 'death-shot', 'tie-sacrifice', 'inherit', 'colossus'].includes(selected.action)) return false
   if (selected.frequency === 'firstNight' && game.night !== 1) return false
   if (selected.frequency === 'once' && Number(player.charges.main || 0) <= 0) return false
+  if (selected.id === 'comedien' && Number(player.charges.main || 0) <= 0) return false
   if (selected.frequency === 'alternateNights' && game.night % 2 !== 0) return false
   if (selected.frequency === 'firstTwoNights' && game.night > 2) return false
   if (selected.action === 'big-wolf' && game.flags.wolfHasDied) return false
@@ -849,6 +958,18 @@ function resolveDeaths(game) {
     }
     if (player.roleId === 'chasseur') game.deathTriggers.push({ actorId: player.id, kind: 'hunter' })
     if (player.roleId === 'colosse' && ['wolves', 'big-wolf'].includes(death.cause)) game.deathTriggers.push({ actorId: player.id, kind: 'colossus' })
+    if (player.roleId === 'bouc-emissaire' && death.cause === 'vote' && game.flags.scapegoatTie) {
+      game.deathTriggers.push({ actorId: player.id, kind: 'scapegoat' })
+      game.flags.scapegoatTie = false
+    }
+    if (player.roleId === 'chevalier-epee-rouillee' && death.cause === 'wolves') {
+      const doomedWolf = firstWolfOnLeft(game, player)
+      if (doomedWolf) {
+        game.delayedAttacks ||= []
+        game.delayedAttacks.push({ targetId: doomedWolf.id, cause: 'rusty-sword', dueNight: game.night + 1 })
+        addPrivate(game, doomedWolf.id, 'La blessure du Chevalier à l’Épée Rouillée vous condamne à la fin de la prochaine nuit.')
+      }
+    }
     if (game.captainId === player.id) game.deathTriggers.push({ actorId: player.id, kind: 'captain-successor' })
     const loverId = game.lovers.find((id) => id !== player.id && requirePlayer(game, id).alive)
     if (game.lovers.includes(player.id) && loverId) queueDeath(game, loverId, 'lover-grief')
@@ -896,14 +1017,14 @@ function scorePredictions(game) {
 }
 
 function seedPrivateKnowledge(game) {
-  const wolves = game.players.filter((player) => player.camp === 'wolves')
+  const wolves = game.players.filter(isWolfPackMember)
   for (const wolf of wolves) addPrivate(game, wolf.id, `Meute connue : ${wolves.filter((player) => player.id !== wolf.id).map((player) => player.name).join(', ') || 'aucun allié'}.`)
   for (const player of game.players.filter((candidate) => ['deux-soeurs', 'trois-freres'].includes(candidate.roleId))) addPrivate(game, player.id, `Votre groupe : ${game.players.filter((candidate) => candidate.roleId === player.roleId && candidate.id !== player.id).map((candidate) => candidate.name).join(', ')}.`)
 }
 
 function knownPlayers(game, player) {
   const known = new Set()
-  if (player.camp === 'wolves') game.players.filter((candidate) => candidate.camp === 'wolves' && candidate.id !== player.id).forEach((candidate) => known.add(candidate.id))
+  if (isWolfPackMember(player)) game.players.filter((candidate) => isWolfPackMember(candidate) && candidate.id !== player.id).forEach((candidate) => known.add(candidate.id))
   if (['deux-soeurs', 'trois-freres'].includes(player.roleId)) game.players.filter((candidate) => candidate.roleId === player.roleId && candidate.id !== player.id).forEach((candidate) => known.add(candidate.id))
   if (game.lovers.includes(player.id)) game.lovers.filter((id) => id !== player.id).forEach((id) => known.add(id))
   return [...known].map((id) => ({ id, name: requirePlayer(game, id).name }))
@@ -924,6 +1045,18 @@ function seatNeighbors(game, player) {
 }
 
 function seatTriplet(game, center) { return [seatNeighbors(game, center)[0], center, seatNeighbors(game, center)[1]].filter(Boolean) }
+function firstWolfOnLeft(game, player) {
+  const ordered = [...game.players].sort((a, b) => a.seat - b.seat)
+  const index = ordered.findIndex((candidate) => candidate.id === player.id)
+  if (index < 0) return null
+  for (let offset = 1; offset < ordered.length; offset += 1) {
+    const candidate = ordered[(index - offset + ordered.length) % ordered.length]
+    if (candidate.alive && isWolfPackMember(candidate)) return candidate
+  }
+  return null
+}
+function rolePackIds(selected) { return ROLE_PACK_ACCESS[selected.id] || [selected.pack] }
+function isWolfPackMember(player) { return Boolean(player) && (player.camp === 'wolves' || player.roleId === 'loup-garou-blanc') }
 function getRole(roleId) { return ROLE_BY_ID[roleId] || ROLE_BY_ID['simple-villageois'] }
 function firstFreeSeat(players) { for (let seat = 1; seat <= MAX_ACTIVE_PLAYERS; seat += 1) if (!players.some((player) => player.seat === seat)) return seat; return MAX_ACTIVE_PLAYERS }
 function requireEntry(lobby, id) { const entry = lobby.queue.find((candidate) => candidate.id === id); if (!entry) throw new Error('Inscription introuvable.'); return entry }

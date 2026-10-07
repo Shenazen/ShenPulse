@@ -1238,14 +1238,17 @@ const THIERCELIEUX_COMMAND_TYPES = new Set([
   "toggle-pause",
   "open-discussion",
   "open-vote",
+  "second-vote",
   "confirm-vote",
   "abstain-vote",
   "death-target",
+  "validate-death",
   "skip-death",
   "elect-captain",
   "continue-verdict",
   "new-round",
-  "toggle-music"
+  "toggle-music",
+  "set-volume"
 ]);
 
 function sanitizeThiercelieuxCommand(value) {
@@ -1261,7 +1264,8 @@ function sanitizeThiercelieuxCommand(value) {
     type,
     playerId: safeString(payload.playerId, 160),
     choice: safeString(payload.choice, 80),
-    multiple: payload.multiple === true
+    multiple: payload.multiple === true,
+    value: Math.max(0, Math.min(100, Math.round(Number(payload.value) || 0)))
   };
 }
 
@@ -1313,6 +1317,9 @@ function sanitizeThiercelieuxHostState(value) {
     hasSavedGame: payload.hasSavedGame === true,
     paused: payload.paused === true,
     audioEnabled: payload.audioEnabled !== false,
+    ambienceVolume: Number.isFinite(Number(payload.ambienceVolume))
+      ? Math.max(0, Math.min(100, Math.round(Number(payload.ambienceVolume))))
+      : 70,
     remainingSeconds: Math.max(0, Math.min(3600, Math.round(Number(payload.remainingSeconds) || 0))),
     currentVoterId: safeString(payload.currentVoterId, 160),
     action: safeString(payload.action, 80),
@@ -1321,6 +1328,7 @@ function sanitizeThiercelieuxHostState(value) {
     choice: safeString(payload.choice, 80),
     healSelected: payload.healSelected === true,
     canSkip: payload.canSkip !== false,
+    secondVoteAvailable: payload.secondVoteAvailable === true,
     players,
     availableTargets,
     winnerLabel: safeString(payload.winnerLabel, 200),

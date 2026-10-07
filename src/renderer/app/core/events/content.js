@@ -46,6 +46,23 @@ async function toggleSession() {
 }
 
 content.addEventListener("input", (event) => {
+  const liveVolume = event.target.closest("[data-thiercelieux-live-volume]");
+  if (liveVolume) {
+    const value = Math.max(0, Math.min(100, Math.round(Number(liveVolume.value) || 0)));
+    const output = liveVolume.closest(".thiercelieux-live-volume")
+      ?.querySelector("[data-thiercelieux-live-volume-output]");
+    if (output) output.textContent = `${value} %`;
+    void api.sendThiercelieuxCommand({ type: "set-volume", value }).catch(() => {});
+    return;
+  }
+  const settingsVolume = event.target.closest("[data-thiercelieux-settings-volume]");
+  if (settingsVolume) {
+    const value = Math.max(0, Math.min(100, Math.round(Number(settingsVolume.value) || 0)));
+    const output = settingsVolume.closest(".thiercelieux-volume-setting")
+      ?.querySelector("[data-thiercelieux-settings-volume-output]");
+    if (output) output.textContent = `${value} %`;
+    return;
+  }
   const artworkUrlInput = event.target.closest(
     "[data-coin-pusher-artwork-url]"
   );
@@ -86,6 +103,10 @@ content.addEventListener("change", (event) => {
     );
     const pack = snapshot.packs.find((item) => item.id === "thiercelieux");
     if (!form || !pack || !requireGameAccess(pack)) return;
+    if (event.target.checked) {
+      const extensionsMode = form.querySelector('[name="thiercelieuxContentMode"][value="extensions"]');
+      if (extensionsMode) extensionsMode.checked = true;
+    }
     integratedSettingsPanels.set("thiercelieux", "extensions");
     perform(async () => {
       const config = integratedSettingsFromForm(
@@ -98,8 +119,25 @@ content.addEventListener("change", (event) => {
       .catch(() => {});
     return;
   }
+  if (event.target.matches('[name="thiercelieuxContentMode"], [name="thiercelieuxIncludeBaseRoles"]')) {
+    const form = event.target.closest('[data-integrated-game-settings="thiercelieux"]');
+    const pack = snapshot.packs.find((item) => item.id === "thiercelieux");
+    if (!form || !pack || !requireGameAccess(pack)) return;
+    integratedSettingsPanels.set("thiercelieux", "roles");
+    perform(async () => {
+      const config = integratedSettingsFromForm("thiercelieux", new FormData(form));
+      snapshot = await api.configureGame("thiercelieux", config);
+      render();
+    }, "Pool de personnages mis à jour").catch(() => {});
+    return;
+  }
   if (event.target.matches("[data-thiercelieux-role-select]")) {
     syncThiercelieuxRolePreview(event.target);
+    return;
+  }
+  if (event.target.matches('[name="thiercelieuxAssignmentMode"]')) {
+    const panel = event.target.closest("[data-thiercelieux-roles-panel]");
+    if (panel) panel.dataset.assignmentMode = event.target.value;
     return;
   }
   if (event.target.matches('[name="thiercelieuxGiftQuantity"]')) {

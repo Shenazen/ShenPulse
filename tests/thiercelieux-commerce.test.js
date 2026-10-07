@@ -17,7 +17,7 @@ function state(gameEntitlements = []) {
   return { commerce: { gameEntitlements } };
 }
 
-test("les quatre extensions Thiercelieux coûtent exactement 3,99 €", () => {
+test("les trois extensions et le pack anniversaire coûtent exactement 3,99 €", () => {
   assert.equal(THIERCELIEUX_EXTENSION_PRODUCTS.length, 4);
   assert.deepEqual(
     THIERCELIEUX_EXTENSION_PRODUCTS.map((product) => product.price),
@@ -95,6 +95,24 @@ test("chaque achat débloque uniquement le contenu de son extension", () => {
   assert.deepEqual(sanitized.selectedVariantIds, ["clair-de-lune"]);
   assert.equal(sanitized.buildingsEnabled, true);
   assert.equal(sanitized.eventsEnabled, true);
+});
+
+test("les rééditions sont débloquées par chacune des boîtes qui les contient", () => {
+  const personnages = sanitizeThiercelieuxEntitlements({
+    contentMode: "extensions",
+    includeBaseRoles: false,
+    packs: ["personnages"],
+    roleIds: ["loup-garou-blanc", "renard"]
+  }, state([{ productId: "thiercelieux-extension-personnages", status: "paid" }]));
+  assert.deepEqual(personnages.roleIds, ["loup-garou-blanc", "renard"]);
+
+  const anniversaire = sanitizeThiercelieuxEntitlements({
+    contentMode: "extensions",
+    includeBaseRoles: false,
+    packs: ["25-ans"],
+    roleIds: ["idiot-du-village", "bouc-emissaire", "montreur-ours", "juge-begue", "comedien", "servante-devouee", "colosse"]
+  }, state([{ productId: "thiercelieux-extension-25-ans", status: "active" }]));
+  assert.deepEqual(anniversaire.roleIds, ["idiot-du-village", "bouc-emissaire", "montreur-ours", "juge-begue", "comedien", "servante-devouee", "colosse"]);
 });
 
 test("le catalogue commercial publie les extensions comme achats non essayables", () => {

@@ -684,10 +684,21 @@ test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () =
   assert.match(thiercelieux, /class="board-card"/);
   assert.match(thiercelieux, /publishThiercelieuxHostState/);
   assert.match(thiercelieux, /startAmbience/);
+  assert.match(thiercelieux, /setAmbienceVolume/);
+  assert.match(thiercelieux, /aria-label="Volume de l’ambiance"/);
   assert.match(thiercelieux, /handleBoardCard/);
   assert.match(thiercelieux, /queueNightResults/);
   assert.match(thiercelieux, /currentPrivateResult/);
   assert.match(thiercelieux, /ACTION_REVEAL_POLICY/);
+  assert.match(thiercelieux, /showPlayerAvatarOnCardBack/);
+  assert.match(thiercelieux, /isEliminatedRoleVisible/);
+  assert.match(thiercelieux, /roleReveals/);
+  assert.match(thiercelieux, /MULTIPLE_TARGET_LIMITS[\s\S]*lovers:\s*2/);
+  assert.doesNotMatch(thiercelieux, /fox:\s*3/);
+  assert.match(thiercelieux, /beginSecondVote/);
+  assert.match(thiercelieux, /resolveScapegoatVoters/);
+  assert.match(thiercelieux, /selectedTargetIds\.value\.length >= limit/);
+  assert.match(thiercelieux, /disabled:\s*!selectableIds\.value\.has\(player\.id\)/);
   assert.match(thiercelieux, /INFORMATION IMMÉDIATE/);
   assert.doesNotMatch(thiercelieux, /class="guide-panel"|class="runtime-tabs"|class="guide-controls"/);
   assert.doesNotMatch(thiercelieux, /lobbyTab|simulateGift|v-model="config\.giftName"/);
@@ -705,17 +716,44 @@ test("les jeux maison se lancent dans une fenêtre ShenPulse configurable", () =
   );
   assert.match(thiercelieuxSettings, /giftPickerField\("thiercelieuxGiftName"/);
   assert.match(thiercelieuxSettings, /data-thiercelieux-manual-name/);
+  assert.match(thiercelieuxSettings, /data-action="thiercelieux-clear-queue"/);
+  assert.match(thiercelieuxSettings, /data-action="thiercelieux-requeue-player"/);
+  assert.match(thiercelieuxSettings, /data-action="thiercelieux-delete-player"/);
+  assert.doesNotMatch(thiercelieuxSettings, /data-action="thiercelieux-remove-player"/);
+  assert.match(thiercelieuxSettings, /name="thiercelieuxAssignmentMode" value="random"/);
+  assert.match(thiercelieuxSettings, /name="thiercelieuxAssignmentMode" value="manual"/);
+  assert.match(thiercelieuxSettings, /data-action="thiercelieux-randomize-roles"/);
+  assert.match(thiercelieuxSettings, /Seuls les personnages affichés ici participeront à la partie/);
   assert.match(thiercelieuxSettings, /data-thiercelieux-role-select/);
   assert.match(thiercelieuxSettings, /handleThiercelieuxRegistrationEvent/);
   assert.match(thiercelieuxSettings, /thiercelieux-buy-extension/);
   assert.match(thiercelieuxSettings, /thiercelieux-settings-extensions/);
+  assert.match(thiercelieuxSettings, /thiercelieuxCardBackAvatars/);
+  assert.match(thiercelieuxSettings, /thiercelieuxAmbienceVolume/);
+  assert.match(thiercelieuxSettings, /data-thiercelieux-live-volume/);
   assert.match(thiercelieuxSettings, /THIERCELIEUX_EXTENSION_ARTWORK/);
   assert.match(thiercelieuxSettings, /renderThiercelieuxLivePanel/);
-  assert.match(thiercelieuxSettings, /THIERCELIEUX_PACKS\.filter\(\(\[packId\]\) => ownedPacks\.has\(packId\)\)/);
+  assert.match(thiercelieuxSettings, /player\.disabled \? "disabled"/);
+  assert.match(thiercelieuxSettings, /thiercelieuxRolePoolIds/);
+  assert.match(thiercelieuxSettings, /name="thiercelieuxContentMode" value="classic"/);
+  assert.match(thiercelieuxSettings, /name="thiercelieuxContentMode" value="extensions"/);
+  assert.match(thiercelieuxSettings, /thiercelieuxIncludeBaseRoles/);
+  assert.match(thiercelieuxSettings, /3 extensions et le pack Anniversaire/);
   assert.match(thiercelieuxSettings, /hasProductEntitlement/);
   assert.match(thiercelieuxSettings, /THIERCELIEUX_MIN_PLAYERS = 3/);
   assert.match(thiercelieuxSettings, /thiercelieuxRecommendedRoles\(players\.length/);
   assert.doesNotMatch(thiercelieuxSettings, /impose huit joueurs/);
+  const navigationGameActions = fs.readFileSync(
+    path.join(root, "src", "renderer", "app", "actions", "handlers", "navigation-games.js"),
+    "utf8"
+  );
+  assert.match(navigationGameActions, /"thiercelieux-clear-queue"/);
+  assert.match(navigationGameActions, /"thiercelieux-requeue-player"/);
+  assert.match(navigationGameActions, /"thiercelieux-delete-player"/);
+  assert.match(navigationGameActions, /"thiercelieux-randomize-roles"/);
+  assert.match(navigationGameActions, /activeQueueEntryIds/);
+  assert.match(navigationGameActions, /Vider la file d’attente/);
+  assert.match(navigationGameActions, /Retirer définitivement/);
   assert.match(
     fs.readFileSync(
       path.join(root, "src", "main", "game-runtime.js"),
@@ -845,6 +883,7 @@ test("la régie Thiercelieux filtre son état privé et ses commandes", () => {
     resultPlayerId: "p1",
     resultPlayerName: "Alice",
     resultSeat: 1,
+    ambienceVolume: 250,
     remainingSeconds: 99999
   });
   assert.equal(state.phase, "night");
@@ -856,6 +895,7 @@ test("la régie Thiercelieux filtre son état privé et ses commandes", () => {
   assert.equal(state.resultPending, true);
   assert.equal(state.resultUnlocked, true);
   assert.equal(state.resultPlayerName, "Alice");
+  assert.equal(state.ambienceVolume, 100);
   assert.equal(state.remainingSeconds, 3600);
   assert.deepEqual(sanitizeThiercelieuxCommand({
     type: "select-target",
@@ -866,8 +906,10 @@ test("la régie Thiercelieux filtre son état privé et ses commandes", () => {
     type: "select-target",
     playerId: "p2",
     choice: "",
-    multiple: true
+    multiple: true,
+    value: 0
   });
+  assert.equal(sanitizeThiercelieuxCommand({ type: "set-volume", value: 82.7 }).value, 83);
   assert.equal(sanitizeThiercelieuxCommand({ type: "reveal-result" }).type, "reveal-result");
   assert.equal(sanitizeThiercelieuxCommand({ type: "confirm-result" }).type, "confirm-result");
   assert.throws(

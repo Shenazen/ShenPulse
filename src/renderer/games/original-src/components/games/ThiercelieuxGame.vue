@@ -10,6 +10,7 @@ import {
   appointCaptain,
   availableTargets,
   beginDiscussion,
+  beginSecondVote,
   beginVote,
   checkVictory,
   createGame,
@@ -22,6 +23,7 @@ import {
   publicGameView,
   recommendedRoleIds,
   resolveDeathTrigger,
+  resolveScapegoatVoters,
   resolveVote,
   revealRole,
   serializeGame,
@@ -33,6 +35,11 @@ import {
 } from '../../domain/thiercelieuxEngine.mjs'
 
 type Screen = 'ready' | 'reveal' | 'game' | 'ended'
+
+const MULTIPLE_TARGET_LIMITS: Record<string, number> = {
+  lovers: 2,
+  charm: 2,
+}
 
 const props = defineProps<{ initialSettings?: Record<string, any> }>()
 const GAME_KEY = 'shenpulse.thiercelieux.game.v1'
@@ -76,14 +83,17 @@ const currentPrivateResult = computed(() => privateResults.value[0] || null)
 const publicView = computed(() => game.value ? publicGameView(game.value) : null)
 const guide = computed(() => game.value ? guideForStep(game.value) : null)
 const guideTargets = computed(() => game.value ? availableTargets(game.value) : [])
+const multipleTargetLimit = computed(() => MULTIPLE_TARGET_LIMITS[guide.value?.action || ''] || 0)
 const deathTrigger = computed(() => game.value?.deathTriggers?.[0] || null)
 const deathTargets = computed(() => game.value?.players?.filter((player: any) => {
   if (!player.alive || player.id === deathTrigger.value?.actorId) return false
-  if (deathTrigger.value?.kind === 'colossus') return player.camp === 'wolves'
+  if (deathTrigger.value?.kind === 'colossus') return player.camp === 'wolves' || player.roleId === 'loup-garou-blanc'
   if (deathTrigger.value?.kind === 'servant') return player.id === deathTrigger.value.victimId
   return true
 }) || [])
-const aliveVoters = computed(() => game.value?.players?.filter((player: any) => player.alive && !player.statuses.includes('no-vote')) || [])
+const aliveVoters = computed(() => game.value?.players?.filter((player: any) => player.alive
+  && !player.statuses.includes('no-vote')
+  && (game.value?.restrictedVoteDay !== game.value?.day || game.value?.restrictedVoterIds?.includes(player.id))) || [])
 const currentVoter = computed(() => aliveVoters.value.find((player: any) => !(player.id in (game.value?.votes || {}))) || null)
 const currentNightActor = computed(() => guide.value ? game.value?.players?.find((player: any) => player.id === guide.value.actorId) || null : null)
 const activeBackdrop = computed(() => config.value.orientation === 'portrait' ? portraitUrl : landscapeUrl)
@@ -111,7 +121,15 @@ const boardHint = computed(() => {
 const selectableIds = computed(() => {
   if (currentPrivateResult.value) return new Set<string>([currentPrivateResult.value.displayPlayerId])
   if (screen.value !== 'game' || !game.value) return new Set<string>()
-  if (game.value.phase === 'night') return new Set(guideTargets.value.map((player: any) => player.id))
+  if (game.value.phase === 'night') {
+    const targetIds = guideTargets.value.map((player: any) => player.id)
+    const limit = multipleTargetLimit.value
+    if (limit && selectedTargetIds.value.length >= limit) {
+      const selected = new Set(selectedTargetIds.value)
+      return new Set(targetIds.filter((id: string) => selected.has(id)))
+    }
+    return new Set(targetIds)
+  }
   if (game.value.phase === 'vote') return new Set(game.value.players.filter((player: any) => player.alive).map((player: any) => player.id))
   if (game.value.phase === 'death-trigger') return new Set(deathTargets.value.map((player: any) => player.id))
   return new Set<string>()
@@ -132,7 +150,7 @@ watch(() => guide.value?.id, () => {
 })
 
 watch(
-  [screen, game, privateUnlocked, privateResults, privateResultUnlocked, lastDawnAnnouncements, selectedTargetId, selectedTargetIds, actionChoice, witchHeal, paused, phaseRemaining, revealRemaining, hostError, ambienceMuted],
+  [screen, game, privateUnlocked, privateResults, privateResultUnlocked, lastDawnAnnouncements, selectedTargetId, selectedTargetIds, actionChoice, witchHeal, paused, phaseRemaining, revealRemaining, hostError, ambienceMuted, () => config.value.ambienceVolume],
   () => publishHostState(),
   { deep: true, immediate: true },
 )
@@ -235,7 +253,12 @@ function confirmRole() {
 function beginCurrentNight() { clearPrivateResults(); startNight(game.value); queuePendingNightNotices(); resetAction(); phasePulse.value += 1; playHowl() }
 function toggleTarget(id: string, multiple = false) {
   if (!multiple) selectedTargetId.value = selectedTargetId.value === id ? '' : id
-  else selectedTargetIds.value = selectedTargetIds.value.includes(id) ? selectedTargetIds.value.filter((entry) => entry !== id) : [...selectedTargetIds.value, id].slice(-3)
+  else if (selectedTargetIds.value.includes(id)) selectedTargetIds.value = selectedTargetIds.value.filter((entry) => entry !== id)
+  else {
+    const limit = multipleTargetLimit.value
+    if (limit && selectedTargetIds.value.length >= limit) return
+    selectedTargetIds.value = [...selectedTargetIds.value, id]
+  }
   playCardSound(selectedIds.value.has(id) ? 430 : 240)
 }
 
@@ -247,8 +270,9 @@ function validateNightStep(skip = false) {
     if (!step || !actor) return fail('Aucune action nocturne n’est attendue.')
     const action = guide.value?.action
     const payload: any = { skip }
-    if (['lovers', 'charm', 'fox'].includes(action)) payload.targetIds = selectedTargetIds.value
-    else if (action === 'choose-camp' || action === 'steal') payload.choice = actionChoice.value
+    if (['lovers', 'charm'].includes(action)) payload.targetIds = selectedTargetIds.value
+    else if (['choose-camp', 'steal', 'spiritism'].includes(action)) payload.choice = actionChoice.value
+    else if (action === 'actor') { payload.choice = actionChoice.value; payload.targetId = selectedTargetId.value }
     else if (action === 'witch') { payload.heal = witchHeal.value; payload.poisonTargetId = selectedTargetId.value }
     else payload.targetId = selectedTargetId.value
     const messageCounts = Object.fromEntries(game.value.players.map((player: any) => [player.id, (game.value.privateMessages?.[player.id] || []).length]))
@@ -387,7 +411,10 @@ function resetAction() { selectedTargetId.value = ''; selectedTargetIds.value = 
 function repeatGuide() { if (guide.value) speak(guide.value.phrase) }
 function speakDawn() {
   const dead = game.value.players.filter((player: any) => !player.alive && player.eliminatedBy && !player.announced)
-  const lines = [dead.length ? `À l'aube, ${dead.map((player: any) => player.name).join(' et ')} ne répondent plus.` : 'À l’aube, tous les habitants répondent encore.', ...(game.value.dawnAnnouncements || [])]
+  const roleReveals = dead
+    .filter((player: any) => player.rolePublic)
+    .map((player: any) => `Le rôle de ${player.name} est révélé : ${ROLE_BY_ID[player.roleId]?.name || 'personnage inconnu'}.`)
+  const lines = [dead.length ? `À l'aube, ${dead.map((player: any) => player.name).join(' et ')} ne répondent plus.` : 'À l’aube, tous les habitants répondent encore.', ...roleReveals, ...(game.value.dawnAnnouncements || [])]
   dead.forEach((player: any) => { player.announced = true })
   lastDawnAnnouncements.value = lines
   if (config.value.runMode !== 'manual') speak(lines.join(' '))
@@ -398,6 +425,7 @@ function speakDawn() {
 
 function openDiscussion() { beginDiscussion(game.value); phaseRemaining.value = config.value.debateSeconds; startTimer(); phasePulse.value += 1; if (config.value.runMode !== 'manual') speak('Le débat est ouvert. Observez, argumentez, doutez.') }
 function openVote() { beginVote(game.value); phaseRemaining.value = config.value.voteSeconds; startTimer(); selectedTargetId.value = ''; phasePulse.value += 1; playTransitionSound() }
+function openSecondVote() { beginSecondVote(game.value); phaseRemaining.value = config.value.voteSeconds; startTimer(); selectedTargetId.value = ''; phasePulse.value += 1; playTransitionSound() }
 function startTimer() { window.clearInterval(phaseTimer); phaseTimer = window.setInterval(() => { if (!paused.value && phaseRemaining.value > 0) phaseRemaining.value -= 1 }, 1000) }
 function confirmVote(abstain = false) {
   try {
@@ -418,6 +446,14 @@ function chooseDeathTarget(id: string) {
     if (actor && target && trigger?.kind === 'servant') {
       queuePrivateResult({ recipient: actor, displayPlayerId: actor.id, title: 'Nouvelle identité', eyebrow: 'INFORMATION SECRÈTE', lines: [`Vous devenez secrètement ${inheritedRole?.name || 'le personnage choisi'}. ${inheritedRole?.power || ''}`] })
     }
+    hostError.value = ''
+    phasePulse.value += 1
+  } catch (error: any) { fail(error.message) }
+}
+function validateDeathSelection() {
+  try {
+    resolveScapegoatVoters(game.value, selectedTargetIds.value)
+    resetAction()
     hostError.value = ''
     phasePulse.value += 1
   } catch (error: any) { fail(error.message) }
@@ -444,9 +480,12 @@ function handleBoardCard(player: any) {
     return
   }
   if (screen.value !== 'game' || !selectableIds.value.has(player.id)) return
-  if (game.value.phase === 'night') toggleTarget(player.id, ['lovers', 'charm', 'fox'].includes(guide.value?.action))
+  if (game.value.phase === 'night') toggleTarget(player.id, ['lovers', 'charm'].includes(guide.value?.action))
   else if (game.value.phase === 'vote') toggleTarget(player.id)
-  else if (game.value.phase === 'death-trigger') chooseDeathTarget(player.id)
+  else if (game.value.phase === 'death-trigger') {
+    if (deathTrigger.value?.kind === 'scapegoat') toggleTarget(player.id, true)
+    else chooseDeathTarget(player.id)
+  }
 }
 
 function handleCommand(command: any) {
@@ -469,14 +508,17 @@ function handleCommand(command: any) {
     else if (type === 'toggle-pause') paused.value = !paused.value
     else if (type === 'open-discussion') openDiscussion()
     else if (type === 'open-vote') openVote()
+    else if (type === 'second-vote') openSecondVote()
     else if (type === 'confirm-vote') confirmVote(false)
     else if (type === 'abstain-vote') confirmVote(true)
     else if (type === 'death-target') chooseDeathTarget(String(command.playerId || ''))
+    else if (type === 'validate-death') validateDeathSelection()
     else if (type === 'skip-death') skipCurrentDeathTrigger()
     else if (type === 'elect-captain') electCaptain(String(command.playerId || ''))
     else if (type === 'continue-verdict') continueAfterVerdict()
     else if (type === 'new-round') newRound()
     else if (type === 'toggle-music') toggleAmbience()
+    else if (type === 'set-volume') setAmbienceVolume(command.value)
   } catch (error: any) { fail(error.message || String(error)) }
 }
 
@@ -505,7 +547,7 @@ function hostCopy() {
   }
   if (phase === 'night' && guide.value) return { title: guide.value.title, dialogue: `Annoncez : « ${guide.value.phrase} »`, expected: guide.value.expected }
   if (phase === 'death-trigger') return {
-    title: 'Dernière volonté', dialogue: `${game.value?.players?.find((player: any) => player.id === deathTrigger.value?.actorId)?.name || 'Un habitant'} doit désigner une carte.`, expected: 'Sélectionner la cible sur le plateau ou depuis la régie.',
+    title: 'Dernière volonté', dialogue: `${game.value?.players?.find((player: any) => player.id === deathTrigger.value?.actorId)?.name || 'Un habitant'} doit désigner ${deathTrigger.value?.kind === 'scapegoat' ? 'les personnes qui pourront voter demain' : 'une carte'}.`, expected: deathTrigger.value?.kind === 'scapegoat' ? 'Sélectionner au moins un votant puis valider la liste.' : 'Sélectionner la cible sur le plateau ou depuis la régie.',
   }
   if (phase === 'dawn') return {
     title: `Le village se réveille · Jour ${game.value?.day || 1}`, dialogue: `Annoncez : « Le jour se lève. Le village ouvre les yeux. » ${lastDawnAnnouncements.value.join(' ') || 'Révélez ensuite les disparitions visibles sur le plateau.'}`, expected: 'Respecter l’ordre : victimes, grognement de l’Ours, Spiritisme ou événement, puis ouvrir la discussion.',
@@ -517,7 +559,7 @@ function hostCopy() {
     title: currentVoter.value ? `Vote de ${currentVoter.value.name}` : 'Tous les votes sont saisis', dialogue: currentVoter.value ? `Invitez ${currentVoter.value.name} à toucher la carte de son choix sur le plateau.` : 'Les votes sont prêts à être dépouillés.', expected: currentVoter.value ? 'Confirmer la carte sélectionnée ou enregistrer une abstention.' : 'Le verdict va apparaître.',
   }
   if (phase === 'verdict') return {
-    title: 'Le verdict du village', dialogue: 'Laissez le plateau révéler le résultat. Annoncez calmement la décision du village.', expected: 'Continuer vers la nuit suivante.',
+    title: 'Le verdict du village', dialogue: 'Laissez le plateau révéler le résultat. Annoncez calmement la décision du village.', expected: game.value?.flags?.secondVoteAvailable ? 'Le Juge Bègue peut maintenant déclencher son unique second vote sans débat.' : 'Continuer vers la nuit suivante.',
   }
   return { title: gamePhaseTitle.value, dialogue: 'Suivez le déroulé affiché dans la régie.', expected: 'Valider l’étape suivante.' }
 }
@@ -561,16 +603,18 @@ function publishHostState() {
     hasSavedGame: Boolean(saved.value),
     paused: paused.value,
     audioEnabled: !ambienceMuted.value,
+    ambienceVolume: config.value.ambienceVolume,
     remainingSeconds: screen.value === 'reveal' ? revealRemaining.value : phaseRemaining.value,
     currentVoterId: phase === 'vote' ? currentVoter.value?.id || '' : '',
     action: currentPrivateResult.value ? '' : guide.value?.action || '',
-    multipleTargets: ['lovers', 'charm', 'fox'].includes(guide.value?.action),
-    requiresChoice: ['choose-camp', 'steal'].includes(guide.value?.action),
+    multipleTargets: ['lovers', 'charm'].includes(guide.value?.action) || deathTrigger.value?.kind === 'scapegoat',
+    requiresChoice: ['choose-camp', 'steal', 'actor', 'spiritism'].includes(guide.value?.action),
     choice: actionChoice.value,
     healSelected: witchHeal.value,
     canSkip: guide.value?.canSkip !== false,
+    secondVoteAvailable: game.value?.flags?.secondVoteAvailable === true,
     players,
-    availableTargets: targets.map((player: any) => ({ id: player.id, name: player.name, seat: player.seat, alive: player.alive !== false, selected: selectedIds.value.has(player.id) })),
+    availableTargets: targets.map((player: any) => ({ id: player.id, name: player.name, seat: player.seat, alive: player.alive !== false, selected: selectedIds.value.has(player.id), disabled: !selectableIds.value.has(player.id) })),
     winnerLabel: game.value?.winnerLabel || '',
     error: hostError.value,
     updatedAt: Date.now(),
@@ -579,13 +623,31 @@ function publishHostState() {
 }
 
 function ensureAudio() { if (!ambienceMuted.value) startAmbience() }
+function ambienceLevel() {
+  return Math.max(0, Math.min(100, Number(config.value.ambienceVolume) || 0)) / 100
+}
+function ambienceGainValue() {
+  return Math.max(0.0001, ambienceLevel() * 0.18)
+}
+function setAmbienceVolume(value: unknown) {
+  const parsed = Number(value)
+  config.value.ambienceVolume = Math.max(0, Math.min(100, Number.isFinite(parsed) ? Math.round(parsed) : 70))
+  if (!ambienceMuted.value && !audioContext) startAmbience()
+  if (audioContext && ambienceGain) {
+    ambienceGain.gain.cancelScheduledValues(audioContext.currentTime)
+    ambienceGain.gain.setTargetAtTime(ambienceGainValue(), audioContext.currentTime, 0.04)
+  }
+}
+function handleVolumeInput(event: Event) {
+  setAmbienceVolume((event.target as HTMLInputElement).value)
+}
 function startAmbience() {
   if (ambienceMuted.value || audioContext) return
   try {
     audioContext = new AudioContext()
     ambienceGain = audioContext.createGain()
     ambienceGain.gain.setValueAtTime(0.0001, audioContext.currentTime)
-    ambienceGain.gain.exponentialRampToValueAtTime(0.035, audioContext.currentTime + 1.8)
+    ambienceGain.gain.exponentialRampToValueAtTime(ambienceGainValue(), audioContext.currentTime + 1.2)
     ambienceGain.connect(audioContext.destination)
     ;[55, 82.41, 110].forEach((frequency, index) => {
       const oscillator = audioContext!.createOscillator()
@@ -594,9 +656,9 @@ function startAmbience() {
       const lfoGain = audioContext!.createGain()
       oscillator.type = index === 1 ? 'triangle' : 'sine'
       oscillator.frequency.value = frequency
-      gain.gain.value = index === 0 ? 0.5 : 0.18
+      gain.gain.value = index === 0 ? 0.58 : 0.24
       lfo.frequency.value = 0.035 + index * 0.018
-      lfoGain.gain.value = index === 0 ? 0.12 : 0.05
+      lfoGain.gain.value = index === 0 ? 0.14 : 0.065
       lfo.connect(lfoGain).connect(gain.gain)
       oscillator.connect(gain).connect(ambienceGain!)
       oscillator.start(); lfo.start()
@@ -613,7 +675,7 @@ function stopAmbience() {
   audioContext = null
   ambienceGain = null
 }
-function toggleAmbience() { ambienceMuted.value = !ambienceMuted.value; if (ambienceMuted.value) stopAmbience(); else startAmbience() }
+function toggleAmbience() { ambienceMuted.value = !ambienceMuted.value; config.value.audioEnabled = !ambienceMuted.value; if (ambienceMuted.value) stopAmbience(); else startAmbience() }
 function tone(frequency: number, duration = 0.3, volume = 0.055, type: OscillatorType = 'sine') {
   if (ambienceMuted.value) return
   startAmbience()
@@ -649,6 +711,23 @@ function playHowl() {
 function speak(message: string) { if (ambienceMuted.value || !config.value.audioEnabled || !('speechSynthesis' in window)) return; window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(message); utterance.lang = 'fr-FR'; utterance.rate = 0.92; utterance.pitch = 0.86; window.speechSynthesis.speak(utterance) }
 function notify(message: string) { toast.value = message; window.clearTimeout(toastTimer); toastTimer = window.setTimeout(() => { toast.value = '' }, 3200) }
 function fail(message: string) { hostError.value = message; notify(message) }
+function isEliminatedRoleVisible(player: any) { return player?.alive === false && player?.rolePublic === true }
+function isCardRevealed(player: any) {
+  if (currentPrivateResult.value) return player.id === currentPrivateResult.value.displayPlayerId && privateResultUnlocked.value
+  if (screen.value === 'reveal') return player.id === currentRevealPlayer.value?.id && privateUnlocked.value
+  return isEliminatedRoleVisible(player)
+}
+function cardRole(player: any) {
+  if (screen.value === 'reveal' && player.id === currentRevealPlayer.value?.id && privateUnlocked.value) return currentPrivateView.value?.role || null
+  if (!isEliminatedRoleVisible(player)) return null
+  const eliminatedPlayer = game.value?.players?.find((candidate: any) => candidate.id === player.id)
+  return eliminatedPlayer ? ROLE_BY_ID[eliminatedPlayer.roleId] || null : null
+}
+function cardCampName(player: any) {
+  if (screen.value === 'reveal' && player.id === currentRevealPlayer.value?.id && privateUnlocked.value) return currentPrivateView.value?.camp?.name || ''
+  const role = cardRole(player)
+  return role?.camp === 'wolves' ? 'Loups-Garous' : role?.camp === 'solitary' ? 'Camp solitaire' : 'Villageois'
+}
 function roleGlyph(role: any) { if (role?.camp === 'wolves') return '◆'; if (role?.camp === 'solitary') return '✦'; if (role?.action === 'inspect-role') return '◉'; if (role?.action === 'witch') return '⚗'; return '◇' }
 function knownPlayerNames(view: any) { return (view?.knownPlayers || []).map((known: any) => known.name).join(', ') }
 </script>
@@ -659,7 +738,10 @@ function knownPlayerNames(view: any) { return (view?.knownPlayers || []).map((kn
     <header class="table-header">
       <div class="table-brand"><span>◈</span><div><b>THIERCELIEUX</b><small>SHENPULSE</small></div></div>
       <div :key="phasePulse" class="phase-title"><small>{{ currentPrivateResult ? 'INFORMATION SECRÈTE' : screen === 'reveal' ? 'DISTRIBUTION PRIVÉE' : game?.phase === 'night' ? 'LA NUIT EST TOMBÉE' : 'LE VILLAGE' }}</small><strong>{{ gamePhaseTitle }}</strong></div>
-      <button class="sound-control" type="button" :aria-label="ambienceMuted ? 'Activer l’ambiance' : 'Couper l’ambiance'" @click.stop="toggleAmbience">{{ ambienceMuted ? '♩' : '♫' }}</button>
+      <div class="sound-controls">
+        <label :class="{ muted: ambienceMuted }"><span>Ambiance</span><input type="range" min="0" max="100" step="1" :value="config.ambienceVolume" aria-label="Volume de l’ambiance" @pointerdown.stop @input.stop="handleVolumeInput"><output>{{ config.ambienceVolume }} %</output></label>
+        <button class="sound-control" type="button" :aria-label="ambienceMuted ? 'Activer l’ambiance' : 'Couper l’ambiance'" @click.stop="toggleAmbience">{{ ambienceMuted ? '♩' : '♫' }}</button>
+      </div>
     </header>
 
     <section class="moon-table" :class="{ 'private-mode': screen === 'reveal' || currentPrivateResult }">
@@ -672,15 +754,16 @@ function knownPlayerNames(view: any) { return (view?.knownPlayers || []).map((kn
       </div>
 
       <div class="card-board" :class="`cards-${Math.max(3, boardPlayers.length)}`">
-        <button v-for="(player, index) in boardPlayers" :key="player.id || index" type="button" class="board-card" :class="{ selectable: selectableIds.has(player.id), selected: selectedIds.has(player.id), eliminated: player.alive === false, current: currentPrivateResult ? player.id === currentPrivateResult.displayPlayerId : screen === 'reveal' && player.id === currentRevealPlayer?.id, revealed: currentPrivateResult ? player.id === currentPrivateResult.displayPlayerId && privateResultUnlocked : screen === 'reveal' && player.id === currentRevealPlayer?.id && privateUnlocked }" :disabled="currentPrivateResult ? player.id !== currentPrivateResult.displayPlayerId : screen === 'reveal' ? player.id !== currentRevealPlayer?.id : !selectableIds.has(player.id)" @click="handleBoardCard(player)">
+        <button v-for="(player, index) in boardPlayers" :key="player.id || index" type="button" class="board-card" :class="{ selectable: selectableIds.has(player.id), selected: selectedIds.has(player.id), eliminated: player.alive === false, current: currentPrivateResult ? player.id === currentPrivateResult.displayPlayerId : screen === 'reveal' && player.id === currentRevealPlayer?.id, revealed: isCardRevealed(player) }" :disabled="currentPrivateResult ? player.id !== currentPrivateResult.displayPlayerId : screen === 'reveal' ? player.id !== currentRevealPlayer?.id : !selectableIds.has(player.id)" @click="handleBoardCard(player)">
           <span class="card-shell">
             <span class="card-side card-back">
               <i class="seat-rune">{{ String(player.seat || index + 1).padStart(2, '0') }}</i>
-              <span class="wolf-seal">◈</span>
+              <span v-if="config.showPlayerAvatarOnCardBack && player.avatarUrl" class="card-back-avatar"><img :src="player.avatarUrl" :alt="`Photo TikTok de ${player.name}`"></span>
+              <span v-else class="wolf-seal">◈</span>
               <strong>{{ player.name }}</strong>
               <small v-if="player.captain">CAPITAINE</small><small v-else-if="player.alive === false">ÉLIMINÉ</small><small v-else>CARTE SCELLÉE</small>
             </span>
-            <span class="card-side card-front" :class="currentPrivateResult ? 'result-front' : `camp-${currentPrivateView?.role?.camp || 'village'}`">
+            <span class="card-side card-front" :class="currentPrivateResult ? 'result-front' : `camp-${cardRole(player)?.camp || 'village'}`">
               <template v-if="currentPrivateResult && player.id === currentPrivateResult.displayPlayerId">
                 <i class="role-glyph result-glyph">✦</i>
                 <small>{{ currentPrivateResult.eyebrow }}</small>
@@ -689,11 +772,11 @@ function knownPlayerNames(view: any) { return (view?.knownPlayers || []).map((kn
                 <em>Toucher pour masquer et continuer</em>
               </template>
               <template v-else>
-                <i class="role-glyph">{{ roleGlyph(currentPrivateView?.role || {}) }}</i>
-                <small>{{ currentPrivateView?.camp?.name }}</small>
-                <strong>{{ currentPrivateView?.role?.name }}</strong>
-                <p>{{ currentPrivateView?.role?.power }}</p>
-                <em v-if="currentPrivateView?.knownPlayers?.length">Allié·e·s : {{ knownPlayerNames(currentPrivateView) }}</em>
+                <i class="role-glyph">{{ roleGlyph(cardRole(player) || {}) }}</i>
+                <small>{{ cardCampName(player) }}</small>
+                <strong>{{ cardRole(player)?.name }}</strong>
+                <p>{{ cardRole(player)?.power }}</p>
+                <em v-if="screen === 'reveal' && currentPrivateView?.knownPlayers?.length">Allié·e·s : {{ knownPlayerNames(currentPrivateView) }}</em>
               </template>
             </span>
           </span>
@@ -709,9 +792,21 @@ function knownPlayerNames(view: any) { return (view?.knownPlayers || []).map((kn
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 .format-landscape{width:100%}
+.sound-controls{justify-self:end;display:flex;align-items:center;gap:10px}.sound-controls label{display:grid;grid-template-columns:auto 112px 42px;align-items:center;gap:8px;padding:7px 10px;border:1px solid rgba(216,184,117,.22);border-radius:999px;background:rgba(10,13,21,.72);color:#d6c49f;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.sound-controls label.muted{opacity:.48}.sound-controls input{width:112px;accent-color:var(--gold);cursor:pointer}.sound-controls output{color:var(--gold);font-variant-numeric:tabular-nums;text-align:right}.format-portrait .sound-controls label{grid-template-columns:72px 36px}.format-portrait .sound-controls label span{display:none}.format-portrait .sound-controls input{width:72px}
 *{box-sizing:border-box}.thiercelieux-table{--gold:#d8b875;--blood:#be3446;position:relative;width:100vw;min-height:100vh;overflow:hidden;background:#05070c;color:#f5efe7;font-family:Inter,system-ui,sans-serif;isolation:isolate}.thiercelieux-table:before{content:"";position:absolute;inset:0;z-index:-3;background:linear-gradient(180deg,rgba(4,6,12,.38),rgba(3,5,10,.86)),var(--scene) center/cover no-repeat;transform:scale(1.03);animation:sceneBreath 15s ease-in-out infinite alternate}.thiercelieux-table:after{content:"";position:absolute;inset:0;z-index:20;pointer-events:none;box-shadow:inset 0 0 150px 45px #020309}.night-sky{position:absolute;inset:0;z-index:-2;overflow:hidden}.moon{position:absolute;width:min(20vw,220px);aspect-ratio:1;border-radius:50%;right:8%;top:8%;background:radial-gradient(circle at 38% 35%,#fff9dd 0 4%,#d8d3c3 35%,#817f82 66%,#30333c 69%);box-shadow:0 0 55px rgba(209,219,232,.22);opacity:.28;animation:moonGlow 7s ease-in-out infinite}.phase-night .moon,.phase-night-intro .moon{opacity:.55;box-shadow:0 0 90px rgba(172,194,232,.38)}.cloud{position:absolute;width:65vw;height:18vh;border-radius:50%;background:radial-gradient(ellipse,rgba(121,137,155,.15),transparent 68%);filter:blur(20px);animation:cloudDrift 24s linear infinite}.cloud-a{left:-50vw;top:18%}.cloud-b{left:-65vw;top:60%;animation-duration:34s;animation-delay:-12s}.spark{position:absolute;left:calc(4% + var(--i)*5%);top:calc(8% + var(--i)*3.8%);width:2px;height:2px;border-radius:50%;background:#f5dfad;box-shadow:0 0 9px #e9c980;opacity:.2;animation:sparkle calc(2.4s + var(--i)*.11s) ease-in-out infinite}.table-header{height:92px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:18px clamp(22px,4vw,64px);border-bottom:1px solid rgba(216,184,117,.22);background:linear-gradient(180deg,rgba(4,6,11,.9),rgba(4,6,11,.45));backdrop-filter:blur(16px)}.table-brand{display:flex;align-items:center;gap:12px}.table-brand>span{display:grid;place-items:center;width:42px;height:42px;border:1px solid var(--gold);transform:rotate(45deg);color:var(--blood);font-size:19px}.table-brand b,.table-brand small{display:block;font-family:Cinzel,serif;letter-spacing:.15em}.table-brand b{font-size:15px}.table-brand small{margin-top:3px;color:#777d89;font-size:9px}.phase-title{text-align:center;animation:phaseReveal .85s both}.phase-title small{display:block;color:var(--gold);font-size:9px;font-weight:700;letter-spacing:.25em}.phase-title strong{display:block;margin-top:5px;font:600 clamp(18px,2.5vw,28px) Cinzel,serif}.sound-control{justify-self:end;width:42px;height:42px;border:1px solid rgba(216,184,117,.35);border-radius:50%;background:rgba(10,13,21,.72);color:var(--gold);font-size:19px;cursor:pointer;transition:.25s}.sound-control:hover{background:rgba(216,184,117,.12);transform:scale(1.06)}.moon-table{position:relative;width:min(1120px,94vw);height:calc(100vh - 144px);min-height:560px;margin:0 auto;display:grid;place-items:center}.moon-table:before{content:"";position:absolute;width:min(74vw,780px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(20,26,37,.92) 0 47%,rgba(9,12,19,.96) 48% 64%,rgba(216,184,117,.14) 64.3% 64.7%,rgba(5,7,12,.92) 65%);box-shadow:0 35px 90px #000,0 0 60px rgba(190,52,70,.08),inset 0 0 80px #020308;transform:perspective(850px) rotateX(55deg) translateY(8%)}.orbit{position:absolute;z-index:1;width:min(67vw,710px);aspect-ratio:1;border-radius:50%;border:1px dashed rgba(216,184,117,.24);pointer-events:none}.orbit-outer{animation:orbit 80s linear infinite}.orbit-inner{width:min(45vw,470px);border-style:solid;border-color:rgba(190,52,70,.16);animation:orbit 48s linear infinite reverse}.table-core{position:absolute;z-index:5;display:flex;flex-direction:column;align-items:center;width:min(310px,28vw);text-align:center;animation:coreArrival .7s cubic-bezier(.2,.8,.2,1) both}.core-sigil{display:grid;place-items:center;width:72px;height:72px;border:1px solid var(--gold);border-radius:50%;background:rgba(7,10,16,.9);box-shadow:0 0 32px rgba(216,184,117,.16),inset 0 0 18px rgba(216,184,117,.09);color:var(--blood);font:28px Cinzel,serif}.table-core>strong{max-width:310px;margin-top:14px;font:600 clamp(17px,2vw,27px)/1.2 Cinzel,serif}.table-core>small{margin-top:8px;color:#9399a4;font-size:12px;letter-spacing:.08em}.public-clock{margin-top:11px;color:var(--gold);font:600 21px Cinzel,serif;letter-spacing:.1em}.card-board{position:absolute;inset:0;z-index:7;display:grid;grid-template-columns:repeat(4,minmax(135px,1fr));grid-template-rows:repeat(2,minmax(190px,1fr));gap:clamp(36px,5vh,76px) clamp(56px,7vw,110px);align-content:center;padding:clamp(30px,5vh,72px) clamp(10px,2vw,30px);pointer-events:none}.board-card{position:relative;justify-self:center;width:min(150px,13vw);min-width:116px;aspect-ratio:.68;padding:0;border:0;background:none;color:inherit;perspective:1000px;pointer-events:auto;cursor:default;filter:drop-shadow(0 15px 18px rgba(0,0,0,.62));transition:transform .35s,filter .35s,opacity .55s}.board-card:nth-child(n+5){grid-row:2}.board-card:disabled{opacity:1}.board-card.selectable,.board-card.current{cursor:pointer}.board-card.selectable:hover,.board-card.current:hover{transform:translateY(-12px) scale(1.035);filter:drop-shadow(0 20px 24px rgba(0,0,0,.72)) drop-shadow(0 0 12px rgba(216,184,117,.32))}.board-card.selected{transform:translateY(-14px) scale(1.055);filter:drop-shadow(0 20px 25px rgba(0,0,0,.7)) drop-shadow(0 0 19px rgba(190,52,70,.7));animation:selectedPulse 1.25s ease-in-out infinite}.board-card.eliminated{opacity:.34;filter:grayscale(1) drop-shadow(0 8px 10px #000);transform:rotate(4deg) translateY(12px)}.board-card.current{z-index:12;animation:currentCard 1.8s ease-in-out infinite}.card-shell{position:absolute;inset:0;display:block;transform-style:preserve-3d;transition:transform .8s cubic-bezier(.2,.75,.22,1)}.board-card.revealed .card-shell{transform:rotateY(180deg)}.card-side{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:15px;border:1px solid rgba(216,184,117,.72);border-radius:11px;backface-visibility:hidden;overflow:hidden}.card-side:before{content:"";position:absolute;inset:8px;border:1px solid rgba(216,184,117,.18);border-radius:7px;pointer-events:none}.card-back{background:linear-gradient(145deg,rgba(23,28,40,.97),rgba(6,8,14,.99)),repeating-radial-gradient(circle,#151a26 0 2px,#090c13 3px 8px)}.seat-rune{position:absolute;left:13px;top:11px;color:var(--gold);font:600 11px Cinzel,serif}.wolf-seal{display:grid;place-items:center;width:54px;height:54px;border:1px solid rgba(216,184,117,.55);transform:rotate(45deg);color:#ece7df;font:26px Cinzel,serif;box-shadow:inset 0 0 18px rgba(216,184,117,.09)}.card-back strong{max-width:100%;margin-top:23px;overflow:hidden;text-overflow:ellipsis;color:#f0e9df;font:600 clamp(12px,1.15vw,16px) Cinzel,serif;white-space:nowrap}.card-back small{margin-top:7px;color:#9d8558;font-size:8px;font-weight:700;letter-spacing:.17em}.card-front{transform:rotateY(180deg);background:linear-gradient(155deg,#171c28,#070a11);text-align:center}.card-front.camp-wolves{background:linear-gradient(155deg,#27141a,#08090e)}.role-glyph{color:var(--gold);font:38px Cinzel,serif}.card-front>small{margin-top:8px;color:var(--gold);font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}.card-front>strong{margin-top:7px;font:600 clamp(16px,1.65vw,23px)/1.1 Cinzel,serif}.card-front>p{margin:12px 0 0;color:#d5d2ce;font-size:clamp(12px,1vw,15px);line-height:1.45}.card-front>em{margin-top:10px;color:#efce86;font-size:11px;font-style:normal;line-height:1.35}.table-footer{position:absolute;left:0;right:0;bottom:0;height:52px;display:flex;align-items:center;justify-content:center;gap:28px;border-top:1px solid rgba(216,184,117,.16);background:rgba(3,5,9,.64);color:#747b88;font-size:10px;letter-spacing:.12em}.table-footer span:first-child{display:flex;align-items:center;gap:7px}.table-footer i{width:6px;height:6px;border-radius:50%;background:#73d8b5;box-shadow:0 0 10px #73d8b5}.table-footer b{color:var(--gold);font-size:9px}.table-toast{position:fixed;z-index:60;left:50%;bottom:70px;transform:translateX(-50%);max-width:min(520px,88vw);padding:13px 20px;border:1px solid rgba(216,184,117,.36);border-radius:8px;background:rgba(9,12,18,.94);box-shadow:0 18px 55px #000;color:#f3eadc;font-size:14px;text-align:center}.toast-enter-active,.toast-leave-active{transition:.25s}.toast-enter-from,.toast-leave-to{opacity:0;transform:translate(-50%,12px)}
 .result-front{padding:14px 12px;background:radial-gradient(circle at 50% 20%,#2a2630,#0a0d15 72%);box-shadow:inset 0 0 34px rgba(216,184,117,.12)}.result-front .result-glyph{font-size:34px;text-shadow:0 0 18px rgba(216,184,117,.55)}.result-front>small{font-size:10px;line-height:1.3}.result-front>strong{font-size:clamp(17px,1.5vw,22px);line-height:1.18}.result-front>p{margin-top:10px;font-size:clamp(14px,1.2vw,18px);font-weight:600;line-height:1.42}.result-front>em{font-size:11px}.private-mode .board-card:not(.current){opacity:.12;filter:grayscale(1) blur(1px);transform:scale(.82)}.private-mode .board-card.current{transform:scale(1.72);filter:drop-shadow(0 25px 32px rgba(0,0,0,.78)) drop-shadow(0 0 34px rgba(216,184,117,.58));animation:privateCard 2s ease-in-out infinite}.format-portrait{max-width:720px;margin:auto}.format-portrait .table-header{height:88px;padding:15px 20px}.format-portrait .table-brand div{display:none}.format-portrait .phase-title strong{font-size:20px}.format-portrait .moon-table{width:100%;height:calc(100vh - 140px);min-height:680px}.format-portrait .moon-table:before{width:680px;opacity:.72}.format-portrait .orbit{width:610px}.format-portrait .orbit-inner{width:390px}.format-portrait .table-core{width:200px}.format-portrait .table-core>strong{font-size:19px}.format-portrait .table-core>small{font-size:11px}.format-portrait .card-board{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(4,1fr);gap:14px 210px;padding:22px 34px}.format-portrait .board-card{width:132px;min-width:0;max-height:190px}.format-portrait .board-card:nth-child(n){grid-row:auto}.format-portrait .card-back strong{font-size:13px}.format-portrait .card-front>strong{font-size:17px}.format-portrait .card-front>p{font-size:12px}.format-portrait .card-front>em{font-size:10px}.format-portrait .result-front>strong{font-size:18px}.format-portrait .result-front>p{font-size:14px}.format-portrait .core-sigil{width:60px;height:60px}.format-portrait .table-footer{font-size:9px;gap:15px}
 .private-mode .board-card.current{opacity:1}
 @media(max-width:900px) and (orientation:landscape){.table-header{height:76px;padding:12px 24px}.moon-table{height:calc(100vh - 120px);min-height:520px}.card-board{gap:38px 48px;padding:36px 15px}.board-card{width:120px}.card-front>p{font-size:11px}.card-front>em{font-size:9px}.result-front>p{font-size:14px}.result-front>strong{font-size:17px}}
+.card-back-avatar{display:block;width:58px;height:58px;overflow:hidden;border:1px solid rgba(216,184,117,.72);border-radius:50%;background:#090c13;box-shadow:0 0 0 5px rgba(216,184,117,.06),0 8px 20px rgba(0,0,0,.48)}
+.card-back-avatar img{display:block;width:100%;height:100%;object-fit:cover}
+.board-card.eliminated.revealed{opacity:.96;filter:drop-shadow(0 13px 18px rgba(0,0,0,.72)) drop-shadow(0 0 12px rgba(190,52,70,.28));transform:rotate(2deg) translateY(7px)}
+.card-front{padding:12px 10px}
+.role-glyph{font-size:30px;line-height:1}
+.card-front>small{margin-top:5px;font-size:7px;line-height:1.2}
+.card-front>strong{margin-top:5px;font-size:clamp(13px,1.25vw,18px);line-height:1.08;overflow-wrap:anywhere}
+.card-front>p{margin-top:7px;font-size:clamp(9px,.78vw,11px);line-height:1.3;overflow-wrap:anywhere}
+.card-front>em{margin-top:7px;font-size:8px;line-height:1.25;overflow-wrap:anywhere}
+.result-front{padding:11px 9px}.result-front .result-glyph{font-size:28px}.result-front>small{font-size:7px}.result-front>strong{font-size:clamp(13px,1.2vw,17px);line-height:1.1}.result-front>p{margin-top:7px;font-size:clamp(10px,.9vw,12px);line-height:1.3}.result-front>em{font-size:8px}
+.format-portrait .card-front>strong{font-size:14px}.format-portrait .card-front>p{font-size:10px}.format-portrait .card-front>em{font-size:8px}.format-portrait .result-front>strong{font-size:14px}.format-portrait .result-front>p{font-size:11px}
 @keyframes sceneBreath{to{transform:scale(1.08)}}@keyframes moonGlow{50%{filter:brightness(1.22);transform:scale(1.025)}}@keyframes cloudDrift{to{transform:translateX(180vw)}}@keyframes sparkle{50%{opacity:.8;transform:scale(2)}}@keyframes orbit{to{transform:rotate(360deg)}}@keyframes phaseReveal{from{opacity:0;transform:translateY(-12px);filter:blur(7px)}}@keyframes coreArrival{from{opacity:0;transform:scale(.65);filter:blur(10px)}}@keyframes selectedPulse{50%{filter:drop-shadow(0 22px 25px rgba(0,0,0,.72)) drop-shadow(0 0 32px rgba(190,52,70,.9))}}@keyframes currentCard{50%{transform:translateY(-8px);filter:drop-shadow(0 23px 28px rgba(0,0,0,.72)) drop-shadow(0 0 18px rgba(216,184,117,.5))}}@keyframes privateCard{50%{transform:scale(1.67) translateY(-3px);filter:drop-shadow(0 28px 38px rgba(0,0,0,.8)) drop-shadow(0 0 34px rgba(216,184,117,.58))}}
 </style>
