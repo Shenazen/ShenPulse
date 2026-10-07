@@ -51,9 +51,9 @@ function minecraftLauncherPack(modePacks) {
     publisher: "ShenPulse",
     version: "1.0.0",
     description:
-      "Choisissez Bedrock Box ou SandBox, puis configurez les interactions TikTok LIVE propres à ce mode.",
+      "Choisissez Bedrock Box, SandBox 3 ou Survival, puis configurez les interactions TikTok LIVE propres à ce mode.",
     platform: "Windows",
-    tags: ["abonnement requis", "inclus", "2 modes"],
+    tags: ["abonnement requis", "inclus", "3 modes"],
     artwork: "minecraft.webp",
     artworkUrl: "",
     accessMode: "included",
@@ -281,7 +281,7 @@ function minecraftRoundSettingsFor(packId) {
 function minecraftRoundRemainingSeconds(gameSession = activeGameSession()) {
   if (
     !gameSession ||
-    !MINECRAFT_MODE_IDS.includes(gameSession.packId) ||
+    !MINECRAFT_ROUND_MODE_IDS.includes(gameSession.packId) ||
     !gameSession.roundEndsAt
   ) {
     return 0;
@@ -483,7 +483,7 @@ function syncChrome() {
   const gameSession = activeGameSession();
   gameSessionControl.hidden = !gameSession;
   if (gameSession) {
-    gameSessionLabel.textContent = MINECRAFT_MODE_IDS.includes(
+    gameSessionLabel.textContent = MINECRAFT_ROUND_MODE_IDS.includes(
       gameSession.packId
     )
       ? `${gameSession.pack.name} · ${

@@ -152,7 +152,8 @@ function renderGameLaunch(pack, unlocked) {
   const runningSession = activeGameSession();
   const sessionActive = runningSession?.packId === pack.id;
   const launchBusy = gameLaunchBusyId === pack.id;
-  const roundSettings = managedMinecraft
+  const roundMinecraft = MINECRAFT_ROUND_MODE_IDS.includes(pack.id);
+  const roundSettings = roundMinecraft
     ? minecraftRoundSettingsFor(pack.id)
     : null;
   const roundRemaining = sessionActive
@@ -201,7 +202,7 @@ function renderGameLaunch(pack, unlocked) {
     </section>
     ${managedMinecraft
       ? `<div class="game-launch-side">
-          <form class="minecraft-round-settings" data-minecraft-round-settings="${escapeHtml(pack.id)}">
+          ${roundMinecraft ? `<form class="minecraft-round-settings" data-minecraft-round-settings="${escapeHtml(pack.id)}">
             <header>
               <span>◷</span>
               <div><strong>Durée de la partie</strong><small>Le chrono démarre dès que PaperMC est prêt.</small></div>
@@ -220,11 +221,11 @@ function renderGameLaunch(pack, unlocked) {
               <small>${sessionActive ? (roundSettings.autoRestart ? "Relance automatique active" : "Le chrono s’arrêtera après le TIME OUT") : `${roundSettings.durationMinutes} minute${roundSettings.durationMinutes > 1 ? "s" : ""} configurée${roundSettings.durationMinutes > 1 ? "s" : ""}`}</small>
             </div>
             <button type="button" class="button primary" data-action="save-game-round-settings" data-id="${escapeHtml(pack.id)}">Enregistrer les réglages</button>
-          </form>
+          </form>` : ""}
           <aside class="game-novice-note">
             <span>▶</span>
             <strong>Après le lancement</strong>
-            <p>Dans Minecraft, ajoutez le serveur 127.0.0.1 puis rejoignez-le. ShenPulse garde le serveur, le chrono et les interactions actifs.</p>
+            <p>Dans Minecraft, ajoutez le serveur 127.0.0.1 puis rejoignez-le. ShenPulse garde le serveur${roundMinecraft ? ", le chrono" : " Survival"} et les interactions actifs.</p>
           </aside>
         </div>`
       : `<aside class="game-novice-note">

@@ -421,11 +421,11 @@ function openMinecraftModeSelector(launcher) {
   }
   openEditor({
     title: "Choisir un mode Minecraft",
-    kicker: "MINECRAFT · BEDROCK BOX OU SANDBOX",
+    kicker: "MINECRAFT · BEDROCK BOX, SANDBOX OU SURVIVAL",
     variant: "minecraft-modes",
     body: `<div class="minecraft-mode-picker">
       <header>
-        <span>2 EXPÉRIENCES COMPLÈTES</span>
+        <span>${modes.length} EXPÉRIENCES COMPLÈTES</span>
         <h3>Dans quel mode voulez-vous jouer ?</h3>
         <p>Chaque mode conserve sa propre installation, ses réglages et son catalogue d’interactions TikTok LIVE.</p>
       </header>
@@ -434,7 +434,13 @@ function openMinecraftModeSelector(launcher) {
           <button type="button" class="minecraft-mode-card" data-action="open-minecraft-mode" data-id="${escapeHtml(mode.id)}">
             <img src="${escapeHtml(gameArtwork(mode))}" alt="" loading="eager">
             <span>
-              <small>${escapeHtml(mode.id === "minecraft-bedrock-box" ? "SURVIE VERTICALE" : "PLATEFORME DE SABLE")}</small>
+              <small>${escapeHtml(
+                mode.id === "minecraft-bedrock-box"
+                  ? "SURVIE VERTICALE"
+                  : mode.id === "minecraft-survival-plugin"
+                    ? "SURVIE INTERACTIVE"
+                    : "PLATEFORME DE SABLE"
+              )}</small>
               <strong>${escapeHtml(mode.name)}</strong>
               <b>${mode.effects.length} interactions récupérées</b>
               <em>Ouvrir ce mode →</em>

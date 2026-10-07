@@ -214,6 +214,37 @@ test("Minecraft force le mode créatif dans les propriétés du serveur", async 
   }
 });
 
+test("Minecraft Survival force le mode survie dans les propriétés du serveur", async () => {
+  const temporaryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-minecraft-survival-properties-")
+  );
+  try {
+    fs.writeFileSync(
+      path.join(temporaryRoot, "server.properties"),
+      [
+        "gamemode=creative",
+        "force-gamemode=false",
+        "allow-flight=true",
+        "broadcast-console-to-ops=true",
+        ""
+      ].join("\n")
+    );
+    await configureMinecraftServerCommandFeedback(temporaryRoot, {
+      creativeMode: false
+    });
+    const properties = fs.readFileSync(
+      path.join(temporaryRoot, "server.properties"),
+      "utf8"
+    );
+    assert.match(properties, /^gamemode=survival$/m);
+    assert.match(properties, /^force-gamemode=true$/m);
+    assert.match(properties, /^allow-flight=false$/m);
+    assert.match(properties, /^broadcast-console-to-ops=false$/m);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
 test("les résultats natifs Minecraft sont reconnus sans boucler sur les synchronisations", () => {
   assert.deepEqual(
     parseMinecraftWinCounterLine(
@@ -1087,6 +1118,35 @@ test("Bedrock Box et SandBox utilisent leurs paquets Backblaze versionnés", () 
   assert.match(runtime, /AutoClicker Minecraft ShenPulse est introuvable/);
   assert.match(runtime, /127\.0\.0\.1/);
   assert.match(runtime, /"nogui"/);
+});
+
+test("Minecraft Survival devient un serveur ShenPulse géré en mode survie", () => {
+  const installer = GAME_INSTALLERS["minecraft-survival-plugin"];
+  assert.equal(installer.version, "1.1.1");
+  assert.equal(installer.title, "Minecraft Survival");
+  assert.equal(installer.managedTarget, true);
+  assert.equal(installer.requiresMinecraftEula, true);
+  assert.deepEqual(installer.minecraftServer, {
+    serverJar: "paper-1.21-130.jar",
+    javaDirectory: "runtime/java",
+    port: 25565,
+    xms: "1024M",
+    xmx: "2048M",
+    creativeMode: false
+  });
+  assert.deepEqual(
+    installer.assets.map((asset) => asset.id),
+    ["paper", "java", "plugin", "config", "serverProperties"]
+  );
+  assert.match(
+    safeInstallerAssetUrl(installer.assets[0].url),
+    /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/minecraft-common\//
+  );
+  assert.match(
+    safeInstallerAssetUrl(installer.assets[1].url),
+    /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/minecraft-common\//
+  );
+  assert.equal(installer.autoClicker, undefined);
 });
 
 test("Minecraft masque les retours de commandes pour les anciens et nouveaux serveurs", async () => {

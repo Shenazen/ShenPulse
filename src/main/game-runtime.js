@@ -1338,23 +1338,21 @@ async function configureMinecraftServerCommandFeedback(
     "broadcast-rcon-to-ops",
     "false"
   );
-  if (creativeMode) {
-    updated = upsertMinecraftServerProperty(
-      updated,
-      "gamemode",
-      "creative"
-    );
-    updated = upsertMinecraftServerProperty(
-      updated,
-      "force-gamemode",
-      "true"
-    );
-    updated = upsertMinecraftServerProperty(
-      updated,
-      "allow-flight",
-      "true"
-    );
-  }
+  updated = upsertMinecraftServerProperty(
+    updated,
+    "gamemode",
+    creativeMode ? "creative" : "survival"
+  );
+  updated = upsertMinecraftServerProperty(
+    updated,
+    "force-gamemode",
+    "true"
+  );
+  updated = upsertMinecraftServerProperty(
+    updated,
+    "allow-flight",
+    creativeMode ? "true" : "false"
+  );
   if (updated !== original) {
     await fs.promises.writeFile(propertiesPath, updated, "utf8");
   }

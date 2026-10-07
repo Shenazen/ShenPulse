@@ -28,7 +28,10 @@ const {
   MINECRAFT_BEDROCK_INTERACTION_CATALOG_VERSION,
   MINECRAFT_SANDBOX_DEFAULT_MAPPINGS,
   MINECRAFT_SANDBOX_EFFECTS,
-  MINECRAFT_SANDBOX_INTERACTION_CATALOG_VERSION
+  MINECRAFT_SANDBOX_INTERACTION_CATALOG_VERSION,
+  MINECRAFT_SURVIVAL_DEFAULT_MAPPINGS,
+  MINECRAFT_SURVIVAL_EFFECTS,
+  MINECRAFT_SURVIVAL_INTERACTION_CATALOG_VERSION
 } = require("./minecraft-game-catalog");
 const {
   FORTNITE_DEFAULT_MAPPINGS,
@@ -385,12 +388,18 @@ const INTERNAL_GAMES = [
     interactionCatalogVersion:
       MINECRAFT_SANDBOX_INTERACTION_CATALOG_VERSION
   }),
-  game("minecraft-survival-plugin", "Minecraft Survival Plugin", {
+  game("minecraft-survival-plugin", "Minecraft Survival", {
     artwork: "catalog/minecraft-survival-plugin.svg",
     included: true,
     requiresPro: true,
-    connector: { type: "rcon", host: "127.0.0.1", port: 25575 },
-    effects: ["Soigner", "Faim", "Foudre", "Spawn aléatoire", "Donner un objet", "Téléportation"]
+    installerVersion: "1.1.1",
+    connector: { type: "minecraft-runtime" },
+    description:
+      "Mode survie Minecraft complet : objectifs, coffres, équipements, créatures, boss, pièges et événements déclenchés par les cadeaux TikTok LIVE.",
+    effects: MINECRAFT_SURVIVAL_EFFECTS,
+    defaultMappings: MINECRAFT_SURVIVAL_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      MINECRAFT_SURVIVAL_INTERACTION_CATALOG_VERSION
   }),
   game("cult-of-the-lamb", "Cult of the Lamb", {
     artwork: "catalog/cult-of-the-lamb.png",
@@ -645,8 +654,14 @@ const GAME_GUIDES = Object.freeze({
   "minecraft-sandbox-3": managedMinecraftGuide(
     "Installe le serveur local SandBox 3 et ses plugins, puis rejoins 127.0.0.1."
   ),
-  "minecraft-survival-plugin": minecraftGuide(
-    "Installe le plugin Survival dans un serveur compatible et vérifie son port local."
+  "minecraft-survival-plugin": managedMinecraftGuide(
+    "Installe automatiquement PaperMC, Java 21 et le plugin Survival, puis rejoins 127.0.0.1 en mode survie.",
+    [
+      {
+        label: "Catalogue officiel StreamToEarn · Survival",
+        url: "https://streamtoearn.io/plugins/s2e-survival-plugin"
+      }
+    ]
   ),
   "cult-of-the-lamb": modGuide(
     "ShenPulse détecte Cult of the Lamb, installe BepInEx et son pont local, puis charge les interactions historiques du pack."
@@ -708,7 +723,7 @@ function minecraftGuide(summary) {
   };
 }
 
-function managedMinecraftGuide(summary) {
+function managedMinecraftGuide(summary, sources = []) {
   return {
     mode: "server",
     summary,
@@ -722,7 +737,7 @@ function managedMinecraftGuide(summary) {
       "Aucun dossier serveur ni Java déjà installé n’est nécessaire.",
       "Conserve ShenPulse ouvert pendant le LIVE."
     ],
-    sources: []
+    sources
   };
 }
 

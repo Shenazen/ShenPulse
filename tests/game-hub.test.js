@@ -696,4 +696,22 @@ test("envoie les commandes Minecraft au serveur géré par ShenPulse", async () 
     gameId: "minecraft-bedrock-box",
     commands: ["shenpulse_win set 7"]
   });
+
+  state.session.activeGamePackId = "minecraft-survival-plugin";
+  assert.equal(
+    (await hub.testConnection("minecraft-survival-plugin")).ok,
+    true
+  );
+  await hub.trigger(
+    "survival-tnt",
+    { user: { id: "u1", displayName: "Nova Player" } },
+    {
+      packId: "minecraft-survival-plugin",
+      parameters: { timer: 4, power: 6, radius: 8 }
+    }
+  );
+  assert.deepEqual(calls[2], {
+    gameId: "minecraft-survival-plugin",
+    commands: ["/survival tnt 4 6 8 Nova_Player"]
+  });
 });

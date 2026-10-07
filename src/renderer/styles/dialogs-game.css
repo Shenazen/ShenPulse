@@ -292,7 +292,7 @@ dialog[data-variant="game-purchase"] .dialog-actions .primary {
 
 .minecraft-mode-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -364,6 +364,12 @@ dialog[data-variant="game-purchase"] .dialog-actions .primary {
   margin-top: 5px;
   color: #7cf2c1;
   font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .minecraft-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {

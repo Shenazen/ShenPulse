@@ -28,7 +28,7 @@ test("les boutons d'annulation ferment le dialogue sans valider le formulaire", 
   assert.match(app, /dialog\.close\("cancel"\)/);
 });
 
-test("Minecraft utilise une seule jaquette puis propose Bedrock Box et SandBox", () => {
+test("Minecraft utilise une seule jaquette puis propose ses trois modes", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
   const app = readRendererSource();
   const styles = readRendererStyles();
@@ -36,10 +36,11 @@ test("Minecraft utilise une seule jaquette puis propose Bedrock Box et SandBox",
   assert.match(app, /const MINECRAFT_LAUNCHER_ID = "minecraft"/);
   assert.match(
     app,
-    /MINECRAFT_MODE_IDS = Object\.freeze\(\[[\s\S]*"minecraft-bedrock-box"[\s\S]*"minecraft-sandbox-3"/
+    /MINECRAFT_MODE_IDS = Object\.freeze\(\[[\s\S]*"minecraft-bedrock-box"[\s\S]*"minecraft-sandbox-3"[\s\S]*"minecraft-survival-plugin"/
   );
   assert.match(app, /function openMinecraftModeSelector\(launcher\)/);
   assert.match(app, /data-action="open-minecraft-mode"/);
+  assert.match(app, /SURVIE INTERACTIVE/);
   const dialogActionHandler = app.slice(
     app.indexOf(
       'dialog.addEventListener("click", (event) => {\n  const accountCommand'

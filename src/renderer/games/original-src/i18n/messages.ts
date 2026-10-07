@@ -668,7 +668,7 @@ export const messages = {
         },
         minecraftSurvivalPlugin: {
           accessLabel: 'Inclus Pro/Premium',
-          description: 'Plugin Survival pour transformer les cadeaux TikTok en mobs, items, pieges et objectifs Minecraft.',
+          description: 'Mode Survival pour transformer les cadeaux TikTok en mobs, items, pieges et objectifs Minecraft.',
           priceLabel: 'Inclus avec Pro/Premium',
           statusLabel: 'Test prive',
           tags: ['Minecraft', 'Survival', 'TikTok LIVE'],
@@ -1391,8 +1391,8 @@ export const messages = {
         title: 'Minecraft SandBox 3',
       },
       survivalPlugin: {
-        intro: 'Installe {plugin} avec son config.yml, puis transforme les cadeaux en mobs, items, pieges et objectifs preenregistres.',
-        title: 'Minecraft Survival Plugin',
+        intro: 'Installe le mode Survival avec son serveur PaperMC, puis transforme les cadeaux en mobs, items, pieges et objectifs preenregistres.',
+        title: 'Minecraft Survival',
       },
       cultOfTheLamb: {
         intro: 'Installe le mod local via ShenPulse dans Cult of the Lamb, puis mappe les cadeaux vers les interactions du jeu.',
@@ -4434,7 +4434,7 @@ export const messages = {
         },
         minecraftSurvivalPlugin: {
           accessLabel: 'Pro/Premium included',
-          description: 'Survival plugin that turns TikTok gifts into mobs, items, traps and Minecraft objectives.',
+          description: 'Survival mode that turns TikTok gifts into mobs, items, traps and Minecraft objectives.',
           priceLabel: 'Included with Pro/Premium',
           statusLabel: 'Private test',
           tags: ['Minecraft', 'Survival', 'TikTok LIVE'],
@@ -5157,8 +5157,8 @@ export const messages = {
         title: 'Minecraft SandBox 3',
       },
       survivalPlugin: {
-        intro: 'Install {plugin} with its config.yml, then turn gifts into preset mobs, items, traps and objectives.',
-        title: 'Minecraft Survival Plugin',
+        intro: 'Install Survival mode with its PaperMC server, then turn gifts into preset mobs, items, traps and objectives.',
+        title: 'Minecraft Survival',
       },
       cultOfTheLamb: {
         intro: 'Install the local mod through ShenPulse into Cult of the Lamb, then map gifts to game interactions.',

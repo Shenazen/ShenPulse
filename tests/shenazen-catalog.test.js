@@ -25,7 +25,9 @@ const {
   MINECRAFT_BEDROCK_DEFAULT_MAPPINGS,
   MINECRAFT_BEDROCK_EFFECTS,
   MINECRAFT_SANDBOX_DEFAULT_MAPPINGS,
-  MINECRAFT_SANDBOX_EFFECTS
+  MINECRAFT_SANDBOX_EFFECTS,
+  MINECRAFT_SURVIVAL_DEFAULT_MAPPINGS,
+  MINECRAFT_SURVIVAL_EFFECTS
 } = require("../src/main/minecraft-game-catalog");
 const {
   EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
@@ -44,6 +46,14 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(games.find((game) => game.id === "thiercelieux")?.included, true);
+  assert.equal(
+    games.find((game) => game.id === "minecraft-survival-plugin")?.name,
+    "Minecraft Survival"
+  );
+  assert.equal(
+    games.find((game) => game.id === "minecraft-survival-plugin")?.connector.type,
+    "minecraft-runtime"
+  );
   assert.match(games.find((game) => game.id === "thiercelieux")?.description || "", /3 à 8 joueurs/);
   assert.deepEqual(
     games.find((game) => game.id === "thiercelieux")?.addOns.map(
@@ -205,15 +215,18 @@ test("restaure le catalogue GTA complet, ses visuels et ses déclencheurs initia
   );
 });
 
-test("restaure les interactions Bedrock Box et SandBox de ShenazenOverlay", () => {
+test("réunit les interactions Bedrock Box, SandBox et Survival dans Minecraft", () => {
   assert.equal(MINECRAFT_BEDROCK_EFFECTS.length, 41);
   assert.equal(MINECRAFT_BEDROCK_DEFAULT_MAPPINGS.length, 28);
   assert.equal(MINECRAFT_SANDBOX_EFFECTS.length, 101);
   assert.equal(MINECRAFT_SANDBOX_DEFAULT_MAPPINGS.length, 18);
+  assert.equal(MINECRAFT_SURVIVAL_EFFECTS.length, 65);
+  assert.equal(MINECRAFT_SURVIVAL_DEFAULT_MAPPINGS.length, 0);
 
   for (const [effects, mappings] of [
     [MINECRAFT_BEDROCK_EFFECTS, MINECRAFT_BEDROCK_DEFAULT_MAPPINGS],
-    [MINECRAFT_SANDBOX_EFFECTS, MINECRAFT_SANDBOX_DEFAULT_MAPPINGS]
+    [MINECRAFT_SANDBOX_EFFECTS, MINECRAFT_SANDBOX_DEFAULT_MAPPINGS],
+    [MINECRAFT_SURVIVAL_EFFECTS, MINECRAFT_SURVIVAL_DEFAULT_MAPPINGS]
   ]) {
     const ids = new Set(effects.map((effect) => effect.id));
     assert.equal(ids.size, effects.length);
@@ -240,6 +253,17 @@ test("restaure les interactions Bedrock Box et SandBox de ShenazenOverlay", () =
   assert.ok(
     MINECRAFT_BEDROCK_EFFECTS.some(
       (effect) => effect.id === "bedrock-blackhole"
+    )
+  );
+  assert.equal(
+    MINECRAFT_SURVIVAL_EFFECTS.find(
+      (effect) => effect.id === "survival-tnt"
+    )?.command,
+    "/survival tnt {{timer}} {{power}} {{radius}} {{viewer}}"
+  );
+  assert.ok(
+    MINECRAFT_SURVIVAL_EFFECTS.some(
+      (effect) => effect.id === "survival-zombie-netherite"
     )
   );
 });

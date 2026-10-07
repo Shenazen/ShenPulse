@@ -491,6 +491,11 @@ const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set([
 const MINECRAFT_LAUNCHER_ID = "minecraft";
 const MINECRAFT_MODE_IDS = Object.freeze([
   "minecraft-bedrock-box",
+  "minecraft-sandbox-3",
+  "minecraft-survival-plugin"
+]);
+const MINECRAFT_ROUND_MODE_IDS = Object.freeze([
+  "minecraft-bedrock-box",
   "minecraft-sandbox-3"
 ]);
 
