@@ -326,6 +326,14 @@ class GameHub extends EventEmitter {
       payload.effect
     );
     this.emit("effect-start", { pack, effect, payload, context });
+    if (
+      connector.focusProcessOnManualTrigger &&
+      String(context.source || "").startsWith("manual")
+    ) {
+      await this.windowsInputService.activate(
+        connector.focusProcessOnManualTrigger
+      );
+    }
     let result;
     if (connector.type === "demo") {
       result = { status: "success", message: "Effet simulé." };
@@ -536,12 +544,44 @@ class GameHub extends EventEmitter {
       1,
       Number(connector.durationMultiplier || 1)
     );
-    return bridge.send(payload.effect.code, {
+    const request = {
       ...payload.effect,
       duration: Math.round(
         Number(payload.effect.duration || 0) * durationMultiplier
       )
-    });
+    };
+    const retryWindowMs = Math.max(
+      0,
+      Number(connector.temporaryFailureRetryMs || 0)
+    );
+    const retryIntervalMs = Math.max(
+      50,
+      Number(connector.temporaryFailureRetryIntervalMs || 500)
+    );
+    const retryDeadline = Date.now() + retryWindowMs;
+    while (true) {
+      try {
+        return await bridge.send(payload.effect.code, request);
+      } catch (error) {
+        if (Number(error?.status) !== 3 || Date.now() >= retryDeadline) {
+          if (
+            Number(error?.status) === 3 &&
+            connector.temporaryFailureMessage
+          ) {
+            throw new Error(connector.temporaryFailureMessage, {
+              cause: error
+            });
+          }
+          throw error;
+        }
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Math.min(retryIntervalMs, retryDeadline - Date.now())
+          )
+        );
+      }
+    }
   }
 
   async #sendWebSocket(pack, connector, payload) {

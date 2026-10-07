@@ -70,3 +70,31 @@ test("la passerelle explique clairement quand le jeu n’est pas connecté", asy
   );
   await bridge.close();
 });
+
+test("la passerelle conserve le statut temporaire refusé par le mod", async () => {
+  const bridge = new SimpleTcpServerBridge({
+    port: 0,
+    timeoutMs: 1000,
+    label: "Jeu test"
+  });
+  const status = await bridge.start();
+  const client = net.createConnection({ host: "127.0.0.1", port: status.port });
+  await new Promise((resolve, reject) => {
+    client.once("connect", resolve);
+    client.once("error", reject);
+  });
+  client.on("data", (chunk) => {
+    const request = JSON.parse(chunk.toString("utf8").split("\0")[0]);
+    client.write(
+      `${JSON.stringify({ id: request.id, status: 3, message: "retry" })}\0`
+    );
+  });
+
+  await assert.rejects(
+    bridge.send("temporary"),
+    (error) => error.status === 3 && /retry/.test(error.message)
+  );
+
+  client.destroy();
+  await bridge.close();
+});

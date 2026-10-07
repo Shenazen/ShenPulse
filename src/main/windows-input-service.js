@@ -204,6 +204,13 @@ if (-not [ShenPulseGameInput]::Activate($window)) {
 }
 Start-Sleep -Milliseconds 120
 
+if ($Operation -eq 'activate') {
+  @{ ok = $true; processId = $target.Id; processName = $target.ProcessName } |
+    ConvertTo-Json -Compress |
+    Write-Output
+  exit 0
+}
+
 $eventsJson = [Text.Encoding]::UTF8.GetString(
   [Convert]::FromBase64String($EncodedEvents)
 )
@@ -290,16 +297,29 @@ class WindowsInputService {
     return this.execute("status", normalizedProcess, []);
   }
 
+  async activate(processName) {
+    const normalizedProcess = normalizeProcessName(processName);
+    return this.#enqueue(normalizedProcess, () =>
+      this.execute("activate", normalizedProcess, [])
+    );
+  }
+
   async play(processName, sequence, keyLayout = "wasd") {
     const normalizedProcess = normalizeProcessName(processName);
     const events = applyKeyboardLayout(
       normalizeWindowsInputSequence(sequence),
       keyLayout
     );
+    return this.#enqueue(normalizedProcess, () =>
+      this.execute("play", normalizedProcess, events)
+    );
+  }
+
+  async #enqueue(normalizedProcess, operation) {
     const previous = this.queues.get(normalizedProcess) || Promise.resolve();
     const current = previous
       .catch(() => {})
-      .then(() => this.execute("play", normalizedProcess, events));
+      .then(operation);
     this.queues.set(normalizedProcess, current);
     try {
       return await current;

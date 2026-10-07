@@ -238,9 +238,12 @@ class SimpleTcpServerBridge extends EventEmitter {
       pending.resolve(result);
       return;
     }
-    pending.reject(
-      new Error(result.message || `${this.label} a refusé cette interaction.`)
+    const error = new Error(
+      result.message || `${this.label} a refusé cette interaction.`
     );
+    error.status = status;
+    error.requestId = requestId;
+    pending.reject(error);
   }
 
   #rejectPending(error) {

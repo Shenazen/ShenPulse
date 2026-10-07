@@ -598,6 +598,7 @@ test("initialise et exécute les catalogues Stardew Valley et Terraria", async (
 
 test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async () => {
   const releasedPorts = [];
+  const focusedProcesses = [];
   const state = {
     session: { activeGamePackId: "resident-evil-3" },
     commerce: {
@@ -613,7 +614,10 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
       interactionCatalogVersions: {},
       interactionRulesByPack: {},
       connectorOverrides: {
-        "resident-evil-3": { port: 0 }
+        "resident-evil-3": {
+          port: 0,
+          temporaryFailureRetryIntervalMs: 50
+        }
       }
     },
     rules: []
@@ -627,6 +631,12 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
     store,
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs"),
+    windowsInputService: {
+      activate: async (processName) => {
+        focusedProcesses.push(processName);
+        return { ok: true };
+      }
+    },
     crowdControlPortReleaser: async (port) => {
       releasedPorts.push(port);
       return { released: false, reason: "test" };
@@ -648,12 +658,19 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
   const status = await hub.prepareConnection("resident-evil-3");
   assert.deepEqual(releasedPorts, [0]);
   const frames = [];
-  const client = mockSimpleTcpGame(status.port, frames);
+  let temporaryFailureSent = false;
+  const client = mockSimpleTcpGame(status.port, frames, (request) => {
+    if (request.code === "damage" && !temporaryFailureSent) {
+      temporaryFailureSent = true;
+      return { status: 3, message: "Please try again" };
+    }
+    return { status: 0, message: "" };
+  });
   await connected(client);
   try {
     await hub.trigger(
       "re3-damage",
-      { user: { displayName: "JillFan" } },
+      { source: "manual", user: { displayName: "JillFan" } },
       { packId: "resident-evil-3" }
     );
     await hub.trigger(
@@ -663,16 +680,18 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
     );
     assert.equal(frames[0].code, "damage");
     assert.equal(frames[0].viewer, "JillFan");
-    assert.equal(frames[1].code, "invul");
-    assert.equal(frames[1].viewer, "CarlosFan");
-    assert.equal(frames[1].duration, 60_000);
+    assert.equal(frames[1].code, "damage");
+    assert.equal(frames[2].code, "invul");
+    assert.equal(frames[2].viewer, "CarlosFan");
+    assert.equal(frames[2].duration, 60_000);
+    assert.deepEqual(focusedProcesses, ["re3"]);
   } finally {
     client.destroy();
     await hub.disconnectAll();
   }
 });
 
-function mockSimpleTcpGame(port, frames) {
+function mockSimpleTcpGame(port, frames, responseForRequest) {
   const client = net.createConnection({
     host: "127.0.0.1",
     port
@@ -685,11 +704,14 @@ function mockSimpleTcpGame(port, frames) {
       const request = JSON.parse(input.slice(0, separator));
       input = input.slice(separator + 1);
       frames.push(request);
+      const response = responseForRequest?.(request) || {
+        status: 0,
+        message: ""
+      };
       client.write(
         `${JSON.stringify({
           id: request.id,
-          status: 0,
-          message: ""
+          ...response
         })}\0`
       );
       separator = input.indexOf("\0");

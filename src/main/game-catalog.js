@@ -116,7 +116,12 @@ const RESIDENT_EVIL_3_BRIDGE = Object.freeze({
   timeoutMs: 12000,
   durationMultiplier: 1000,
   expectResponse: true,
-  closeCrowdControlOnConflict: true
+  closeCrowdControlOnConflict: true,
+  focusProcessOnManualTrigger: "re3",
+  temporaryFailureRetryMs: 15000,
+  temporaryFailureRetryIntervalMs: 500,
+  temporaryFailureMessage:
+    "Resident Evil 3 n’est pas encore dans une phase jouable. Reprenez la partie et fermez les menus, puis réessayez hors cinématique et chargement."
 });
 
 const COIN_PUSHER_EFFECTS = Object.freeze([
@@ -685,6 +690,7 @@ const GAME_GUIDES = Object.freeze({
       "L’installation recommandée cible la version actuelle de Resident Evil 3 ; l’ancienne branche dx11_non-rt n’est pas sélectionnée automatiquement.",
       "Le bouton Installation ajoute automatiquement le runtime Bureau .NET 8 officiel s’il manque.",
       "Si Crowd Control utilise déjà le port 58431, ShenPulse ferme uniquement ses processus locaux avant d’activer la session Resident Evil 3.",
+      "Un test manuel remet automatiquement Resident Evil 3 au premier plan avant d’envoyer l’effet. Le jeu doit néanmoins être dans une partie jouable, hors menu, cinématique et chargement.",
       "Certains effets dépendent du personnage, de l’inventaire, des ennemis présents ou de la progression. Ils peuvent être temporairement indisponibles dans un menu, une cinématique ou un chargement.",
       "La touche Inser ouvre le menu REFramework dans le jeu si un diagnostic est nécessaire."
     ],

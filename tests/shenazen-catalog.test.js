@@ -197,7 +197,12 @@ test("reprend les 67 interactions du pack Crowd Control Resident Evil 3 recomman
     timeoutMs: 12000,
     durationMultiplier: 1000,
     expectResponse: true,
-    closeCrowdControlOnConflict: true
+    closeCrowdControlOnConflict: true,
+    focusProcessOnManualTrigger: "re3",
+    temporaryFailureRetryMs: 15000,
+    temporaryFailureRetryIntervalMs: 500,
+    temporaryFailureMessage:
+      "Resident Evil 3 n’est pas encore dans une phase jouable. Reprenez la partie et fermez les menus, puis réessayez hors cinématique et chargement."
   });
   assert.equal(RESIDENT_EVIL_3_EFFECTS.length, 67);
   assert.equal(RESIDENT_EVIL_3_DEFAULT_MAPPINGS.length, 67);

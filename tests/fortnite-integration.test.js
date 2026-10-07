@@ -244,6 +244,22 @@ test("sérialise les séquences destinées au même processus Fortnite", async (
   await second;
 });
 
+test("sérialise aussi l’activation d’un jeu avant un test manuel", async () => {
+  const calls = [];
+  const service = new WindowsInputService({
+    execute: async (operation, processName, events) => {
+      calls.push({ operation, processName, events });
+      return { ok: true };
+    }
+  });
+
+  await service.activate("re3.exe");
+
+  assert.deepEqual(calls, [
+    { operation: "activate", processName: "re3", events: [] }
+  ]);
+});
+
 function ownerState(email = "alexandre.leuridan@gmail.com") {
   return {
     settings: {
