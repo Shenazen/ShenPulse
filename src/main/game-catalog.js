@@ -36,6 +36,11 @@ const {
   FORTNITE_INTERACTION_CATALOG_VERSION
 } = require("./fortnite-catalog");
 const {
+  EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
+  EURO_TRUCK_SIMULATOR_2_EFFECTS,
+  EURO_TRUCK_SIMULATOR_2_INTERACTION_CATALOG_VERSION
+} = require("./euro-truck-simulator-2-catalog");
+const {
   THIERCELIEUX_EXTENSION_PRODUCTS
 } = require("../shared/thiercelieux-products");
 
@@ -77,6 +82,15 @@ const TERRARIA_BRIDGE = Object.freeze({
   type: "tcp-server",
   host: "127.0.0.1",
   port: 58433,
+  timeoutMs: 12000,
+  durationMultiplier: 1000,
+  expectResponse: true
+});
+
+const EURO_TRUCK_SIMULATOR_2_BRIDGE = Object.freeze({
+  type: "tcp-server",
+  host: "127.0.0.1",
+  port: 51337,
   timeoutMs: 12000,
   durationMultiplier: 1000,
   expectResponse: true
@@ -304,6 +318,27 @@ const INTERNAL_GAMES = [
     interactionCatalogVersion:
       FORTNITE_INTERACTION_CATALOG_VERSION
   }),
+  game("euro-truck-simulator-2", "Euro Truck Simulator 2", {
+    artworkUrl:
+      "https://resources.crowdcontrol.live/images/EuroTruckSimulator2/box.jpg",
+    included: true,
+    requiresPro: true,
+    source: "Crowd Control · Euro Truck Simulator 2",
+    description:
+      "Transforme les cadeaux TikTok LIVE en événements de conduite : météo, freinage, direction, éclairage, cabine, klaxons et transmission.",
+    tags: [
+      "abonnement requis",
+      "inclus",
+      "Crowd Control",
+      "mod PC",
+      "Steam"
+    ],
+    connector: EURO_TRUCK_SIMULATOR_2_BRIDGE,
+    effects: EURO_TRUCK_SIMULATOR_2_EFFECTS,
+    defaultMappings: EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      EURO_TRUCK_SIMULATOR_2_INTERACTION_CATALOG_VERSION
+  }),
   game("gtav-montchiliad", "GTA V Mont Chiliad", {
     artwork: "catalog/gtav-montchiliad.png",
     included: true,
@@ -526,6 +561,33 @@ const GAME_GUIDES = Object.freeze({
       {
         label: "Guide officiel des Input Disrupts",
         url: "https://crowdcontrol.live/guides/disrupts"
+      }
+    ]
+  },
+  "euro-truck-simulator-2": {
+    mode: "crowd-control-mod",
+    summary:
+      "Le plugin local Euro Truck Simulator 2 se connecte à ShenPulse sur le port 51337 et reçoit les interactions TikTok LIVE configurées.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Installe le plugin Euro Truck Simulator 2 depuis le parcours officiel Crowd Control.",
+      "Ferme Crowd Control pour libérer le port local 51337, puis configure les cadeaux dans ShenPulse.",
+      "Prépare si besoin la fiche d’interactions pour ton overlay LIVE.",
+      "Lance Euro Truck Simulator 2 sur Steam, charge une partie puis active la session ShenPulse."
+    ],
+    notes: [
+      "Le pack officiel a été testé avec la version Steam du jeu.",
+      "Le mode Convoy n’est pas officiellement validé et certains effets peuvent ne pas fonctionner en multijoueur.",
+      "Teste toujours quelques interactions dans une sauvegarde chargée avant le LIVE."
+    ],
+    sources: [
+      {
+        label: "Guide officiel Crowd Control · Euro Truck Simulator 2",
+        url: "https://crowdcontrol.live/guides/eurotrucksimulator2"
+      },
+      {
+        label: "Catalogue officiel des interactions",
+        url: "https://crowdcontrol.live/games/eurotrucksimulator2"
       }
     ]
   },

@@ -12,6 +12,9 @@ function renderGameInstallation(pack, unlocked) {
   if (pack.guide?.mode === "input") {
     return renderInputGameInstallation(pack, unlocked);
   }
+  if (pack.guide?.mode === "crowd-control-mod") {
+    return renderCrowdControlModInstallation(pack, unlocked);
+  }
   if (integrated && CONFIGURABLE_INTEGRATED_GAMES.has(pack.id)) {
     return renderIntegratedGameSettings(pack, unlocked);
   }
@@ -81,6 +84,35 @@ function renderGameInstallation(pack, unlocked) {
   </div>`;
 }
 
+function renderCrowdControlModInstallation(pack, unlocked) {
+  const guideUrl = pack.guide?.sources?.[0]?.url || "";
+  return `<div class="game-simple-step">
+    <section class="game-primary-panel game-install-simple">
+      <header><div><span>↓ INSTALLATION DU PONT LOCAL</span><h3>Préparer ${escapeHtml(pack.name)}</h3><p>Le plugin officiel Crowd Control relie le jeu à ShenPulse par une connexion locale. Aucun fichier du jeu n’est distribué par ShenPulse.</p></div><span class="game-step-count">PORT 51337</span></header>
+      ${renderGamePageMessage(pack, "installation")}
+      <div class="game-install-state ready">
+        <span>1</span>
+        <div><strong>Installer le plugin officiel</strong><p>Utilisez une fois l’installation automatique Crowd Control pour Euro Truck Simulator 2.</p></div>
+      </div>
+      <div class="game-install-state ready">
+        <span>2</span>
+        <div><strong>Lancer le jeu avec ShenPulse</strong><p>Fermez ensuite Crowd Control, ouvrez ETS2 sur Steam et chargez une partie. ShenPulse utilisera seul le port local du plugin.</p></div>
+      </div>
+      <footer class="game-panel-actions">
+        <button class="button" data-action="open-url" data-value="${escapeHtml(guideUrl)}" ${guideUrl ? "" : "disabled"}>Ouvrir le guide officiel</button>
+        <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Tester la connexion au jeu</button>
+        <button class="button primary" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Continuer vers les interactions →</button>
+      </footer>
+    </section>
+    <aside class="game-novice-note">
+      <span>⚠</span>
+      <strong>Version Steam recommandée</strong>
+      <p>Le pack officiel est testé sur Steam. Le mode Convoy n’est pas officiellement validé.</p>
+      <small>Gardez ShenPulse ouvert pendant toute la session LIVE.</small>
+    </aside>
+  </div>`;
+}
+
 function renderInputGameInstallation(pack, unlocked) {
   const configuredLayout = String(
     snapshot.state.game.connectorOverrides?.[pack.id]?.keyLayout ||
@@ -124,10 +156,11 @@ function renderInputGameInstallation(pack, unlocked) {
 function renderGameLaunch(pack, unlocked) {
   const integrated = pack.guide?.mode === "integrated";
   const inputDriven = pack.guide?.mode === "input";
+  const crowdControlMod = pack.guide?.mode === "crowd-control-mod";
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
   const canLaunch = unlocked && (integrated || Boolean(installation));
-  const ready = unlocked && (inputDriven || canLaunch);
+  const ready = unlocked && (inputDriven || crowdControlMod || canLaunch);
   const mappings = gameMappedEffects(pack);
   const runningSession = activeGameSession();
   const sessionActive = runningSession?.packId === pack.id;
@@ -142,6 +175,8 @@ function renderGameLaunch(pack, unlocked) {
       : 0;
   const launchDescription = inputDriven
     ? "Ouvrez Fortnite depuis Epic Games, chargez une partie puis activez la session. ShenPulse ne lancera ni ne modifiera le jeu."
+    : crowdControlMod
+      ? "Ouvrez Euro Truck Simulator 2 sur Steam, chargez votre sauvegarde puis activez la session. ShenPulse attendra la connexion du plugin local sur le port 51337."
     : managedMinecraft
     ? "Démarrez le serveur depuis ShenPulse, ouvrez Minecraft puis rejoignez 127.0.0.1. Les interactions du mode choisi seront déjà chargées."
     : "Lancez le jeu depuis ShenPulse. Une fois votre partie chargée, les interactions configurées seront prêtes à fonctionner.";
@@ -153,7 +188,7 @@ function renderGameLaunch(pack, unlocked) {
       <header><div><span>▶ DÉMARRAGE</span><h3>Tout est prêt pour jouer</h3><p>${escapeHtml(launchDescription)}</p></div></header>
       ${renderGamePageMessage(pack, "launch")}
       <div class="game-start-readiness">
-        <article class="${ready ? "ready" : ""}"><span>${ready ? "✓" : "1"}</span><div><strong>${ready ? inputDriven ? "Connecteur prêt" : "Jeu prêt" : "Installation nécessaire"}</strong><small>${ready ? inputDriven ? "Fortnite sera détecté au moment du test." : "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
+        <article class="${ready ? "ready" : ""}"><span>${ready ? "✓" : "1"}</span><div><strong>${ready ? inputDriven ? "Connecteur prêt" : crowdControlMod ? "Pont local prêt" : "Jeu prêt" : "Installation nécessaire"}</strong><small>${ready ? inputDriven ? "Fortnite sera détecté au moment du test." : crowdControlMod ? "ETS2 doit être lancé séparément depuis Steam." : "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
         <article class="${mappings.length ? "ready" : ""}"><span>${mappings.length ? "✓" : "2"}</span><div><strong>${mappings.length ? `${mappings.length} interaction${mappings.length > 1 ? "s" : ""} configurée${mappings.length > 1 ? "s" : ""}` : "Interactions facultatives"}</strong><small>${mappings.length ? "Vos déclencheurs sont enregistrés." : "Vous pourrez en ajouter à tout moment."}</small></div></article>
         <article class="${sessionActive ? "ready" : ""}"><span>${sessionActive ? "✓" : "3"}</span><div><strong>${sessionActive ? "Session de jeu active" : "Session de jeu arrêtée"}</strong><small>${sessionActive ? "Les interactions restent actives sur toutes les pages." : "Activez-la pour autoriser les interactions de ce jeu."}</small></div></article>
       </div>

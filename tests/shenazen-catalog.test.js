@@ -27,16 +27,20 @@ const {
   MINECRAFT_SANDBOX_DEFAULT_MAPPINGS,
   MINECRAFT_SANDBOX_EFFECTS
 } = require("../src/main/minecraft-game-catalog");
+const {
+  EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
+  EURO_TRUCK_SIMULATOR_2_EFFECTS
+} = require("../src/main/euro-truck-simulator-2-catalog");
 
 const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 40);
-  assert.equal(new Set(games.map((game) => game.id)).size, 40);
+  assert.equal(games.length, 41);
+  assert.equal(new Set(games.map((game) => game.id)).size, 41);
   assert.equal(
     games.filter((game) => !["fortnite", "brumelune", "thiercelieux"].includes(game.id)).length,
-    37
+    38
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(games.find((game) => game.id === "brumelune")?.source, "ShenPulse Original");
@@ -101,6 +105,66 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
     games
       .filter((game) => game.source.includes("Crowd Control"))
       .every((game) => game.guide.sources.length >= 1)
+  );
+});
+
+test("reprend les 30 interactions actives du pack Crowd Control Euro Truck Simulator 2", () => {
+  const game = loadShenazenGameCatalog(path.join(root, "resources")).find(
+    (entry) => entry.id === "euro-truck-simulator-2"
+  );
+
+  assert.ok(game);
+  assert.equal(game.guide.mode, "crowd-control-mod");
+  assert.deepEqual(game.connector, {
+    type: "tcp-server",
+    host: "127.0.0.1",
+    port: 51337,
+    timeoutMs: 12000,
+    durationMultiplier: 1000,
+    expectResponse: true
+  });
+  assert.equal(EURO_TRUCK_SIMULATOR_2_EFFECTS.length, 30);
+  assert.equal(EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS.length, 30);
+  assert.equal(
+    new Set(EURO_TRUCK_SIMULATOR_2_EFFECTS.map((effect) => effect.code)).size,
+    30
+  );
+  assert.ok(
+    EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS.every((mapping) =>
+      EURO_TRUCK_SIMULATOR_2_EFFECTS.some(
+        (effect) => effect.id === mapping.effectId
+      )
+    )
+  );
+  assert.ok(
+    EURO_TRUCK_SIMULATOR_2_EFFECTS.every(
+      (effect) =>
+        effect.available === true &&
+        effect.service === "native" &&
+        effect.image.startsWith(
+          "https://resources.crowdcontrol.live/images/EuroTruckSimulator2/"
+        )
+    )
+  );
+  assert.deepEqual(
+    EURO_TRUCK_SIMULATOR_2_EFFECTS
+      .filter((effect) => effect.duration > 0)
+      .map((effect) => [effect.code, effect.duration]),
+    [
+      ["hazards", 10],
+      ["gear_chaos", 10],
+      ["lights_disco", 10],
+      ["speed_boost", 10],
+      ["speed_governor", 20],
+      ["airhorn", 5],
+      ["trailer_brake", 5],
+      ["blinker_party", 10],
+      ["slow_down", 10],
+      ["brake_slam", 3],
+      ["steering_chaos", 12],
+      ["horn_spam", 8],
+      ["camera_chaos", 10]
+    ]
   );
 });
 
