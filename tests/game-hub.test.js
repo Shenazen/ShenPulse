@@ -597,6 +597,7 @@ test("initialise et exécute les catalogues Stardew Valley et Terraria", async (
 });
 
 test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async () => {
+  const releasedPorts = [];
   const state = {
     session: { activeGamePackId: "resident-evil-3" },
     commerce: {
@@ -625,7 +626,11 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
   const hub = new GameHub({
     store,
     resourcesDirectory,
-    packsDirectory: path.join(resourcesDirectory, "packs")
+    packsDirectory: path.join(resourcesDirectory, "packs"),
+    crowdControlPortReleaser: async (port) => {
+      releasedPorts.push(port);
+      return { released: false, reason: "test" };
+    }
   });
   hub.loadPacks();
 
@@ -641,6 +646,7 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
   );
 
   const status = await hub.prepareConnection("resident-evil-3");
+  assert.deepEqual(releasedPorts, [0]);
   const frames = [];
   const client = mockSimpleTcpGame(status.port, frames);
   await connected(client);

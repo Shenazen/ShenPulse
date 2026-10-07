@@ -115,7 +115,8 @@ const RESIDENT_EVIL_3_BRIDGE = Object.freeze({
   port: 58431,
   timeoutMs: 12000,
   durationMultiplier: 1000,
-  expectResponse: true
+  expectResponse: true,
+  closeCrowdControlOnConflict: true
 });
 
 const COIN_PUSHER_EFFECTS = Object.freeze([
@@ -384,7 +385,7 @@ const INTERNAL_GAMES = [
       "mod PC",
       "Steam"
     ],
-    installerVersion: "2.1.2",
+    installerVersion: "2.1.3",
     connector: RESIDENT_EVIL_3_BRIDGE,
     effects: RESIDENT_EVIL_3_EFFECTS,
     defaultMappings: RESIDENT_EVIL_3_DEFAULT_MAPPINGS,
@@ -682,7 +683,8 @@ const GAME_GUIDES = Object.freeze({
     ],
     notes: [
       "L’installation recommandée cible la version actuelle de Resident Evil 3 ; l’ancienne branche dx11_non-rt n’est pas sélectionnée automatiquement.",
-      "Le mod utilise REFramework et peut demander le runtime Bureau .NET 8 sur Windows.",
+      "Le bouton Installation ajoute automatiquement le runtime Bureau .NET 8 officiel s’il manque.",
+      "Si Crowd Control utilise déjà le port 58431, ShenPulse ferme uniquement ses processus locaux avant d’activer la session Resident Evil 3.",
       "Certains effets dépendent du personnage, de l’inventaire, des ennemis présents ou de la progression. Ils peuvent être temporairement indisponibles dans un menu, une cinématique ou un chargement.",
       "La touche Inser ouvre le menu REFramework dans le jeu si un diagnostic est nécessaire."
     ],

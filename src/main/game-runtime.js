@@ -18,6 +18,10 @@ const {
   isIntegratedGame
 } = require("./game-installer-manifest");
 const {
+  installDotNetDesktopRuntime,
+  isDotNetDesktopRuntimeInstalled
+} = require("./dotnet-desktop-runtime");
+const {
   sanitizeThiercelieuxEntitlements
 } = require("../shared/thiercelieux-products");
 
@@ -231,10 +235,20 @@ class GameRuntimeService {
       gameId === "gtav-montchiliad"
         ? await detectGtaEdition(targetPath)
         : "";
-    const assets = manifest.assets.filter(
+    const candidateAssets = manifest.assets.filter(
       (asset) =>
         !asset.editions?.length || asset.editions.includes(edition)
     );
+    const assets = [];
+    for (const asset of candidateAssets) {
+      if (
+        asset.action === "dotnet-desktop-runtime" &&
+        (await isDotNetDesktopRuntimeInstalled(asset.major || 8))
+      ) {
+        continue;
+      }
+      assets.push(asset);
+    }
     if (!assets.length) {
       throw new Error(
         "Aucun fichier d’installation compatible avec cette édition du jeu."
@@ -1146,6 +1160,12 @@ class GameRuntimeService {
       targetPath,
       asset.targetPath || ""
     );
+    if (asset.action === "dotnet-desktop-runtime") {
+      await installDotNetDesktopRuntime(downloadPath, {
+        major: asset.major || 8
+      });
+      return;
+    }
     if (asset.action === "copy") {
       await copyWithBackup(
         downloadPath,
@@ -1792,7 +1812,8 @@ function safeInstallerAssetUrl(value) {
     !(
       url.hostname === "backblazeb2.com" ||
       url.hostname.endsWith(".backblazeb2.com") ||
-      url.hostname === "one-click.crowdcontrol.live"
+      url.hostname === "one-click.crowdcontrol.live" ||
+      url.hostname === "builds.dotnet.microsoft.com"
     )
   ) {
     throw new Error("Hôte de téléchargement d’installation non autorisé.");

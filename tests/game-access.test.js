@@ -187,6 +187,10 @@ test("le renderer et les IPC appliquent le verrou avant d’entrer", () => {
   assert.match(ipc, /const requireGameAccess = \(packId\) =>/);
   assert.match(ipc, /handle\("game:install"[\s\S]*?requireGameAccess\(targetId\);/);
   assert.match(ipc, /handle\("game:launch"[\s\S]*?requireGameAccess\(targetId\);/);
+  assert.match(
+    ipc,
+    /handle\("game:launch"[\s\S]*?prepareConnection\(targetId\)[\s\S]*?gameRuntime\.launch\(targetId\)[\s\S]*?startGameSession\(targetId\)/
+  );
   assert.match(core, /startGameSession\(packId\)[\s\S]*?this\.gameHub\.assertAccess\(targetId\);/);
   assert.match(hub, /async trigger\(effectId[\s\S]*?this\.assertAccess\(packId\);/);
   assert.match(runtime, /status\(gameId\) \{\s*this\.assertAccess\(gameId\);/);

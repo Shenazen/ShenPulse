@@ -433,22 +433,33 @@ test("Euro Truck Simulator 2 installe le plugin officiel Crowd Control en un cli
 
 test("Resident Evil 3 installe le mod officiel recommandé et détecte Steam", () => {
   const installer = GAME_INSTALLERS["resident-evil-3"];
-  assert.equal(installer.version, "2.1.2");
+  assert.equal(installer.version, "2.1.3");
   assert.equal(installer.autoDetect, true);
   assert.equal(installer.unattended, true);
   assert.deepEqual(installer.steamAppIds, ["952060"]);
   assert.ok(installer.directoryNames.includes("RE3"));
   assert.deepEqual(installer.executables, ["re3.exe"]);
   assert.deepEqual(installer.launchExecutables, ["re3.exe"]);
-  assert.equal(installer.assets.length, 1);
-  assert.equal(installer.assets[0].action, "extract");
-  assert.equal(installer.assets[0].size, 20825046);
+  assert.equal(installer.assets.length, 2);
+  assert.equal(installer.assets[0].action, "dotnet-desktop-runtime");
+  assert.equal(installer.assets[0].major, 8);
+  assert.equal(installer.assets[0].size, 58715896);
   assert.equal(
     installer.assets[0].sha256,
-    "34a5b87eeff7b0fddf7e3069a7af4de42c6c3448ce2c0896f4c64db78fd44fba"
+    "c375dfd80a967405cfeff634912c1fccc56261ce3d9209ea473f60a21184d1cc"
   );
   assert.match(
     safeInstallerAssetUrl(installer.assets[0].url),
+    /^https:\/\/builds\.dotnet\.microsoft\.com\/dotnet\/WindowsDesktop\/8\.0\.31\/windowsdesktop-runtime-8\.0\.31-win-x64\.exe$/
+  );
+  assert.equal(installer.assets[1].action, "extract");
+  assert.equal(installer.assets[1].size, 20825046);
+  assert.equal(
+    installer.assets[1].sha256,
+    "34a5b87eeff7b0fddf7e3069a7af4de42c6c3448ce2c0896f4c64db78fd44fba"
+  );
+  assert.match(
+    safeInstallerAssetUrl(installer.assets[1].url),
     /^https:\/\/one-click\.crowdcontrol\.live\/RE3remake\/RE3net-CC\.zip\?ver=2\.1\.2$/
   );
 });

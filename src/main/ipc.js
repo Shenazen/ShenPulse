@@ -999,6 +999,7 @@ function registerIpc({
   handle("game:launch", async (_event, packId) => {
     const targetId = requireGameSessionAvailability(packId);
     requireGameAccess(targetId);
+    await core.gameHub.prepareConnection(targetId);
     const result = await gameRuntime.launch(targetId);
     const nextSnapshot = await core.startGameSession(targetId);
     return { ...result, snapshot: nextSnapshot };

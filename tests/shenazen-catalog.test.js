@@ -189,14 +189,15 @@ test("reprend les 67 interactions du pack Crowd Control Resident Evil 3 recomman
 
   assert.ok(game);
   assert.equal(game.guide.mode, "native");
-  assert.equal(game.installerVersion, "2.1.2");
+  assert.equal(game.installerVersion, "2.1.3");
   assert.deepEqual(game.connector, {
     type: "tcp-server",
     host: "127.0.0.1",
     port: 58431,
     timeoutMs: 12000,
     durationMultiplier: 1000,
-    expectResponse: true
+    expectResponse: true,
+    closeCrowdControlOnConflict: true
   });
   assert.equal(RESIDENT_EVIL_3_EFFECTS.length, 67);
   assert.equal(RESIDENT_EVIL_3_DEFAULT_MAPPINGS.length, 67);

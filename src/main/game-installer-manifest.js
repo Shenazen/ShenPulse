@@ -43,6 +43,8 @@ const EURO_TRUCK_SIMULATOR_2_ASSET_BASE =
   "https://one-click.crowdcontrol.live/TruckSimulator";
 const RESIDENT_EVIL_3_ASSET_BASE =
   "https://one-click.crowdcontrol.live/RE3remake";
+const DOTNET_DESKTOP_RUNTIME_8_ASSET_BASE =
+  "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.31";
 const GAME_INSTALLERS = Object.freeze({
   demonologist: {
     version: "1.0.0",
@@ -89,7 +91,7 @@ const GAME_INSTALLERS = Object.freeze({
     ]
   },
   "resident-evil-3": {
-    version: "2.1.2",
+    version: "2.1.3",
     title: "Resident Evil 3",
     targetLabel: "dossier contenant re3.exe",
     autoDetect: true,
@@ -99,8 +101,18 @@ const GAME_INSTALLERS = Object.freeze({
     executables: ["re3.exe"],
     launchExecutables: ["re3.exe"],
     warning:
-      "Resident Evil 3 doit être fermé. ShenPulse sauvegarde les fichiers remplacés puis installe REFramework et le mod officiel Crowd Control 2.1.2, configuré sur le port local 58431.",
+      "Resident Evil 3 doit être fermé. ShenPulse sauvegarde les fichiers remplacés puis installe, si nécessaire, le runtime Bureau .NET 8 officiel, REFramework et le mod officiel Crowd Control 2.1.2 configuré sur le port local 58431.",
     assets: [
+      {
+        id: "dotnet-desktop-runtime-8",
+        fileName: "windowsdesktop-runtime-8.0.31-win-x64.exe",
+        action: "dotnet-desktop-runtime",
+        major: 8,
+        size: 58715896,
+        sha256:
+          "c375dfd80a967405cfeff634912c1fccc56261ce3d9209ea473f60a21184d1cc",
+        url: `${DOTNET_DESKTOP_RUNTIME_8_ASSET_BASE}/windowsdesktop-runtime-8.0.31-win-x64.exe`
+      },
       {
         id: "mod",
         fileName: "RE3net-CC-2.1.2.zip",

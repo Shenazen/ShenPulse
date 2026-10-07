@@ -10,6 +10,9 @@ const { assertGameAccess } = require("./game-access");
 const { assertAdminAccount } = require("./account-access");
 const { SimpleTcpServerBridge } = require("./simple-tcp-server-bridge");
 const {
+  releaseCrowdControlPort
+} = require("./crowd-control-port");
+const {
   WindowsInputService,
   normalizeWindowsInputSequence
 } = require("./windows-input-service");
@@ -19,7 +22,8 @@ class GameHub extends EventEmitter {
     store,
     packsDirectory,
     resourcesDirectory,
-    windowsInputService
+    windowsInputService,
+    crowdControlPortReleaser
   }) {
     super();
     this.store = store;
@@ -31,6 +35,8 @@ class GameHub extends EventEmitter {
     this.minecraftRuntime = null;
     this.windowsInputService =
       windowsInputService || new WindowsInputService();
+    this.crowdControlPortReleaser =
+      crowdControlPortReleaser || releaseCrowdControlPort;
   }
 
   setMinecraftRuntime(runtime) {
@@ -407,6 +413,9 @@ class GameHub extends EventEmitter {
     const cacheKey = `${pack.id}:${connector.type}`;
     let bridge = this.serverBridges.get(cacheKey);
     if (!bridge) {
+      if (connector.closeCrowdControlOnConflict === true) {
+        await this.crowdControlPortReleaser(connector.port);
+      }
       bridge = new SimpleTcpServerBridge({
         host: connector.host || "127.0.0.1",
         port: Number(connector.port),
