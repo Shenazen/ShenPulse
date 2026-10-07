@@ -368,8 +368,8 @@ function renderAdminGameCheats() {
 function renderAdminTrials() {
   const trials = adminTrialRows();
   const trialsBlocked = Boolean(adminModuleError("trials"));
-  const eligibleGames = Object.values(adminCommerceCatalog().products || {})
-    .filter((item) => isCurrentGameProduct(item) && item.enabled && item.accessMode === "purchase" && item.trialEligible)
+  const eligibleGames = adminTrialGameProducts()
+    .filter((item) => item.enabled)
     .sort((left, right) => left.title.localeCompare(right.title, "fr"));
   return `<div class="admin-trials-layout">
     <form id="admin-trial-form" class="admin-panel admin-trial-form" autocomplete="off">
@@ -534,6 +534,23 @@ function adminCommerceCatalog() {
       subscriptions: {}
     }
   );
+}
+
+function adminTrialGameProducts() {
+  const commerceProducts = adminCommerceCatalog().products || {};
+  return (snapshot?.packs || [])
+    .filter((pack) => pack?.id && pack.accessMode === "purchase")
+    .map((pack) => {
+      const product = commerceProducts[pack.id] || {};
+      return {
+        ...product,
+        accessMode: "purchase",
+        enabled: product.enabled !== false,
+        id: pack.id,
+        title: product.title || pack.name || pack.id,
+        trialEligible: true
+      };
+    });
 }
 
 function isCurrentGameProduct(product) {

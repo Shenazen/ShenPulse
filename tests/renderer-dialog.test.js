@@ -574,6 +574,26 @@ test("le formulaire d'essai garde l'adresse e-mail saisissable après un envoi",
   );
 });
 
+test("le formulaire d'essai propose tous les jeux payants du catalogue local", () => {
+  const app = readRendererSource();
+  const helperStart = app.indexOf("function adminTrialGameProducts()");
+  const helperEnd = app.indexOf("function isCurrentGameProduct", helperStart);
+  const helper = app.slice(helperStart, helperEnd);
+  const formStart = app.indexOf("function renderAdminTrials()");
+  const formEnd = app.indexOf(
+    "function restoreAdminTrialFormInteractivity",
+    formStart
+  );
+  const form = app.slice(formStart, formEnd);
+
+  assert.match(form, /adminTrialGameProducts\(\)/);
+  assert.doesNotMatch(form, /item\.trialEligible/);
+  assert.match(helper, /snapshot\?\.packs/);
+  assert.match(helper, /pack\.accessMode === "purchase"/);
+  assert.match(helper, /commerceProducts\[pack\.id\] \|\| \{\}/);
+  assert.match(helper, /title: product\.title \|\| pack\.name \|\| pack\.id/);
+});
+
 test("une session propriétaire resynchronise les accès offerts au démarrage", () => {
   const app = readRendererSource();
   const startup = app.slice(app.indexOf("api.getSnapshot()"));
