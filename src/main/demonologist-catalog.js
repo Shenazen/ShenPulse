@@ -3,8 +3,8 @@
 const GAME_ID = "demonologist";
 
 // Séquences du pack Demonologist officiel de Crowd Control relevées le
-// 7 octobre 2026. Le format Crowd Control couvre le clavier, les boutons
-// de souris et les mouvements relatifs de la souris.
+// 7 octobre 2026. Le catalogue reste complet pour les utilisateurs de la
+// version intégrale ; la Démo Steam n’expose qu’une partie de ces commandes.
 const RAW_EFFECTS = [
   effect(
     "tipsy-walk",
@@ -51,7 +51,7 @@ const RAW_EFFECTS = [
     "d_demo_drop_panic",
     "Item Drop n' Pick Up",
     "Lâcher et ramasser",
-    "Lâche l’objet courant puis tente de le ramasser à plusieurs reprises.",
+    "Lâche l’objet courant puis tente de le ramasser à plusieurs reprises. Nécessite un objet équipé et correctement visé au sol.",
     "Équipement",
     "↕",
     "k,0,71,2;k,800,69,2;k,800,71,2;k,800,69,2"
@@ -81,7 +81,7 @@ const RAW_EFFECTS = [
     "d_demo_interact_spam",
     "Interact Spam",
     "Interactions frénétiques",
-    "Appuie rapidement et plusieurs fois sur la touche d’interaction.",
+    "Appuie rapidement et plusieurs fois sur la touche d’interaction. Nécessite un élément interactif visé.",
     "Actions directes",
     "✦",
     "k,0,69,2;k,300,69,2;k,300,69,2;k,300,69,2;k,300,69,2;k,300,69,2;k,300,69,2"
@@ -101,7 +101,7 @@ const RAW_EFFECTS = [
     "d_demo_interact",
     "Interact",
     "Interagir",
-    "Interagit une fois avec l’objet visé.",
+    "Interagit une fois avec l’objet visé. Nécessite un élément interactif à portée.",
     "Actions directes",
     "E",
     "k,0,69,2"
@@ -121,7 +121,7 @@ const RAW_EFFECTS = [
     "d_demo_drop",
     "Drop Item",
     "Lâcher l’objet",
-    "Lâche immédiatement l’objet actuellement équipé.",
+    "Lâche immédiatement l’objet actuellement équipé. Sans objet en main, aucun effet n’est visible.",
     "Équipement",
     "↓",
     "k,0,71,2"
@@ -241,7 +241,7 @@ const RAW_EFFECTS = [
     "d_demo_tool_use",
     "Use Tool",
     "Utiliser l’outil",
-    "Utilise une fois l’outil actuellement équipé.",
+    "Utilise une fois l’outil actuellement équipé. Nécessite un outil utilisable en main.",
     "Outils",
     "●",
     "b,0,0,2"
@@ -261,7 +261,7 @@ const RAW_EFFECTS = [
     "d_demo_ptt",
     "Push to Talk",
     "Maintenir le micro",
-    "Maintient la touche de discussion vocale pendant deux secondes.",
+    "Maintient V pendant deux secondes. Cette action n’émet aucun son seule : le microphone doit être configuré et une voix doit parler pendant ce délai.",
     "Communication",
     "◉",
     "k,0,86,0;k,2000,86,1"

@@ -610,6 +610,7 @@ const GAME_GUIDES = Object.freeze({
     notes: [
       "Aucun fichier du jeu n’est téléchargé ni modifié.",
       "Les commandes sont envoyées uniquement à la fenêtre de jeu Demonologist (Shivers-Win64-Shipping.exe) et s’arrêtent si elle ne peut plus être ciblée.",
+      "La Démo Steam n’expose qu’une partie des commandes dans ses réglages. ShenPulse conserve néanmoins les 31 interactions pour les utilisateurs de la version complète.",
       "Le pack officiel recommande le plein écran sans bordure ou le mode fenêtré."
     ],
     sources: [
