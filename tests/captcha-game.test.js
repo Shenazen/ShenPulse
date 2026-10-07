@@ -7,6 +7,10 @@ const path = require("node:path");
 const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
 const { GAME_INSTALLERS } = require("../src/main/game-installer-manifest");
 const { sanitizeGameConfiguration } = require("../src/main/ipc");
+const {
+  GAME_INTERACTION_ACTION_TYPES,
+  isGameInteractionActionType
+} = require("../src/shared/game-interaction-action-types");
 const { readRendererSource } = require("./helpers/source-bundles");
 
 const root = path.join(__dirname, "..");
@@ -55,6 +59,12 @@ test("branche les cadeaux CAPTCHA sur la bibliothèque sonore et une sortie glob
   assert.match(renderer, /soundPickerField\("gameSoundUrl"/);
   assert.match(renderer, /pack\.id === "captcha"/);
   assert.match(renderer, /Aucun overlay pour le moment/);
+  assert.deepEqual(GAME_INTERACTION_ACTION_TYPES, [
+    "game.effect",
+    "overlay.win-counter",
+    "audio.play"
+  ]);
+  assert.equal(isGameInteractionActionType("audio.play"), true);
 
   assert.deepEqual(
     sanitizeGameConfiguration("captcha", {

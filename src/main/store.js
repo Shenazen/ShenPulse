@@ -9,6 +9,9 @@ const {
 } = require("./defaults");
 const { clone, id } = require("./utils");
 const {
+  isGameInteractionActionType
+} = require("../shared/game-interaction-action-types");
+const {
   normalizeOverlaySession
 } = require("./overlay-session-state");
 const { normalizeIrlSettings } = require("./shelly-service");
@@ -1525,7 +1528,7 @@ function isGameInteractionRule(rule) {
   return Boolean(
     rule?.gameInteraction ||
       (rule?.actions || []).some((action) =>
-        ["game.effect", "overlay.win-counter"].includes(action.type)
+        isGameInteractionActionType(action.type)
       )
   );
 }
@@ -1533,7 +1536,7 @@ function isGameInteractionRule(rule) {
 function gameInteractionPackId(rule) {
   return String(
     (rule?.actions || []).find((action) =>
-      ["game.effect", "overlay.win-counter"].includes(action.type)
+      isGameInteractionActionType(action.type)
     )?.config?.packId || ""
   ).trim();
 }

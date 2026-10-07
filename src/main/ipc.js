@@ -1,5 +1,9 @@
 "use strict";
 
+const {
+  isGameInteractionActionType
+} = require("../shared/game-interaction-action-types");
+
 const fs = require("node:fs");
 const path = require("node:path");
 const { clipboard, dialog, ipcMain, net, shell } = require("electron");
@@ -767,9 +771,7 @@ function registerIpc({
     requireGameAccess(targetId);
     const rule = sanitizeEntity(incoming || {});
     rule.actions = (Array.isArray(rule.actions) ? rule.actions : [])
-      .filter((action) =>
-        ["game.effect", "overlay.win-counter"].includes(action.type)
-      )
+      .filter((action) => isGameInteractionActionType(action.type))
       .map((action) => ({
         ...action,
         config: {
