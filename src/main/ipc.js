@@ -1144,12 +1144,6 @@ function sanitizeGameConfiguration(packId, value) {
           : "wasd"
     };
   }
-  if (safeString(packId, 160) === "captcha") {
-    return {
-      ...next,
-      audioOutputDeviceId: safeString(input.audioOutputDeviceId || "", 512)
-    };
-  }
   if (safeString(packId, 160) !== "coin-pusher") return next;
   for (const field of ["platformImageUrl", "plinkoImageUrl"]) {
     if (Object.prototype.hasOwnProperty.call(input, field)) {

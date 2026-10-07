@@ -32,10 +32,10 @@ const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 41);
-  assert.equal(new Set(games.map((game) => game.id)).size, 41);
+  assert.equal(games.length, 40);
+  assert.equal(new Set(games.map((game) => game.id)).size, 40);
   assert.equal(
-    games.filter((game) => !["fortnite", "brumelune", "thiercelieux", "captcha"].includes(game.id)).length,
+    games.filter((game) => !["fortnite", "brumelune", "thiercelieux"].includes(game.id)).length,
     37
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
@@ -79,7 +79,6 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
         .map((game) => [game.id, game.price])
     ),
     {
-      captcha: 3.99,
       "coin-pusher": 4.99,
       "connect-four": 4.99,
       "deal-or-no-deal": 4.99,

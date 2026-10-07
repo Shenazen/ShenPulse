@@ -60,7 +60,6 @@ test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
   assert.deepEqual(
     Object.keys(GAME_INSTALLERS).sort(),
     [
-      "captcha",
       "cult-of-the-lamb",
       "gtav-montchiliad",
       "minecraft-bedrock-box",

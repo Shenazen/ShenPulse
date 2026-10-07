@@ -37,8 +37,6 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "dismiss-game-message",
   "dismiss-game-progress",
   "save-fortnite-input-layout",
-  "refresh-captcha-audio-outputs",
-  "save-captcha-audio-output",
   "set-game-effect-category",
   "set-game-overlay-background",
   "save-game-round-settings",
@@ -536,23 +534,6 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
       });
       render();
     }, "Touches Fortnite enregistrées");
-    return;
-  }
-  if (action === "refresh-captcha-audio-outputs") {
-    await refreshCaptchaAudioOutputs();
-    return;
-  }
-  if (action === "save-captcha-audio-output") {
-    const pack = snapshot.packs.find((item) => item.id === id);
-    if (!pack || pack.id !== "captcha" || !requireGameAccess(pack)) return;
-    const audioOutputDeviceId = target
-      .closest(".game-audio-routing")
-      ?.querySelector("[data-captcha-audio-output]")
-      ?.value || "";
-    await perform(async () => {
-      snapshot = await api.configureGame(pack.id, { audioOutputDeviceId });
-      render();
-    }, "Périphérique audio CAPTCHA enregistré");
     return;
   }
   if (action === "set-game-effect-category") {

@@ -87,10 +87,10 @@ test("les sons autonomes restent dans le lecteur ShenPulse et pas dans les overl
   assert.equal(published[0].payload.type, "audio");
 });
 
-test("les sons CAPTCHA utilisent la sortie audio globale choisie pour le jeu", async () => {
+test("les sons de jeu utilisent la sortie audio globale choisie pour leur pack", async () => {
   const published = [];
   const runner = createRunner(published);
-  runner.store.getState().game.connectorOverrides.captcha = {
+  runner.store.getState().game.connectorOverrides["sound-game"] = {
     audioOutputDeviceId: "virtual-cable-output"
   };
 
@@ -98,9 +98,9 @@ test("les sons CAPTCHA utilisent la sortie audio globale choisie pour le jeu", a
     {
       type: "audio.play",
       config: {
-        packId: "captcha",
+        packId: "sound-game",
         effectId: "gift-sound",
-        url: "https://cdn.example.test/captcha.mp3"
+        url: "https://cdn.example.test/game-sound.mp3"
       }
     },
     { event: { type: "gift", data: { giftName: "Rose" } } }
