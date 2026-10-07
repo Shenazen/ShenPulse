@@ -17,12 +17,12 @@ $target = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue |
   Where-Object { $_.MainWindowHandle -ne 0 } |
   Select-Object -First 1
 if (-not $target) {
-  throw "Fortnite n'est pas ouvert ou sa fenêtre n'est pas encore prête."
+  throw "$ProcessName n'est pas ouvert ou sa fenêtre n'est pas encore prête."
 }
 $target.Refresh()
 $window = [IntPtr]$target.MainWindowHandle
 if ($window -eq [IntPtr]::Zero) {
-  throw "La fenêtre Fortnite est introuvable."
+  throw "La fenêtre $ProcessName est introuvable."
 }
 
 if ($Operation -eq 'status') {
@@ -37,9 +37,17 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-public static class ShenPulseFortniteInput {
+public static class ShenPulseGameInput {
+  private const uint INPUT_MOUSE = 0;
   private const uint INPUT_KEYBOARD = 1;
   private const uint KEYEVENTF_KEYUP = 0x0002;
+  private const uint MOUSEEVENTF_MOVE = 0x0001;
+  private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+  private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+  private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+  private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+  private const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
+  private const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
   private const int SW_RESTORE = 9;
 
   [StructLayout(LayoutKind.Sequential)]
@@ -151,11 +159,48 @@ public static class ShenPulseFortniteInput {
       throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
     }
   }
+
+  public static void SendMouseButton(int button, bool buttonUp) {
+    uint flags;
+    switch (button) {
+      case 0:
+        flags = buttonUp ? MOUSEEVENTF_LEFTUP : MOUSEEVENTF_LEFTDOWN;
+        break;
+      case 1:
+        flags = buttonUp ? MOUSEEVENTF_MIDDLEUP : MOUSEEVENTF_MIDDLEDOWN;
+        break;
+      case 2:
+        flags = buttonUp ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_RIGHTDOWN;
+        break;
+      default:
+        throw new ArgumentOutOfRangeException("button");
+    }
+    SendMouse(0, 0, flags);
+  }
+
+  public static void SendMouseMove(int dx, int dy) {
+    SendMouse(dx, dy, MOUSEEVENTF_MOVE);
+  }
+
+  private static void SendMouse(int dx, int dy, uint flags) {
+    INPUT input = new INPUT();
+    input.type = INPUT_MOUSE;
+    input.U.mi.dx = dx;
+    input.U.mi.dy = dy;
+    input.U.mi.mouseData = 0;
+    input.U.mi.dwFlags = flags;
+    input.U.mi.time = 0;
+    input.U.mi.dwExtraInfo = UIntPtr.Zero;
+    uint sent = SendInput(1, new INPUT[] { input }, Marshal.SizeOf(typeof(INPUT)));
+    if (sent != 1) {
+      throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+  }
 }
 '@
 
-if (-not [ShenPulseFortniteInput]::Activate($window)) {
-  throw "Windows n'a pas pu placer Fortnite au premier plan."
+if (-not [ShenPulseGameInput]::Activate($window)) {
+  throw "Windows n'a pas pu placer $ProcessName au premier plan."
 }
 Start-Sleep -Milliseconds 120
 
@@ -164,6 +209,7 @@ $eventsJson = [Text.Encoding]::UTF8.GetString(
 )
 $events = $eventsJson | ConvertFrom-Json
 $heldKeys = [Collections.Generic.HashSet[int]]::new()
+$heldMouseButtons = [Collections.Generic.HashSet[int]]::new()
 try {
   foreach ($event in $events) {
     if ([int]$event.delayMs -gt 0) {
@@ -171,29 +217,59 @@ try {
     }
     $target.Refresh()
     if ($target.HasExited) {
-      throw "Fortnite s'est fermé pendant l'interaction."
+      throw "$ProcessName s'est fermé pendant l'interaction."
     }
-    if (-not [ShenPulseFortniteInput]::IsForeground($window)) {
-      if (-not [ShenPulseFortniteInput]::Activate($window)) {
-        throw "Fortnite a perdu le premier plan ; l'interaction a été arrêtée."
+    if (-not [ShenPulseGameInput]::IsForeground($window)) {
+      if (-not [ShenPulseGameInput]::Activate($window)) {
+        throw "$ProcessName a perdu le premier plan ; l'interaction a été arrêtée."
       }
     }
-    $keyCode = [int]$event.keyCode
-    $keyUp = [bool]$event.keyUp
-    [ShenPulseFortniteInput]::SendKey([System.UInt16]$keyCode, $keyUp)
-    if ($keyUp) {
-      [void]$heldKeys.Remove($keyCode)
-    } else {
-      [void]$heldKeys.Add($keyCode)
+    if ([string]$event.kind -eq 'keyboard') {
+      $keyCode = [int]$event.keyCode
+      $action = [string]$event.action
+      if ($action -eq 'press') {
+        [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $false)
+        Start-Sleep -Milliseconds 40
+        [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $true)
+      } else {
+        $keyUp = $action -eq 'up'
+        [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $keyUp)
+        if ($keyUp) {
+          [void]$heldKeys.Remove($keyCode)
+        } else {
+          [void]$heldKeys.Add($keyCode)
+        }
+      }
+    } elseif ([string]$event.kind -eq 'mouse-button') {
+      $button = [int]$event.button
+      $action = [string]$event.action
+      if ($action -eq 'press') {
+        [ShenPulseGameInput]::SendMouseButton($button, $false)
+        Start-Sleep -Milliseconds 40
+        [ShenPulseGameInput]::SendMouseButton($button, $true)
+      } else {
+        $buttonUp = $action -eq 'up'
+        [ShenPulseGameInput]::SendMouseButton($button, $buttonUp)
+        if ($buttonUp) {
+          [void]$heldMouseButtons.Remove($button)
+        } else {
+          [void]$heldMouseButtons.Add($button)
+        }
+      }
+    } elseif ([string]$event.kind -eq 'mouse-move') {
+      [ShenPulseGameInput]::SendMouseMove([int]$event.dx, [int]$event.dy)
     }
   }
 } finally {
-  if ($heldKeys.Count -gt 0 -and -not $target.HasExited) {
-    if (-not [ShenPulseFortniteInput]::IsForeground($window)) {
-      [void][ShenPulseFortniteInput]::Activate($window)
+  if (($heldKeys.Count -gt 0 -or $heldMouseButtons.Count -gt 0) -and -not $target.HasExited) {
+    if (-not [ShenPulseGameInput]::IsForeground($window)) {
+      [void][ShenPulseGameInput]::Activate($window)
     }
     foreach ($keyCode in @($heldKeys)) {
-      [ShenPulseFortniteInput]::SendKey([System.UInt16]$keyCode, $true)
+      [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $true)
+    }
+    foreach ($button in @($heldMouseButtons)) {
+      [ShenPulseGameInput]::SendMouseButton([int]$button, $true)
     }
   }
 }
@@ -241,10 +317,14 @@ function applyKeyboardLayout(events, keyLayout) {
     [87, 90],
     [65, 81]
   ]);
-  return events.map((event) => ({
-    ...event,
-    keyCode: azertyMovementKeys.get(event.keyCode) || event.keyCode
-  }));
+  return events.map((event) =>
+    event.kind === "keyboard"
+      ? {
+          ...event,
+          keyCode: azertyMovementKeys.get(event.keyCode) || event.keyCode
+        }
+      : event
+  );
 }
 
 function normalizeProcessName(value) {
@@ -259,32 +339,68 @@ function normalizeProcessName(value) {
 
 function normalizeWindowsInputSequence(sequence) {
   const source = String(sequence || "").trim();
-  if (!source) throw new Error("La séquence clavier est vide.");
+  if (!source) throw new Error("La séquence d’entrée est vide.");
   const events = source.split(";").map((rawEvent, index) => {
-    const [kind, rawDelay, rawKeyCode, rawState, ...extra] = rawEvent.split(",");
+    const [kind, rawDelay, rawValueA, rawValueB, ...extra] = rawEvent.split(",");
     const delayMs = Number(rawDelay);
-    const keyCode = Number(rawKeyCode);
-    const state = Number(rawState);
+    const valueA = Number(rawValueA);
+    const valueB = Number(rawValueB);
+    const invalid = () => {
+      throw new Error(`Événement d’entrée invalide à la position ${index + 1}.`);
+    };
     if (
-      kind !== "k" ||
       extra.length ||
       !Number.isInteger(delayMs) ||
       delayMs < 0 ||
-      delayMs > 15_000 ||
-      !Number.isInteger(keyCode) ||
-      keyCode < 1 ||
-      keyCode > 254 ||
-      ![0, 1].includes(state)
+      delayMs > 15_000
     ) {
-      throw new Error(`Événement clavier invalide à la position ${index + 1}.`);
+      invalid();
     }
-    return { delayMs, keyCode, keyUp: state === 1 };
+    if (kind === "k") {
+      if (
+        !Number.isInteger(valueA) ||
+        valueA < 1 ||
+        valueA > 254 ||
+        ![0, 1, 2].includes(valueB)
+      ) {
+        invalid();
+      }
+      return {
+        kind: "keyboard",
+        delayMs,
+        keyCode: valueA,
+        action: ["down", "up", "press"][valueB]
+      };
+    }
+    if (kind === "b") {
+      if (![0, 1, 2].includes(valueA) || ![0, 1, 2].includes(valueB)) {
+        invalid();
+      }
+      return {
+        kind: "mouse-button",
+        delayMs,
+        button: valueA,
+        action: ["down", "up", "press"][valueB]
+      };
+    }
+    if (kind === "r") {
+      if (
+        !Number.isInteger(valueA) ||
+        !Number.isInteger(valueB) ||
+        Math.abs(valueA) > 2000 ||
+        Math.abs(valueB) > 2000
+      ) {
+        invalid();
+      }
+      return { kind: "mouse-move", delayMs, dx: valueA, dy: valueB };
+    }
+    invalid();
   });
   if (events.length > MAX_EVENTS) {
-    throw new Error("La séquence clavier contient trop d’événements.");
+    throw new Error("La séquence d’entrée contient trop d’événements.");
   }
   if (events.reduce((total, event) => total + event.delayMs, 0) > MAX_SEQUENCE_MS) {
-    throw new Error("La séquence clavier est trop longue.");
+    throw new Error("La séquence d’entrée est trop longue.");
   }
   return events;
 }
@@ -333,7 +449,7 @@ function executeWindowsInput(operation, processName, events) {
         reject(
           new Error(
             errorMessage ||
-              "La séquence clavier Fortnite n’a pas pu être envoyée."
+              `La séquence d’entrée n’a pas pu être envoyée à ${processName}.`
           )
         );
         return;
@@ -346,7 +462,7 @@ function executeWindowsInput(operation, processName, events) {
       try {
         resolve(output ? JSON.parse(output) : { ok: true });
       } catch {
-        reject(new Error("Réponse Windows invalide après l’interaction Fortnite."));
+        reject(new Error("Réponse Windows invalide après l’interaction de jeu."));
       }
     });
   });

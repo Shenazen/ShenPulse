@@ -36,11 +36,11 @@ const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 41);
-  assert.equal(new Set(games.map((game) => game.id)).size, 41);
+  assert.equal(games.length, 42);
+  assert.equal(new Set(games.map((game) => game.id)).size, 42);
   assert.equal(
     games.filter((game) => !["fortnite", "brumelune", "thiercelieux"].includes(game.id)).length,
-    38
+    39
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(games.find((game) => game.id === "brumelune")?.source, "ShenPulse Original");

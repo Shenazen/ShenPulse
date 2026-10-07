@@ -82,6 +82,7 @@ function renderGameInstallation(pack, unlocked) {
 }
 
 function renderInputGameInstallation(pack, unlocked) {
+  const processName = pack.connector?.processName || `${pack.name}.exe`;
   const configuredLayout = String(
     snapshot.state.game.connectorOverrides?.[pack.id]?.keyLayout ||
       pack.connector?.keyLayout ||
@@ -89,34 +90,34 @@ function renderInputGameInstallation(pack, unlocked) {
   ).toLowerCase();
   return `<div class="game-simple-step">
     <section class="game-primary-panel game-install-simple">
-      <header><div><span>⌨ CONTRÔLE CIBLÉ</span><h3>Aucun mod à installer</h3><p>ShenPulse envoie uniquement les séquences clavier vérifiées au processus Fortnite officiel.</p></div><span class="game-step-count">PRIVÉ</span></header>
+      <header><div><span>⌨ CONTRÔLE CIBLÉ</span><h3>Interactions prêtes sans mod</h3><p>ShenPulse utilise directement les séquences clavier et souris vérifiées du pack Crowd Control pour ${escapeHtml(pack.name)}.</p></div><span class="game-step-count">1 CLIC</span></header>
       ${renderGamePageMessage(pack, "installation")}
       <div class="game-install-state ready">
         <span>✓</span>
         <div>
-          <strong>Fortnite reste intact</strong>
-          <p>Aucun fichier du jeu n’est modifié. Si Fortnite n’est pas ouvert ou perd sa fenêtre, l’envoi est refusé ou interrompu.</p>
+          <strong>${escapeHtml(pack.name)} reste intact</strong>
+          <p>Aucun fichier du jeu n’est modifié. Si le jeu n’est pas ouvert ou perd sa fenêtre, l’envoi est refusé ou interrompu.</p>
         </div>
       </div>
       <label class="field full">
-        <span>Touches de déplacement utilisées dans Fortnite</span>
-        <select data-fortnite-key-layout>
+        <span>Touches de déplacement utilisées dans ${escapeHtml(pack.name)}</span>
+        <select data-game-key-layout>
           <option value="wasd" ${configuredLayout === "wasd" ? "selected" : ""}>WASD — séquence Crowd Control originale</option>
           <option value="azerty" ${configuredLayout === "azerty" ? "selected" : ""}>ZQSD — clavier français</option>
         </select>
-        <small>Les autres touches restent Maj, Espace, Ctrl, R, B, M et 1 à 5.</small>
+        <small>Seules les touches de déplacement sont adaptées. Les autres commandes restent celles du pack officiel.</small>
       </label>
       <footer class="game-panel-actions">
-        <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Détecter Fortnite ouvert</button>
-        <button class="button" data-action="save-fortnite-input-layout" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Enregistrer les touches</button>
+        <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Détecter ${escapeHtml(pack.name)} ouvert</button>
+        <button class="button primary" data-action="save-game-input-layout" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Installer les interactions</button>
         <button class="button primary" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Continuer vers les interactions →</button>
       </footer>
     </section>
     <aside class="game-novice-note">
       <span>⌁</span>
-      <strong>Réservé au propriétaire</strong>
-      <p>Ce jeu n’est transmis au rendu que pour votre compte propriétaire vérifié. Le connecteur ne reconnaît que FortniteClient-Win64-Shipping.exe.</p>
-      <small>Lancez Fortnite et chargez une partie avant de tester un effet.</small>
+      <strong>${pack.ownerOnly ? "Réservé au propriétaire" : "Fenêtre ciblée uniquement"}</strong>
+      <p>Le connecteur reconnaît exclusivement ${escapeHtml(processName)} et ne transmet aucune commande à une autre application.</p>
+      <small>Lancez ${escapeHtml(pack.name)} et chargez une partie avant de tester un effet.</small>
     </aside>
   </div>`;
 }
@@ -142,7 +143,7 @@ function renderGameLaunch(pack, unlocked) {
       ? roundSettings.durationMinutes * 60
       : 0;
   const launchDescription = inputDriven
-    ? "Ouvrez Fortnite depuis Epic Games, chargez une partie puis activez la session. ShenPulse ne lancera ni ne modifiera le jeu."
+    ? `Ouvrez ${pack.name}, chargez une partie puis activez la session. ShenPulse ne lancera ni ne modifiera le jeu.`
     : crowdControlMod
       ? "Ouvrez Euro Truck Simulator 2 sur Steam, chargez votre sauvegarde puis activez la session. ShenPulse attendra la connexion du plugin local sur le port 51337."
     : managedMinecraft
@@ -156,7 +157,7 @@ function renderGameLaunch(pack, unlocked) {
       <header><div><span>▶ DÉMARRAGE</span><h3>Tout est prêt pour jouer</h3><p>${escapeHtml(launchDescription)}</p></div></header>
       ${renderGamePageMessage(pack, "launch")}
       <div class="game-start-readiness">
-        <article class="${ready ? "ready" : ""}"><span>${ready ? "✓" : "1"}</span><div><strong>${ready ? inputDriven ? "Connecteur prêt" : crowdControlMod ? "Pont local prêt" : "Jeu prêt" : "Installation nécessaire"}</strong><small>${ready ? inputDriven ? "Fortnite sera détecté au moment du test." : crowdControlMod ? "ETS2 doit être lancé séparément depuis Steam." : "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
+        <article class="${ready ? "ready" : ""}"><span>${ready ? "✓" : "1"}</span><div><strong>${ready ? inputDriven ? "Connecteur prêt" : crowdControlMod ? "Pont local prêt" : "Jeu prêt" : "Installation nécessaire"}</strong><small>${ready ? inputDriven ? `${escapeHtml(pack.name)} sera détecté au moment du test.` : crowdControlMod ? "ETS2 doit être lancé séparément depuis Steam." : "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
         <article class="${mappings.length ? "ready" : ""}"><span>${mappings.length ? "✓" : "2"}</span><div><strong>${mappings.length ? `${mappings.length} interaction${mappings.length > 1 ? "s" : ""} configurée${mappings.length > 1 ? "s" : ""}` : "Interactions facultatives"}</strong><small>${mappings.length ? "Vos déclencheurs sont enregistrés." : "Vous pourrez en ajouter à tout moment."}</small></div></article>
         <article class="${sessionActive ? "ready" : ""}"><span>${sessionActive ? "✓" : "3"}</span><div><strong>${sessionActive ? "Session de jeu active" : "Session de jeu arrêtée"}</strong><small>${sessionActive ? "Les interactions restent actives sur toutes les pages." : "Activez-la pour autoriser les interactions de ce jeu."}</small></div></article>
       </div>
@@ -168,7 +169,7 @@ function renderGameLaunch(pack, unlocked) {
         ${sessionActive
           ? `<button class="button danger game-launch-button" data-action="stop-game-session">■ Arrêter la session de jeu</button>`
           : inputDriven
-            ? `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions Fortnite</button>`
+            ? `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions ${escapeHtml(pack.name)}</button>`
           : canLaunch
             ? `<button class="button primary game-launch-button" data-action="launch-game" data-id="${escapeHtml(pack.id)}" ${launchBusy ? "disabled" : ""}>${launchBusy ? "… Démarrage du serveur" : integrated ? "▶ Ouvrir le jeu et activer" : escapeHtml(launchButtonLabel)}</button>`
             : `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions</button>`}
@@ -205,7 +206,7 @@ function renderGameLaunch(pack, unlocked) {
       : `<aside class="game-novice-note">
           <span>▶</span>
           <strong>Après le lancement</strong>
-          <p>${inputDriven ? "Gardez Fortnite au premier plan. Chaque interaction est arrêtée si la fenêtre cible ne peut plus être reconnue." : "Chargez simplement votre partie. ShenPulse reconnaît automatiquement le jeu préparé et utilise votre profil actif."}</p>
+          <p>${inputDriven ? `Gardez ${escapeHtml(pack.name)} au premier plan. Chaque interaction est arrêtée si la fenêtre cible ne peut plus être reconnue.` : "Chargez simplement votre partie. ShenPulse reconnaît automatiquement le jeu préparé et utilise votre profil actif."}</p>
         </aside>`}
   </div>`;
 }

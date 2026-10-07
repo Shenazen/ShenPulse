@@ -91,7 +91,7 @@ test("valide les séquences Crowd Control et adapte uniquement les déplacements
   );
   assert.throws(
     () => normalizeWindowsInputSequence("m,0,1,0"),
-    /Événement clavier invalide/
+    /Événement d’entrée invalide/
   );
 });
 

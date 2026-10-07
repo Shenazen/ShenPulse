@@ -36,7 +36,7 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "game-step",
   "dismiss-game-message",
   "dismiss-game-progress",
-  "save-fortnite-input-layout",
+  "save-game-input-layout",
   "set-game-effect-category",
   "set-game-overlay-background",
   "save-game-round-settings",
@@ -521,19 +521,23 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     render();
     return;
   }
-  if (action === "save-fortnite-input-layout") {
+  if (action === "save-game-input-layout") {
     const pack = snapshot.packs.find((item) => item.id === id);
-    if (!pack || pack.id !== "fortnite" || !requireGameAccess(pack)) return;
+    if (
+      !pack ||
+      pack.connector?.type !== "windows-input" ||
+      !requireGameAccess(pack)
+    ) return;
     const layout = target
       .closest(".game-simple-step")
-      ?.querySelector("[data-fortnite-key-layout]")
+      ?.querySelector("[data-game-key-layout]")
       ?.value;
     await perform(async () => {
       snapshot = await api.configureGame(pack.id, {
         keyLayout: layout === "azerty" ? "azerty" : "wasd"
       });
       render();
-    }, "Touches Fortnite enregistrées");
+    }, `Interactions ${pack.name} installées`);
     return;
   }
   if (action === "set-game-effect-category") {

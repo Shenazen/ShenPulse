@@ -36,6 +36,11 @@ const {
   FORTNITE_INTERACTION_CATALOG_VERSION
 } = require("./fortnite-catalog");
 const {
+  DEMONOLOGIST_DEFAULT_MAPPINGS,
+  DEMONOLOGIST_EFFECTS,
+  DEMONOLOGIST_INTERACTION_CATALOG_VERSION
+} = require("./demonologist-catalog");
+const {
   EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
   EURO_TRUCK_SIMULATOR_2_EFFECTS,
   EURO_TRUCK_SIMULATOR_2_INTERACTION_CATALOG_VERSION
@@ -318,6 +323,31 @@ const INTERNAL_GAMES = [
     interactionCatalogVersion:
       FORTNITE_INTERACTION_CATALOG_VERSION
   }),
+  game("demonologist", "Demonologist", {
+    artworkUrl:
+      "https://resources.crowdcontrol.live/images/Demonologist/box.jpg",
+    included: true,
+    requiresPro: true,
+    source: "Crowd Control · Demonologist Input Disrupts",
+    description:
+      "Transforme les cadeaux TikTok LIVE en commandes ciblées : déplacements, équipements, journal, lampe, outils, caméra et communication.",
+    tags: [
+      "abonnement requis",
+      "inclus",
+      "Crowd Control",
+      "clavier et souris",
+      "Steam"
+    ],
+    connector: {
+      type: "windows-input",
+      processName: "Demonologist.exe",
+      keyLayout: "wasd"
+    },
+    effects: DEMONOLOGIST_EFFECTS,
+    defaultMappings: DEMONOLOGIST_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      DEMONOLOGIST_INTERACTION_CATALOG_VERSION
+  }),
   game("euro-truck-simulator-2", "Euro Truck Simulator 2", {
     artworkUrl:
       "https://resources.crowdcontrol.live/images/EuroTruckSimulator2/box.jpg",
@@ -562,6 +592,33 @@ const GAME_GUIDES = Object.freeze({
       {
         label: "Guide officiel des Input Disrupts",
         url: "https://crowdcontrol.live/guides/disrupts"
+      }
+    ]
+  },
+  demonologist: {
+    mode: "input",
+    summary:
+      "Aucun mod n’est requis : ShenPulse reproduit les séquences clavier et souris du pack Demonologist officiel de Crowd Control dans la fenêtre du jeu.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Lance Demonologist depuis Steam et charge une partie.",
+      "Choisis le clavier WASD ou ZQSD puis vérifie que ShenPulse détecte la fenêtre du jeu.",
+      "Configure les cadeaux TikTok sur les 31 interactions disponibles.",
+      "Active la session ShenPulse en gardant Demonologist au premier plan."
+    ],
+    notes: [
+      "Aucun fichier du jeu n’est téléchargé ni modifié.",
+      "Les commandes sont envoyées uniquement à Demonologist.exe et s’arrêtent si sa fenêtre ne peut plus être ciblée.",
+      "Le pack officiel recommande le plein écran sans bordure ou le mode fenêtré."
+    ],
+    sources: [
+      {
+        label: "Guide officiel Crowd Control · Input Disrupts",
+        url: "https://crowdcontrol.live/guides/disrupts"
+      },
+      {
+        label: "Catalogue officiel Demonologist",
+        url: "https://crowdcontrol.live/games/demonologist"
       }
     ]
   },

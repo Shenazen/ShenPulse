@@ -1136,7 +1136,7 @@ function sanitizeGameConfiguration(packId, value) {
     sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)
       ? sanitized
       : {};
-  if (safeString(packId, 160) === "fortnite") {
+  if (["fortnite", "demonologist"].includes(safeString(packId, 160))) {
     return {
       keyLayout:
         String(input.keyLayout || "").toLowerCase() === "azerty"
