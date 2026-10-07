@@ -555,6 +555,12 @@ class GameRuntimeService {
     }
     const error = await shell.openPath(executable);
     if (error) throw new Error(error);
+    if (manifest.waitForWindowProcess) {
+      await waitForWindowsProcessWindow(
+        manifest.waitForWindowProcess,
+        manifest.waitForWindowTimeoutMs
+      );
+    }
     if (
       gameId === "gtav-montchiliad" &&
       installation.edition === "enhanced"
@@ -2068,6 +2074,44 @@ async function runProcess(file, args) {
   });
 }
 
+async function waitForWindowsProcessWindow(
+  processName,
+  timeoutMs = 90_000
+) {
+  if (process.platform !== "win32") return;
+  const safeProcessName = String(processName || "")
+    .replace(/\.exe$/i, "")
+    .replace(/[^a-zA-Z0-9_.-]/g, "");
+  if (!safeProcessName) {
+    throw new Error("Le processus du jeu à attendre est invalide.");
+  }
+  const safeTimeout = Math.min(
+    180_000,
+    Math.max(5_000, Number(timeoutMs || 90_000))
+  );
+  const script = [
+    `$deadline = [DateTime]::UtcNow.AddMilliseconds(${safeTimeout})`,
+    "do {",
+    `  $target = Get-Process -Name '${safeProcessName}' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1`,
+    "  if ($target) { exit 0 }",
+    "  Start-Sleep -Milliseconds 500",
+    "} while ([DateTime]::UtcNow -lt $deadline)",
+    "exit 1"
+  ].join("\n");
+  try {
+    await runProcess("powershell.exe", [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      script
+    ]);
+  } catch {
+    throw new Error(
+      `${processName}.exe a été lancé, mais sa fenêtre n’est pas encore prête. Attendez son écran d’accueil puis réessayez.`
+    );
+  }
+}
+
 async function commitInstallationDeployment({
   deploymentRoot,
   targetPath,
@@ -2558,5 +2602,6 @@ module.exports = {
   sha256File,
   steamGameInstallCandidates,
   stopOrphanedManagedProcesses,
-  stageGtaEnhancedSave
+  stageGtaEnhancedSave,
+  waitForWindowsProcessWindow
 };

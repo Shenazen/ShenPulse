@@ -136,6 +136,7 @@ function renderInputGameInstallation(pack, unlocked) {
 function renderGameLaunch(pack, unlocked) {
   const integrated = pack.guide?.mode === "integrated";
   const inputDriven = pack.guide?.mode === "input";
+  const demonologistAutoLaunch = pack.id === "demonologist";
   const crowdControlMod = pack.guide?.mode === "crowd-control-mod";
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
@@ -159,7 +160,9 @@ function renderGameLaunch(pack, unlocked) {
     : roundSettings
       ? roundSettings.durationMinutes * 60
       : 0;
-  const launchDescription = inputDriven
+  const launchDescription = demonologistAutoLaunch
+    ? "ShenPulse lance Demonologist depuis le dossier détecté, attend que sa fenêtre soit prête puis active automatiquement les interactions."
+    : inputDriven
     ? `Ouvrez ${pack.name}, chargez une partie puis activez la session. ShenPulse ne lancera ni ne modifiera le jeu.`
     : crowdControlMod
       ? "Ouvrez Euro Truck Simulator 2 sur Steam, chargez votre sauvegarde puis activez la session. ShenPulse attendra la connexion du plugin local sur le port 51337."
@@ -185,6 +188,8 @@ function renderGameLaunch(pack, unlocked) {
           : ""}
         ${sessionActive
           ? `<button class="button danger game-launch-button" data-action="stop-game-session">■ Arrêter la session de jeu</button>`
+          : demonologistAutoLaunch && ready
+            ? `<button class="button primary game-launch-button" data-action="launch-game" data-id="${escapeHtml(pack.id)}" ${launchBusy ? "disabled" : ""}>${launchBusy ? "… Lancement de Demonologist" : "▶ Lancer Demonologist et activer"}</button>`
           : inputDriven && ready
             ? `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions ${escapeHtml(pack.name)}</button>`
           : inputDriven

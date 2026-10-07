@@ -54,6 +54,7 @@ const GAME_INSTALLERS = Object.freeze({
     steamAppIds: ["1929610", "2302560"],
     executables: ["Demonologist.exe"],
     launchExecutables: ["Demonologist.exe"],
+    waitForWindowProcess: "Demonologist",
     warning:
       "ShenPulse associe le dossier de Demonologist au connecteur d’interactions clavier et souris. Aucun fichier du jeu n’est modifié.",
     assets: []

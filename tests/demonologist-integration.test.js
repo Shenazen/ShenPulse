@@ -169,6 +169,15 @@ test("l’étape Installation propose le bouton commun aux jeux Input Disrupts",
   assert.equal(GAME_INSTALLERS.demonologist.setupOnly, true);
 });
 
+test("le démarrage de Demonologist lance le jeu avant d’activer sa session", () => {
+  const renderer = readRendererSource();
+  const installer = GAME_INSTALLERS.demonologist;
+  assert.equal(installer.waitForWindowProcess, "Demonologist");
+  assert.match(renderer, /demonologistAutoLaunch = pack\.id === "demonologist"/);
+  assert.match(renderer, /▶ Lancer Demonologist et activer/);
+  assert.match(renderer, /demonologistAutoLaunch && ready[\s\S]*?data-action="launch-game"/);
+});
+
 function subscribedState() {
   return {
     settings: {
