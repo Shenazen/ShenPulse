@@ -10,6 +10,7 @@ const {
   DEMONOLOGIST_EFFECTS
 } = require("../src/main/demonologist-catalog");
 const { GameHub } = require("../src/main/game-hub");
+const { GAME_INSTALLERS } = require("../src/main/game-installer-manifest");
 const {
   applyKeyboardLayout,
   normalizeWindowsInputSequence
@@ -138,6 +139,7 @@ test("branche Demonologist sur son processus Windows sans modifier le jeu", asyn
   assert.equal(pack.connector.type, "windows-input");
   assert.equal(pack.connector.processName, "Demonologist.exe");
   assert.equal(pack.guide.mode, "input");
+  assert.equal(pack.installerVersion, "1.0.0");
   assert.equal(pack.included, true);
   assert.equal(pack.requiresPro, true);
   assert.equal(hub.initializeDefaultInteractions(pack.id).added, 31);
@@ -160,10 +162,11 @@ test("branche Demonologist sur son processus Windows sans modifier le jeu", asyn
 
 test("l’étape Installation propose le bouton commun aux jeux Input Disrupts", () => {
   const renderer = readRendererSource();
-  assert.match(renderer, /data-action="save-game-input-layout"/);
-  assert.match(renderer, />Installer les interactions<\/button>/);
+  assert.match(renderer, /data-action="install-game"/);
+  assert.match(renderer, /↓ Installer les interactions/);
   assert.match(renderer, /data-game-key-layout/);
   assert.doesNotMatch(renderer, /save-fortnite-input-layout/);
+  assert.equal(GAME_INSTALLERS.demonologist.setupOnly, true);
 });
 
 function subscribedState() {

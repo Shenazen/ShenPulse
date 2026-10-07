@@ -83,6 +83,15 @@ function renderGameInstallation(pack, unlocked) {
 
 function renderInputGameInstallation(pack, unlocked) {
   const processName = pack.connector?.processName || `${pack.name}.exe`;
+  const automated = AUTOMATED_GAME_INSTALLERS.has(pack.id);
+  const installation = snapshot.state.game.installations?.[pack.id];
+  const updateAvailable = Boolean(
+    installation &&
+      pack.installerVersion &&
+      installation.installerVersion !== pack.installerVersion
+  );
+  const busy = gameInstallBusyId === pack.id;
+  const ready = !automated || Boolean(installation);
   const configuredLayout = String(
     snapshot.state.game.connectorOverrides?.[pack.id]?.keyLayout ||
       pack.connector?.keyLayout ||
@@ -90,13 +99,13 @@ function renderInputGameInstallation(pack, unlocked) {
   ).toLowerCase();
   return `<div class="game-simple-step">
     <section class="game-primary-panel game-install-simple">
-      <header><div><span>⌨ CONTRÔLE CIBLÉ</span><h3>Interactions prêtes sans mod</h3><p>ShenPulse utilise directement les séquences clavier et souris vérifiées du pack Crowd Control pour ${escapeHtml(pack.name)}.</p></div><span class="game-step-count">1 CLIC</span></header>
+      <header><div><span>⌨ CONTRÔLE CIBLÉ</span><h3>${automated ? installation ? `${escapeHtml(pack.name)} est prêt` : "Installation en un clic" : "Interactions prêtes sans mod"}</h3><p>${automated ? `ShenPulse recherche automatiquement ${escapeHtml(pack.name)} dans Steam, confirme son dossier puis prépare toutes les interactions.` : `ShenPulse utilise directement les séquences clavier et souris vérifiées du pack Crowd Control pour ${escapeHtml(pack.name)}.`}</p></div><span class="game-step-count">${ready ? "PRÊT" : "1 CLIC"}</span></header>
       ${renderGamePageMessage(pack, "installation")}
-      <div class="game-install-state ready">
-        <span>✓</span>
+      <div class="game-install-state ${ready ? "ready" : ""}">
+        <span>${ready ? "✓" : "↓"}</span>
         <div>
-          <strong>${escapeHtml(pack.name)} reste intact</strong>
-          <p>Aucun fichier du jeu n’est modifié. Si le jeu n’est pas ouvert ou perd sa fenêtre, l’envoi est refusé ou interrompu.</p>
+          <strong>${ready ? `${escapeHtml(pack.name)} reste intact` : `Installer les interactions de ${escapeHtml(pack.name)}`}</strong>
+          <p>${automated && !installation ? "Le chemin détecté vous sera proposé. S’il n’est pas correct, vous pourrez sélectionner un autre dossier." : "Aucun fichier du jeu n’est modifié. Si le jeu n’est pas ouvert ou perd sa fenêtre, l’envoi est refusé ou interrompu."}</p>
         </div>
       </div>
       <label class="field full">
@@ -108,9 +117,11 @@ function renderInputGameInstallation(pack, unlocked) {
         <small>Seules les touches de déplacement sont adaptées. Les autres commandes restent celles du pack officiel.</small>
       </label>
       <footer class="game-panel-actions">
-        <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Détecter ${escapeHtml(pack.name)} ouvert</button>
-        <button class="button primary" data-action="save-game-input-layout" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Installer les interactions</button>
-        <button class="button primary" data-action="game-step" data-value="interactions" ${unlocked ? "" : "disabled"}>Continuer vers les interactions →</button>
+        <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked && ready ? "" : "disabled"}>Détecter ${escapeHtml(pack.name)} ouvert</button>
+        ${automated
+          ? `<button class="button primary game-install-button" data-action="install-game" data-id="${escapeHtml(pack.id)}" ${unlocked && !busy ? "" : "disabled"}>${busy ? "Installation en cours…" : updateAvailable ? "↓ Mettre à jour les interactions" : installation ? "↻ Reconfigurer l’installation" : "↓ Installer les interactions"}</button>`
+          : `<button class="button primary" data-action="save-game-input-layout" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Installer les interactions</button>`}
+        <button class="button ${ready ? "primary" : ""}" data-action="game-step" data-value="interactions" ${unlocked && ready ? "" : "disabled"}>Continuer vers les interactions →</button>
       </footer>
     </section>
     <aside class="game-novice-note">
@@ -128,8 +139,14 @@ function renderGameLaunch(pack, unlocked) {
   const crowdControlMod = pack.guide?.mode === "crowd-control-mod";
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
+  const inputRequiresInstallation =
+    inputDriven && AUTOMATED_GAME_INSTALLERS.has(pack.id);
   const canLaunch = unlocked && (integrated || Boolean(installation));
-  const ready = unlocked && (inputDriven || canLaunch);
+  const ready = unlocked && (
+    inputDriven
+      ? !inputRequiresInstallation || Boolean(installation)
+      : canLaunch
+  );
   const mappings = gameMappedEffects(pack);
   const runningSession = activeGameSession();
   const sessionActive = runningSession?.packId === pack.id;
@@ -168,8 +185,10 @@ function renderGameLaunch(pack, unlocked) {
           : ""}
         ${sessionActive
           ? `<button class="button danger game-launch-button" data-action="stop-game-session">■ Arrêter la session de jeu</button>`
-          : inputDriven
+          : inputDriven && ready
             ? `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions ${escapeHtml(pack.name)}</button>`
+          : inputDriven
+            ? `<button class="button primary game-launch-button" disabled>↓ Installez d’abord les interactions</button>`
           : canLaunch
             ? `<button class="button primary game-launch-button" data-action="launch-game" data-id="${escapeHtml(pack.id)}" ${launchBusy ? "disabled" : ""}>${launchBusy ? "… Démarrage du serveur" : integrated ? "▶ Ouvrir le jeu et activer" : escapeHtml(launchButtonLabel)}</button>`
             : `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions</button>`}

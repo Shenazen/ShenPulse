@@ -338,6 +338,7 @@ const INTERNAL_GAMES = [
       "clavier et souris",
       "Steam"
     ],
+    installerVersion: "1.0.0",
     connector: {
       type: "windows-input",
       processName: "Demonologist.exe",

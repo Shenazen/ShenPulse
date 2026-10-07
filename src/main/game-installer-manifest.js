@@ -43,14 +43,32 @@ const TERRARIA_ASSET_BASE =
 const EURO_TRUCK_SIMULATOR_2_ASSET_BASE =
   "https://one-click.crowdcontrol.live/TruckSimulator";
 const GAME_INSTALLERS = Object.freeze({
+  demonologist: {
+    version: "1.0.0",
+    title: "Demonologist",
+    targetLabel: "dossier contenant Demonologist.exe",
+    setupOnly: true,
+    autoDetect: true,
+    unattended: true,
+    directoryNames: ["Demonologist"],
+    steamAppIds: ["1929610", "2302560"],
+    executables: ["Demonologist.exe"],
+    launchExecutables: ["Demonologist.exe"],
+    warning:
+      "ShenPulse associe le dossier de Demonologist au connecteur d’interactions clavier et souris. Aucun fichier du jeu n’est modifié.",
+    assets: []
+  },
   "euro-truck-simulator-2": {
     version: "1.0.4",
     title: "Euro Truck Simulator 2",
     targetLabel: "dossier racine d’Euro Truck Simulator 2",
     autoDetect: true,
     unattended: true,
-    directoryNames: ["Euro Truck Simulator 2"],
-    steamAppIds: ["227300"],
+    directoryNames: [
+      "Euro Truck Simulator 2",
+      "Euro Truck Simulator 2 Demo"
+    ],
+    steamAppIds: ["227300", "231120"],
     executables: ["bin/win_x64/eurotrucks2.exe"],
     launchExecutables: ["bin/win_x64/eurotrucks2.exe"],
     warning:

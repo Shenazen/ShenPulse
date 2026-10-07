@@ -196,7 +196,7 @@ class GameRuntimeService {
     this.#progress(gameId, {
       phase: "prepare",
       current: 0,
-      total: manifest.assets.length,
+      total: Math.max(1, manifest.assets.length),
       percent: 2,
       message: "Recherche automatique du jeu…"
     });
@@ -216,6 +216,38 @@ class GameRuntimeService {
       : await this.#pickTarget(gameId, manifest);
     if (!targetPath) return { canceled: true };
     await this.#validateTarget(targetPath, manifest);
+    if (manifest.setupOnly) {
+      const installedAt = new Date().toISOString();
+      this.store.mutate((state) => {
+        state.game.installations ||= {};
+        state.game.installations[gameId] = {
+          gameId,
+          path: targetPath,
+          backupPath: "",
+          installedAt,
+          assetCount: 0,
+          installerVersion: String(manifest.version || ""),
+          elevated: false,
+          additionalDeployments: [],
+          source: "local-setup"
+        };
+      });
+      this.#progress(gameId, {
+        phase: "complete",
+        current: 1,
+        total: 1,
+        percent: 100,
+        message: `${manifest.title} est prêt`
+      });
+      return {
+        ok: true,
+        gameId,
+        path: targetPath,
+        backupPath: "",
+        installedAt,
+        setupOnly: true
+      };
+    }
     const edition =
       gameId === "gtav-montchiliad"
         ? await detectGtaEdition(targetPath)
@@ -2362,7 +2394,8 @@ async function steamGameInstallCandidates(manifest) {
   ].filter(Boolean);
   const steamRoots = [
     ...programFiles.map((root) => path.join(root, "Steam")),
-    "C:\\Steam"
+    "C:\\Steam",
+    ...(await windowsSteamInstallRoots())
   ];
   const libraryRoots = new Set();
   for (const steamRoot of [...new Set(steamRoots)]) {
@@ -2407,6 +2440,27 @@ async function steamGameInstallCandidates(manifest) {
     }
   }
   return candidates;
+}
+
+async function windowsSteamInstallRoots() {
+  if (process.platform !== "win32") return [];
+  const locations = [
+    ["HKCU\\Software\\Valve\\Steam", "SteamPath"],
+    ["HKLM\\SOFTWARE\\WOW6432Node\\Valve\\Steam", "InstallPath"],
+    ["HKLM\\SOFTWARE\\Valve\\Steam", "InstallPath"]
+  ];
+  const roots = [];
+  for (const [key, valueName] of locations) {
+    const source = await runProcess("reg.exe", [
+      "query",
+      key,
+      "/v",
+      valueName
+    ]).catch(() => "");
+    const root = source.match(/REG_(?:SZ|EXPAND_SZ)\s+(.+)$/im)?.[1]?.trim();
+    if (root) roots.push(root.replace(/\//g, "\\"));
+  }
+  return [...new Set(roots.map((root) => path.resolve(root)))];
 }
 
 async function gtaInstallCandidates() {
@@ -2494,6 +2548,7 @@ module.exports = {
   configureMinecraftServerCommandFeedback,
   deployAdditionalInstallTargets,
   deployGtaEnhancedSave,
+  detectInstalledGame,
   detectGtaEdition,
   extractArchiveSafe,
   findGtaEnhancedProfile,
@@ -2501,6 +2556,7 @@ module.exports = {
   safeChildPath,
   safeInstallerAssetUrl,
   sha256File,
+  steamGameInstallCandidates,
   stopOrphanedManagedProcesses,
   stageGtaEnhancedSave
 };

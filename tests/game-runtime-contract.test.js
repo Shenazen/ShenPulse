@@ -21,6 +21,7 @@ const {
   configureMinecraftServerCommandFeedback,
   deployAdditionalInstallTargets,
   deployGtaEnhancedSave,
+  detectInstalledGame,
   parseMinecraftWinCounterLine,
   safeInstallerAssetUrl,
   stageGtaEnhancedSave
@@ -61,6 +62,7 @@ test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
     Object.keys(GAME_INSTALLERS).sort(),
     [
       "cult-of-the-lamb",
+      "demonologist",
       "euro-truck-simulator-2",
       "gtav-montchiliad",
       "minecraft-bedrock-box",
@@ -74,7 +76,7 @@ test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
   assert.ok(
     Object.values(GAME_INSTALLERS).every(
       (installer) =>
-        installer.assets.length > 0 &&
+        (installer.setupOnly === true || installer.assets.length > 0) &&
         installer.assets.every(
           (asset) => asset.id && asset.fileName && asset.action
         )
@@ -381,7 +383,8 @@ test("Euro Truck Simulator 2 installe le plugin officiel Crowd Control en un cli
   assert.equal(installer.version, "1.0.4");
   assert.equal(installer.autoDetect, true);
   assert.equal(installer.unattended, true);
-  assert.deepEqual(installer.steamAppIds, ["227300"]);
+  assert.deepEqual(installer.steamAppIds, ["227300", "231120"]);
+  assert.ok(installer.directoryNames.includes("Euro Truck Simulator 2 Demo"));
   assert.deepEqual(installer.executables, ["bin/win_x64/eurotrucks2.exe"]);
   assert.equal(installer.assets.length, 1);
   assert.equal(installer.assets[0].targetPath, "bin/win_x64/plugins");
@@ -394,6 +397,18 @@ test("Euro Truck Simulator 2 installe le plugin officiel Crowd Control en un cli
     safeInstallerAssetUrl(installer.assets[0].url),
     /^https:\/\/one-click\.crowdcontrol\.live\/TruckSimulator\/TruckSimulator-CC\.zip\?ver=1\.0\.4$/
   );
+});
+
+test("Demonologist détecte Steam et mémorise son dossier sans modifier le jeu", () => {
+  const installer = GAME_INSTALLERS.demonologist;
+  assert.equal(installer.version, "1.0.0");
+  assert.equal(installer.setupOnly, true);
+  assert.equal(installer.autoDetect, true);
+  assert.equal(installer.unattended, true);
+  assert.deepEqual(installer.steamAppIds, ["1929610", "2302560"]);
+  assert.deepEqual(installer.executables, ["Demonologist.exe"]);
+  assert.deepEqual(installer.assets, []);
+  assert.equal(typeof detectInstalledGame, "function");
 });
 
 test("Cult of the Lamb utilise le pack BepInEx versionné publié sur Backblaze", () => {

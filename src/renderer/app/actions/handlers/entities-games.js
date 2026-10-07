@@ -160,6 +160,12 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
     const pack = snapshot.packs.find((item) => item.id === id);
     if (showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
+    const inputLayout = pack.connector?.type === "windows-input"
+      ? target
+          .closest(".game-simple-step")
+          ?.querySelector("[data-game-key-layout]")
+          ?.value
+      : "";
     gamePageMessages.delete(id);
     gameInstallBusyId = id;
     const startedAt = new Date().toISOString();
@@ -178,6 +184,11 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
     };
     render();
     try {
+      if (pack.connector?.type === "windows-input") {
+        acceptSnapshot(await api.configureGame(pack.id, {
+          keyLayout: inputLayout === "azerty" ? "azerty" : "wasd"
+        }));
+      }
       const result = await api.installGame(id);
       if (result?.canceled) {
         gameInstallProgress = null;
