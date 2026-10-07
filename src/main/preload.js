@@ -94,12 +94,6 @@ contextBridge.exposeInMainWorld("shenPulse", {
     invoke("game:thiercelieux-host-state", state),
   sendThiercelieuxCommand: (command) =>
     invoke("game:thiercelieux-command", command),
-  brumeluneLan: {
-    start: (payload) => invoke("game:brumelune-lan:start", payload),
-    update: (payload) => invoke("game:brumelune-lan:update", payload),
-    poll: () => invoke("game:brumelune-lan:poll"),
-    stop: () => invoke("game:brumelune-lan:stop")
-  },
   initializeGameInteractions: (id) =>
     invoke("game:initialize-interactions", id),
   saveGameInteraction: (id, rule) =>

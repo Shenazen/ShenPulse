@@ -1011,18 +1011,6 @@ function registerIpc({
       safeString(format, 20)
     );
   });
-  handle("game:brumelune-lan:start", (_event, payload) =>
-    gameRuntime.startBrumeluneLan(sanitizeEntity(payload || {}))
-  );
-  handle("game:brumelune-lan:update", (_event, payload) =>
-    gameRuntime.updateBrumeluneLan(sanitizeEntity(payload || {}))
-  );
-  handle("game:brumelune-lan:poll", () =>
-    gameRuntime.pollBrumeluneLan()
-  );
-  handle("game:brumelune-lan:stop", () =>
-    gameRuntime.stopBrumeluneLan()
-  );
   handle("game:round-settings:save", (_event, packId, incoming) =>
     core.saveGameRoundSettings(
       safeString(packId, 160),

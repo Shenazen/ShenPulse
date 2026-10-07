@@ -244,25 +244,6 @@ const INTERNAL_GAMES = [
       "Hurlement"
     ]
   }),
-  game("brumelune", "Veilleurs de Brumelune", {
-    artwork: "catalog/brumelune.png",
-    included: true,
-    requiresPro: true,
-    source: "ShenPulse Original",
-    description:
-      "Jeu social local à rôles cachés orchestré par ShenPulse : attribution privée, nuits automatisées, conseils, spectateurs et compagnons mobiles.",
-    tags: [
-      "abonnement requis",
-      "inclus",
-      "jeu local",
-      "rôles cachés"
-    ],
-    effects: [
-      "Ajouter 30 secondes au conseil",
-      "Jouer un signal de tension",
-      "Afficher un rappel public"
-    ]
-  }),
   game("coin-pusher", "Coin Pusher Live", {
     artwork: "catalog/coin-pusher.webp",
     price: 4.99,
@@ -525,14 +506,6 @@ const GAME_GUIDES = Object.freeze({
       "Configurez le cadeau d’entrée et constituez la file LIVE.",
       "Installez jusqu’à huit joueurs, choisissez les extensions et le format portrait ou paysage.",
       "Distribuez les personnages en privé puis suivez le guide dynamique du maître du jeu."
-    ]
-  ),
-  brumelune: integratedGuide(
-    "Le jeu social complet est intégré à ShenPulse et fonctionne sans maître du jeu humain.",
-    [
-      "Ajoutez les joueurs et générez une composition équilibrée.",
-      "Choisissez l’écran partagé ou les compagnons sur le réseau local.",
-      "Distribuez les rôles en privé puis laissez ShenPulse orchestrer les phases."
     ]
   ),
   "coin-pusher": integratedGuide(

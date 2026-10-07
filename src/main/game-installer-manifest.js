@@ -5,7 +5,6 @@ const INTEGRATED_GAME_IDS = Object.freeze([
   "connect-four",
   "deal-or-no-deal",
   "thiercelieux",
-  "brumelune",
   "diamond-bridge",
   "diamond-drop"
 ]);
