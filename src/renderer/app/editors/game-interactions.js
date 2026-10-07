@@ -110,6 +110,13 @@ function openGameInteractionCatalog(pack, row = null) {
 }
 
 function gameEffectParameterFields(effect, config) {
+  if (effect.actionType === "audio.play") {
+    return `${soundPickerField("gameSoundUrl", config.url || "", {
+      label: "Son envoyé dans le jeu",
+      selectedName: config.soundName || ""
+    })}
+      ${field("gameSoundVolume", "Volume du son (0 à 1)", config.volume ?? 1, "number", 'min="0" max="1" step="0.05"')}`;
+  }
   if (effect.winCounter && isMinecraftWinCounterPack(config.packId)) {
     const sameEffect = config.effectId === effect.id;
     const operation = sameEffect
@@ -214,6 +221,20 @@ function gameInteractionDraftFromForm(
   data
 ) {
   const config = currentAction.config || {};
+  const requestedVolume = Number(data.get("gameSoundVolume") ?? 1);
+  const audioConfig = effect.actionType === "audio.play"
+    ? {
+        url: String(data.get("gameSoundUrl") || "").trim(),
+        soundName: String(data.get("gameSoundUrlName") || "").trim(),
+        volume: Number.isFinite(requestedVolume)
+          ? Math.min(1, Math.max(0, requestedVolume))
+          : 1,
+        outputMode: "local"
+      }
+    : null;
+  if (audioConfig && !audioConfig.url) {
+    throw new Error("Choisissez ou importez un son avant d’enregistrer l’interaction.");
+  }
   const nextAction = {
     ...currentAction,
     id: currentAction.id || `action_${cryptoId()}`,
@@ -222,6 +243,7 @@ function gameInteractionDraftFromForm(
       ...config,
       packId: pack.id,
       effectId: effect.id,
+      ...(audioConfig || {}),
       quantity: Math.max(
         1,
         Number(data.get("quantity")) || Number(effect.quantity || 1)
@@ -301,6 +323,9 @@ function openGameInteractionEditor(pack, effect, row = null) {
     config: {
       packId: pack.id,
       effectId: effect.id,
+      ...(effect.actionType === "audio.play"
+        ? { url: "", soundName: "", volume: 1, outputMode: "local" }
+        : {}),
       quantity: Number(effect.quantity || 1),
       duration: Number(effect.duration || 0),
       parameters: Object.fromEntries(

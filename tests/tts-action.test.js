@@ -17,7 +17,8 @@ function createRunner(published, options = {}) {
         pitch: 1,
         volume: 0.9
       }
-    }
+    },
+    game: { connectorOverrides: {} }
   };
   return new ActionRunner({
     store: { getState: () => state },
@@ -84,6 +85,28 @@ test("les sons autonomes restent dans le lecteur ShenPulse et pas dans les overl
   assert.equal(published[0].transport, "renderer");
   assert.equal(published[0].event, "playback");
   assert.equal(published[0].payload.type, "audio");
+});
+
+test("les sons CAPTCHA utilisent la sortie audio globale choisie pour le jeu", async () => {
+  const published = [];
+  const runner = createRunner(published);
+  runner.store.getState().game.connectorOverrides.captcha = {
+    audioOutputDeviceId: "virtual-cable-output"
+  };
+
+  await runner.run(
+    {
+      type: "audio.play",
+      config: {
+        packId: "captcha",
+        effectId: "gift-sound",
+        url: "https://cdn.example.test/captcha.mp3"
+      }
+    },
+    { event: { type: "gift", data: { giftName: "Rose" } } }
+  );
+
+  assert.equal(published[0].payload.outputDeviceId, "virtual-cable-output");
 });
 
 test("un son LIVE est routé uniquement vers l'écran navigateur choisi", async () => {

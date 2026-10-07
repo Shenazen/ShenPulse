@@ -200,12 +200,19 @@ class GameRuntimeService {
       percent: 2,
       message: "Recherche automatique du jeu…"
     });
-    const targetPath = manifest.managedTarget
+    const targetPath = manifest.temporaryTarget
       ? path.join(
-          this.app.getPath("userData"),
+          this.app.getPath("temp"),
+          "ShenPulse",
           "games",
-          gameId
+          `${gameId}-${manifest.version || "current"}`
         )
+      : manifest.managedTarget
+        ? path.join(
+            this.app.getPath("userData"),
+            "games",
+            gameId
+          )
       : await this.#pickTarget(gameId, manifest);
     if (!targetPath) return { canceled: true };
     await this.#validateTarget(targetPath, manifest);
@@ -256,12 +263,14 @@ class GameRuntimeService {
       "installer-downloads"
     );
     const tempRoot = path.join(downloadsRoot, `${gameId}-${runId}`);
-    const backupRoot = path.join(
-      this.app.getPath("userData"),
-      "game-backups",
-      gameId,
-      runId
-    );
+    const backupRoot = manifest.temporaryTarget
+      ? path.join(tempRoot, "replaced-files")
+      : path.join(
+          this.app.getPath("userData"),
+          "game-backups",
+          gameId,
+          runId
+        );
     const deploymentRoot = path.join(tempRoot, "deployment");
     try {
       if (manifest.minecraftServer) {
@@ -326,6 +335,15 @@ class GameRuntimeService {
         message:
           "Installation dans le dossier du jeu. Confirmez la demande Windows si elle apparaît."
       });
+      if (manifest.temporaryTarget) {
+        await fs.promises.rm(targetPath, {
+          recursive: true,
+          force: true,
+          maxRetries: 3,
+          retryDelay: 200
+        });
+        await fs.promises.mkdir(targetPath, { recursive: true });
+      }
       const deployment = await commitInstallationDeployment({
         deploymentRoot,
         targetPath,
@@ -373,7 +391,7 @@ class GameRuntimeService {
         state.game.installations[gameId] = {
           gameId,
           path: targetPath,
-          backupPath: backupRoot,
+          backupPath: manifest.temporaryTarget ? "" : backupRoot,
           installedAt,
           assetCount: assets.length,
           installerVersion: String(manifest.version || ""),
@@ -404,7 +422,7 @@ class GameRuntimeService {
         ok: true,
         gameId,
         path: targetPath,
-        backupPath: backupRoot,
+        backupPath: manifest.temporaryTarget ? "" : backupRoot,
         installedAt,
         server
       };
@@ -460,6 +478,16 @@ class GameRuntimeService {
     if (!manifest || !installation?.path) {
       throw new Error(
         "Installez d’abord ce jeu ou son pack depuis l’étape Installation."
+      );
+    }
+    const installationPath = await fs.promises
+      .stat(installation.path)
+      .catch(() => null);
+    if (!installationPath?.isDirectory()) {
+      throw new Error(
+        manifest.temporaryTarget
+          ? "Le dossier temporaire du jeu n’existe plus. Réinstallez-le depuis l’étape Installation."
+          : "Le dossier d’installation mémorisé n’existe plus. Réinstallez le pack depuis l’étape Installation."
       );
     }
     if (manifest.minecraftServer) {

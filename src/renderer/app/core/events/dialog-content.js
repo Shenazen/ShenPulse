@@ -533,7 +533,7 @@ api.on("game-effect", (payload) => {
   );
 });
 
-api.on("playback", (payload) => {
+api.on("playback", async (payload) => {
   if (payload.type === "tts" && "speechSynthesis" in window) {
     const utterance = new SpeechSynthesisUtterance(payload.text);
     utterance.rate = Number(payload.rate || 1);
@@ -562,6 +562,30 @@ api.on("playback", (payload) => {
     activePreviewAudio = audio;
     activePreviewAudioScope = payload.previewScope || "";
     audioStage.replaceChildren(audio);
+    if (payload.outputDeviceId) {
+      if (typeof audio.setSinkId !== "function") {
+        audio.remove();
+        activePreviewAudio = null;
+        activePreviewAudioScope = "";
+        return toast(
+          "Sortie audio incompatible",
+          "Cette version de Windows ne permet pas de diriger le son vers le périphérique choisi.",
+          true
+        );
+      }
+      try {
+        await audio.setSinkId(payload.outputDeviceId);
+      } catch (error) {
+        audio.remove();
+        activePreviewAudio = null;
+        activePreviewAudioScope = "";
+        return toast(
+          "Périphérique audio indisponible",
+          error.message || "Actualisez la liste et choisissez de nouveau le câble audio virtuel.",
+          true
+        );
+      }
+    }
     audio.addEventListener(
       "ended",
       () => {

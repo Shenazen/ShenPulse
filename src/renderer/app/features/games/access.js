@@ -454,6 +454,9 @@ async function enterGameWorkspace(pack) {
   gameEffectCategory = "all";
   await api.selectGame(pack.id);
   snapshot = await api.getSnapshot();
+  if (pack.id === "captcha") {
+    await refreshCaptchaAudioOutputs({ renderWhenDone: false });
+  }
   await restoreActiveGameInstallProgress(pack.id, {
     renderWhenFound: false
   });

@@ -60,6 +60,7 @@ test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
   assert.deepEqual(
     Object.keys(GAME_INSTALLERS).sort(),
     [
+      "captcha",
       "cult-of-the-lamb",
       "gtav-montchiliad",
       "minecraft-bedrock-box",
@@ -95,7 +96,10 @@ test("l’installation sauvegarde les remplacements et supprime seulement le tem
   assert.match(runtime, /installer-downloads/);
   assert.match(runtime, /copyWithBackup/);
   assert.match(runtime, /fs\.promises\.rm\(tempRoot/);
-  assert.doesNotMatch(runtime, /fs\.promises\.rm\(targetPath/);
+  assert.match(
+    runtime,
+    /if \(manifest\.temporaryTarget\) \{[\s\S]*?fs\.promises\.rm\(targetPath/
+  );
   assert.match(runtime, /Archive refusée : un chemin sort de la destination/);
   assert.match(runtime, /commitInstallationDeployment/);
   assert.match(runtime, /-Verb RunAs/);

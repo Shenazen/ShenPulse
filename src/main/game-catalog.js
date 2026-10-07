@@ -202,6 +202,22 @@ const COIN_PUSHER_DEFAULT_MAPPINGS = Object.freeze(
   )
 );
 
+const CAPTCHA_EFFECTS = Object.freeze([
+  Object.freeze({
+    id: "gift-sound",
+    code: "gift-sound",
+    name: "Son dans le jeu",
+    description:
+      "Joue un son de la bibliothèque ShenPulse dans le périphérique audio virtuel choisi pour CAPTCHA.",
+    category: "Audio",
+    icon: "♫",
+    actionType: "audio.play",
+    available: true,
+    service: "native",
+    sortOrder: 1
+  })
+]);
+
 const INTERNAL_GAMES = [
   game("thiercelieux", "Les Loups-Garous de Thiercelieux", {
     artwork: "catalog/thiercelieux-landscape.png",
@@ -251,6 +267,22 @@ const INTERNAL_GAMES = [
     effects: COIN_PUSHER_EFFECTS,
     defaultMappings: COIN_PUSHER_DEFAULT_MAPPINGS,
     interactionCatalogVersion: 20260806
+  }),
+  game("captcha", "CAPTCHA", {
+    artwork: "catalog/captcha.svg",
+    price: 3.99,
+    requiresPro: true,
+    installerVersion: "1.0.0",
+    source: "ShenPulse · jeu téléchargeable",
+    description:
+      "Jeu d’horreur VHS pour Windows avec installation automatique et cadeaux TikTok transformés en sons dans le jeu.",
+    tags: [
+      "abonnement requis",
+      "achat unique",
+      "installation automatique",
+      "audio virtuel"
+    ],
+    effects: CAPTCHA_EFFECTS
   }),
   game("connect-four", "Puissance 4 Arena", {
     artwork: "catalog/connect-four.png",
@@ -472,6 +504,23 @@ const GAME_GUIDES = Object.freeze({
     "Le jeu est intégré à ShenPulse : aucune installation externe n’est nécessaire.",
     ["Configure les cadeaux et les valeurs des pièces.", "Teste le Plinko et le poussoir.", "Lance la fenêtre de jeu avant le LIVE."]
   ),
+  captcha: {
+    mode: "download",
+    summary:
+      "ShenPulse télécharge CAPTCHA, l’extrait dans un dossier temporaire et lance VHS_Project.exe.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Installe automatiquement l’archive CAPTCHA depuis Backblaze.",
+      "Choisis la sortie audio virtuelle reliée au micro du jeu, puis associe chaque cadeau à un son.",
+      "L’étape Overlays est conservée vide pour une future intégration.",
+      "Lance VHS_Project.exe directement depuis ShenPulse."
+    ],
+    notes: [
+      "Le fichier .rar téléchargé est supprimé dès la fin de l’installation.",
+      "Pour envoyer les sons dans l’entrée micro du jeu, utilise un câble audio virtuel et choisis sa sortie dans ShenPulse."
+    ],
+    sources: []
+  },
   "connect-four": integratedGuide(
     "Le jeu est intégré à ShenPulse : la grille et les équipes se configurent dans l’application.",
     ["Choisis la taille de grille et la condition de victoire.", "Associe les cadeaux aux équipes.", "Teste une manche avant le LIVE."]

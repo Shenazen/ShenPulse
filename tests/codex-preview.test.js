@@ -9,6 +9,7 @@ const { createDefaultState } = require("../src/main/defaults");
 const {
   bridgeSource,
   loadPersistedAccountState,
+  previewIndexHtml,
   snapshot
 } = require("../scripts/start-codex-preview");
 
@@ -83,4 +84,17 @@ test("le pont navigateur câble les événements et les effets de jeu", () => {
   assert.match(source, /__codex-preview-api\/catalog\/gifts/);
   assert.match(source, /__codex-preview-api\/event\/simulate/);
   assert.match(source, /__codex-preview-api\/game\/effect/);
+});
+
+test("l'aperçu charge les styles et scripts depuis le renderer", () => {
+  const source = previewIndexHtml(
+    "<!doctype html><html><head></head><body></body></html>"
+  );
+
+  assert.match(source, /<base href="\/src\/renderer\/" \/>/);
+  assert.match(source, /<script src="\/__codex-preview-bridge\.js"><\/script>/);
+  assert.ok(
+    source.indexOf('<base href="/src/renderer/" />') <
+      source.indexOf('<script src="/__codex-preview-bridge.js"></script>')
+  );
 });

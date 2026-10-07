@@ -40,8 +40,33 @@ const STARDEW_VALLEY_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/stardew-valley/1.0.0";
 const TERRARIA_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/terraria/1.0.0";
+const CAPTCHA_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/captcha/1.0.0";
 
 const GAME_INSTALLERS = Object.freeze({
+  captcha: {
+    version: "1.0.0",
+    title: "CAPTCHA",
+    targetLabel: "dossier temporaire CAPTCHA",
+    managedTarget: true,
+    temporaryTarget: true,
+    unattended: true,
+    launchExecutables: ["VHS_Project.exe"],
+    warning:
+      "ShenPulse télécharge le jeu dans le dossier temporaire Windows et supprime l’archive après extraction.",
+    assets: [
+      {
+        id: "game",
+        fileName: "CAPTCHA.exe.rar",
+        action: "extract",
+        sourcePath: "CAPTCHA.exe/Windows",
+        size: 666900864,
+        sha256:
+          "b03eb2d8e695d14a90d3f8875ffd228d7edded6e74814f9e6eebe81d053870b8",
+        url: `${CAPTCHA_ASSET_BASE}/CAPTCHA.exe.rar`
+      }
+    ]
+  },
   "gtav-montchiliad": {
     version: "1.0.4",
     title: "GTA V Mont Chiliad",

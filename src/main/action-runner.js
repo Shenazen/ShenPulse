@@ -245,10 +245,19 @@ class ActionRunner {
         return { queued: true };
       }
       case "audio.play": {
+        const packId = safeString(config.packId || "", 160);
+        const outputDeviceId = safeString(
+          config.outputDeviceId ||
+            this.store.getState().game?.connectorOverrides?.[packId]
+              ?.audioOutputDeviceId ||
+            "",
+          512
+        );
         const payload = {
           url: this.#localMediaUrl(config.url),
           volume: clamp(config.volume ?? 1, 0, 1),
           previewScope: safeString(config.previewScope || "", 40),
+          outputDeviceId,
           playbackId: randomUUID(),
           screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };

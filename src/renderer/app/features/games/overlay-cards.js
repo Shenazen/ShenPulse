@@ -208,6 +208,15 @@ function renderGameLaunch(pack, unlocked) {
 }
 
 function renderGameOverlays(pack, unlocked) {
+  if (pack.id === "captcha") {
+    return `<div class="game-overlays-page">
+      <section class="game-primary-panel">
+        <header><div><span>▱ OVERLAYS</span><h3>Aucun overlay pour le moment</h3><p>Cette étape est réservée pour la prochaine évolution de CAPTCHA. Rien n’est à configurer actuellement.</p></div><span class="game-step-count">BIENTÔT</span></header>
+        <div class="game-install-state ready"><span>✓</span><div><strong>Étape prête</strong><p>Vous pouvez continuer directement vers le démarrage du jeu.</p></div></div>
+        <footer class="game-panel-actions"><button class="button primary" data-action="game-step" data-value="launch" ${unlocked ? "" : "disabled"}>Continuer vers le démarrage →</button></footer>
+      </section>
+    </div>`;
+  }
   if (GAME_OVERLAY_GENERATOR_ONLY_IDS.has(pack.id)) {
     return `<div class="game-overlays-page">
       <section class="game-interaction-toolbar">

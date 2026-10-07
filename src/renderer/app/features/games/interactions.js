@@ -51,6 +51,7 @@ function renderStandardGameInteractions(pack, unlocked) {
     return matchesCategory && matchesSearch;
   });
   return `<div class="game-interactions-page">
+    ${pack.id === "captcha" ? renderCaptchaAudioRouting(pack, unlocked) : ""}
     <header class="game-effects-heading">
       <span>${eventIconMarkup("gift")} INTERACTIONS <strong>${rows.length}</strong></span>
       <div class="button-row">
@@ -374,7 +375,7 @@ function gameMappedEffects(pack) {
       }))
       .filter(
         (row) =>
-          ["game.effect", "overlay.win-counter"].includes(
+          ["game.effect", "overlay.win-counter", "audio.play"].includes(
             row.action.type
           ) &&
           row.action.config?.effectId
@@ -425,7 +426,7 @@ function gameInteractionReadinessIssues(pack) {
     const mappedActions = (rule.actions || []).filter(
       (action) =>
         action.enabled !== false &&
-        ["game.effect", "overlay.win-counter"].includes(action.type)
+        ["game.effect", "overlay.win-counter", "audio.play"].includes(action.type)
     );
     if (!mappedActions.length) {
       reasons.push("aucun effet de jeu n’est configuré");
@@ -441,6 +442,54 @@ function gameInteractionReadinessIssues(pack) {
     ).trim();
     return reasons.map((reason) => ({ name, reason }));
   });
+}
+
+function renderCaptchaAudioRouting(pack, unlocked) {
+  const selectedId = String(
+    snapshot.state.game.connectorOverrides?.[pack.id]?.audioOutputDeviceId || ""
+  );
+  const options = captchaAudioOutputs.map((device, index) => {
+    const label = device.label || `Sortie audio ${index + 1}`;
+    return `<option value="${escapeHtml(device.deviceId)}" ${device.deviceId === selectedId ? "selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+  const selectedAvailable =
+    !selectedId || captchaAudioOutputs.some((device) => device.deviceId === selectedId);
+  return `<section class="game-primary-panel game-audio-routing">
+    <header><div><span>♫ AUDIO DU JEU</span><h3>Micro utilisé pour tous les sons</h3><p>Choisissez la sortie d’un câble audio virtuel. Dans CAPTCHA, sélectionnez l’entrée correspondante comme microphone.</p></div><span class="game-step-count">GLOBAL</span></header>
+    <label class="field full">
+      <span>Périphérique relié au micro du jeu</span>
+      <select data-captcha-audio-output ${unlocked && !captchaAudioOutputsLoading ? "" : "disabled"}>
+        <option value="" ${selectedId ? "" : "selected"}>Sortie audio Windows par défaut</option>
+        ${selectedAvailable ? "" : `<option value="${escapeHtml(selectedId)}" selected>Périphérique mémorisé (indisponible)</option>`}
+        ${options}
+      </select>
+      <small>Exemple : « CABLE Input (VB-Audio Virtual Cable) ». Un microphone physique ne peut pas recevoir directement un son numérique.</small>
+    </label>
+    <footer class="game-panel-actions">
+      <button class="button" data-action="refresh-captcha-audio-outputs" data-id="${escapeHtml(pack.id)}" ${captchaAudioOutputsLoading ? "disabled" : ""}>${captchaAudioOutputsLoading ? "Recherche…" : "↻ Actualiser les périphériques"}</button>
+      <button class="button primary" data-action="save-captcha-audio-output" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>Enregistrer pour tous les sons</button>
+    </footer>
+  </section>`;
+}
+
+async function refreshCaptchaAudioOutputs({ renderWhenDone = true } = {}) {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    captchaAudioOutputs = [];
+    if (renderWhenDone) render();
+    return [];
+  }
+  captchaAudioOutputsLoading = true;
+  if (renderWhenDone) render();
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    captchaAudioOutputs = devices.filter(
+      (device) => device.kind === "audiooutput" && device.deviceId
+    );
+    return captchaAudioOutputs;
+  } finally {
+    captchaAudioOutputsLoading = false;
+    if (renderWhenDone) render();
+  }
 }
 
 async function confirmGameInteractionReadiness(pack, operationLabel) {

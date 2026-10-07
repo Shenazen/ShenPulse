@@ -682,6 +682,13 @@ function resolveStaticTarget(requestPath) {
   return target;
 }
 
+function previewIndexHtml(source) {
+  return String(source).replace(
+    "<head>",
+    '<head>\n    <base href="/src/renderer/" />\n    <script src="/__codex-preview-bridge.js"></script>'
+  );
+}
+
 const server = http.createServer(async (request, response) => {
   try {
     const requestUrl = new URL(request.url, previewBase);
@@ -816,14 +823,7 @@ const server = http.createServer(async (request, response) => {
     }
     let body = fs.readFileSync(target);
     if (target.endsWith(path.join("src", "renderer", "index.html"))) {
-      body = Buffer.from(
-        body
-          .toString("utf8")
-          .replace(
-            "<head>",
-            '<head>\n    <script src="/__codex-preview-bridge.js"></script>'
-          )
-      );
+      body = Buffer.from(previewIndexHtml(body.toString("utf8")));
     }
     return send(
       response,
@@ -849,6 +849,7 @@ module.exports = {
   bridgeSource,
   loadPersistedAccountState,
   loadLocalRuntime,
+  previewIndexHtml,
   savePreviewSettings,
   snapshot,
   signedOutAccount

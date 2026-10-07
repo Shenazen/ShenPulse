@@ -126,6 +126,8 @@ let gamePageMode = "catalog";
 let gameWorkspaceStep = "installation";
 let gameEffectSearch = "";
 let gameEffectCategory = "all";
+let captchaAudioOutputs = [];
+let captchaAudioOutputsLoading = false;
 let gameInteractionEditorContext = null;
 let gameInteractionCatalogContext = null;
 let gameInstallProgress = null;
@@ -470,6 +472,7 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  "captcha",
   "gtav-montchiliad",
   "pokemon-red-blue",
   "minecraft-bedrock-box",
