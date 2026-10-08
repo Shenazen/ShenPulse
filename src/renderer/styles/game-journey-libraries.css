@@ -509,20 +509,59 @@
   left: 20px;
 }
 
-.game-gallery-tile .tile-caption span,
-.game-gallery-tile .tile-caption small {
-  color: #7cf2c1;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
 .game-gallery-tile .tile-caption h3 {
-  margin: 6px 0;
+  margin: 0 0 10px;
   color: #fff;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1.15;
   text-shadow: 0 2px 12px #000;
+}
+
+.game-gallery-tile .tile-platforms {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+}
+
+.game-gallery-tile .tile-platform-logo {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(5, 7, 13, 0.76);
+  color: #fff;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.24);
+}
+
+.game-gallery-tile .tile-platform-logo svg,
+.game-gallery-tile .tile-platform-logo img {
+  width: 18px;
+  height: 18px;
+}
+
+.game-gallery-tile .tile-platform-logo svg {
+  fill: currentColor;
+}
+
+.game-gallery-tile .tile-platform-logo .platform-cutout {
+  fill: #080a11;
+}
+
+.game-gallery-tile .tile-platform-logo img {
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.game-gallery-tile .tile-platform-logo.platform-rockstar-games {
+  color: #f4c430;
+}
+
+.game-gallery-tile .tile-platform-logo.platform-microsoft-store {
+  color: #70c45a;
 }
 
 .game-gallery-tile .tile-action-button {

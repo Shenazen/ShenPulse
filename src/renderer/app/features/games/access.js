@@ -102,6 +102,71 @@ function gameArtwork(pack) {
   return "assets/brand/shenpulse-512.png";
 }
 
+const SHENPULSE_PLATFORM_GAME_IDS = new Set([
+  "thiercelieux",
+  "coin-pusher",
+  "connect-four",
+  "deal-or-no-deal",
+  "diamond-bridge",
+  "diamond-drop"
+]);
+
+const GAME_PLATFORM_OVERRIDES = Object.freeze({
+  fortnite: ["epic-games"],
+  "gtav-montchiliad": ["rockstar-games", "steam", "epic-games"],
+  "pokemon-red-blue": ["nintendo"]
+});
+
+const GAME_PLATFORM_LABELS = Object.freeze({
+  "epic-games": "Epic Games",
+  "microsoft-store": "Microsoft Store",
+  nintendo: "Nintendo",
+  "rockstar-games": "Rockstar Games",
+  shenpulse: "ShenPulse",
+  steam: "Steam"
+});
+
+function gamePlatformIds(pack) {
+  const configured = Array.isArray(pack?.storefronts)
+    ? pack.storefronts.filter((id) => GAME_PLATFORM_LABELS[id])
+    : [];
+  if (configured.length) return [...new Set(configured)];
+  if (
+    pack?.modeSelector ||
+    pack?.id === "minecraft" ||
+    String(pack?.id || "").startsWith("minecraft-")
+  ) {
+    return ["microsoft-store"];
+  }
+  if (SHENPULSE_PLATFORM_GAME_IDS.has(pack?.id)) return ["shenpulse"];
+  return GAME_PLATFORM_OVERRIDES[pack?.id] || ["steam"];
+}
+
+function gamePlatformIcon(platformId) {
+  if (platformId === "shenpulse") {
+    return '<img src="assets/brand/shenpulse-512.png" alt="">';
+  }
+  if (platformId === "steam") {
+    return `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="m4 20 7 3.5 3.8-2.2 3.8 1.5a5 5 0 1 0-2.7-5.8l-4.2 3.1L5 17.4Z"/><circle cx="21.5" cy="14" r="3.2"/><circle cx="10" cy="24" r="3.2"/></svg>`;
+  }
+  if (platformId === "epic-games") {
+    return `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 3h22l-2 23-9 3-9-3Z"/><path class="platform-cutout" d="M10 8h12v3h-8v2h7v3h-7v3h8v3H10Zm5 14h3v3h-3Z"/></svg>`;
+  }
+  if (platformId === "rockstar-games") {
+    return `<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="4" width="24" height="24" rx="5"/><path class="platform-cutout" d="M10 9h7.2c3.2 0 5 1.6 5 4.3 0 2-1 3.4-2.8 4l3.6 5.7h-4.6l-3-5h-1.3v5H10Zm4.1 3.2v2.7h2.5c1 0 1.6-.5 1.6-1.4 0-.8-.6-1.3-1.6-1.3Z"/><path d="m23.5 18 1 2 2.2.3-1.6 1.6.4 2.2-2-1-2 1 .4-2.2-1.6-1.6 2.2-.3Z"/></svg>`;
+  }
+  if (platformId === "microsoft-store") {
+    return `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 5.5 14.5 4v10.5H4Zm12.5-1.8L28 2v12.5H16.5ZM4 16.5h10.5V27L4 25.5Zm12.5 0H28V30l-11.5-1.7Z"/></svg>`;
+  }
+  return `<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="18" rx="9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M11 20V12l5 8v-8h5v8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/></svg>`;
+}
+
+function gamePlatformLogos(pack) {
+  const platformIds = gamePlatformIds(pack);
+  const labels = platformIds.map((id) => GAME_PLATFORM_LABELS[id]);
+  return `<div class="tile-platforms" aria-label="Disponible sur ${escapeHtml(labels.join(", "))}">${platformIds.map((id) => `<span class="tile-platform-logo platform-${escapeHtml(id)}" title="${escapeHtml(GAME_PLATFORM_LABELS[id])}">${gamePlatformIcon(id)}</span>`).join("")}</div>`;
+}
+
 function gamePrice(pack) {
   if (pack.accessMode === "included") return "Inclus avec abonnement";
   return new Intl.NumberFormat("fr-FR", {
@@ -343,7 +408,7 @@ function renderGamesCatalogLegacy() {
           <article class="game-gallery-tile ${selected.id === pack.id ? "selected" : ""} ${isGameUnlocked(pack) ? "" : "locked"}" data-action="select-game" data-id="${escapeHtml(pack.id)}">
             <div class="game-tile-art" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(gameArtwork(pack))}')"></div>
             <span class="tile-status ${isGameUnlocked(pack) ? "unlocked" : "locked"}">${isGameUnlocked(pack) ? "✓ " : "🔒 "}${escapeHtml(gameAccessLabel(pack))}</span>
-            <div class="tile-caption"><span>${escapeHtml(pack.source || pack.connector.type)}</span><h3>${escapeHtml(pack.name)}</h3><small>${pack.effects.length} interactions · ${escapeHtml(gamePrice(pack))}</small></div>
+            <div class="tile-caption"><h3>${escapeHtml(pack.name)}</h3>${gamePlatformLogos(pack)}</div>
             <button class="tile-action-button" data-action="select-game" data-id="${escapeHtml(pack.id)}">Ouvrir</button>
           </article>`).join("")}
       </section>
@@ -402,7 +467,7 @@ function renderGamesV2() {
           <article class="game-gallery-tile ${isGameUnlocked(pack) ? "" : "locked"}" data-action="open-game" data-id="${escapeHtml(pack.id)}" tabindex="0">
             <div class="game-tile-art" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(gameArtwork(pack))}')"></div>
             <span class="tile-status ${isGameUnlocked(pack) ? "unlocked" : "locked"}">${isGameUnlocked(pack) ? "✓ " : "🔒 "}${escapeHtml(gameAccessLabel(pack))}</span>
-            <div class="tile-caption"><span>${escapeHtml(pack.source || pack.connector.type)}</span><h3>${escapeHtml(pack.name)}</h3><small>${pack.modeSelector ? `${pack.modes.length} modes · ${pack.effects.length} interactions` : `${pack.effects.length} interactions · ${gamePrice(pack)}`}</small></div>
+            <div class="tile-caption"><h3>${escapeHtml(pack.name)}</h3>${gamePlatformLogos(pack)}</div>
             <button class="tile-action-button" type="button" data-action="open-game" data-id="${escapeHtml(pack.id)}">${escapeHtml(gameTileActionLabel(pack))}</button>
           </article>`).join("")}
       </section>

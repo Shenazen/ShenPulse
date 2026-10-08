@@ -56,6 +56,31 @@ test("Minecraft utilise une seule jaquette puis propose ses trois modes", () => 
   assert.match(styles, /\.minecraft-mode-card/);
 });
 
+test("les cartes de jeu affichent le titre, les plateformes puis le bouton", () => {
+  const app = readRendererSource();
+  const styles = readRendererStyles();
+  const renderStart = app.indexOf("function renderGamesV2()");
+  const catalog = app.slice(
+    renderStart,
+    app.indexOf("function openMinecraftModeSelector", renderStart)
+  );
+
+  assert.match(app, /function gamePlatformLogos\(pack\)/);
+  assert.match(app, /fortnite: \["epic-games"\]/);
+  assert.match(
+    app,
+    /"gtav-montchiliad": \["rockstar-games", "steam", "epic-games"\]/
+  );
+  assert.match(
+    catalog,
+    /<div class="tile-caption"><h3>\$\{escapeHtml\(pack\.name\)\}<\/h3>\$\{gamePlatformLogos\(pack\)\}<\/div>/
+  );
+  assert.doesNotMatch(catalog, /pack\.source \|\| pack\.connector\.type/);
+  assert.doesNotMatch(catalog, /pack\.effects\.length.*gamePrice\(pack\)/);
+  assert.match(styles, /\.game-gallery-tile \.tile-platforms/);
+  assert.match(styles, /\.game-gallery-tile \.tile-platform-logo/);
+});
+
 test("Minecraft affiche les réglages de manche et bloque un second jeu actif", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
   const app = readRendererSource();
