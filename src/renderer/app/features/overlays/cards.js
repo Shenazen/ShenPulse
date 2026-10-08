@@ -233,6 +233,7 @@ function sendOverlayPreviewFrameEvent(frame, channel, payload) {
 
 function hydrateOverlayPreviewFrame(frame) {
   const key =
+    frame?.dataset.overlayPreviewKey ||
     frame?.closest("[data-overlay-card]")?.dataset.overlayCard ||
     frame?.closest("[data-overlay-config-editor]")?.dataset.overlayConfigEditor ||
     "";

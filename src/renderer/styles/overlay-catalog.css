@@ -1166,3 +1166,21 @@ dialog[data-variant="overlay-preview"] {
   color: #fff3ac;
   box-shadow: 0 0 0 3px #7a4307, 0 0 0 5px #1a0b05, 0 0 12px rgba(255, 202, 73, 0.82);
 }
+.overlay-preview-warmup-host {
+  position: fixed;
+  top: -10000px;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  contain: strict;
+}
+
+.overlay-preview-warmup-host iframe {
+  display: block;
+  width: var(--overlay-warmup-width, 1920px);
+  height: var(--overlay-warmup-height, 1080px);
+  border: 0;
+}

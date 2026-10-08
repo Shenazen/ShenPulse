@@ -562,6 +562,9 @@ function render() {
     applyGuestReadOnlyMode(content);
     return;
   }
+  if (typeof preserveOverlayRuntimeFrames === "function") {
+    preserveOverlayRuntimeFrames(content);
+  }
   content.innerHTML = nextContentMarkup;
   renderedContentPage = currentPage;
   renderedContentMarkup = nextContentMarkup;

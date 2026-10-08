@@ -319,6 +319,9 @@ async function perform(work, successMessage) {
 
 function acceptSnapshot(value) {
   snapshot = value;
+  if (typeof scheduleOverlayPreviewWarmup === "function") {
+    scheduleOverlayPreviewWarmup();
+  }
   if (typeof hasProAccess === "function" && !hasProAccess()) {
     for (const key of Object.keys(matchVideoPaths)) {
       delete matchVideoPaths[key];

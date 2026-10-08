@@ -666,6 +666,29 @@ test("la page overlays ne recrée pas ses iframes pour un état sans rapport", (
   assert.doesNotMatch(relayStatusHandler, /render\(\)/);
 });
 
+test("les aperçus overlays se préchargent en fond dès le démarrage", () => {
+  assert.match(renderer, /function scheduleOverlayPreviewWarmup\(delayMs = 0\)/);
+  assert.match(
+    renderer,
+    /function acceptSnapshot\(value\)[\s\S]*scheduleOverlayPreviewWarmup\(\)/
+  );
+  assert.match(
+    renderer,
+    /function warmOverlayRuntimePreviews\(\)[\s\S]*overlayDefinitions\(\)\.filter\([\s\S]*canAccessOverlay\(item\)[\s\S]*!item\.catalogHidden/
+  );
+  assert.match(renderer, /OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY = 2/);
+  assert.match(renderer, /iframe\.loading = "eager"/);
+  assert.match(renderer, /function discardOverlayBackgroundPreview\(record\)/);
+  assert.match(renderer, /function adoptWarmedOverlayPreview\(frame\)/);
+  assert.match(renderer, /function preserveOverlayRuntimeFrames\(root = document\)/);
+  assert.match(
+    renderer,
+    /preserveOverlayRuntimeFrames\(content\)[\s\S]*content\.innerHTML = nextContentMarkup/
+  );
+  assert.match(renderer, /data-overlay-preview-key="\$\{escapeHtml\(item\.key\)\}"/);
+  assert.match(rendererCss, /\.overlay-preview-warmup-host\s*\{/);
+});
+
 test("les WINS natifs actualisent les aperçus sans reconstruire la page du jeu", () => {
   assert.match(renderer, /function gamePageStateSignature\(value\)/);
   assert.match(

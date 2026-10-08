@@ -625,7 +625,9 @@ test("les aperçus Match figent une vraie image représentative du design", () =
 });
 
 test("les apercus Match jouent leur animation en boucle dans le catalogue", () => {
-  const runtimeFrameStart = renderer.indexOf("function overlayRuntimeFrame");
+  const runtimeFrameStart = renderer.indexOf(
+    "function overlayRuntimePreviewUrl"
+  );
   const runtimeFrameEnd = renderer.indexOf(
     "const observedOverlayRuntimeFrames",
     runtimeFrameStart

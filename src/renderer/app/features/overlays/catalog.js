@@ -190,18 +190,7 @@ function overlayCatalogPreviewUrl(item) {
   }
 }
 
-function overlayRuntimeFrame(
-  item,
-  config = null,
-  {
-    context = "card",
-    editable = false,
-    loading = "lazy",
-    placeholder = ""
-  } = {}
-) {
-  const size = overlaySourceSize(item);
-  const cardMaxWidth = Math.min(560, Math.max(110, (220 * size.width) / size.height));
+function overlayRuntimePreviewUrl(item, config = null, { context = "card" } = {}) {
   const previewItem = {
     ...item,
     url: overlayCatalogPreviewUrl(item) || item.url
@@ -222,10 +211,27 @@ function overlayRuntimeFrame(
   } catch {
     // Keep the original local URL if it cannot be parsed.
   }
+  return runtimeUrl;
+}
+
+function overlayRuntimeFrame(
+  item,
+  config = null,
+  {
+    context = "card",
+    editable = false,
+    loading = "lazy",
+    placeholder = ""
+  } = {}
+) {
+  const size = overlaySourceSize(item);
+  const cardMaxWidth = Math.min(560, Math.max(110, (220 * size.width) / size.height));
+  const runtimeUrl = overlayRuntimePreviewUrl(item, config, { context });
   const deferred = context === "card" && loading === "lazy";
   return `<div
     class="overlay-runtime-frame overlay-runtime-frame--${escapeHtml(context)}"
     data-overlay-native-frame
+    data-overlay-preview-key="${escapeHtml(item.key)}"
     data-overlay-source-width="${size.width}"
     data-overlay-source-height="${size.height}"
     style="--overlay-preview-ratio:${size.width} / ${size.height};--overlay-card-max-width:${cardMaxWidth.toFixed(2)}px;--overlay-source-max-width:${size.width}px;--overlay-source-width:${size.width}px;--overlay-source-height:${size.height}px"
@@ -250,11 +256,201 @@ const observedOverlayRuntimeFrames = new Set();
 const overlayPreviewLoadQueue = [];
 const OVERLAY_PREVIEW_LOAD_CONCURRENCY = 2;
 let activeOverlayPreviewLoads = 0;
+const overlayBackgroundPreviewCache = new Map();
+const overlayBackgroundPreviewQueue = [];
+const OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY = 2;
+let activeOverlayBackgroundPreviewLoads = 0;
+let overlayPreviewWarmupTimer = null;
 const overlayRuntimeFrameObserver = typeof ResizeObserver === "undefined"
   ? null
   : new ResizeObserver((entries) => {
     for (const entry of entries) updateOverlayRuntimeFrameScale(entry.target);
   });
+
+function overlayBackgroundPreviewCacheKey(key, url) {
+  return `${String(key || "")}\n${String(url || "")}`;
+}
+
+function overlayPreviewWarmupHost() {
+  let host = document.querySelector("[data-overlay-preview-warmup-host]");
+  if (host) return host;
+  host = document.createElement("div");
+  host.className = "overlay-preview-warmup-host";
+  host.dataset.overlayPreviewWarmupHost = "true";
+  host.setAttribute("aria-hidden", "true");
+  document.body.appendChild(host);
+  return host;
+}
+
+function scheduleOverlayPreviewWarmup(delayMs = 0) {
+  if (overlayPreviewWarmupTimer) clearTimeout(overlayPreviewWarmupTimer);
+  overlayPreviewWarmupTimer = setTimeout(() => {
+    overlayPreviewWarmupTimer = null;
+    warmOverlayRuntimePreviews();
+  }, Math.max(0, Number(delayMs) || 0));
+}
+
+function warmOverlayRuntimePreviews() {
+  if (!snapshot) return;
+  const items = overlayDefinitions().filter(
+    (item) => canAccessOverlay(item) && !item.catalogHidden
+  );
+  const desiredCacheKeys = new Set();
+  for (const item of items) {
+    const url = overlayRuntimePreviewUrl(item, overlayConfig(item.key), {
+      context: "card"
+    });
+    if (!url) continue;
+    const cacheKey = overlayBackgroundPreviewCacheKey(item.key, url);
+    desiredCacheKeys.add(cacheKey);
+    if (overlayBackgroundPreviewCache.has(cacheKey)) continue;
+    const record = {
+      cacheKey,
+      iframe: null,
+      inUse: false,
+      item,
+      loading: false,
+      queued: true,
+      ready: false,
+      url
+    };
+    overlayBackgroundPreviewCache.set(cacheKey, record);
+    overlayBackgroundPreviewQueue.push(record);
+  }
+  for (const [cacheKey, record] of overlayBackgroundPreviewCache) {
+    if (desiredCacheKeys.has(cacheKey) || record.inUse) continue;
+    discardOverlayBackgroundPreview(record);
+  }
+  drainOverlayBackgroundPreviewQueue();
+}
+
+function discardOverlayBackgroundPreview(record) {
+  const queueIndex = overlayBackgroundPreviewQueue.indexOf(record);
+  if (queueIndex >= 0) overlayBackgroundPreviewQueue.splice(queueIndex, 1);
+  record.queued = false;
+  if (record.loading) {
+    record.loading = false;
+    activeOverlayBackgroundPreviewLoads = Math.max(
+      0,
+      activeOverlayBackgroundPreviewLoads - 1
+    );
+  }
+  record.iframe?.remove();
+  overlayBackgroundPreviewCache.delete(record.cacheKey);
+}
+
+function drainOverlayBackgroundPreviewQueue() {
+  while (
+    activeOverlayBackgroundPreviewLoads <
+      OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY &&
+    overlayBackgroundPreviewQueue.length
+  ) {
+    const record = overlayBackgroundPreviewQueue.shift();
+    if (!record || !record.queued || record.iframe) continue;
+    startOverlayBackgroundPreview(record);
+  }
+}
+
+function startOverlayBackgroundPreview(record) {
+  const iframe = document.createElement("iframe");
+  record.iframe = iframe;
+  record.loading = true;
+  record.queued = false;
+  activeOverlayBackgroundPreviewLoads += 1;
+  iframe.dataset.overlayPreviewCacheKey = record.cacheKey;
+  iframe.dataset.overlayPreviewKey = record.item.key;
+  iframe.dataset.overlayPreviewWarm = "true";
+  iframe.dataset.overlayRuntimePreview = "true";
+  iframe.loading = "eager";
+  iframe.tabIndex = -1;
+  iframe.title = `Préchargement ${record.item.name}`;
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+  const [sourceWidth = 1920, sourceHeight = 1080] =
+    record.item.sourceSize || [];
+  iframe.style.setProperty("--overlay-warmup-width", `${sourceWidth}px`);
+  iframe.style.setProperty("--overlay-warmup-height", `${sourceHeight}px`);
+  const complete = (ready) => {
+    if (!record.loading) return;
+    record.loading = false;
+    record.ready = ready;
+    if (ready) {
+      iframe.dataset.overlayPreviewReady = "true";
+      window.hydrateOverlayPreviewFrame?.(iframe);
+    }
+    activeOverlayBackgroundPreviewLoads = Math.max(
+      0,
+      activeOverlayBackgroundPreviewLoads - 1
+    );
+    drainOverlayBackgroundPreviewQueue();
+  };
+  iframe.addEventListener("load", () => complete(true), { once: true });
+  iframe.addEventListener("error", () => complete(false), { once: true });
+  iframe.src = record.url;
+  overlayPreviewWarmupHost().appendChild(iframe);
+}
+
+function adoptWarmedOverlayPreview(frame) {
+  const placeholderFrame = frame.querySelector("iframe");
+  const key = frame.dataset.overlayPreviewKey || "";
+  const url =
+    placeholderFrame?.dataset.overlaySrc ||
+    placeholderFrame?.getAttribute("src") ||
+    "";
+  const record = overlayBackgroundPreviewCache.get(
+    overlayBackgroundPreviewCacheKey(key, url)
+  );
+  if (!placeholderFrame || !record?.iframe) return placeholderFrame;
+  const iframe = record.iframe;
+  placeholderFrame.remove();
+  record.inUse = true;
+  delete iframe.dataset.overlayPreviewWarm;
+  iframe.removeAttribute("aria-hidden");
+  iframe.title = placeholderFrame.title;
+  frame.appendChild(iframe);
+  if (record.ready || iframe.dataset.overlayPreviewReady) {
+    iframe.dataset.overlayPreviewReady = "true";
+    frame.classList.add("overlay-runtime-frame--ready");
+    window.hydrateOverlayPreviewFrame?.(iframe);
+  }
+  return iframe;
+}
+
+function preserveOverlayRuntimeFrames(root = document) {
+  const host = overlayPreviewWarmupHost();
+  root.querySelectorAll("[data-overlay-native-frame]").forEach((frame) => {
+    const iframe = frame.querySelector(
+      'iframe[data-overlay-runtime-preview="true"]'
+    );
+    if (!iframe) return;
+    const key = frame.dataset.overlayPreviewKey || iframe.dataset.overlayPreviewKey;
+    const url = iframe.dataset.overlaySrc || iframe.getAttribute("src") || "";
+    if (!key || !url || url === "about:blank") return;
+    const cacheKey = overlayBackgroundPreviewCacheKey(key, url);
+    let record = overlayBackgroundPreviewCache.get(cacheKey);
+    if (!record) {
+      record = {
+        cacheKey,
+        iframe,
+        inUse: true,
+        item: { key, name: key },
+        loading: false,
+        queued: false,
+        ready: iframe.dataset.overlayPreviewReady === "true",
+        url
+      };
+      overlayBackgroundPreviewCache.set(cacheKey, record);
+    }
+    if (record.iframe !== iframe) return;
+    record.inUse = false;
+    iframe.dataset.overlayPreviewCacheKey = cacheKey;
+    iframe.dataset.overlayPreviewKey = key;
+    iframe.dataset.overlayPreviewWarm = "true";
+    iframe.setAttribute("aria-hidden", "true");
+    host.appendChild(iframe);
+  });
+  scheduleOverlayPreviewWarmup();
+}
 const overlayPreviewVisibilityObserver = typeof IntersectionObserver === "undefined"
   ? null
   : new IntersectionObserver((entries) => {
@@ -356,7 +552,7 @@ function bindOverlayRuntimeFrames(root = document) {
       observedOverlayRuntimeFrames.add(frame);
       overlayRuntimeFrameObserver?.observe(frame);
     }
-    const iframe = frame.querySelector("iframe");
+    const iframe = adoptWarmedOverlayPreview(frame);
     if (iframe && !iframe.dataset.overlayPreviewLoadBound) {
       iframe.dataset.overlayPreviewLoadBound = "true";
       iframe.addEventListener("load", () => {
@@ -365,10 +561,16 @@ function bindOverlayRuntimeFrames(root = document) {
           !iframe.dataset.overlayPreviewLoading
         ) return;
         iframe.dataset.overlayPreviewReady = "true";
-        frame.classList.add("overlay-runtime-frame--ready");
+        iframe
+          .closest("[data-overlay-native-frame]")
+          ?.classList.add("overlay-runtime-frame--ready");
         completeDeferredOverlayPreview(iframe);
         window.hydrateOverlayPreviewFrame?.(iframe);
       });
+    }
+    if (iframe?.dataset.overlayPreviewReady === "true") {
+      frame.classList.add("overlay-runtime-frame--ready");
+      window.hydrateOverlayPreviewFrame?.(iframe);
     }
     if (iframe?.dataset.overlaySrc) {
       if (overlayPreviewVisibilityObserver) {
