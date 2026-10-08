@@ -66,6 +66,7 @@ test("les cartes de jeu affichent le titre, les plateformes puis le bouton", () 
   );
 
   assert.match(app, /function gamePlatformLogos\(pack\)/);
+  assert.match(app, /<circle cx="16" cy="16" r="15" fill="#1b75bb"\/>/);
   assert.match(app, /fortnite: \["epic-games"\]/);
   assert.match(
     app,
@@ -79,6 +80,7 @@ test("les cartes de jeu affichent le titre, les plateformes puis le bouton", () 
   assert.doesNotMatch(catalog, /pack\.effects\.length.*gamePrice\(pack\)/);
   assert.match(styles, /\.game-gallery-tile \.tile-platforms/);
   assert.match(styles, /\.game-gallery-tile \.tile-platform-logo/);
+  assert.match(styles, /\.tile-platform-logo\.platform-steam svg/);
 });
 
 test("Minecraft affiche les réglages de manche et bloque un second jeu actif", () => {

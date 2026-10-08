@@ -247,14 +247,14 @@ const COIN_PUSHER_DEFAULT_MAPPINGS = Object.freeze(
 const INTERNAL_GAMES = [
   game("thiercelieux", "Les Loups-Garous de Thiercelieux", {
     artwork: "catalog/thiercelieux-landscape.png",
-    included: true,
+    price: 4.99,
     requiresPro: true,
     source: "ShenPulse · orchestration originale",
     description:
       "Mode social complet pour 3 à 8 joueurs : composition adaptative, file LIVE par cadeau, rôles privés, guide dynamique, caméra facultative, pronostics et sauvegarde continue.",
     tags: [
       "abonnement requis",
-      "inclus",
+      "achat unique",
       "jeu local",
       "rôles cachés",
       "portrait ou paysage"

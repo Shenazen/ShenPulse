@@ -49,7 +49,11 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
     40
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
-  assert.equal(games.find((game) => game.id === "thiercelieux")?.included, true);
+  assert.equal(games.find((game) => game.id === "thiercelieux")?.included, false);
+  assert.equal(
+    games.find((game) => game.id === "thiercelieux")?.accessMode,
+    "purchase"
+  );
   assert.equal(
     games.find((game) => game.id === "minecraft-survival-plugin")?.name,
     "Minecraft Survival"
@@ -96,6 +100,7 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
         .map((game) => [game.id, game.price])
     ),
     {
+      thiercelieux: 4.99,
       "coin-pusher": 4.99,
       "connect-four": 4.99,
       "deal-or-no-deal": 4.99,

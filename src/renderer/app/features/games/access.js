@@ -147,7 +147,7 @@ function gamePlatformIcon(platformId) {
     return '<img src="assets/brand/shenpulse-512.png" alt="">';
   }
   if (platformId === "steam") {
-    return `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="m4 20 7 3.5 3.8-2.2 3.8 1.5a5 5 0 1 0-2.7-5.8l-4.2 3.1L5 17.4Z"/><circle cx="21.5" cy="14" r="3.2"/><circle cx="10" cy="24" r="3.2"/></svg>`;
+    return `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#1b75bb"/><path d="M2.1 20.7A15 15 0 0 0 29.7 9.9 21 21 0 0 1 2.1 20.7Z" fill="#0b4a8b"/><path d="m9.4 23.4 8.3-6.5" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="4"/><circle cx="21.6" cy="12" r="6.1" fill="#fff"/><circle cx="21.6" cy="12" r="3.5" fill="#1b75bb"/><circle cx="9.4" cy="23.4" r="4.7" fill="#fff"/><circle cx="9.4" cy="23.4" r="2.4" fill="#1b75bb"/></svg>`;
   }
   if (platformId === "epic-games") {
     return `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 3h22l-2 23-9 3-9-3Z"/><path class="platform-cutout" d="M10 8h12v3h-8v2h7v3h-7v3h8v3H10Zm5 14h3v3h-3Z"/></svg>`;

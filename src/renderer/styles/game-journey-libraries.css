@@ -547,6 +547,11 @@
   fill: currentColor;
 }
 
+.game-gallery-tile .tile-platform-logo.platform-steam svg {
+  width: 23px;
+  height: 23px;
+}
+
 .game-gallery-tile .tile-platform-logo .platform-cutout {
   fill: #080a11;
 }
