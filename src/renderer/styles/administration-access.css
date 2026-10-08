@@ -175,11 +175,6 @@
   display: grid;
 }
 
-.admin-trial-form select[multiple] {
-  height: 126px;
-  padding: 8px;
-}
-
 .admin-trial-options {
   display: grid;
   gap: 8px;
@@ -211,6 +206,88 @@
   margin-top: 4px;
   color: var(--muted);
   font-size: 7px;
+}
+
+.admin-trial-game-picker {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.admin-trial-form > .admin-trial-game-picker {
+  margin: 17px;
+}
+
+.admin-trial-game-picker legend {
+  padding: 0 6px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.admin-trial-game-picker > small {
+  color: var(--muted);
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+.admin-trial-game-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.admin-trial-game-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 47px;
+  padding: 8px 10px;
+  border: 1px solid rgba(184, 142, 255, 0.14);
+  border-radius: 9px;
+  background: rgba(8, 11, 24, 0.5);
+  cursor: pointer;
+}
+
+.admin-trial-game-choice:has(input:checked) {
+  border-color: rgba(34, 211, 238, 0.48);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.admin-trial-game-choice strong,
+.admin-trial-game-choice small {
+  display: block;
+}
+
+.admin-trial-game-choice strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-trial-game-choice small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.admin-trial-games-toggle {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.admin-trial-games-toggle > small {
+  grid-column: 1 / -1;
 }
 
 .admin-trial-form > footer {

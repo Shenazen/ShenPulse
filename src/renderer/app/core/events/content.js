@@ -97,6 +97,14 @@ content.addEventListener("input", (event) => {
 });
 
 content.addEventListener("change", (event) => {
+  if (
+    event.target.matches(
+      "[data-admin-trial-game-option], [data-admin-trial-games-toggle]"
+    )
+  ) {
+    syncAdminTrialGameSelection(event.target);
+    return;
+  }
   if (event.target.matches('[name="thiercelieuxPack"]')) {
     const form = event.target.closest(
       '[data-integrated-game-settings="thiercelieux"]'
@@ -249,6 +257,14 @@ document.addEventListener("focusin", (event) => {
 });
 
 dialogBody.addEventListener("change", (event) => {
+  if (
+    event.target.matches(
+      "[data-admin-trial-game-option], [data-admin-trial-games-toggle]"
+    )
+  ) {
+    syncAdminTrialGameSelection(event.target);
+    return;
+  }
   if (
     event.target.matches('[name="actionIds"]') ||
     event.target.matches("[data-trigger-selection-mode]")

@@ -604,6 +604,7 @@ test("le formulaire d'essai garde l'adresse e-mail saisissable après un envoi",
 
 test("le formulaire d'essai propose tous les jeux payants du catalogue local", () => {
   const app = readRendererSource();
+  const styles = readRendererStyles();
   const helperStart = app.indexOf("function adminTrialGameProducts()");
   const helperEnd = app.indexOf("function isCurrentGameProduct", helperStart);
   const helper = app.slice(helperStart, helperEnd);
@@ -613,13 +614,41 @@ test("le formulaire d'essai propose tous les jeux payants du catalogue local", (
     formStart
   );
   const form = app.slice(formStart, formEnd);
+  const editorStart = app.indexOf("function openAdminTrialEditor(trial)");
+  const editorEnd = app.indexOf("function toLocalAdminDate", editorStart);
+  const editor = app.slice(editorStart, editorEnd);
+  const submitStart = app.indexOf(
+    'if (event.target.id === "admin-trial-form")'
+  );
+  const submitEnd = app.indexOf(
+    'if (event.target.id === "admin-game-cheat-form")',
+    submitStart
+  );
+  const submit = app.slice(submitStart, submitEnd);
 
   assert.match(form, /adminTrialGameProducts\(\)/);
+  assert.match(form, /adminTrialGameChoices\(\)/);
   assert.doesNotMatch(form, /item\.trialEligible/);
   assert.match(helper, /snapshot\?\.packs/);
   assert.match(helper, /pack\.accessMode === "purchase"/);
   assert.match(helper, /commerceProducts\[pack\.id\] \|\| \{\}/);
   assert.match(helper, /title: product\.title \|\| pack\.name \|\| pack\.id/);
+  assert.match(helper, /function adminTrialGameChoices\(selectedIds = \[\]\)/);
+  assert.match(helper, /data-admin-trial-game-option/);
+  assert.match(helper, /function adminTrialGameIdsFromForm\(data\)/);
+  assert.match(helper, /\.map\(\(game\) => game\.id\)/);
+  assert.match(
+    submit,
+    /gameIds: games \? adminTrialGameIdsFromForm\(data\) : \[\]/
+  );
+  assert.match(editor, /adminTrialGameChoices\(selectedGameIds\)/);
+  assert.match(
+    editor,
+    /gameIds: data\.has\("games"\) \? adminTrialGameIdsFromForm\(data\) : \[\]/
+  );
+  assert.doesNotMatch(editor, /IDs des jeux/);
+  assert.match(styles, /\.admin-trial-game-grid/);
+  assert.match(styles, /\.admin-trial-game-choice/);
 });
 
 test("une session propriétaire resynchronise les accès offerts au démarrage", () => {

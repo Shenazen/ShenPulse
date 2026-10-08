@@ -373,6 +373,7 @@ function openAdminTrialEditor(trial) {
   if (adminModuleError("trials")) {
     throw new Error("Le service des offres d’essai est temporairement indisponible.");
   }
+  const selectedGameIds = trial.gameTrialIds || [];
   openEditor({
     title: `Essai de ${trial.email || trial.beneficiaryEmail}`,
     kicker: "MODIFIER L’OFFRE D’ESSAI",
@@ -380,8 +381,8 @@ function openAdminTrialEditor(trial) {
       ${field("email", "Adresse e-mail du compte", trial.email || trial.beneficiaryEmail, "email", "full required maxlength=\"254\"")}
       ${field("days", "Nouvelle durée (jours)", trial.durationDays || 7, "number", 'min="1" max="365" required')}
       <label class="field"><span>Accès Pro</span><select name="subscription"><option value="true" ${trial.subscriptionTrial ? "selected" : ""}>Oui</option><option value="false" ${!trial.subscriptionTrial ? "selected" : ""}>Non</option></select></label>
-      <label class="field"><span>Jeux</span><select name="games"><option value="true" ${(trial.gameTrialIds || []).length ? "selected" : ""}>Oui</option><option value="false" ${!(trial.gameTrialIds || []).length ? "selected" : ""}>Non</option></select></label>
-      <label class="field full"><span>IDs des jeux (vide = tous les jeux éligibles)</span><textarea name="gameIds" rows="7">${escapeHtml((trial.gameTrialIds || []).join("\n"))}</textarea></label>
+      <label class="field admin-trial-games-toggle"><span>Jeux</span><span class="switch"><input type="checkbox" name="games" data-admin-trial-games-toggle ${selectedGameIds.length ? "checked" : ""}><span></span></span><small>Activez cette option pour offrir un ou plusieurs jeux.</small></label>
+      ${adminTrialGameChoices(selectedGameIds)}
     </div>`,
     onSubmit: async (data) => {
       adminBusy = true;
@@ -391,8 +392,8 @@ function openAdminTrialEditor(trial) {
           email: data.get("email"),
           days: Number(data.get("days")),
           subscription: data.get("subscription") === "true",
-          games: data.get("games") === "true",
-          gameIds: String(data.get("gameIds") || "").split(/\r?\n|,/).map((id) => id.trim()).filter(Boolean)
+          games: data.has("games"),
+          gameIds: data.has("games") ? adminTrialGameIdsFromForm(data) : []
         });
         adminDashboard = await api.admin.dashboard();
       } finally {

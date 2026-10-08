@@ -271,6 +271,7 @@ content.addEventListener("submit", async (event) => {
   if (event.target.id === "admin-trial-form") {
     event.preventDefault();
     const data = new FormData(event.target);
+    const games = data.has("games");
     await perform(async () => {
       adminBusy = true;
       render();
@@ -279,8 +280,8 @@ content.addEventListener("submit", async (event) => {
           email: data.get("email"),
           days: Number(data.get("days") || 7),
           subscription: data.has("subscription"),
-          games: data.has("games"),
-          gameIds: data.getAll("gameIds")
+          games,
+          gameIds: games ? adminTrialGameIdsFromForm(data) : []
         });
         adminDashboard = await api.admin.dashboard();
       } finally {

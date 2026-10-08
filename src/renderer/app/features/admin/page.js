@@ -381,9 +381,9 @@ function renderAdminTrials() {
       </div>
       <div class="admin-trial-options">
         <label><input type="checkbox" name="subscription" checked><span><strong>Accès Pro</strong><small>Toutes les fonctions réservées au plan Pro</small></span></label>
-        <label><input type="checkbox" name="games"><span><strong>Jeux payants</strong><small>Tout le catalogue éligible ou une sélection</small></span></label>
+        <label><input type="checkbox" name="games" data-admin-trial-games-toggle><span><strong>Jeux payants</strong><small>Tout le catalogue éligible ou une sélection</small></span></label>
       </div>
-      <label class="field"><span>Jeux précis (facultatif)</span><select name="gameIds" multiple size="6">${eligibleGames.map((game) => `<option value="${escapeHtml(game.id)}">${escapeHtml(game.title)}</option>`).join("")}</select><small>Ctrl + clic pour en choisir plusieurs. Aucun choix = tous.</small></label>
+      ${adminTrialGameChoices()}
       <footer><button class="button primary" type="submit" ${adminBusy ? "disabled" : ""}>Offrir l’essai</button></footer>
     </form>
     <section class="admin-panel admin-trial-list">
@@ -551,6 +551,59 @@ function adminTrialGameProducts() {
         trialEligible: true
       };
     });
+}
+
+function adminTrialGameChoices(selectedIds = []) {
+  const selected = new Set((selectedIds || []).map(String));
+  const products = adminTrialGameProducts()
+    .filter((item) => item.enabled)
+    .sort((left, right) => left.title.localeCompare(right.title, "fr"));
+  const knownIds = new Set(products.map((item) => item.id));
+  for (const id of selected) {
+    if (!knownIds.has(id)) {
+      products.push({ id, title: adminItemLabel(id), enabled: true });
+    }
+  }
+  return `<fieldset class="admin-trial-game-picker">
+    <legend>Jeux de l'essai</legend>
+    <small>Cochez les jeux voulus. Si aucun jeu n'est coché, tous les jeux payants disponibles seront accordés.</small>
+    <div class="admin-trial-game-grid">
+      ${products.map((game) => `<label class="admin-trial-game-choice"><input type="checkbox" name="gameIds" value="${escapeHtml(game.id)}" data-admin-trial-game-option ${selected.has(game.id) ? "checked" : ""}><span><strong>${escapeHtml(game.title)}</strong><small>Accès temporaire au jeu</small></span></label>`).join("")}
+    </div>
+  </fieldset>`;
+}
+
+function adminTrialGameIdsFromForm(data) {
+  const selectedIds = Array.from(
+    new Set(
+      data
+        .getAll("gameIds")
+        .map((id) => String(id || "").trim())
+        .filter(Boolean)
+    )
+  );
+  if (selectedIds.length) return selectedIds;
+  return adminTrialGameProducts()
+    .filter((game) => game.enabled)
+    .map((game) => game.id);
+}
+
+function syncAdminTrialGameSelection(control) {
+  const form = control?.closest("form");
+  const gamesToggle = form?.querySelector('[name="games"]');
+  if (!form || !gamesToggle) return;
+  if (control.matches("[data-admin-trial-game-option]") && control.checked) {
+    gamesToggle.checked = true;
+    return;
+  }
+  if (
+    control.matches("[data-admin-trial-games-toggle]") &&
+    !control.checked
+  ) {
+    form.querySelectorAll("[data-admin-trial-game-option]").forEach((input) => {
+      input.checked = false;
+    });
+  }
 }
 
 function isCurrentGameProduct(product) {
