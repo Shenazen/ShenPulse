@@ -430,7 +430,7 @@ api.on("thiercelieux-host-state", (state) => {
   syncThiercelieuxLivePanel();
 });
 
-api.on("state-changed", (value) => {
+function handleRendererStateChanged(value) {
   const overlaySessionChanged =
     overlaySessionLifecycleSignature(snapshot) !==
     overlaySessionLifecycleSignature(value);
@@ -466,6 +466,20 @@ api.on("state-changed", (value) => {
     renderNavigation();
     syncChrome();
   }
+}
+
+api.on("state-changed", handleRendererStateChanged);
+
+api.on("runtime-state-changed", (patch) => {
+  if (!snapshot || !patch?.state) return;
+  handleRendererStateChanged({
+    ...snapshot,
+    ...patch,
+    state: {
+      ...snapshot.state,
+      ...patch.state
+    }
+  });
 });
 
 api.on("public-overlay-relay-status", (status) => {

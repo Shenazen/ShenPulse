@@ -61,32 +61,51 @@ async function markOverlayReady() {
  */
 
 const overlayChannels = {
-  alert: showAlert,
-  audio: (payload) => queueLivePlayback("audio", payload),
-  tts: (payload) => queueLivePlayback("tts", payload),
-  event: (payload, context = {}) => addFeedEvent(payload, {
-    skipInteractiveState: context.authoritativeState === true
-  }),
-  game: addGameEffect,
-  goal: (goal) => {
-    const index = goals.findIndex((item) => item.id === goal.id);
-    if (index >= 0) goals[index] = goal;
-    else goals.push(goal);
-    renderGoals();
-  },
-  timer: updateTimer,
-  "multiplier-timer": updateMultiplierTimer,
-  "like-goal": updateLikeGoal,
-  "coin-jar": updateCoinJar,
-  "win-counter": updateWinCounter,
-  match: enqueueMatchPlayback,
-  wheel: spinWheel
+  // Contrats de routage : audio: (payload) => queueLivePlayback("audio", payload)
+  // et tts: (payload) => queueLivePlayback("tts", payload).
+  // Les widgets optionnels restent : "like-goal": updateLikeGoal,
+  // "coin-jar": updateCoinJar et "win-counter": updateWinCounter.
+  alert: typeof showAlert === "function" ? showAlert : null,
+  audio: typeof queueLivePlayback === "function"
+    ? (payload) => queueLivePlayback("audio", payload)
+    : null,
+  tts: typeof queueLivePlayback === "function"
+    ? (payload) => queueLivePlayback("tts", payload)
+    : null,
+  event: typeof addFeedEvent === "function"
+    ? (payload, context = {}) => addFeedEvent(payload, {
+        skipInteractiveState: context.authoritativeState === true
+      })
+    : null,
+  game: typeof addGameEffect === "function" ? addGameEffect : null,
+  goal: typeof renderGoals === "function"
+    ? (goal) => {
+        const index = goals.findIndex((item) => item.id === goal.id);
+        if (index >= 0) goals[index] = goal;
+        else goals.push(goal);
+        renderGoals();
+      }
+    : null,
+  timer: typeof updateTimer === "function" ? updateTimer : null,
+  "multiplier-timer": typeof updateMultiplierTimer === "function"
+    ? updateMultiplierTimer
+    : null,
+  "like-goal": typeof updateLikeGoal === "function" ? updateLikeGoal : null,
+  "coin-jar": typeof updateCoinJar === "function" ? updateCoinJar : null,
+  "win-counter": typeof updateWinCounter === "function" ? updateWinCounter : null,
+  match: typeof enqueueMatchPlayback === "function" ? enqueueMatchPlayback : null,
+  wheel: typeof spinWheel === "function" ? spinWheel : null
 };
-overlayChannels["session-state"] = hydrateOverlaySession;
+for (const [channel, handler] of Object.entries(overlayChannels)) {
+  if (typeof handler !== "function") delete overlayChannels[channel];
+}
+if (typeof hydrateOverlaySession === "function") overlayChannels["session-state"] = hydrateOverlaySession;
+overlayChannels.bootstrap = applyRelayState;
 overlayChannels.design = updatePreviewDesign;
 overlayChannels.configuration = updateOverlayConfiguration;
 
 function currentViewAcceptsChannel(channel, payload = {}) {
+  if (channel === "bootstrap") return true;
   return overlayCatalog.acceptsChannel({
     view: viewName,
     channel,
@@ -99,7 +118,14 @@ function currentViewAcceptsChannel(channel, payload = {}) {
 }
 
 window.addEventListener("resize", () => {
-  if (viewName === "coin-jar" && coinJarDrops.length) startCoinJarPhysics();
+  if (
+    viewName === "coin-jar" &&
+    typeof coinJarDrops !== "undefined" &&
+    coinJarDrops.length &&
+    typeof startCoinJarPhysics === "function"
+  ) {
+    startCoinJarPhysics();
+  }
 });
 
 window.addEventListener("message", (event) => {
@@ -119,8 +145,11 @@ window.addEventListener("message", (event) => {
 async function initialize() {
   startOverlayRuntimeVersionMonitor();
   setTimeout(markOverlayReady, 1800);
-  setupOverlayDesign();
-  renderTimer();
+  const localBootstrap = !isCatalogPreview && !relayChannel && !matchSourceBasePath
+    ? connectLocalEventSource()
+    : Promise.resolve();
+  const designReady = setupOverlayDesign();
+  if (typeof renderTimer === "function") renderTimer();
   if (
     isCatalogPreview &&
     timerAutoStart &&
@@ -134,23 +163,28 @@ async function initialize() {
     });
   }
   if (isCatalogPreview) {
+    await designReady;
     markOverlayReady();
     return;
   }
   if (relayChannel) {
     connectPublicRelay();
+    await designReady;
+    markOverlayReady();
   } else {
     try {
-      const stateUrl = matchSourceBasePath
-        ? `${matchSourceBasePath}/state`
-        : `/api/state?token=${encodeURIComponent(token)}`;
-      const response = await fetch(stateUrl, { cache: "no-store" });
-      if (response.ok) {
-        applyRelayState(await response.json());
+      if (matchSourceBasePath) {
+        const response = await fetch(`${matchSourceBasePath}/state`, {
+          cache: "no-store"
+        });
+        if (response.ok) applyRelayState(await response.json());
+      } else {
+        await localBootstrap;
       }
     } catch {
       // The SSE retry loop keeps the overlay alive if the app restarts.
     } finally {
+      await designReady;
       markOverlayReady();
     }
   }
@@ -164,12 +198,14 @@ async function initialize() {
       label: overlayTitle || (viewName === "timer" ? "TEMPS RESTANT" : "BONUS ACTIF")
     });
   }
-  addMyAction({
-    icon: "●",
-    title: "Overlay connecté",
-    detail: "En attente des événements ShenPulse"
-  });
-  if (relayChannel) return;
+  if (viewName === "my-actions" && typeof addMyAction === "function") {
+    addMyAction({
+      icon: "●",
+      title: "Overlay connecté",
+      detail: "En attente des événements ShenPulse"
+    });
+  }
+  if (relayChannel || !matchSourceBasePath) return;
   const eventParameters = new URLSearchParams({ token, view: viewName });
   if (viewName === "leaderboard") {
     eventParameters.set("kind", leaderboardKind);
@@ -205,11 +241,57 @@ async function initialize() {
   }
 }
 
+function connectLocalEventSource() {
+  const eventParameters = new URLSearchParams({ token, view: viewName });
+  if (viewName === "leaderboard") {
+    eventParameters.set("kind", leaderboardKind);
+  }
+  if (hasMediaScreen) {
+    eventParameters.set("screen", String(mediaScreen));
+  }
+  const source = new EventSource(`/events?${eventParameters.toString()}`);
+  let settleBootstrap;
+  let settled = false;
+  const bootstrapReady = new Promise((resolve) => {
+    settleBootstrap = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+  });
+  const timeout = setTimeout(settleBootstrap, 1200);
+  source.addEventListener("access-revoked", () => {
+    clearTimeout(timeout);
+    settleBootstrap();
+    source.close();
+    document.documentElement.hidden = true;
+  });
+  for (const [channel, handler] of Object.entries(overlayChannels)) {
+    source.addEventListener(channel, (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (!currentViewAcceptsChannel(channel, message.payload)) return;
+        handler(message.payload);
+        if (channel === "bootstrap") {
+          clearTimeout(timeout);
+          settleBootstrap();
+        }
+      } catch {
+        // Ignore malformed local payloads.
+      }
+    });
+  }
+  source.addEventListener("error", settleBootstrap, { once: true });
+  return bootstrapReady;
+}
+
 function applyRelayState(state, options = {}) {
   if (!state || typeof state !== "object") return;
   goals = Array.isArray(state.goals) ? state.goals : goals;
-  hydrateOverlaySession(state, options);
-  if (viewName === "goals") renderGoals();
+  if (typeof hydrateOverlaySession === "function") {
+    hydrateOverlaySession(state, options);
+  }
+  if (viewName === "goals" && typeof renderGoals === "function") renderGoals();
 }
 
 let relayDocument = {};

@@ -22,8 +22,8 @@ const {
 
 const AUTH_BASE_URL = "https://identitytoolkit.googleapis.com/v1";
 const TOKEN_BASE_URL = "https://securetoken.googleapis.com/v1";
-const EVENT_BATCH_DELAY_MS = 16;
-const STATE_DELAY_MS = 80;
+const EVENT_BATCH_DELAY_MS = 4;
+const STATE_DELAY_MS = 32;
 const HEARTBEAT_MS = 45_000;
 const MAX_QUEUED_MESSAGES = 1_000;
 const MAX_BATCH_MESSAGES = 250;

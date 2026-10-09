@@ -104,7 +104,7 @@ test("précharge et réutilise les iframes overlay avant d'ouvrir la galerie", (
   assert.ok(host);
   assert.equal(
     window.__overlayWarmupTest.cacheSize(),
-    items.length - 1
+    2
   );
   assert.equal(host.querySelectorAll("iframe").length, 2);
 

@@ -101,7 +101,7 @@ test("les sources TikTok Studio ne gardent plus un ancien moteur overlay en cach
   assert.match(overlayRuntime, /fetch\(versionUrl, \{ cache: "no-store" \}\)/);
   assert.match(
     overlayHtml,
-    new RegExp(`runtime/transport\\.js\\?v=${packageJson.version.replace(/\./g, "\\.")}`)
+    new RegExp(`runtime/loader\\.js\\?v=${packageJson.version.replace(/\./g, "\\.")}`)
   );
 });
 

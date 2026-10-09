@@ -259,6 +259,8 @@ let activeOverlayPreviewLoads = 0;
 const overlayBackgroundPreviewCache = new Map();
 const overlayBackgroundPreviewQueue = [];
 const OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY = 2;
+const OVERLAY_BACKGROUND_PREVIEW_LIMIT = 2;
+const overlayPreviewPriorityKeys = [];
 let activeOverlayBackgroundPreviewLoads = 0;
 let overlayPreviewWarmupTimer = null;
 const overlayRuntimeFrameObserver = typeof ResizeObserver === "undefined"
@@ -290,14 +292,42 @@ function scheduleOverlayPreviewWarmup(delayMs = 0) {
   }, Math.max(0, Number(delayMs) || 0));
 }
 
+function prioritizeOverlayRuntimePreview(key) {
+  const normalizedKey = String(key || "").trim();
+  if (!normalizedKey) return;
+  const existingIndex = overlayPreviewPriorityKeys.indexOf(normalizedKey);
+  if (existingIndex >= 0) overlayPreviewPriorityKeys.splice(existingIndex, 1);
+  overlayPreviewPriorityKeys.unshift(normalizedKey);
+  overlayPreviewPriorityKeys.splice(OVERLAY_BACKGROUND_PREVIEW_LIMIT);
+  scheduleOverlayPreviewWarmup();
+}
+
 function warmOverlayRuntimePreviews() {
   if (!snapshot) return;
-  const items = overlayDefinitions().filter(
+  const availableItems = overlayDefinitions().filter(
     (item) =>
       canAccessOverlay(item) &&
       !item.catalogHidden &&
       item.previewKind !== "match"
   );
+  const visibleKeys = [...content.querySelectorAll("[data-overlay-card]")]
+    .map((card) => card.dataset.overlayCard)
+    .filter(Boolean);
+  const priorities = [
+    ...overlayPreviewPriorityKeys,
+    ...visibleKeys,
+    "likeGoal",
+    "timer"
+  ];
+  const priorityIndex = new Map(
+    priorities.map((key, index) => [key, index])
+  );
+  const items = [...availableItems]
+    .sort((left, right) =>
+      (priorityIndex.get(left.key) ?? Number.MAX_SAFE_INTEGER) -
+      (priorityIndex.get(right.key) ?? Number.MAX_SAFE_INTEGER)
+    )
+    .slice(0, OVERLAY_BACKGROUND_PREVIEW_LIMIT);
   const desiredCacheKeys = new Set();
   for (const item of items) {
     const url = overlayRuntimePreviewUrl(item, overlayConfig(item.key), {

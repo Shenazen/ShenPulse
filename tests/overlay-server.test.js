@@ -121,7 +121,7 @@ test("protège l'état local et accepte un événement authentifié", async () =
     assert.equal(importedStylesheet.status, 200);
     assert.match(importedStylesheet.headers.get("content-type"), /css/);
     const overlayFont = await fetch(
-      `http://127.0.0.1:${overlayPort}/overlay/fonts/inter-latin-wght-normal.woff2?v=1.0.14`
+      `http://127.0.0.1:${overlayPort}/overlay/fonts/inter-latin-wght-normal.woff2?v=1.0.15`
     );
     assert.equal(overlayFont.status, 200);
     assert.match(overlayFont.headers.get("content-type"), /font\/woff2/);

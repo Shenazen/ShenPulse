@@ -304,6 +304,19 @@ class ShenPulseCore extends EventEmitter {
     };
   }
 
+  runtimeSnapshot() {
+    const state = this.store.getState();
+    return {
+      state: {
+        activity: state.activity,
+        statistics: state.statistics,
+        session: state.session,
+        overlaySession: state.overlaySession
+      },
+      timerRuntime: this.timerScheduler.runtime()
+    };
+  }
+
   async refreshGiftCatalog({ force = false } = {}) {
     const username =
       this.store.getState().settings.tiktok?.username || "tiktok";
@@ -1206,7 +1219,7 @@ class ShenPulseCore extends EventEmitter {
     if (this.deferredChangeTimer) return;
     this.deferredChangeTimer = setTimeout(() => {
       this.deferredChangeTimer = null;
-      this.notifyRenderer("state-changed", this.snapshot());
+      this.notifyRenderer("runtime-state-changed", this.runtimeSnapshot());
     }, 50);
     this.deferredChangeTimer.unref?.();
   }

@@ -132,6 +132,7 @@ contextBridge.exposeInMainWorld("shenPulse", {
   on: (channel, callback) => {
     const allowed = new Set([
       "state-changed",
+      "runtime-state-changed",
       "live-event",
       "playback",
       "game-effect",

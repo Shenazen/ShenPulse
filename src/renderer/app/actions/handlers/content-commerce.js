@@ -216,6 +216,7 @@ async function handleContentAndCommerceAction({ action, target, id }) {
     }, "Commande Spotify envoyée");
   }
   if (action === "preview-overlay") {
+    prioritizeOverlayRuntimePreview(id);
     return perform(() => previewOverlay(id), "Test visible sur la carte");
   }
   if (action === "overlay-quick") {
@@ -237,6 +238,7 @@ async function handleContentAndCommerceAction({ action, target, id }) {
         true
       );
     }
+    prioritizeOverlayRuntimePreview(id);
     return openOverlayConfig(overlay);
   }
   if (action === "toggle-session") return toggleSession();

@@ -57,13 +57,37 @@ function rendererStyles() {
 }
 
 function overlayRuntimeSource() {
-  return scriptSources(
-    path.join(overlayDirectory, "index.html"),
-    (source) =>
-      source.startsWith("catalog/") ||
-      source === "overlay-catalog.js" ||
-      source.startsWith("runtime/")
-  );
+  const sources = [
+    "runtime/dependencies.js",
+    "runtime/loader.js",
+    "catalog/shared.js",
+    "catalog/my-actions.js",
+    "catalog/game.js",
+    "catalog/like-goal.js",
+    "catalog/top-donors.js",
+    "catalog/top-tappers.js",
+    "catalog/coin-jar.js",
+    "catalog/timer.js",
+    "catalog/multiplier-timer.js",
+    "catalog/win-counter.js",
+    "catalog/wheel.js",
+    "catalog/matches.js",
+    "overlay-catalog.js",
+    "like-goal-policy.js",
+    "wheel-layout.js",
+    "coin-jar-physics.js",
+    "match-playback-queue.js",
+    "runtime/configuration.js",
+    "runtime/design.js",
+    "runtime/wheel-match.js",
+    "runtime/alerts-feed.js",
+    "runtime/widgets.js",
+    "runtime/session.js",
+    "runtime/transport.js"
+  ];
+  return sources
+    .map((relativePath) => read(path.join(overlayDirectory, relativePath)))
+    .join("\n\n");
 }
 
 function overlayStyles() {

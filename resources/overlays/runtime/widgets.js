@@ -318,16 +318,18 @@ function updateWinCounter(payload = {}) {
     winCounter = allowNegative ? nextValue : Math.max(0, nextValue);
   }
   renderWinCounter({ animate: winCounter !== previousCounter });
-  addMyAction({
-    icon: "★",
-    title:
-      operation === "multiplier"
-        ? `WINS X${winCounterMultiplier}`
-        : `${amount >= 0 ? "+" : ""}${amount} WINS`,
-    detail: payload.viewer
-      ? `Déclenché par ${payload.viewer}`
-      : "Compteur Mont Chiliad"
-  });
+  if (typeof addMyAction === "function") {
+    addMyAction({
+      icon: "★",
+      title:
+        operation === "multiplier"
+          ? `WINS X${winCounterMultiplier}`
+          : `${amount >= 0 ? "+" : ""}${amount} WINS`,
+      detail: payload.viewer
+        ? `Déclenché par ${payload.viewer}`
+        : "Compteur Mont Chiliad"
+    });
+  }
 }
 
 function hydrateOverlaySession(state = {}, options = {}) {
@@ -469,11 +471,13 @@ function addGameEffect(payload) {
   stage.prepend(node);
   while (stage.children.length > 4) stage.lastElementChild.remove();
   setTimeout(() => node.remove(), 9000);
-  addMyAction({
-    icon: "◇",
-    title: payload.effectName || "Effet de jeu",
-    detail: `Déclenché par ${payload.viewer || "Viewer"}`
-  });
+  if (typeof addMyAction === "function") {
+    addMyAction({
+      icon: "◇",
+      title: payload.effectName || "Effet de jeu",
+      detail: `Déclenché par ${payload.viewer || "Viewer"}`
+    });
+  }
 }
 
 function updateTimer(payload = {}) {

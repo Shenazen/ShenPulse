@@ -279,65 +279,6 @@ function revealOverlay() {
   }
 }
 
-function setThemeFrame(elementId, kind, classicPath = "") {
-  const element = document.getElementById(elementId);
-  if (!element) return;
-  const path = themeName === "classic"
-    ? classicPath
-    : `widgets/interactive-overlays/${kind}-theme-${themeName}.webp`;
-  if (!path) {
-    element.hidden = true;
-    element.removeAttribute("src");
-    return;
-  }
-  element.src = mediaUrl(path);
-  element.hidden = false;
-}
-
-function setupOverlayDesign() {
-  if (viewName === "like-goal") {
-    setThemeFrame(
-      "like-goal-frame",
-      "like-goal",
-      "widgets/goals/banniere_mystique_transparente_1300x200.png"
-    );
-    const frame = document.getElementById("like-goal-frame");
-    document.querySelectorAll(".like-goal-frame-slice").forEach((slice) => {
-      slice.src = frame?.src || "";
-      slice.hidden = !frame?.src || frame.hidden;
-    });
-  }
-  if (viewName === "leaderboard") setThemeFrame("leaderboard-frame", "leaderboard");
-  if (viewName === "timer") setThemeFrame("timer-frame", "timer");
-  if (viewName === "multiplier-timer") setThemeFrame("multiplier-timer-frame", "timer");
-  if (viewName === "win-counter") setThemeFrame("win-counter-frame", "win-counter");
-
-  if (viewName === "coin-jar") {
-    const jarBack = document.getElementById("coin-jar-back");
-    const jarFront = document.getElementById("coin-jar-front");
-    if (jarBack && jarFront) {
-      const backName = jarModel === "fantasy"
-        ? "jar-test-back-clean-localized.png"
-        : `jar-${jarModel}-back.png`;
-      const frontName = jarModel === "fantasy"
-        ? "jar-test-front-smooth8.png"
-        : `jar-${jarModel}-front.png`;
-      jarBack.src = mediaUrl(`widgets/coin-jar/${backName}`);
-      jarFront.src = mediaUrl(`widgets/coin-jar/${frontName}`);
-    }
-  }
-
-  setupConfiguration();
-  if (viewName === "wheel") {
-    document.getElementById("wheel-stage")?.classList.toggle("royal", wheelDesign === "royal");
-    setupWheel();
-  }
-  if (viewName === "leaderboard") setupLeaderboard();
-  if (viewName === "match") setupMatch();
-  if (viewName === "coin-jar") renderCoinJar();
-  if (viewName === "win-counter") renderWinCounter();
-}
-
 function updatePreviewDesign(payload = {}) {
   const value = String(payload.value || "").trim();
   if (!value) return;
@@ -353,7 +294,7 @@ function updatePreviewDesign(payload = {}) {
     themeName = value;
     document.documentElement.dataset.theme = value;
   }
-  setupOverlayDesign();
+  setupOverlayDesign().catch(() => {});
 }
 
 function previewBoolean(payload, key, current) {
@@ -621,7 +562,7 @@ function updatePreviewConfiguration(payload = {}) {
     previousDesign !== wheelDesign ||
     previousVariant !== matchVariant;
   if (designChanged) {
-    setupOverlayDesign();
+    setupOverlayDesign().catch(() => {});
     if (viewName === "wheel") {
       applyWheelSettings(wheelSettings);
       drawWheel(wheelRuntimeChoices, wheelParameterColors);
@@ -649,12 +590,22 @@ function updatePreviewConfiguration(payload = {}) {
       }
     }
   }
-  renderLikeGoal();
-  renderCoinJar();
-  renderWinCounter();
-  renderTimer();
-  renderLeaderboard();
-  renderMyActions();
+  renderActiveOverlay();
+}
+
+function renderActiveOverlay() {
+  const renderer = {
+    "my-actions": "renderMyActions",
+    "like-goal": "renderLikeGoal",
+    leaderboard: "renderLeaderboard",
+    "coin-jar": "renderCoinJar",
+    timer: "renderTimer",
+    "multiplier-timer": "renderTimer",
+    "win-counter": "renderWinCounter"
+  }[viewName];
+  if (renderer && typeof globalThis[renderer] === "function") {
+    globalThis[renderer]();
+  }
 }
 
 function activeOverlayConfigKey() {

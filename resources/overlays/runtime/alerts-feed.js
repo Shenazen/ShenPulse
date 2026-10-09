@@ -392,9 +392,14 @@ function updateInteractiveWidgets(event) {
     const giftCount = Math.max(1, Number(event.data?.count || 1));
     const coins = Math.max(1, Number(event.data?.value || 1)) * giftCount;
     if (leaderboardKind === "donors") updateLeaderboardScore(event, coins);
-    coinJarCurrent += coins;
-    spawnCoinJarDrop(event);
-    renderCoinJar();
+    if (
+      typeof spawnCoinJarDrop === "function" &&
+      typeof renderCoinJar === "function"
+    ) {
+      coinJarCurrent += coins;
+      spawnCoinJarDrop(event);
+      renderCoinJar();
+    }
   }
 
   if (event.type === "like") {

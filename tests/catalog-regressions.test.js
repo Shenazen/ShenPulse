@@ -463,8 +463,10 @@ test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
   assert.doesNotMatch(overlayRuntime, /setTimeout\(\(\) => node\.remove\(\), 8000\)/);
   assert.match(
     overlayHtml,
-    /coin-jar-physics\.js[\s\S]*runtime\/configuration\.js[\s\S]*runtime\/widgets\.js/
+    /runtime\/loader\.js/
   );
+  assert.match(overlayRuntime, /if \(view === "coin-jar"\) scripts\.push\("coin-jar-physics\.js"\)/);
+  assert.match(overlayRuntime, /scripts\.push\("runtime\/configuration\.js", "runtime\/design\.js"\)/);
   assert.match(
     overlayCss,
     /\.coin-jar-widget\s*\{[\s\S]*width:\s*min\(69\.444444vw,\s*96\.153846vh\)[\s\S]*aspect-ratio:\s*1/
@@ -891,7 +893,7 @@ test("chaque source charge uniquement ses propres médias lourds", () => {
     overlayRuntime,
     /if \(viewName === "wheel"\) \{[\s\S]*setupWheel\(\)/
   );
-  assert.match(overlayRuntime, /if \(viewName === "leaderboard"\) setupLeaderboard\(\)/);
+  assert.match(overlayRuntime, /if \(viewName === "leaderboard"[\s\S]*setupLeaderboard\(\)/);
   assert.match(
     overlayCss,
     /#coin-jar-view\s*\{[\s\S]*align-items:\s*center;[\s\S]*justify-content:\s*center;/
@@ -912,13 +914,14 @@ test("les cartes ne saturent pas les connexions réservées aux aperçus live", 
     overlayRuntime,
     /const isCatalogPreview =\s*isStaticPreview \|\| previewMode === "animated"/
   );
-  assert.match(
-    overlayRuntime,
-    /setupOverlayDesign\(\);\s*renderTimer\(\);[\s\S]*if \(isCatalogPreview\) \{[\s\S]*markOverlayReady\(\);[\s\S]*return;[\s\S]*const stateUrl =[\s\S]*`\/api\/state/
-  );
+  assert.match(overlayRuntime, /const designReady = setupOverlayDesign\(\)/);
+  assert.match(overlayRuntime, /if \(isCatalogPreview\) \{[\s\S]*await designReady;[\s\S]*markOverlayReady\(\)/);
+  assert.match(overlayRuntime, /connectLocalEventSource\(\)/);
+  assert.match(overlayRuntime, /overlayChannels\.bootstrap = applyRelayState/);
   assert.match(renderer, /data-overlay-src="\$\{escapeHtml\(runtimeUrl\)\}"/);
   assert.match(renderer, /new IntersectionObserver\([\s\S]*queueDeferredOverlayPreview/);
   assert.match(renderer, /OVERLAY_PREVIEW_LOAD_CONCURRENCY = 2/);
+  assert.match(renderer, /OVERLAY_BACKGROUND_PREVIEW_LIMIT = 2/);
   assert.match(renderer, /function overlayCardPlaceholder\(item, config = \{\}\)/);
   assert.match(overlayHtml, /runtime\/dependencies\.js/);
   assert.doesNotMatch(overlayHtml, /<script src="vendor\/lottie-player\.js"/);

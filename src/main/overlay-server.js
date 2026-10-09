@@ -386,6 +386,19 @@ class OverlayServer {
         Connection: "keep-alive"
       });
       response.write(": ShenPulse connected\n\n");
+      const state = this.store.getState();
+      response.write(
+        `event: bootstrap\ndata: ${JSON.stringify({
+          channel: "bootstrap",
+          payload: {
+            goals: state.goals,
+            session: state.session,
+            overlaySession: state.overlaySession,
+            statistics: state.statistics
+          },
+          timestamp: new Date().toISOString()
+        })}\n\n`
+      );
       const screen = Math.round(Number(url.searchParams.get("screen")) || 0);
       const leaderboardKind = String(url.searchParams.get("kind") || "");
       const client = { response, view, screen, leaderboardKind };

@@ -10,7 +10,8 @@ const PRIVATE_RENDERER_CHANNELS = new Set([
   "live-event",
   "overlay-completion-fired",
   "playback",
-  "public-overlay-relay-status"
+  "public-overlay-relay-status",
+  "runtime-state-changed"
 ]);
 const ADMIN_OWNER_EMAIL = "alexandre.leuridan@gmail.com";
 
@@ -84,9 +85,16 @@ function snapshotForRenderer(snapshot, store) {
   const visibleSnapshot = canUseOwnerOnlyCatalog(store)
     ? snapshot
     : withoutOwnerOnlyPacks(snapshot);
+  const lightweightSnapshot = withoutAccountWorkspaces(visibleSnapshot);
   return hasAuthenticatedAccount(store)
-    ? visibleSnapshot
-    : createGuestSnapshot(visibleSnapshot);
+    ? lightweightSnapshot
+    : createGuestSnapshot(lightweightSnapshot);
+}
+
+function withoutAccountWorkspaces(snapshot = {}) {
+  if (!snapshot.state?.accountWorkspaces) return snapshot;
+  const { accountWorkspaces: _accountWorkspaces, ...state } = snapshot.state;
+  return { ...snapshot, state };
 }
 
 function canUseOwnerOnlyCatalog(store) {
