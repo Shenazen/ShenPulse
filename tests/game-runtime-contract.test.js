@@ -57,7 +57,7 @@ test("conserve les photos locales optimisées du Coin Pusher dans la configurati
   );
 });
 
-test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
+test("publie l’installation Pokémon complète avec sa ROM autorisée", () => {
   assert.deepEqual(
     Object.keys(GAME_INSTALLERS).sort(),
     [
@@ -71,6 +71,7 @@ test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
       "pokemon-red-blue",
       "resident-evil-3",
       "stardew-valley",
+      "super-mario-kart",
       "terraria"
     ]
   );
@@ -83,9 +84,52 @@ test("publie les installateurs privés sans inclure de ROM Pokémon", () => {
         )
     )
   );
+  assert.deepEqual(
+    GAME_INSTALLERS["pokemon-red-blue"].assets.map((asset) => asset.id),
+    ["bizhawk", "client", "pack", "rom", "redPatch", "bluePatch"]
+  );
+  const rom = GAME_INSTALLERS["pokemon-red-blue"].assets.find(
+    (asset) => asset.id === "rom"
+  );
+  assert.equal(rom.action, "copy");
+  assert.equal(rom.targetPath, "ROM");
+  assert.equal(rom.size, 1048576);
+  assert.equal(
+    rom.sha256,
+    "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b"
+  );
   assert.ok(
     GAME_INSTALLERS["pokemon-red-blue"].assets.every(
-      (asset) => asset.id !== "rom"
+      (asset) =>
+        asset.size > 0 &&
+        asset.sha256.length === 64 &&
+        /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/pokemon-red-blue\/1\.0\.1\//.test(
+          asset.url
+        )
+    )
+  );
+  assert.deepEqual(
+    GAME_INSTALLERS["super-mario-kart"].assets.map((asset) => asset.id),
+    ["bizhawk", "client", "pack", "rom"]
+  );
+  const superMarioKartRom = GAME_INSTALLERS["super-mario-kart"].assets.find(
+    (asset) => asset.id === "rom"
+  );
+  assert.equal(superMarioKartRom.action, "copy");
+  assert.equal(superMarioKartRom.targetPath, "ROM");
+  assert.equal(superMarioKartRom.size, 524288);
+  assert.equal(
+    superMarioKartRom.sha256,
+    "2ada8919688087be60a6a48cace8f877add60c45d2e5d09e2442faa55be62a49"
+  );
+  assert.ok(
+    GAME_INSTALLERS["super-mario-kart"].assets.every(
+      (asset) =>
+        asset.size > 0 &&
+        asset.sha256.length === 64 &&
+        /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/super-mario-kart\/1\.0\.0\//.test(
+          asset.url
+        )
     )
   );
 });

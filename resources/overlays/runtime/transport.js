@@ -1,13 +1,56 @@
 "use strict";
 
-function markOverlayReady() {
-  const reveal = () => document.documentElement.classList.remove("overlay-booting");
-  const fontReadiness = document.fonts?.ready;
-  if (fontReadiness && typeof fontReadiness.then === "function") {
-    fontReadiness.then(reveal, reveal);
-    return;
+let overlayReadyRevision = 0;
+
+function waitForOverlayMedia(element) {
+  if (!element) return Promise.resolve();
+  if (element.tagName === "IMG") {
+    if (element.complete) {
+      return typeof element.decode === "function"
+        ? element.decode().catch(() => {})
+        : Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      element.addEventListener("load", resolve, { once: true });
+      element.addEventListener("error", resolve, { once: true });
+    });
   }
-  reveal();
+  if (element.tagName === "VIDEO") {
+    if (element.readyState >= 2) return Promise.resolve();
+    return new Promise((resolve) => {
+      element.addEventListener("loadeddata", resolve, { once: true });
+      element.addEventListener("error", resolve, { once: true });
+    });
+  }
+  return Promise.resolve();
+}
+
+async function markOverlayReady() {
+  const revision = ++overlayReadyRevision;
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const criticalMedia = [
+    ...activeView.querySelectorAll(".theme-frame:not([hidden]), .coin-jar-layer:not([hidden])")
+  ];
+  const matchVideo = viewName === "match" && matchName !== "player"
+    ? document.getElementById("match-video")
+    : null;
+  if (matchVideo?.src) criticalMedia.push(matchVideo);
+  const readiness = Promise.allSettled([
+    document.fonts?.ready || Promise.resolve(),
+    ...criticalMedia.map(waitForOverlayMedia)
+  ]);
+  await Promise.race([
+    readiness,
+    new Promise((resolve) => setTimeout(resolve, 2500))
+  ]);
+  if (revision !== overlayReadyRevision) return;
+  document.documentElement.classList.remove("overlay-booting");
+  if (window.parent !== window) {
+    window.parent.postMessage(
+      { source: "shenpulse-overlay-runtime", type: "ready" },
+      "*"
+    );
+  }
 }
 
 /**
@@ -60,7 +103,6 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("message", (event) => {
-  if (forwardNativeOverlayShellMessage(event)) return;
   if (
     !isCatalogPreview ||
     event.source !== window.parent ||
@@ -76,7 +118,6 @@ window.addEventListener("message", (event) => {
 
 async function initialize() {
   startOverlayRuntimeVersionMonitor();
-  if (mountNativeOverlayShell(viewName, overlayCatalog)) return;
   setTimeout(markOverlayReady, 1800);
   setupOverlayDesign();
   renderTimer();
@@ -239,7 +280,10 @@ function relayEventSource(channel) {
 }
 
 function connectPublicRelayChannel(channel) {
-  const cachedDocument = readPublicRelayCache(channel);
+  const bootstrap = globalThis.shenPulseRelayBootstrap?.channel === channel
+    ? globalThis.shenPulseRelayBootstrap
+    : null;
+  const cachedDocument = bootstrap?.cachedDocument || readPublicRelayCache(channel);
   if (cachedDocument) {
     relayDocument = cachedDocument;
     applyRelayConfiguration(relayDocument.configurations);
@@ -248,6 +292,16 @@ function connectPublicRelayChannel(channel) {
     relayInitialized = true;
     markOverlayReady();
   }
+  bootstrap?.request?.then((documentValue) => {
+    if (!documentValue || relayInitialized) return;
+    relayDocument = documentValue;
+    applyRelayConfiguration(relayDocument.configurations);
+    if (relayDocument.state) applyRelayState(relayDocument.state);
+    lastRelayBatchId = String(relayDocument.lastBatch?.id || "");
+    relayInitialized = true;
+    writePublicRelayCache(channel, relayDocument);
+    markOverlayReady();
+  });
   const source = relayEventSource(channel);
   const handleMutation = (event, patch) => {
     try {
@@ -316,6 +370,15 @@ function connectPublicRelayChannel(channel) {
 }
 
 function connectPublicMatchAlias() {
+  const bootstrap = globalThis.shenPulseRelayBootstrap?.channel === relayChannel
+    ? globalThis.shenPulseRelayBootstrap
+    : null;
+  bootstrap?.request?.then((documentValue) => {
+    if (!documentValue || publicMatchRelayReady) return;
+    publicMatchRelayDocument = documentValue;
+    publicMatchRelayReady = true;
+    synchronizePublicMatchSource();
+  });
   const source = relayEventSource(relayChannel);
   const handleMutation = (event, patch) => {
     try {

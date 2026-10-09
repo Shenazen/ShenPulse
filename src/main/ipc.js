@@ -996,6 +996,13 @@ function registerIpc({
     notify(core, "state-changed", core.snapshot());
     return result;
   });
+  handle("game:select-rom", async (_event, packId) => {
+    const targetId = requireGameSessionAvailability(packId);
+    requireGameAccess(targetId);
+    const result = await gameRuntime.selectPokemonRom(targetId);
+    notify(core, "state-changed", core.snapshot());
+    return result;
+  });
   handle("game:launch", async (_event, packId) => {
     const targetId = requireGameSessionAvailability(packId);
     requireGameAccess(targetId);

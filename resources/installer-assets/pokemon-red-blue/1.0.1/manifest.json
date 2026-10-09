@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "gameId": "pokemon-red-blue",
+  "version": "1.0.1",
+  "publishedAt": "2026-10-09T10:45:00.000Z",
+  "notes": "BizHawk 2.9.1, Pokémon Rouge autorisé, client local Crowd Control, pack d’interactions et correctifs IPS.",
+  "assets": [
+    {
+      "id": "bizhawk",
+      "sourceName": "Bizhawk-2.9.1-clean.zip",
+      "remoteName": "Bizhawk-2.9.1.zip",
+      "size": 67855842,
+      "sha256": "a8b7b1264002c9a317fb840196d20ec67b0a70d2da3fab496968ff7c9fea4dda",
+      "role": "emulator"
+    },
+    {
+      "id": "client",
+      "sourceName": "CrowdControl.Client.Slim-5.0.9661.26214.zip",
+      "remoteName": "CrowdControl.Client.Slim-5.0.9661.26214.zip",
+      "size": 70255381,
+      "sha256": "b9d894e4e39650e1a0b5a9a34d99c53f2a1f7918d0705778b931112c1ef0318d",
+      "role": "interaction-client"
+    },
+    {
+      "id": "pack",
+      "sourceName": "PokemonRedBlue.dll",
+      "remoteName": "PokemonRedBlue.dll",
+      "size": 259408,
+      "sha256": "586f82e6a888abda25ba5c518d11d70befa52495b2484890759b6e45c7578329",
+      "role": "interaction-pack"
+    },
+    {
+      "id": "rom",
+      "sourceName": "PokemonRedBlue-Original.gb",
+      "remoteName": "PokemonRedBlue-Original.gb",
+      "size": 1048576,
+      "sha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+      "role": "game-rom"
+    },
+    {
+      "id": "redPatch",
+      "sourceName": "PokemonRedBlue.Red.ips",
+      "remoteName": "PokemonRedBlue.Red.ips",
+      "size": 94412,
+      "sha256": "fc328c76d28a55e60135a3e2cd0fd49bdd95fb8445d6355a96955734e3dda2ad",
+      "role": "rom-patch"
+    },
+    {
+      "id": "bluePatch",
+      "sourceName": "PokemonRedBlue.Blue.ips",
+      "remoteName": "PokemonRedBlue.Blue.ips",
+      "size": 94416,
+      "sha256": "29272a8411ba49718030f56531680fcb9981d07c41867b2d28db9a7593a2cf37",
+      "role": "rom-patch"
+    }
+  ]
+}

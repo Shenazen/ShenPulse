@@ -24,6 +24,7 @@ function scriptSources(htmlFile, predicate) {
   const directory = path.dirname(htmlFile);
   return [...html.matchAll(/<script\s+src="([^"]+)"[^>]*><\/script>/g)]
     .map((match) => match[1])
+    .map((relativePath) => relativePath.split("?")[0])
     .filter(predicate)
     .map((relativePath) => read(path.resolve(directory, relativePath)))
     .join("\n\n");

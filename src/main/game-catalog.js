@@ -54,6 +54,16 @@ const {
   RESIDENT_EVIL_3_INTERACTION_CATALOG_VERSION
 } = require("./resident-evil-3-catalog");
 const {
+  POKEMON_RED_BLUE_DEFAULT_MAPPINGS,
+  POKEMON_RED_BLUE_EFFECTS,
+  POKEMON_RED_BLUE_INTERACTION_CATALOG_VERSION
+} = require("./pokemon-red-blue-catalog");
+const {
+  SUPER_MARIO_KART_DEFAULT_MAPPINGS,
+  SUPER_MARIO_KART_EFFECTS,
+  SUPER_MARIO_KART_INTERACTION_CATALOG_VERSION
+} = require("./super-mario-kart-catalog");
+const {
   THIERCELIEUX_EXTENSION_PRODUCTS
 } = require("../shared/thiercelieux-products");
 
@@ -303,7 +313,26 @@ const INTERNAL_GAMES = [
     artwork: "catalog/pokemon-red-blue.png",
     included: true,
     requiresPro: true,
-    effects: ["Soigner l'équipe", "Empoisonner", "Rencontre aléatoire", "Donner un objet", "Retirer un objet", "Téléportation", "Changer de Pokémon", "Combat surprise"]
+    source: "Crowd Control · Pokémon Rouge/Bleu",
+    connector: { type: "pokemon-runtime" },
+    effects: POKEMON_RED_BLUE_EFFECTS,
+    defaultMappings: POKEMON_RED_BLUE_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      POKEMON_RED_BLUE_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.1"
+  }),
+  game("super-mario-kart", "Super Mario Kart", {
+    artworkUrl:
+      "https://resources.crowdcontrol.live/images/SuperMarioKart/box.jpg",
+    included: true,
+    requiresPro: true,
+    source: "Crowd Control · Super Mario Kart",
+    connector: { type: "super-mario-kart-runtime" },
+    effects: SUPER_MARIO_KART_EFFECTS,
+    defaultMappings: SUPER_MARIO_KART_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      SUPER_MARIO_KART_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.0"
   }),
   game("fortnite", "Fortnite", {
     artworkUrl:
@@ -581,18 +610,44 @@ const GAME_GUIDES = Object.freeze({
   ),
   "pokemon-red-blue": {
     mode: "emulator",
-    summary: "Le parcours utilise BizHawk, le pack Pokémon Rouge/Bleu et la passerelle locale.",
+    summary: "ShenPulse installe BizHawk, Pokémon Rouge et le pack d’interactions dans un environnement prêt à jouer.",
     steps: [
-      "Prépare une copie légale de Pokémon Rouge ou Bleu.",
-      "Installe ou sélectionne BizHawk puis charge la ROM.",
-      "Charge le pack d’interactions Pokémon dans la passerelle.",
-      "Démarre le client local, puis teste un effet avant le LIVE."
+      "Clique sur Installer : BizHawk, Pokémon Rouge, le client et le pack sont téléchargés automatiquement.",
+      "ShenPulse vérifie la ROM et applique automatiquement le correctif d’interactions.",
+      "Configure les interactions TikTok que tu souhaites utiliser.",
+      "Clique sur Lancer pour ouvrir directement la ROM dans BizHawk avec le connecteur actif."
     ],
     notes: [
-      "La ROM n’est pas distribuée dans le package Microsoft Store.",
+      "Aucun fichier supplémentaire n’est demandé à l’utilisateur.",
       "Garde BizHawk, le client local et ShenPulse ouverts pendant le LIVE."
     ],
-    sources: []
+    sources: [
+      {
+        label: "Guide officiel Crowd Control · Pokémon Rouge/Bleu",
+        url: "https://crowdcontrol.live/guides/pokemonredblue"
+      }
+    ]
+  },
+  "super-mario-kart": {
+    mode: "emulator",
+    summary:
+      "ShenPulse installe BizHawk, Super Mario Kart et le pack de 87 interactions dans un environnement prêt à jouer.",
+    steps: [
+      "Clique sur Installer : BizHawk, Super Mario Kart, le client et le pack sont téléchargés automatiquement.",
+      "ShenPulse vérifie l’empreinte de la ROM USA incluse.",
+      "Configure les interactions TikTok que tu souhaites utiliser.",
+      "Clique sur Lancer pour ouvrir directement la ROM dans BizHawk avec le connecteur actif."
+    ],
+    notes: [
+      "Aucun fichier supplémentaire n’est demandé à l’utilisateur.",
+      "Garde BizHawk, le client local et ShenPulse ouverts pendant le LIVE."
+    ],
+    sources: [
+      {
+        label: "Guide officiel Crowd Control · Super Mario Kart",
+        url: "https://crowdcontrol.live/guides/supermariokart"
+      }
+    ]
   },
   fortnite: {
     mode: "input",

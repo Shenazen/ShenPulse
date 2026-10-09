@@ -39,7 +39,7 @@ function htmlAssetPaths(htmlFile, expression) {
   const directory = path.dirname(htmlFile);
   return [...source.matchAll(expression)].map((match) => ({
     relative: match[1],
-    absolute: path.resolve(directory, match[1])
+    absolute: path.resolve(directory, match[1].split("?")[0])
   }));
 }
 

@@ -56,7 +56,7 @@ async function main() {
     assert.equal(widgetResponse.ok, true);
     assert.match(await widgetResponse.text(), /ShenPulse Overlay/);
     const mediaResponse = await fetch(
-      `${config.publicBaseUrl}/media/widgets/interactive-overlays/win-counter-theme-gta.png`
+      `${config.publicBaseUrl}/media/widgets/interactive-overlays/win-counter-theme-gta.webp`
     );
     assert.equal(mediaResponse.ok, true);
 

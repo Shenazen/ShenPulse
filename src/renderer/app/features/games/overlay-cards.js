@@ -9,6 +9,9 @@
 
 function renderGameInstallation(pack, unlocked) {
   const integrated = pack.guide?.mode === "integrated";
+  if (MANAGED_BIZHAWK_GAME_IDS.has(pack.id)) {
+    return renderBizHawkGameInstallation(pack, unlocked);
+  }
   if (pack.guide?.mode === "input") {
     return renderInputGameInstallation(pack, unlocked);
   }
@@ -81,6 +84,54 @@ function renderGameInstallation(pack, unlocked) {
   </div>`;
 }
 
+function renderBizHawkGameInstallation(pack, unlocked) {
+  const installation = snapshot.state.game.installations?.[pack.id];
+  const busy = gameInstallBusyId === pack.id;
+  const romReady = Boolean(installation?.romReady && installation?.romPath);
+  const pokemon = pack.id === "pokemon-red-blue";
+  const gameName = pokemon ? "Pokémon Rouge" : "Super Mario Kart";
+  const interactionCount = Array.isArray(pack.effects) ? pack.effects.length : 0;
+  const updateAvailable = Boolean(
+    installation &&
+      pack.installerVersion &&
+      installation.installerVersion !== pack.installerVersion
+  );
+  const statusTitle = romReady
+    ? `${installation.romName || gameName} est prêt`
+    : installation
+      ? `Réparer l’installation ${gameName}`
+      : `Installer ${gameName} et BizHawk`;
+  const statusText = romReady
+    ? `ShenPulse lancera directement ${gameName} dans BizHawk avec le pack d’interactions actif.`
+    : installation
+      ? "Relancez la réparation pour télécharger et préparer automatiquement tous les fichiers nécessaires."
+      : `ShenPulse télécharge ${gameName}, BizHawk, le client local et les ${interactionCount} interactions depuis Backblaze.`;
+  return `<div class="game-simple-step">
+    <section class="game-primary-panel game-install-simple">
+      <header><div><span>↓ INSTALLATION</span><h3>${escapeHtml(statusTitle)}</h3><p>${escapeHtml(statusText)}</p></div><span class="game-step-count">${romReady ? "PRÊT" : "1 CLIC"}</span></header>
+      ${renderGamePageMessage(pack, "installation")}
+      <div class="game-install-state ${installation ? "ready" : ""}">
+        <span>${installation ? "✓" : "↓"}</span>
+        <div><strong>${installation ? `BizHawk et le pack ${gameName} sont installés` : "Télécharger le jeu et ses composants"}</strong><p>L’émulateur, le client local et les ${interactionCount} interactions sont préparés automatiquement.</p></div>
+      </div>
+      <div class="game-install-state ${romReady ? "ready" : ""}">
+        <span>${romReady ? "✓" : "2"}</span>
+        <div><strong>${romReady ? escapeHtml(installation.romName || `${gameName} validé`) : `Préparer ${gameName}`}</strong><p>${romReady ? `La ROM téléchargée et vérifiée est prête pour BizHawk${pokemon ? " après application du correctif" : ""}.` : "Aucun fichier supplémentaire ne vous sera demandé."}</p></div>
+      </div>
+      <footer class="game-panel-actions">
+        <button class="button ${installation ? "" : "primary"} game-install-button" data-action="install-game" data-id="${escapeHtml(pack.id)}" ${unlocked && !busy ? "" : "disabled"}>${busy ? "Installation en cours…" : updateAvailable ? `↓ Mettre à jour ${gameName}` : installation ? `↻ Réparer ${gameName} et BizHawk` : "↓ Installer automatiquement"}</button>
+        <button class="button ${romReady ? "primary" : ""}" data-action="game-step" data-value="interactions" ${unlocked && romReady ? "" : "disabled"}>Continuer vers les interactions →</button>
+      </footer>
+    </section>
+    <aside class="game-novice-note">
+      <span>✦</span>
+      <strong>Installation complète</strong>
+      <p>La ROM autorisée fait partie du paquet ShenPulse. Son empreinte est vérifiée avant le lancement dans BizHawk.</p>
+      ${installation ? `<small>Dernière installation : ${escapeHtml(formatAdminDate(installation.installedAt))}</small>` : ""}
+    </aside>
+  </div>`;
+}
+
 function renderInputGameInstallation(pack, unlocked) {
   const processName = pack.connector?.processName || `${pack.name}.exe`;
   const automated = AUTOMATED_GAME_INSTALLERS.has(pack.id);
@@ -140,9 +191,12 @@ function renderGameLaunch(pack, unlocked) {
   const crowdControlMod = pack.guide?.mode === "crowd-control-mod";
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
+  const managedBizHawk = MANAGED_BIZHAWK_GAME_IDS.has(pack.id);
+  const emulatorReady = !managedBizHawk || Boolean(installation?.romReady);
   const inputRequiresInstallation =
     inputDriven && AUTOMATED_GAME_INSTALLERS.has(pack.id);
-  const canLaunch = unlocked && (integrated || Boolean(installation));
+  const canLaunch =
+    unlocked && (integrated || (Boolean(installation) && emulatorReady));
   const ready = unlocked && (
     inputDriven
       ? !inputRequiresInstallation || Boolean(installation)
@@ -167,6 +221,8 @@ function renderGameLaunch(pack, unlocked) {
     ? `Ouvrez ${pack.name}, chargez une partie puis activez la session. ShenPulse ne lancera ni ne modifiera le jeu.`
     : crowdControlMod
       ? "Ouvrez Euro Truck Simulator 2 sur Steam, chargez votre sauvegarde puis activez la session. ShenPulse attendra la connexion du plugin local sur le port 51337."
+    : managedBizHawk
+    ? "ShenPulse charge le pack natif, démarre son connecteur Lua puis ouvre directement votre ROM dans BizHawk."
     : managedMinecraft
     ? "Démarrez le serveur depuis ShenPulse, ouvrez Minecraft puis rejoignez 127.0.0.1. Les interactions du mode choisi seront déjà chargées."
     : "Lancez le jeu depuis ShenPulse. Une fois votre partie chargée, les interactions configurées seront prêtes à fonctionner.";
@@ -178,7 +234,7 @@ function renderGameLaunch(pack, unlocked) {
       <header><div><span>▶ DÉMARRAGE</span><h3>Tout est prêt pour jouer</h3><p>${escapeHtml(launchDescription)}</p></div></header>
       ${renderGamePageMessage(pack, "launch")}
       <div class="game-start-readiness">
-        <article class="${ready ? "ready" : ""}"><span>${ready ? "✓" : "1"}</span><div><strong>${ready ? inputDriven ? "Connecteur prêt" : crowdControlMod ? "Pont local prêt" : "Jeu prêt" : "Installation nécessaire"}</strong><small>${ready ? inputDriven ? `${escapeHtml(pack.name)} sera détecté au moment du test.` : crowdControlMod ? "ETS2 doit être lancé séparément depuis Steam." : "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
+        <article class="${ready ? "ready" : ""}"><span>${ready ? "✓" : "1"}</span><div><strong>${ready ? inputDriven ? "Connecteur prêt" : crowdControlMod ? "Pont local prêt" : "Jeu prêt" : managedBizHawk && installation ? "ROM nécessaire" : "Installation nécessaire"}</strong><small>${ready ? inputDriven ? `${escapeHtml(pack.name)} sera détecté au moment du test.` : crowdControlMod ? "ETS2 doit être lancé séparément depuis Steam." : managedBizHawk ? "BizHawk ouvrira directement la ROM préparée." : "ShenPulse peut lancer le jeu." : "Revenez à l’étape Installation."}</small></div></article>
         <article class="${mappings.length ? "ready" : ""}"><span>${mappings.length ? "✓" : "2"}</span><div><strong>${mappings.length ? `${mappings.length} interaction${mappings.length > 1 ? "s" : ""} configurée${mappings.length > 1 ? "s" : ""}` : "Interactions facultatives"}</strong><small>${mappings.length ? "Vos déclencheurs sont enregistrés." : "Vous pourrez en ajouter à tout moment."}</small></div></article>
         <article class="${sessionActive ? "ready" : ""}"><span>${sessionActive ? "✓" : "3"}</span><div><strong>${sessionActive ? "Session de jeu active" : "Session de jeu arrêtée"}</strong><small>${sessionActive ? "Les interactions restent actives sur toutes les pages." : "Activez-la pour autoriser les interactions de ce jeu."}</small></div></article>
       </div>

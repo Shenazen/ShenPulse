@@ -1,13 +1,14 @@
 import {
   ACTION_TYPES,
   APP_TABS,
-  GAMES,
   OVERLAY_TYPES,
   POPUP_GROUPS
 } from '/content.js'
+import { GAMES } from '/game-catalog.js'
 
 const app = document.querySelector('#app')
 const DOWNLOAD_URL = '/downloads/ShenPulseSetup-1.0.14.exe'
+const SCREENSHOT_VERSION = '20261009'
 const SITE_ORIGIN = 'https://www.shenpulse.leuridan.fr'
 const RETIRED_ROUTES = ['/login', '/setup', '/admin', '/app']
 
@@ -182,7 +183,7 @@ const HOME_FAQ = [
   ['Faut-il ouvrir une page de configuration ?', 'Non. La connexion, la configuration, les abonnements et les jeux se gèrent exclusivement depuis l’application.'],
   ['Puis-je tester sans être en live ?', 'Oui. Le mode Démo et les boutons de test permettent de vérifier règles, médias, sons, voix, overlays et effets.'],
   ['Comment ajouter un overlay ?', 'Configure-le dans ShenPulse, copie son URL, puis ajoute une source navigateur dans OBS avec les dimensions conseillées.'],
-  ['Quels jeux sont présentés ?', 'Uniquement les huit jeux actuellement visibles dans la galerie publique de l’application. Les projets non publiés ne sont ni cités ni documentés sur le site.'],
+  ['Quels jeux sont présentés ?', `Les ${GAMES.length} cartes actuellement visibles dans la galerie publique de l’application, avec une distinction claire entre interactions exécutables et fiches de référence.`],
   ['À quoi sert la carte de partage ?', 'Elle s’affiche automatiquement quand tu partages l’adresse du site sur un réseau social ou une messagerie compatible. Tu n’as aucun fichier à joindre manuellement.']
 ]
 
@@ -198,8 +199,7 @@ function handleNavigation(event) {
   event.preventDefault()
   history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
   renderCurrentRoute()
-  if (url.hash) document.querySelector(url.hash)?.scrollIntoView()
-  else window.scrollTo({ top: 0, behavior: 'instant' })
+  if (!url.hash) window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
 function renderCurrentRoute() {
@@ -213,6 +213,25 @@ function renderCurrentRoute() {
   else if (LEGAL_PAGES[route]) renderPage(legalPage(LEGAL_PAGES[route]), `${LEGAL_PAGES[route].title} — ShenPulse`, 'legal')
   else if (route === 'retired') renderPage(retiredPage(), 'Fonction disponible dans l’application — ShenPulse', 'not-found')
   else renderPage(notFoundPage(), 'Page introuvable — ShenPulse', 'not-found')
+
+  scrollToCurrentHash()
+}
+
+function scrollToCurrentHash() {
+  if (!window.location.hash) return
+  let id = window.location.hash.slice(1)
+  try { id = decodeURIComponent(id) } catch {}
+  requestAnimationFrame(() => {
+    const target = document.getElementById(id)
+    if (target instanceof HTMLDetailsElement) target.open = true
+    target?.scrollIntoView()
+    const sectionId = target?.closest('.doc-section')?.id || id
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.docs-sidebar a[href^="#"]').forEach((link) => {
+        link.classList.toggle('is-active', link.getAttribute('href') === `#${sectionId}`)
+      })
+    })
+  })
 }
 
 function renderPage(content, title, pageClass) {
@@ -279,7 +298,7 @@ function homePage() {
           </div>
           <dl class="hero-facts">
             <div><dt>Windows 10+</dt><dd>Application locale</dd></div>
-            <div><dt>8 jeux</dt><dd>Catalogue public</dd></div>
+            <div><dt>${GAMES.length} jeux</dt><dd>Catalogue public</dd></div>
             <div><dt>0 traceur</dt><dd>Sur le site public</dd></div>
           </dl>
         </div>
@@ -329,14 +348,14 @@ function homePage() {
       <section class="section showcase">
         <div class="showcase-copy">
           <span class="eyebrow">Jeux interactifs</span>
-          <h2>Les jeux actuellement disponibles, rien de plus.</h2>
-          <p>Le site reprend uniquement les huit jeux visibles dans la galerie publique de ShenPulse. Les jeux encore en préparation restent privés jusqu’à leur publication dans l’application.</p>
+          <h2>Le même catalogue que dans l’application.</h2>
+          <p>Le site reprend les ${GAMES.length} cartes visibles dans la galerie publique de ShenPulse et indique si leurs interactions sont exécutables ou présentées comme référence de compatibilité.</p>
           <ul class="check-list">
             <li>Installation et sauvegarde guidées</li>
             <li>Interactions configurables et testables</li>
             <li>Une seule session de jeu active à la fois</li>
           </ul>
-          <a class="button button--ghost" href="/docs#jeux">Voir les 8 jeux publics <span>→</span></a>
+          <a class="button button--ghost" href="/docs#jeux">Voir les ${GAMES.length} jeux publics <span>→</span></a>
         </div>
         ${screenshot('/screenshots/games-public.png', 'Galerie publique des jeux ShenPulse')}
       </section>
@@ -509,22 +528,31 @@ function docsPage() {
             </div>
           `)}
 
-          ${docSection('jeux', 'Jeux et effets interactifs', 'Cette section contient uniquement les huit jeux actuellement visibles dans la galerie publique de ShenPulse.', `
+          ${docSection('jeux', 'Jeux et effets interactifs', `Cette section reprend les ${GAMES.length} cartes actuellement visibles dans la galerie publique de ShenPulse.`, `
             ${screenshot('/screenshots/games-public.png', 'Galerie publique des jeux et effets')}
-            <div class="game-legend"><span><i class="status-dot status-dot--active"></i> Visible dans l’application</span></div>
+            <div class="game-legend"><span><i class="status-dot status-dot--active"></i> Interactions exécutables</span><span><i class="status-dot"></i> Fiche de référence</span></div>
             <label class="game-search"><span>⌕</span><input id="game-search" type="search" placeholder="Filtrer les ${GAMES.length} jeux…"><b id="game-count">${GAMES.length}</b></label>
             <div class="game-doc-grid" id="game-doc-grid">
               ${GAMES.map((game, index) => `
-                <details class="game-doc doc-searchable" data-game="${searchText(game)}" data-search="${searchText(game)}">
+                <details class="game-doc doc-searchable" id="jeu-${escapeHtml(game.id)}" data-game="${escapeHtml(searchText(game))}" data-search="${escapeHtml(searchText(game))}">
                   <summary>
                     <span class="game-index">${String(index + 1).padStart(2, '0')}</span>
-                    <div><small>${game.type}</small><h3>${game.name}</h3><p>${game.interactions} interaction${game.interactions > 1 ? 's' : ''}</p></div>
-                    <span class="game-status ${game.status === 'Exécutable' ? 'is-active' : 'is-reference'}">${game.status}</span>
+                    <div><small>${escapeHtml(game.type)}</small><h3>${escapeHtml(game.name)}</h3><p>${game.interactions} interaction${game.interactions > 1 ? 's' : ''}${game.status === 'Référence' ? ' référencées' : ''}</p></div>
+                    <span class="game-status ${game.status === 'Exécutable' ? 'is-active' : 'is-reference'}">${escapeHtml(game.status)}</span>
                   </summary>
                   <div class="game-detail">
-                    <ol>${game.steps.map((step) => `<li>${step}</li>`).join('')}</ol>
-                    ${game.note ? `<p class="game-note">${game.note}</p>` : ''}
-                    <p><b>Test conseillé :</b> démarre la passerelle, utilise un effet simple, vérifie le Journal, puis teste un effet avec durée ou file d’attente.</p>
+                    <div class="game-guide-heading">
+                      <div><small>Présentation du jeu</small><p class="game-description">${escapeHtml(game.description)}</p></div>
+                      <a class="game-guide-link" href="#jeu-${escapeHtml(game.id)}" aria-label="Lien direct vers le guide ${escapeHtml(game.name)}">Lien direct</a>
+                    </div>
+                    <div class="game-guide-grid">
+                      <article><small>Expérience en direct</small><p>${escapeHtml(game.interactionGuide)}</p></article>
+                      <article><small>Prérequis</small><p>${escapeHtml(game.requirements)}</p></article>
+                    </div>
+                    <h4>Mise en route</h4>
+                    <ol>${game.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ol>
+                    ${game.note ? `<p class="game-note"><b>À savoir :</b> ${escapeHtml(game.note)}</p>` : ''}
+                    <p><b>${game.status === 'Exécutable' ? 'Test conseillé' : 'Avant utilisation'} :</b> ${game.status === 'Exécutable' ? 'démarre la passerelle, utilise un effet simple, vérifie le Journal, puis teste un effet avec durée ou file d’attente.' : 'suis le guide lié dans l’application et installe une passerelle compatible avant de considérer les effets comme disponibles.'}</p>
                   </div>
                 </details>`).join('')}
             </div>
@@ -619,7 +647,7 @@ function docSection(id, title, intro, body) {
 function screenshot(src, alt, priority = false) {
   const loading = priority ? 'eager' : 'lazy'
   const fetchPriority = priority ? ' fetchpriority="high"' : ''
-  return `<figure class="app-shot"><div><img src="${src}" alt="${alt}" loading="${loading}"${fetchPriority}></div><figcaption>${alt} — fichier public recadré avant publication.</figcaption></figure>`
+  return `<figure class="app-shot"><div><img src="${src}?v=${SCREENSHOT_VERSION}" alt="${alt}" width="2312" height="1440" loading="${loading}"${fetchPriority}></div><figcaption>${alt} — fichier public recadré avant publication.</figcaption></figure>`
 }
 
 function fieldRow([term, description]) {
@@ -674,17 +702,24 @@ function bindPageBehaviors(pageClass) {
     if (gameCount) gameCount.textContent = String(count)
   })
 
+  const docSections = [...document.querySelectorAll('.doc-section')]
+  const highlightCurrentSection = () => {
+    const probe = Math.min(window.innerHeight * 0.35, 360)
+    let current = docSections[0]
+    docSections.forEach((section) => {
+      if (section.getBoundingClientRect().top <= probe) current = section
+    })
+    if (!current) return
+    document.querySelectorAll('.docs-sidebar a[href^="#"]').forEach((link) => {
+      link.classList.toggle('is-active', link.getAttribute('href') === `#${current.id}`)
+    })
+  }
   const observer = new IntersectionObserver(
-    (entries) => {
-      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-      if (!visible) return
-      document.querySelectorAll('.docs-sidebar a[href^="#"]').forEach((link) => {
-        link.classList.toggle('is-active', link.getAttribute('href') === `#${visible.target.id}`)
-      })
-    },
-    { rootMargin: '-20% 0px -65%', threshold: [0.05, 0.2, 0.5] }
+    highlightCurrentSection,
+    { rootMargin: '-80px 0px -75%', threshold: [0, 0.05, 0.2] }
   )
-  document.querySelectorAll('.doc-section').forEach((section) => observer.observe(section))
+  docSections.forEach((section) => observer.observe(section))
+  highlightCurrentSection()
 }
 
 function bindHomeMotion() {
@@ -751,6 +786,15 @@ function normalizeSearch(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
 }
 
 function searchText(value) {

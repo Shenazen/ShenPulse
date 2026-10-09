@@ -83,32 +83,50 @@ test("les sources TikTok Studio ne gardent plus un ancien moteur overlay en cach
   );
   const rootHeaders = firebase.hosting.headers.find((entry) => entry.source === "/")?.headers || [];
   const rootCacheControl = rootHeaders.find((entry) => entry.key === "Cache-Control")?.value || "";
+  const codeHeaders = firebase.hosting.headers.find(
+    (entry) => entry.source === "**/*.@(js|css)"
+  )?.headers || [];
+  const codeCacheControl = codeHeaders.find(
+    (entry) => entry.key === "Cache-Control"
+  )?.value || "";
 
   assert.equal(runtimeVersion.version, packageJson.version);
   assert.match(overlayHtml, new RegExp(`shenpulse-overlay-version" content="${packageJson.version}`));
   assert.match(rootCacheControl, /no-store/);
   assert.match(rootCacheControl, /max-age=0/);
+  assert.match(codeCacheControl, /max-age=31536000/);
+  assert.match(codeCacheControl, /immutable/);
   assert.match(overlayRuntime, /function startOverlayRuntimeVersionMonitor\(\)/);
   assert.match(overlayRuntime, /setInterval\(checkOverlayRuntimeVersion, 15000\)/);
-  assert.match(overlayRuntime, /url\.searchParams\.set\("runtime", overlayRuntimeVersion\)/);
   assert.match(overlayRuntime, /fetch\(versionUrl, \{ cache: "no-store" \}\)/);
+  assert.match(
+    overlayHtml,
+    new RegExp(`runtime/transport\\.js\\?v=${packageJson.version.replace(/\./g, "\\.")}`)
+  );
 });
 
-test("tous les overlays utilisent une scène native identique dans les sources navigateur", () => {
+test("tous les overlays utilisent une scène native directe dans les sources navigateur", () => {
   assert.match(overlayRuntime, /function configureNativeOverlayCanvas\(viewName, activeView, catalog\)/);
   assert.match(overlayRuntime, /activeView\.classList\.add\("native-overlay-canvas"\)/);
   assert.match(overlayRuntime, /configureNativeOverlayCanvas\(viewName, activeView, overlayCatalog\)/);
-  assert.match(overlayRuntime, /function mountNativeOverlayShell\(viewName, catalog\)/);
   assert.match(overlayRuntime, /definition\?\.sourceSize \|\| \[1920, 1080\]/);
   assert.match(overlayRuntime, /Math\.min\(1, viewportWidth \/ width, viewportHeight \/ height\)/);
-  assert.match(overlayRuntime, /url\.searchParams\.set\("native", "1"\)/);
-  assert.match(overlayRuntime, /forwardNativeOverlayShellMessage\(event\)/);
+  assert.doesNotMatch(overlayRuntime, /function mountNativeOverlayShell/);
+  assert.doesNotMatch(overlayRuntime, /forwardNativeOverlayShellMessage/);
   assert.match(
     overlayRuntime,
-    /async function initialize\(\) \{\s*startOverlayRuntimeVersionMonitor\(\);\s*if \(mountNativeOverlayShell\(viewName, overlayCatalog\)\) return;/
+    /async function initialize\(\) \{\s*startOverlayRuntimeVersionMonitor\(\);\s*setTimeout\(markOverlayReady, 1800\);/
   );
-  assert.match(overlayCss, /\.native-overlay-shell > iframe\s*\{[\s\S]*transform: translate\(-50%, -50%\) scale/);
+  assert.doesNotMatch(overlayCss, /\.native-overlay-shell/);
   assert.match(overlayCss, /\.view\.active\.native-overlay-canvas\s*\{[\s\S]*var\(--native-canvas-scale, 1\)/);
+});
+
+test("un aperçu n'est révélé qu'après le signal de rendu complet", () => {
+  assert.match(overlayRuntime, /source: "shenpulse-overlay-runtime", type: "ready"/);
+  assert.match(overlayRuntime, /waitForOverlayMedia/);
+  assert.match(overlayRuntime, /document\.fonts\?\.ready/);
+  assert.match(renderer, /event\.data\?\.source !== "shenpulse-overlay-runtime"/);
+  assert.match(renderer, /overlay-runtime-frame--ready/);
 });
 
 test("chaque champ des configurations overlay possède une aide information", () => {

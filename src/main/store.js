@@ -1464,8 +1464,28 @@ function normalizeProfileWorkspace(workspace) {
   const globalRules = normalizedRules.filter(
     (rule) => !isGameInteractionRule(rule)
   );
+  const globalRuleKeys = new Set(
+    globalRules.map((rule) =>
+      String(rule?.id || "").trim() || JSON.stringify(rule)
+    )
+  );
+  const savedInteractionRulesByPack =
+    savedGame.interactionRulesByPack &&
+    typeof savedGame.interactionRulesByPack === "object" &&
+    !Array.isArray(savedGame.interactionRulesByPack)
+      ? savedGame.interactionRulesByPack
+      : {};
+  for (const rules of Object.values(savedInteractionRulesByPack)) {
+    for (const rule of normalizeRules(rules)) {
+      if (isGameInteractionRule(rule)) continue;
+      const key = String(rule?.id || "").trim() || JSON.stringify(rule);
+      if (globalRuleKeys.has(key)) continue;
+      globalRuleKeys.add(key);
+      globalRules.push(rule);
+    }
+  }
   const interactionRulesByPack = normalizeGameInteractionRules(
-    savedGame.interactionRulesByPack
+    savedInteractionRulesByPack
   );
   const fallbackPackId =
     String(savedGame.activeGamePackId || "").trim() || "coin-pusher";
@@ -1517,10 +1537,12 @@ function normalizeGameInteractionRules(value) {
   return Object.fromEntries(
     Object.entries(value)
       .filter(([packId, rules]) => packId && Array.isArray(rules))
-      .map(([packId, rules]) => [
-        packId,
-        normalizeRules(rules).filter(isGameInteractionRule)
-      ])
+      .flatMap(([packId, rules]) => {
+        const normalizedRules = normalizeRules(rules).filter(
+          isGameInteractionRule
+        );
+        return normalizedRules.length ? [[packId, normalizedRules]] : [];
+      })
   );
 }
 
@@ -1528,7 +1550,10 @@ function isGameInteractionRule(rule) {
   return Boolean(
     rule?.gameInteraction ||
       (rule?.actions || []).some((action) =>
-        isGameInteractionActionType(action.type)
+        isGameInteractionActionType(action.type) &&
+        (action.type !== "audio.play" ||
+          (String(action.config?.packId || "").trim() &&
+            String(action.config?.effectId || "").trim()))
       )
   );
 }

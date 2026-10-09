@@ -1,0 +1,1880 @@
+[
+  {
+    "id": "blackout",
+    "name": "Mettre toute l'équipe K.O.",
+    "category": "Pokémon",
+    "available": true
+  },
+  {
+    "id": "status_burn",
+    "name": "Brûler un Pokémon",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "statusall_burn",
+    "name": "Brûler toute l'équipe",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "evolve",
+    "name": "Faire évoluer un Pokémon",
+    "category": "Pokémon",
+    "available": true
+  },
+  {
+    "id": "faint",
+    "name": "Mettre un Pokémon K.O.",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "fightrandompokemon",
+    "name": "Affronter un Pokémon aléatoire",
+    "category": "Pokémon",
+    "available": true
+  },
+  {
+    "id": "status_freeze",
+    "name": "Geler un Pokémon",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "statusall_freeze",
+    "name": "Geler toute l'équipe",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "heal",
+    "name": "Soigner complètement un Pokémon",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "heal_all",
+    "name": "Soigner complètement toute l'équipe",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "givepokemon_abra",
+    "name": "Donner Abra",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_aerodactyl",
+    "name": "Donner Ptéra",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_alakazam",
+    "name": "Donner Alakazam",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_antidote",
+    "name": "Donner Antidote",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_arbok",
+    "name": "Donner Arbok",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_arcanine",
+    "name": "Donner Arcanin",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_articuno",
+    "name": "Donner Artikodin",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_awakening",
+    "name": "Donner Réveil",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_beedrill",
+    "name": "Donner Dardargnan",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_bellsprout",
+    "name": "Donner Chétiflor",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_bicycle",
+    "name": "Donner Bicyclette",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_bikevoucher",
+    "name": "Donner Bon de commande",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_blastoise",
+    "name": "Donner Tortank",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_bulbasaur",
+    "name": "Donner Bulbizarre",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_burnheal",
+    "name": "Donner Anti-Brûle",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_butterfree",
+    "name": "Donner Papilusion",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_calcium",
+    "name": "Donner Calcium",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_carbos",
+    "name": "Donner Carbone",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_cardkey",
+    "name": "Donner Carte Magn.",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_caterpie",
+    "name": "Donner Chenipan",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_chansey",
+    "name": "Donner Leveinard",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_charizard",
+    "name": "Donner Dracaufeu",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_charmander",
+    "name": "Donner Salamèche",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_charmeleon",
+    "name": "Donner Reptincel",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_clefable",
+    "name": "Donner Mélodelfe",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_clefairy",
+    "name": "Donner Mélofée",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_cloyster",
+    "name": "Donner Crustabri",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_coincase",
+    "name": "Donner Boîte Jetons",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_cubone",
+    "name": "Donner Osselait",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_dewgong",
+    "name": "Donner Lamantine",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_diglett",
+    "name": "Donner Taupiqueur",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_direhit",
+    "name": "Donner Muscle +",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_ditto",
+    "name": "Donner Métamorph",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_dodrio",
+    "name": "Donner Dodrio",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_doduo",
+    "name": "Donner Doduo",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_domefossil",
+    "name": "Donner Fossile Dôme",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_dragonair",
+    "name": "Donner Draco",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_dragonite",
+    "name": "Donner Dracolosse",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_dratini",
+    "name": "Donner Minidraco",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_drowzee",
+    "name": "Donner Soporifik",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_dugtrio",
+    "name": "Donner Triopikeur",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_eevee",
+    "name": "Donner Évoli",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_ekans",
+    "name": "Donner Abo",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_electabuzz",
+    "name": "Donner Élektek",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_electrode",
+    "name": "Donner Électrode",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_elixer",
+    "name": "Donner Élixir",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_escaperope",
+    "name": "Donner Corde Sortie",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_ether",
+    "name": "Donner Huile",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_exeggcute",
+    "name": "Donner Noeunoeuf",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_exeggutor",
+    "name": "Donner Noadkoko",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_expall",
+    "name": "Donner Multi Exp.",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_farfetchd",
+    "name": "Donner Canarticho",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_fearow",
+    "name": "Donner Rapasdepic",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_firestone",
+    "name": "Donner Pierre Feu",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_flareon",
+    "name": "Donner Pyroli",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_freshwater",
+    "name": "Donner Eau Fraîche",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_fullheal",
+    "name": "Donner Total Soin",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_fullrestore",
+    "name": "Donner Guérison",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_gastly",
+    "name": "Donner Fantominus",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_gengar",
+    "name": "Donner Ectoplasma",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_geodude",
+    "name": "Donner Racaillou",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_gloom",
+    "name": "Donner Ortide",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_golbat",
+    "name": "Donner Nosferalto",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_goldteeth",
+    "name": "Donner Dent d'Or",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_goldeen",
+    "name": "Donner Poissirène",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_golduck",
+    "name": "Donner Akwakwak",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_golem",
+    "name": "Donner Grolem",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_goodrod",
+    "name": "Donner Super Canne",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_graveler",
+    "name": "Donner Gravalanch",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_greatball",
+    "name": "Donner Super Ball",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_grimer",
+    "name": "Donner Tadmorv",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_growlithe",
+    "name": "Donner Caninos",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_guardspec",
+    "name": "Donner Défense Spéc.",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_gyarados",
+    "name": "Donner Léviator",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_haunter",
+    "name": "Donner Spectrum",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_helixfossil",
+    "name": "Donner Fossile Nautile",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_hitmonchan",
+    "name": "Donner Tygnon",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_hitmonlee",
+    "name": "Donner Kicklee",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_hm01",
+    "name": "Donner CS01",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_hm02",
+    "name": "Donner CS02",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_hm03",
+    "name": "Donner CS03",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_hm04",
+    "name": "Donner CS04",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_hm05",
+    "name": "Donner CS05",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_horsea",
+    "name": "Donner Hypotrempe",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_hpup",
+    "name": "Donner PV Plus",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_hyperpotion",
+    "name": "Donner Hyper Potion",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_hypno",
+    "name": "Donner Hypnomade",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_iceheal",
+    "name": "Donner Antigel",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_iron",
+    "name": "Donner Fer",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_itemfinder",
+    "name": "Donner Cherch'Objet",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_ivysaur",
+    "name": "Donner Herbizarre",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_jigglypuff",
+    "name": "Donner Rondoudou",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_jolteon",
+    "name": "Donner Voltali",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_jynx",
+    "name": "Donner Lippoutou",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_kabuto",
+    "name": "Donner Kabuto",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_kabutops",
+    "name": "Donner Kabutops",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_kadabra",
+    "name": "Donner Kadabra",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_kakuna",
+    "name": "Donner Coconfort",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_kangaskhan",
+    "name": "Donner Kangourex",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_kingler",
+    "name": "Donner Krabboss",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_koffing",
+    "name": "Donner Smogo",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_krabby",
+    "name": "Donner Krabby",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_lapras",
+    "name": "Donner Lokhlass",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_leafstone",
+    "name": "Donner Pierre Plante",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_lemonade",
+    "name": "Donner Limonade",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_lickitung",
+    "name": "Donner Excelangue",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_liftkey",
+    "name": "Donner Clé Asc.",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_machamp",
+    "name": "Donner Mackogneur",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_machoke",
+    "name": "Donner Machopeur",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_machop",
+    "name": "Donner Machoc",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_magikarp",
+    "name": "Donner Magicarpe",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_magmar",
+    "name": "Donner Magmar",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_magnemite",
+    "name": "Donner Magnéti",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_magneton",
+    "name": "Donner Magnéton",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_mankey",
+    "name": "Donner Férosinge",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_marowak",
+    "name": "Donner Ossatueur",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_masterball",
+    "name": "Donner Master Ball",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_maxelixer",
+    "name": "Donner Élixir Max",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_maxether",
+    "name": "Donner Huile Max",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_maxpotion",
+    "name": "Donner Potion Max",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_maxrepel",
+    "name": "Donner Max Repousse",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_maxrevive",
+    "name": "Donner Rappel Max",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_meowth",
+    "name": "Donner Miaouss",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_metapod",
+    "name": "Donner Chrysacier",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_mew",
+    "name": "Donner Mew",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_mewtwo",
+    "name": "Donner Mewtwo",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_moltres",
+    "name": "Donner Sulfura",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_moonstone",
+    "name": "Donner Pierre Lune",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_mrmime",
+    "name": "Donner M. Mime",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_muk",
+    "name": "Donner Grotadmorv",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_nidoking",
+    "name": "Donner Nidoking",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_nidoqueen",
+    "name": "Donner Nidoqueen",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_nidoranf",
+    "name": "Donner Nidoran♀",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_nidoranm",
+    "name": "Donner Nidoran♂",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_nidorina",
+    "name": "Donner Nidorina",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_nidorino",
+    "name": "Donner Nidorino",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_ninetales",
+    "name": "Donner Feunard",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_nugget",
+    "name": "Donner Pépite",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_oaksparcel",
+    "name": "Donner Colis de Chen",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_oddish",
+    "name": "Donner Mystherbe",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_oldamber",
+    "name": "Donner Vieil Ambre",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_oldrod",
+    "name": "Donner Canne",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_omanyte",
+    "name": "Donner Amonita",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_omastar",
+    "name": "Donner Amonistar",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_onix",
+    "name": "Donner Onix",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_paras",
+    "name": "Donner Paras",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_parasect",
+    "name": "Donner Parasect",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_parlyzheal",
+    "name": "Donner Anti-Para",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_persian",
+    "name": "Donner Persian",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_pidgeot",
+    "name": "Donner Roucarnage",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_pidgeotto",
+    "name": "Donner Roucoups",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_pidgey",
+    "name": "Donner Roucool",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_pikachu",
+    "name": "Donner Pikachu",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_pinsir",
+    "name": "Donner Scarabrute",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_pokeball",
+    "name": "Donner Poké Ball",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_pokedoll",
+    "name": "Donner Poképoupée",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_pokeflute",
+    "name": "Donner Poké Flûte",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givemoney",
+    "name": "Donner des Pokédollars",
+    "category": "Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_poliwag",
+    "name": "Donner Ptitard",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_poliwhirl",
+    "name": "Donner Têtarte",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_poliwrath",
+    "name": "Donner Tartard",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_ponyta",
+    "name": "Donner Ponyta",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_porygon",
+    "name": "Donner Porygon",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_potion",
+    "name": "Donner Potion",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_ppup",
+    "name": "Donner PP Plus",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_primeape",
+    "name": "Donner Colossinge",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_protein",
+    "name": "Donner Protéine",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_psyduck",
+    "name": "Donner Psykokwak",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_raichu",
+    "name": "Donner Raichu",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_battle",
+    "name": "Donner un objet de combat aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_evolution",
+    "name": "Donner un objet d'évolution aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_fossil",
+    "name": "Donner un fossile aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_health",
+    "name": "Donner un objet de soin aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_hm_1",
+    "name": "Donner une CS aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_misc",
+    "name": "Donner un objet divers aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_ball",
+    "name": "Donner une Ball aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giverandompokemon",
+    "name": "Donner un Pokémon aléatoire",
+    "category": "Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_pp",
+    "name": "Donner un objet de PP aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_repeltype",
+    "name": "Donner un Repousse aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_status",
+    "name": "Donner un objet de statut aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm",
+    "name": "Donner une CT aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_vitamin",
+    "name": "Donner une vitamine aléatoire",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_rapidash",
+    "name": "Donner Galopa",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_rarecandy",
+    "name": "Donner Super Bonbon",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_raticate",
+    "name": "Donner Rattatac",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_rattata",
+    "name": "Donner Rattata",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_repel",
+    "name": "Donner Repousse",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_revive",
+    "name": "Donner Rappel",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_rhydon",
+    "name": "Donner Rhinoféros",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_rhyhorn",
+    "name": "Donner Rhinocorne",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_ssticket",
+    "name": "Donner Passe Bateau",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_sandshrew",
+    "name": "Donner Sabelette",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_sandslash",
+    "name": "Donner Sablaireau",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_scyther",
+    "name": "Donner Insécateur",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_seadra",
+    "name": "Donner Hypocéan",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_seaking",
+    "name": "Donner Poissoroy",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_secretkey",
+    "name": "Donner Clé Secrète",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_seel",
+    "name": "Donner Otaria",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_shellder",
+    "name": "Donner Kokiyas",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_silphscope",
+    "name": "Donner Scope Sylphe",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_slowbro",
+    "name": "Donner Flagadoss",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_slowpoke",
+    "name": "Donner Ramoloss",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_snorlax",
+    "name": "Donner Ronflex",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_sodapop",
+    "name": "Donner Soda Cool",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_spearow",
+    "name": "Donner Piafabec",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_squirtle",
+    "name": "Donner Carapuce",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_starmie",
+    "name": "Donner Staross",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_staryu",
+    "name": "Donner Stari",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_superpotion",
+    "name": "Donner Super Potion",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_superrepel",
+    "name": "Donner Superepousse",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_superrod",
+    "name": "Donner Méga Canne",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_tangela",
+    "name": "Donner Saquedeneu",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_tauros",
+    "name": "Donner Tauros",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_tentacool",
+    "name": "Donner Tentacool",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_tentacruel",
+    "name": "Donner Tentacruel",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_thunderstone",
+    "name": "Donner Pierre Foudre",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm01",
+    "name": "Donner CT01",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm02",
+    "name": "Donner CT02",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm03",
+    "name": "Donner CT03",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm04",
+    "name": "Donner CT04",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm05",
+    "name": "Donner CT05",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm06",
+    "name": "Donner CT06",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm07",
+    "name": "Donner CT07",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm08",
+    "name": "Donner CT08",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm09",
+    "name": "Donner CT09",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm10",
+    "name": "Donner CT10",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm11",
+    "name": "Donner CT11",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm12",
+    "name": "Donner CT12",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm13",
+    "name": "Donner CT13",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm14",
+    "name": "Donner CT14",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm15",
+    "name": "Donner CT15",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm16",
+    "name": "Donner CT16",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm17",
+    "name": "Donner CT17",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm18",
+    "name": "Donner CT18",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm19",
+    "name": "Donner CT19",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm20",
+    "name": "Donner CT20",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm21",
+    "name": "Donner CT21",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm22",
+    "name": "Donner CT22",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm23",
+    "name": "Donner CT23",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm24",
+    "name": "Donner CT24",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm25",
+    "name": "Donner CT25",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm26",
+    "name": "Donner CT26",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm27",
+    "name": "Donner CT27",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm28",
+    "name": "Donner CT28",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm29",
+    "name": "Donner CT29",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm30",
+    "name": "Donner CT30",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm31",
+    "name": "Donner CT31",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm32",
+    "name": "Donner CT32",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm33",
+    "name": "Donner CT33",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm34",
+    "name": "Donner CT34",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm35",
+    "name": "Donner CT35",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm36",
+    "name": "Donner CT36",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm37",
+    "name": "Donner CT37",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm38",
+    "name": "Donner CT38",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm39",
+    "name": "Donner CT39",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm40",
+    "name": "Donner CT40",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm41",
+    "name": "Donner CT41",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm42",
+    "name": "Donner CT42",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm43",
+    "name": "Donner CT43",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm44",
+    "name": "Donner CT44",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm45",
+    "name": "Donner CT45",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm46",
+    "name": "Donner CT46",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm47",
+    "name": "Donner CT47",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm48",
+    "name": "Donner CT48",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm49",
+    "name": "Donner CT49",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_tm50",
+    "name": "Donner CT50",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_townmap",
+    "name": "Donner Carte",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_ultraball",
+    "name": "Donner Hyper Ball",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_vaporeon",
+    "name": "Donner Aquali",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_venomoth",
+    "name": "Donner Aéromite",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_venonat",
+    "name": "Donner Mimitoss",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_venusaur",
+    "name": "Donner Florizarre",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_victreebel",
+    "name": "Donner Empiflor",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_vileplume",
+    "name": "Donner Rafflesia",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_voltorb",
+    "name": "Donner Voltorbe",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_vulpix",
+    "name": "Donner Goupix",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_wartortle",
+    "name": "Donner Carabaffe",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_waterstone",
+    "name": "Donner Pierre Eau",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_weedle",
+    "name": "Donner Aspicot",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_weepinbell",
+    "name": "Donner Boustiflor",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_weezing",
+    "name": "Donner Smogogo",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_wigglytuff",
+    "name": "Donner Grodoudou",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "giveitem_xaccuracy",
+    "name": "Donner Précision +",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_xattack",
+    "name": "Donner Attaque +",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_xdefense",
+    "name": "Donner Défense +",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_xspecial",
+    "name": "Donner Spécial +",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "giveitem_xspeed",
+    "name": "Donner Vitesse +",
+    "category": "Objets",
+    "available": true
+  },
+  {
+    "id": "givepokemon_zapdos",
+    "name": "Donner Électhor",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "givepokemon_zubat",
+    "name": "Donner Nosferapti",
+    "category": "Donner un Pokémon",
+    "available": true
+  },
+  {
+    "id": "dv_decrease_all",
+    "name": "Réduire tous les DV",
+    "category": "DV",
+    "available": true
+  },
+  {
+    "id": "dv_decrease",
+    "name": "Réduire un DV",
+    "category": "DV",
+    "available": true
+  },
+  {
+    "id": "status_paralyze",
+    "name": "Paralyser un Pokémon",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "statusall_paralyze",
+    "name": "Paralyser toute l'équipe",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "dv_perfect",
+    "name": "Rendre les DV parfaits",
+    "category": "DV",
+    "available": true
+  },
+  {
+    "id": "status_poison",
+    "name": "Empoisonner un Pokémon",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "statusall_poison",
+    "name": "Empoisonner toute l'équipe",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "dv_increase_all",
+    "name": "Augmenter tous les DV",
+    "category": "DV",
+    "available": true
+  },
+  {
+    "id": "dv_increase",
+    "name": "Augmenter un DV",
+    "category": "DV",
+    "available": true
+  },
+  {
+    "id": "status_sleep",
+    "name": "Endormir un Pokémon",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "statusall_sleep",
+    "name": "Endormir toute l'équipe",
+    "category": "Statuts",
+    "available": true
+  },
+  {
+    "id": "struggle",
+    "name": "Retirer tous les PP de l'équipe",
+    "category": "Pokémon",
+    "available": true
+  },
+  {
+    "id": "dv_terrible",
+    "name": "Rendre les DV désastreux",
+    "category": "DV",
+    "available": true
+  },
+  {
+    "id": "warp",
+    "name": "Téléporter le joueur",
+    "category": "Pokémon",
+    "available": true
+  }
+]

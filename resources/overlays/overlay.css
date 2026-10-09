@@ -1,4 +1,4 @@
-/* Point d'entrée CSS du runtime overlay. */
+/* Point d'entrée CSS de compatibilité et des tests du runtime overlay. */
 @import url("styles/core.css");
 @import url("styles/wheel.css");
 @import url("styles/themes.css");

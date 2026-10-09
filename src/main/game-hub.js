@@ -32,6 +32,7 @@ class GameHub extends EventEmitter {
     this.packs = [];
     this.sockets = new Map();
     this.serverBridges = new Map();
+    this.gameRuntime = null;
     this.minecraftRuntime = null;
     this.windowsInputService =
       windowsInputService || new WindowsInputService();
@@ -40,6 +41,7 @@ class GameHub extends EventEmitter {
   }
 
   setMinecraftRuntime(runtime) {
+    this.gameRuntime = runtime || null;
     this.minecraftRuntime = runtime || null;
   }
 
@@ -221,6 +223,20 @@ class GameHub extends EventEmitter {
       }
       return this.minecraftRuntime.minecraftConnectionStatus(pack.id);
     }
+    if (connector.type === "pokemon-runtime") {
+      if (!this.gameRuntime) {
+        throw new Error("La passerelle Pokémon ShenPulse n’est pas initialisée.");
+      }
+      return this.gameRuntime.pokemonConnectionStatus(pack.id);
+    }
+    if (connector.type === "super-mario-kart-runtime") {
+      if (!this.gameRuntime) {
+        throw new Error(
+          "La passerelle Super Mario Kart ShenPulse n’est pas initialisée."
+        );
+      }
+      return this.gameRuntime.superMarioKartConnectionStatus(pack.id);
+    }
     if (connector.type === "tcp-server") {
       const bridge = await this.#getServerBridge(pack, connector);
       const status = bridge.status();
@@ -361,6 +377,26 @@ class GameHub extends EventEmitter {
       result = await this.minecraftRuntime.executeMinecraftCommands(
         pack.id,
         payload.effect.commands
+      );
+    } else if (connector.type === "pokemon-runtime") {
+      if (!this.gameRuntime) {
+        throw new Error("La passerelle Pokémon ShenPulse n’est pas initialisée.");
+      }
+      result = await this.gameRuntime.executePokemonEffect(
+        pack.id,
+        payload.effect.code,
+        effect.name
+      );
+    } else if (connector.type === "super-mario-kart-runtime") {
+      if (!this.gameRuntime) {
+        throw new Error(
+          "La passerelle Super Mario Kart ShenPulse n’est pas initialisée."
+        );
+      }
+      result = await this.gameRuntime.executeSuperMarioKartEffect(
+        pack.id,
+        payload.effect.code,
+        effect.name
       );
     } else if (connector.type === "windows-input") {
       result = {

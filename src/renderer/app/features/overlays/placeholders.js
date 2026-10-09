@@ -42,6 +42,7 @@ function overlayPlaceholderMediaUrl(item, relativePath) {
       : `/overlay/media/${encodedPath}`;
     const media = new URL(route, source.origin);
     if (token) media.searchParams.set("token", token);
+    if (snapshot?.appVersion) media.searchParams.set("v", snapshot.appVersion);
     return media.toString();
   } catch {
     return "";
@@ -57,7 +58,7 @@ function overlayPlaceholderImage(item, relativePath, className) {
 
 function overlayPlaceholderThemePath(kind, design) {
   if (!design || design === "classic") return "";
-  return `widgets/interactive-overlays/${kind}-theme-${design}.png`;
+  return `widgets/interactive-overlays/${kind}-theme-${design}.webp`;
 }
 
 function overlayPlaceholderNumber(

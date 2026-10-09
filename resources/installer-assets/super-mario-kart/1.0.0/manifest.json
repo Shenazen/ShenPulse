@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "gameId": "super-mario-kart",
+  "version": "1.0.0",
+  "publishedAt": "2026-10-09T12:00:00.000Z",
+  "notes": "BizHawk 2.9.1, Super Mario Kart USA autorisé, client local Crowd Control et pack de 87 interactions.",
+  "assets": [
+    {
+      "id": "bizhawk",
+      "sourceName": "Bizhawk-2.9.1-clean.zip",
+      "remoteName": "Bizhawk-2.9.1.zip",
+      "size": 67855842,
+      "sha256": "a8b7b1264002c9a317fb840196d20ec67b0a70d2da3fab496968ff7c9fea4dda",
+      "role": "emulator"
+    },
+    {
+      "id": "client",
+      "sourceName": "CrowdControl.Client.Slim-5.0.9736.24149.zip",
+      "remoteName": "CrowdControl.Client.Slim-5.0.9736.24149.zip",
+      "size": 65991501,
+      "sha256": "13e7b65a6d19fe0804565433499b4a3827e84a86a07f05d99afd396146b6dcb7",
+      "role": "interaction-client"
+    },
+    {
+      "id": "pack",
+      "sourceName": "SuperMarioKart.dll",
+      "remoteName": "SuperMarioKart.dll",
+      "size": 58192,
+      "sha256": "44a2c9e04e641532b42a9f3084b4155b3189c8f2afd797fa20919ad798ba6c4b",
+      "role": "interaction-pack"
+    },
+    {
+      "id": "rom",
+      "sourceName": "SuperMarioKart-Original.sfc",
+      "remoteName": "SuperMarioKart-Original.sfc",
+      "size": 524288,
+      "sha256": "2ada8919688087be60a6a48cace8f877add60c45d2e5d09e2442faa55be62a49",
+      "role": "game-rom"
+    }
+  ]
+}

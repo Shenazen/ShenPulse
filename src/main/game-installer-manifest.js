@@ -45,6 +45,10 @@ const RESIDENT_EVIL_3_ASSET_BASE =
   "https://one-click.crowdcontrol.live/RE3remake";
 const DOTNET_DESKTOP_RUNTIME_8_ASSET_BASE =
   "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.31";
+const POKEMON_RED_BLUE_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/pokemon-red-blue/1.0.1";
+const SUPER_MARIO_KART_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/super-mario-kart/1.0.0";
 const GAME_INSTALLERS = Object.freeze({
   demonologist: {
     version: "1.0.0",
@@ -582,32 +586,132 @@ const GAME_INSTALLERS = Object.freeze({
     ]
   },
   "pokemon-red-blue": {
+    version: "1.0.1",
     title: "Pokémon Rouge/Bleu",
     targetLabel: "dossier de la passerelle Pokémon",
     managedTarget: true,
-    launchExecutables: ["CrowdControl.Client.Slim.exe", "EmuHawk.exe"],
+    unattended: true,
+    launchExecutables: ["EmuHawk.exe"],
+    warning:
+      "ShenPulse installe automatiquement BizHawk, Pokémon Rouge et le pack d’interactions.",
     assets: [
       {
         id: "bizhawk",
         fileName: "Bizhawk-2.9.1.zip",
         action: "extract",
-        targetPath: "BizHawk"
+        targetPath: "BizHawk",
+        size: 67855842,
+        sha256:
+          "a8b7b1264002c9a317fb840196d20ec67b0a70d2da3fab496968ff7c9fea4dda",
+        url: `${POKEMON_RED_BLUE_ASSET_BASE}/Bizhawk-2.9.1.zip`
       },
       {
         id: "client",
         fileName: "CrowdControl.Client.Slim-5.0.9661.26214.zip",
         action: "extract",
-        targetPath: "CrowdControl"
+        targetPath: "CrowdControl",
+        size: 70255381,
+        sha256:
+          "b9d894e4e39650e1a0b5a9a34d99c53f2a1f7918d0705778b931112c1ef0318d",
+        url: `${POKEMON_RED_BLUE_ASSET_BASE}/CrowdControl.Client.Slim-5.0.9661.26214.zip`
       },
       {
         id: "pack",
         fileName: "PokemonRedBlue.dll",
         action: "copy",
-        targetPath: "CrowdControl/Packs"
+        targetPath: "CrowdControl/Packs",
+        size: 259408,
+        sha256:
+          "586f82e6a888abda25ba5c518d11d70befa52495b2484890759b6e45c7578329",
+        url: `${POKEMON_RED_BLUE_ASSET_BASE}/PokemonRedBlue.dll`
+      },
+      {
+        id: "rom",
+        fileName: "PokemonRedBlue-Original.gb",
+        action: "copy",
+        targetPath: "ROM",
+        size: 1048576,
+        sha256:
+          "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+        url: `${POKEMON_RED_BLUE_ASSET_BASE}/PokemonRedBlue-Original.gb`
+      },
+      {
+        id: "redPatch",
+        fileName: "PokemonRedBlue.Red.ips",
+        action: "copy",
+        targetPath: "Patches",
+        size: 94412,
+        sha256:
+          "fc328c76d28a55e60135a3e2cd0fd49bdd95fb8445d6355a96955734e3dda2ad",
+        url: `${POKEMON_RED_BLUE_ASSET_BASE}/PokemonRedBlue.Red.ips`
+      },
+      {
+        id: "bluePatch",
+        fileName: "PokemonRedBlue.Blue.ips",
+        action: "copy",
+        targetPath: "Patches",
+        size: 94416,
+        sha256:
+          "29272a8411ba49718030f56531680fcb9981d07c41867b2d28db9a7593a2cf37",
+        url: `${POKEMON_RED_BLUE_ASSET_BASE}/PokemonRedBlue.Blue.ips`
       }
     ],
     note:
-      "La ROM n’est volontairement jamais téléchargée : sélectionnez votre propre copie légale après l’installation."
+      "La ROM Pokémon Rouge autorisée est téléchargée, vérifiée puis préparée automatiquement pour BizHawk."
+  },
+  "super-mario-kart": {
+    version: "1.0.0",
+    title: "Super Mario Kart",
+    targetLabel: "dossier de la passerelle Super Mario Kart",
+    managedTarget: true,
+    unattended: true,
+    launchExecutables: ["EmuHawk.exe"],
+    warning:
+      "ShenPulse installe automatiquement BizHawk, Super Mario Kart et le pack d’interactions.",
+    assets: [
+      {
+        id: "bizhawk",
+        fileName: "Bizhawk-2.9.1.zip",
+        action: "extract",
+        targetPath: "BizHawk",
+        size: 67855842,
+        sha256:
+          "a8b7b1264002c9a317fb840196d20ec67b0a70d2da3fab496968ff7c9fea4dda",
+        url: `${SUPER_MARIO_KART_ASSET_BASE}/Bizhawk-2.9.1.zip`
+      },
+      {
+        id: "client",
+        fileName: "CrowdControl.Client.Slim-5.0.9736.24149.zip",
+        action: "extract",
+        targetPath: "CrowdControl",
+        size: 65991501,
+        sha256:
+          "13e7b65a6d19fe0804565433499b4a3827e84a86a07f05d99afd396146b6dcb7",
+        url: `${SUPER_MARIO_KART_ASSET_BASE}/CrowdControl.Client.Slim-5.0.9736.24149.zip`
+      },
+      {
+        id: "pack",
+        fileName: "SuperMarioKart.dll",
+        action: "copy",
+        targetPath: "CrowdControl/Packs",
+        size: 58192,
+        sha256:
+          "44a2c9e04e641532b42a9f3084b4155b3189c8f2afd797fa20919ad798ba6c4b",
+        url: `${SUPER_MARIO_KART_ASSET_BASE}/SuperMarioKart.dll`
+      },
+      {
+        id: "rom",
+        fileName: "SuperMarioKart-Original.sfc",
+        action: "copy",
+        targetPath: "ROM",
+        size: 524288,
+        sha256:
+          "2ada8919688087be60a6a48cace8f877add60c45d2e5d09e2442faa55be62a49",
+        url: `${SUPER_MARIO_KART_ASSET_BASE}/SuperMarioKart-Original.sfc`
+      }
+    ],
+    note:
+      "La ROM Super Mario Kart USA autorisée est téléchargée et vérifiée automatiquement avant son lancement dans BizHawk."
   }
 });
 

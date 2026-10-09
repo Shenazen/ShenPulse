@@ -22,6 +22,19 @@ function createStore(directory) {
   });
 }
 
+function identify(store, uid = "uid_sound_profile") {
+  store.activateAccount(uid);
+  const refreshTokenSecretId = store.setSecret(
+    "",
+    `refresh-token-${uid}`
+  );
+  store.set("settings.account", {
+    uid,
+    email: `${uid}@example.com`,
+    refreshTokenSecretId
+  });
+}
+
 test("le mode démo reste manuel et ses anciens viewers fictifs sont nettoyés", () => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "shenpulse-demo-migration-")
@@ -571,6 +584,138 @@ test("chaque ecriture conserve et valide la generation precedente", () => {
     assert.equal(backup, previous);
     assert.doesNotThrow(() => JSON.parse(backup));
     assert.equal(store.getState().settings.theme, "light");
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a sound alert stays in its profile after switching and restarting", () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-sound-profile-save-")
+  );
+
+  try {
+    let store = createStore(directory);
+    let state = store.load();
+    identify(store);
+    const soundProfileId = store.getState().session.profileId;
+
+    store.upsert("rules", {
+      id: "sound_rule_saved",
+      name: "Alerte sonore conservee",
+      enabled: true,
+      trigger: { enabled: true, type: "gift" },
+      conditions: [],
+      actions: [
+        {
+          id: "sound_action_saved",
+          type: "audio.play",
+          config: {
+            url: "https://cdn.example.com/alert.mp3",
+            volume: 0.8
+          }
+        }
+      ]
+    });
+    store.upsertGameInteraction("captcha", {
+      id: "captcha_sound_rule",
+      name: "Son CAPTCHA",
+      enabled: true,
+      gameInteraction: { title: "Son CAPTCHA" },
+      trigger: { enabled: true, type: "gift" },
+      conditions: [],
+      actions: [
+        {
+          id: "captcha_sound_action",
+          type: "audio.play",
+          config: {
+            packId: "captcha",
+            effectId: "captcha-sound",
+            url: "https://cdn.example.com/captcha.mp3",
+            volume: 1
+          }
+        }
+      ]
+    });
+    store.upsert("profiles", {
+      id: "profile_other",
+      name: "Autre profil"
+    });
+
+    store.selectProfile("profile_other");
+    assert.deepEqual(store.getState().rules, []);
+    store.selectProfile(soundProfileId);
+    state = store.getState();
+    assert.deepEqual(
+      state.rules.map((rule) => rule.id),
+      ["sound_rule_saved"]
+    );
+    assert.deepEqual(
+      state.game.interactionRulesByPack.captcha.map((rule) => rule.id),
+      ["captcha_sound_rule"]
+    );
+    store.flush();
+
+    store = createStore(directory);
+    state = store.load();
+    assert.equal(store.getActiveAccountUid(), "uid_sound_profile");
+    assert.deepEqual(
+      state.rules.map((rule) => rule.id),
+      ["sound_rule_saved"]
+    );
+    assert.deepEqual(
+      state.game.interactionRulesByPack.captcha.map((rule) => rule.id),
+      ["captcha_sound_rule"]
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("a sound alert misplaced by an older version is recovered", () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-sound-profile-recovery-")
+  );
+
+  try {
+    const legacy = createDefaultState();
+    legacy.profiles[0].workspace.game.interactionRulesByPack = {
+      "coin-pusher": [
+        {
+          id: "misplaced_sound_rule",
+          name: "Alerte sonore a recuperer",
+          enabled: true,
+          trigger: { enabled: true, type: "follow" },
+          conditions: [],
+          actions: [
+            {
+              id: "misplaced_sound_action",
+              type: "audio.play",
+              config: {
+                url: "https://cdn.example.com/recovered.mp3",
+                volume: 1
+              }
+            }
+          ]
+        }
+      ]
+    };
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-state.json"),
+      JSON.stringify(legacy),
+      "utf8"
+    );
+
+    const store = createStore(directory);
+    store.load();
+    store.activateAccount("legacy_sound_owner");
+    const state = store.getState();
+
+    assert.deepEqual(
+      state.rules.map((rule) => rule.id),
+      ["misplaced_sound_rule"]
+    );
+    assert.deepEqual(state.game.interactionRulesByPack, {});
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

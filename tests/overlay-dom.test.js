@@ -111,7 +111,7 @@ test("un Like Goal chargé dans un vrai DOM applique sa configuration et son ét
   dom.window.close();
 });
 
-test("les sources de tous formats montent leur scène native avant le rendu", async () => {
+test("les sources de tous formats montent directement leur scène native", async () => {
   for (const [view, width, height] of [
     ["like-goal", 1300, 200],
     ["timer", 900, 360],
@@ -121,13 +121,13 @@ test("les sources de tous formats montent leur scène native avant le rendu", as
     ["game", 1920, 1080]
   ]) {
     const dom = await loadOverlay(view, { native: "" });
-    const shell = dom.window.document.querySelector(".native-overlay-shell");
-    const frame = shell?.querySelector("iframe");
-    assert.ok(shell, `${view} doit créer son conteneur natif`);
-    assert.equal(shell.style.getPropertyValue("--native-overlay-width"), `${width}px`);
-    assert.equal(shell.style.getPropertyValue("--native-overlay-height"), `${height}px`);
-    assert.equal(new URL(frame.src).searchParams.get("native"), "1");
-    assert.equal(dom.window.document.getElementById("overlay-root").hidden, true);
+    const activeView = dom.window.document.getElementById(`${view}-view`);
+    assert.ok(activeView, `${view} doit posséder une scène native`);
+    assert.equal(activeView.classList.contains("native-overlay-canvas"), true);
+    assert.equal(activeView.style.getPropertyValue("--native-canvas-width"), `${width}px`);
+    assert.equal(activeView.style.getPropertyValue("--native-canvas-height"), `${height}px`);
+    assert.equal(dom.window.document.querySelector(".native-overlay-shell"), null);
+    assert.equal(dom.window.document.getElementById("overlay-root").hidden, false);
     dom.window.close();
   }
 });

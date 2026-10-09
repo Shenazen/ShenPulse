@@ -24,6 +24,12 @@ const {
 const {
   sanitizeThiercelieuxEntitlements
 } = require("../shared/thiercelieux-products");
+const {
+  PokemonRedBlueRuntime
+} = require("./pokemon-red-blue-runtime");
+const {
+  SuperMarioKartRuntime
+} = require("./super-mario-kart-runtime");
 
 const ASSET_ORIGIN = "https://shenpulse.leuridan.fr";
 const ASSET_SECRET = "shenpulse-installer-assets-v1-local-fallback";
@@ -50,6 +56,13 @@ class GameRuntimeService {
     this.minecraftServers = new Map();
     this.minecraftAutoClickers = new Map();
     this.saveDeploymentJobs = new Map();
+    this.pokemonRedBlue = new PokemonRedBlueRuntime({
+      app,
+      store,
+      getWindow,
+      dialog
+    });
+    this.superMarioKart = new SuperMarioKartRuntime({ app, store });
   }
 
   status(gameId) {
@@ -159,6 +172,46 @@ class GameRuntimeService {
     };
   }
 
+  pokemonConnectionStatus(gameId) {
+    this.assertAccess(gameId);
+    if (gameId !== "pokemon-red-blue") {
+      throw new Error("Ce jeu n’utilise pas la passerelle Pokémon.");
+    }
+    return this.pokemonRedBlue.connectionStatus();
+  }
+
+  async executePokemonEffect(gameId, effectId, effectName) {
+    this.assertAccess(gameId);
+    if (gameId !== "pokemon-red-blue") {
+      throw new Error("Ce jeu n’utilise pas la passerelle Pokémon.");
+    }
+    return this.pokemonRedBlue.trigger(effectId, effectName);
+  }
+
+  superMarioKartConnectionStatus(gameId) {
+    this.assertAccess(gameId);
+    if (gameId !== "super-mario-kart") {
+      throw new Error("Ce jeu n’utilise pas la passerelle Super Mario Kart.");
+    }
+    return this.superMarioKart.connectionStatus();
+  }
+
+  async executeSuperMarioKartEffect(gameId, effectId, effectName) {
+    this.assertAccess(gameId);
+    if (gameId !== "super-mario-kart") {
+      throw new Error("Ce jeu n’utilise pas la passerelle Super Mario Kart.");
+    }
+    return this.superMarioKart.trigger(effectId, effectName);
+  }
+
+  async selectPokemonRom(gameId) {
+    this.assertAccess(gameId);
+    if (gameId !== "pokemon-red-blue") {
+      throw new Error("Ce jeu ne prend pas en charge une ROM Game Boy.");
+    }
+    return this.pokemonRedBlue.selectRom();
+  }
+
   async install(gameId) {
     this.assertAccess(gameId);
     if (isIntegratedGame(gameId)) {
@@ -173,6 +226,8 @@ class GameRuntimeService {
     if (this.activeInstalls.has(gameId)) {
       throw new Error("Une installation est déjà en cours pour ce jeu.");
     }
+    const previousInstallation =
+      this.store.getState().game.installations?.[gameId] || null;
 
     this.activeInstalls.add(gameId);
     try {
@@ -382,6 +437,18 @@ class GameRuntimeService {
           backupRoot,
           documentsPath: this.app.getPath("documents")
         });
+      const emulatorSetup =
+        gameId === "pokemon-red-blue"
+          ? await this.pokemonRedBlue.prepareInstallation(
+              targetPath,
+              previousInstallation
+            )
+          : gameId === "super-mario-kart"
+            ? await this.superMarioKart.prepareInstallation(
+                targetPath,
+                previousInstallation
+              )
+            : null;
       if (preparedSaveDirectory) {
         saveDeployment = await deployGtaEnhancedSave({
           sourceDirectory: preparedSaveDirectory,
@@ -423,6 +490,7 @@ class GameRuntimeService {
           edition: edition || undefined,
           elevated: deployment.elevated,
           additionalDeployments,
+          ...(emulatorSetup || {}),
           saveDeployment,
           server: server
             ? {
@@ -453,7 +521,8 @@ class GameRuntimeService {
         path: targetPath,
         backupPath: manifest.temporaryTarget ? "" : backupRoot,
         installedAt,
-        server
+        server,
+        ...(emulatorSetup || {})
       };
     } finally {
       await fs.promises.rm(tempRoot, {
@@ -532,6 +601,14 @@ class GameRuntimeService {
         message: `${manifest.title} est prêt sur ${server.address}`
       };
     }
+    if (gameId === "pokemon-red-blue") {
+      await this.superMarioKart.stop();
+      return this.pokemonRedBlue.launch();
+    }
+    if (gameId === "super-mario-kart") {
+      await this.pokemonRedBlue.stop();
+      return this.superMarioKart.launch();
+    }
     const executable = await findLaunchTarget(
       installation.path,
       manifest.launchExecutables || manifest.executables || []
@@ -564,6 +641,12 @@ class GameRuntimeService {
   }
 
   async stop(gameId) {
+    if (gameId === "pokemon-red-blue") {
+      return this.pokemonRedBlue.stop();
+    }
+    if (gameId === "super-mario-kart") {
+      return this.superMarioKart.stop();
+    }
     const record = this.minecraftServers.get(gameId);
     if (record) {
       this.minecraftServers.delete(gameId);
@@ -589,6 +672,8 @@ class GameRuntimeService {
   }
 
   async dispose() {
+    await this.pokemonRedBlue.dispose();
+    await this.superMarioKart.dispose();
     await this.#stopMinecraftServers();
     await this.#stopMinecraftAutoClickers();
     for (const window of this.gameWindows.values()) {

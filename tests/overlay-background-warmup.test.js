@@ -44,6 +44,13 @@ test("précharge et réutilise les iframes overlay avant d'ouvrir la galerie", (
       name: "Compteur de wins",
       previewView: "win-counter",
       sourceSize: [900, 360]
+    },
+    {
+      key: "matchX2",
+      name: "Match X2",
+      previewKind: "match",
+      previewView: "match",
+      sourceSize: [1080, 1920]
     }
   ];
 
@@ -51,7 +58,8 @@ test("précharge et réutilise les iframes overlay avant d'ouvrir la galerie", (
     localOverlayUrls: {
       likeGoal: "http://127.0.0.1:17654/overlay/?view=like-goal&token=test",
       timer: "http://127.0.0.1:17654/overlay/?view=timer&token=test",
-      winCounter: "http://127.0.0.1:17654/overlay/?view=win-counter&token=test"
+      winCounter: "http://127.0.0.1:17654/overlay/?view=win-counter&token=test",
+      matchX2: "http://127.0.0.1:17654/overlay/?view=match&match=x2&token=test"
     },
     overlayUrls: {},
     previewOverlayUrls: {},
@@ -96,7 +104,7 @@ test("précharge et réutilise les iframes overlay avant d'ouvrir la galerie", (
   assert.ok(host);
   assert.equal(
     window.__overlayWarmupTest.cacheSize(),
-    items.length
+    items.length - 1
   );
   assert.equal(host.querySelectorAll("iframe").length, 2);
 

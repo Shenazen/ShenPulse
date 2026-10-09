@@ -36,7 +36,9 @@ et `acceptsChannel` du catalogue.
 3. Ajouter sa section HTML dans `index.html`.
 4. Placer son comportement dans le module runtime le plus proche, ou créer un
    nouveau module chargé avant `runtime/transport.js`.
-5. Ajouter ses styles dans une feuille dédiée importée par `overlay.css`.
+5. Ajouter ses styles dans une feuille dédiée chargée directement par
+   `index.html`, puis conserver son import dans `overlay.css` pour le point
+   d'entrée de compatibilité et les tests agrégés.
 6. Ajouter au minimum un test de contrat dans `overlay-catalog.test.js` et un
    test DOM si le widget modifie l'interface.
 

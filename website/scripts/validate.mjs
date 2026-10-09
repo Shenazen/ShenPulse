@@ -1,6 +1,8 @@
 import { access, readFile, readdir, stat } from 'node:fs/promises'
+import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { currentPublicGames } from './game-catalog.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dist = path.join(root, 'dist')
@@ -12,6 +14,7 @@ const requiredFiles = [
   'styles.css',
   'app.js',
   'content.js',
+  'game-catalog.js',
   'og.png',
   'brand/shenpulse-logo.png',
   'screenshots/app-overview-public.png',
@@ -35,8 +38,18 @@ for (const file of requiredFiles) {
 const index = await readFile(path.join(dist, 'index.html'), 'utf8')
 const app = await readFile(path.join(dist, 'app.js'), 'utf8')
 const content = await readFile(path.join(dist, 'content.js'), 'utf8')
-const { GAMES } = await import(pathToFileURL(path.join(dist, 'content.js')).href)
+const { GAMES } = await import(pathToFileURL(path.join(dist, 'game-catalog.js')).href)
+const expectedGames = currentPublicGames()
 const expectedDownload = '/downloads/ShenPulseSetup-1.0.14.exe'
+const hiddenProviderPattern = new RegExp(['crowd', 'control'].join('\\s*'), 'i')
+
+for (const file of ['app.js', 'content.js', 'game-catalog.js']) {
+  try {
+    execFileSync(process.execPath, ['--check', path.join(dist, file)], { stdio: 'pipe' })
+  } catch (error) {
+    errors.push(`JavaScript invalide dans ${file} : ${String(error.stderr || error.message).trim()}`)
+  }
+}
 
 if (!app.includes(`const DOWNLOAD_URL = '${expectedDownload}'`)) {
   errors.push(`Lien de téléchargement principal incorrect : ${expectedDownload}`)
@@ -50,8 +63,20 @@ if (`${index}\n${app}`.includes('/downloads/ShenPulseSetup.exe')) {
   errors.push('L’ancien lien de téléchargement non versionné est encore référencé')
 }
 
-if (GAMES.length !== 8) {
-  errors.push(`La documentation doit contenir exactement 8 jeux publics, trouvé : ${GAMES.length}`)
+if (JSON.stringify(GAMES) !== JSON.stringify(expectedGames)) {
+  errors.push('Le catalogue du site ne correspond pas au catalogue public actuel de l’application')
+}
+
+for (const game of GAMES) {
+  if (!game.description || game.description.length < 100) {
+    errors.push(`Description publique manquante ou trop courte : ${game.name}`)
+  }
+  if (!game.interactionGuide || game.interactionGuide.length < 80) {
+    errors.push(`Présentation des interactions manquante ou trop courte : ${game.name}`)
+  }
+  if (!game.requirements || game.requirements.length < 60) {
+    errors.push(`Prérequis publics manquants ou trop courts : ${game.name}`)
+  }
 }
 
 for (const route of [
@@ -92,6 +117,12 @@ if (/paypal\.com|paypal\.me/i.test(`${index}\n${app}\n${content}`)) {
 }
 
 const allDistFiles = await walk(dist)
+for (const file of allDistFiles.filter((candidate) => /\.(?:html|js|css|xml|txt|webmanifest)$/i.test(candidate))) {
+  const publicText = await readFile(file, 'utf8')
+  if (hiddenProviderPattern.test(publicText)) {
+    errors.push(`Terme fournisseur interdit dans ${path.relative(dist, file)}`)
+  }
+}
 const forbiddenScreenshots = [
   'screenshots/vue-ensemble.png',
   'screenshots/actions.png',
@@ -103,37 +134,6 @@ const forbiddenScreenshots = [
 for (const file of forbiddenScreenshots) {
   if (allDistFiles.includes(path.join(dist, file))) {
     errors.push(`Ancienne capture non recadrée encore publiée : ${file}`)
-  }
-}
-
-const unpublishedGames = [
-  'ARK: Survival Ascended',
-  'Balatro',
-  'Blue Prince',
-  'Celeste',
-  'Cities Skylines',
-  'Dead by Daylight',
-  'Deep Rock Galactic',
-  'Diamond Drop Live',
-  'DREDGE',
-  'Egging On',
-  'Fallout 4',
-  'Hades II',
-  'Hollow Knight',
-  'Inscryption',
-  'Kingdom Come: Deliverance II',
-  'Le Pont des Diamants',
-  'No Man’s Sky',
-  'Palworld',
-  'Pokémon Rouge/Bleu',
-  'Resident Evil 7 Biohazard',
-  'Supermarket Simulator',
-  'Vampire Survivors',
-  'Wobbly Life'
-]
-for (const game of unpublishedGames) {
-  if (`${app}\n${content}`.includes(game)) {
-    errors.push(`Jeu non publié encore mentionné : ${game}`)
   }
 }
 

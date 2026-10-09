@@ -32,9 +32,9 @@ export const APP_TABS = [
     summary: 'Une action décrit ce que ShenPulse doit faire. Un déclencheur précise quand elle se lance.',
     parts: [
       ['Sous-onglet Actions', 'Crée, modifie, duplique, teste ou supprime les actions du profil.'],
-      ['Sous-onglet Sons', 'Regroupe les actions audio et donne accès à la bibliothèque globale.'],
-      ['Sous-onglet Voix', 'Configure les règles de synthèse vocale et leurs filtres de commentaires.'],
+      ['Sous-onglet Déclencheurs', 'Associe les événements du live à une ou plusieurs actions existantes.'],
       ['Sous-onglet Timers', 'Planifie une ou plusieurs actions à intervalle régulier.'],
+      ['Sous-onglet Simulateur', 'Envoie des cadeaux, likes, messages et autres événements fictifs pour tester le profil.'],
       ['Écrans Media', 'Fournit huit files indépendantes et huit URL de sources navigateur pour afficher images, GIF ou vidéos.']
     ],
     tips: ['Teste chaque action avant de lui associer un déclencheur.', 'Plusieurs actions peuvent appartenir à la même règle.']
@@ -193,6 +193,8 @@ export const ACTION_TYPES = [
   ['Objectif', 'Ajoute une valeur à l’objectif sélectionné.'],
   ['Minuteur', 'Ajoute ou retire du temps au timer choisi.'],
   ['Roue', 'Lance une roue précise et utilise le résultat configuré.'],
+  ['Groupe d’actions', 'Exécute toutes les actions sélectionnées ou un nombre d’entre elles choisi au hasard.'],
+  ['Animation Match', 'Lance une animation Match précise avec sa variante et son mode de cadrage.'],
   ['Effet de jeu', 'Envoie un effet à la passerelle du jeu sélectionné.'],
   ['Compteur WINS', 'Ajoute, retire ou remet à zéro les victoires.'],
   ['Commande OBS', 'Envoie une requête OBS WebSocket avec un type et des données JSON.'],
@@ -411,27 +413,3 @@ export const OVERLAY_TYPES = [
   ['Match Quiereme', 'Animation de match Quiereme.', '1080 × 1920'],
   ['Match Enigma', 'Animation Enigma dans la variante disponible.', '1080 × 1920']
 ]
-
-export const GAMES = [
-  game('Coin Pusher Live', 'Intégré', 6, ['Configurer cadeaux et valeur des pièces.', 'Tester le Plinko et le poussoir.', 'Lancer la fenêtre de jeu avant le live.']),
-  game('Cult of the Lamb', 'Mod géré', 32, modSteps(), 'La version du mod doit correspondre au jeu.'),
-  game('DealOrNoDeal', 'Intégré', 5, ['Régler valeurs et prix d’entrée.', 'Configurer le banquier.', 'Ouvrir la fenêtre hôte et tester une boîte.']),
-  game('GTA V Mont Chiliad', 'Installation gérée', 66, ['Fermer GTA V.', 'Laisser ShenPulse détecter et préparer le jeu.', 'Choisir interactions et overlays.', 'Lancer le jeu puis charger la partie.'], 'Une copie de sécurité est conservée.'),
-  game('Minecraft', 'Serveur géré · 2 modes', 142, ['Choisir le mode proposé dans la fiche Minecraft.', 'Cliquer sur Installer et accepter le CLUF.', 'Laisser ShenPulse préparer Java, le serveur, le monde et les plugins.', 'Attendre le serveur local, rejoindre l’adresse indiquée puis tester les interactions.']),
-  game('Puissance 4 Arena', 'Intégré', 6, ['Choisir grille et condition de victoire.', 'Associer les cadeaux aux équipes.', 'Tester une manche.']),
-  game('Stardew Valley', 'Mod géré', 28, modSteps(), 'ShenPulse utilise SMAPI et une passerelle locale.'),
-  game('Terraria', 'Mod géré', 25, modSteps(), 'ShenPulse utilise tModLoader et une passerelle locale.')
-]
-
-function game(name, type, interactions, steps, note = '') {
-  return { name, type, interactions, status: 'Exécutable', steps, note }
-}
-
-function modSteps() {
-  return [
-    'Fermer le jeu.',
-    'Sélectionner ou détecter son dossier.',
-    'Installer le mod et sa passerelle en conservant la sauvegarde.',
-    'Lancer le jeu, charger une partie et tester un effet.'
-  ]
-}

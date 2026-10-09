@@ -475,12 +475,18 @@ const AUTOMATED_GAME_INSTALLERS = new Set([
   "resident-evil-3",
   "gtav-montchiliad",
   "pokemon-red-blue",
+  "super-mario-kart",
   "minecraft-bedrock-box",
   "minecraft-sandbox-3",
   "minecraft-survival-plugin",
   "cult-of-the-lamb",
   "stardew-valley",
   "terraria"
+]);
+
+const MANAGED_BIZHAWK_GAME_IDS = new Set([
+  "pokemon-red-blue",
+  "super-mario-kart"
 ]);
 
 const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set([

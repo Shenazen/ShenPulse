@@ -1,0 +1,524 @@
+[
+  {
+    "id": "lengthup",
+    "name": "Ajouter un tour à la course",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "music_bowser",
+    "name": "Changer la musique : thème de Bowser",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_donkey",
+    "name": "Changer la musique : thème de Donkey Kong",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_koopa",
+    "name": "Changer la musique : thème de Koopa",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_luigi",
+    "name": "Changer la musique : thème de Luigi",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_mario",
+    "name": "Changer la musique : thème de Mario",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_peach",
+    "name": "Changer la musique : thème de Peach",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_toad",
+    "name": "Changer la musique : thème de Toad",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_track",
+    "name": "Changer la musique : thème du circuit",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "music_yoshi",
+    "name": "Changer la musique : thème de Yoshi",
+    "category": "Changer la musique",
+    "available": true
+  },
+  {
+    "id": "char_bowser",
+    "name": "Changer le personnage du joueur 1 : Bowser",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char_dk",
+    "name": "Changer le personnage du joueur 1 : Donkey Kong",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char_koopa",
+    "name": "Changer le personnage du joueur 1 : Koopa",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char_luigi",
+    "name": "Changer le personnage du joueur 1 : Luigi",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char_mario",
+    "name": "Changer le personnage du joueur 1 : Mario",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char_peach",
+    "name": "Changer le personnage du joueur 1 : Peach",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char_toad",
+    "name": "Changer le personnage du joueur 1 : Toad",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char_yoshi",
+    "name": "Changer le personnage du joueur 1 : Yoshi",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_bowser",
+    "name": "Changer le personnage du joueur 2 : Bowser",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_dk",
+    "name": "Changer le personnage du joueur 2 : Donkey Kong",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_koopa",
+    "name": "Changer le personnage du joueur 2 : Koopa",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_luigi",
+    "name": "Changer le personnage du joueur 2 : Luigi",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_mario",
+    "name": "Changer le personnage du joueur 2 : Mario",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_peach",
+    "name": "Changer le personnage du joueur 2 : Peach",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_toad",
+    "name": "Changer le personnage du joueur 2 : Toad",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "char2_yoshi",
+    "name": "Changer le personnage du joueur 2 : Yoshi",
+    "category": "Changer de personnage",
+    "available": true
+  },
+  {
+    "id": "lapdown",
+    "name": "Retirer un tour au joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "lapdown2",
+    "name": "Retirer un tour au joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "coinup",
+    "name": "Donner une pièce au joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item_banana",
+    "name": "Donner au joueur 1 : Banane",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_boo",
+    "name": "Donner au joueur 1 : Boo",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_coin",
+    "name": "Donner au joueur 1 : Pièce",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_feather",
+    "name": "Donner au joueur 1 : Plume",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_greenshell",
+    "name": "Donner au joueur 1 : Carapace verte",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_lightning",
+    "name": "Donner au joueur 1 : Éclair",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_mushroom",
+    "name": "Donner au joueur 1 : Champignon",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_nothing",
+    "name": "Donner au joueur 1 : Aucun objet",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_redshell",
+    "name": "Donner au joueur 1 : Carapace rouge",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "item_star",
+    "name": "Donner au joueur 1 : Étoile",
+    "category": "Donner des objets",
+    "available": true
+  },
+  {
+    "id": "coinup2",
+    "name": "Donner une pièce au joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_banana",
+    "name": "Donner au joueur 2 : Banane",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_boo",
+    "name": "Donner au joueur 2 : Boo",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_coin",
+    "name": "Donner au joueur 2 : Pièce",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_feather",
+    "name": "Donner au joueur 2 : Plume",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_greenshell",
+    "name": "Donner au joueur 2 : Carapace verte",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_lightning",
+    "name": "Donner au joueur 2 : Éclair",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_mushroom",
+    "name": "Donner au joueur 2 : Champignon",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_nothing",
+    "name": "Donner au joueur 2 : Aucun objet",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_redshell",
+    "name": "Donner au joueur 2 : Carapace rouge",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "item2_star",
+    "name": "Donner au joueur 2 : Étoile",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "lapup",
+    "name": "Ajouter un tour au joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "lapup2",
+    "name": "Ajouter un tour au joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "lengthdown",
+    "name": "Retirer un tour de la course",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "reverse",
+    "name": "Inverser la caméra du joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "reverse2",
+    "name": "Inverser la caméra du joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "auto",
+    "name": "Activer le pilotage automatique du joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "auto2",
+    "name": "Activer le pilotage automatique du joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "shrink",
+    "name": "Rétrécir le joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "shrink2",
+    "name": "Rétrécir le joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "side",
+    "name": "Incliner la caméra du joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "side2",
+    "name": "Incliner la caméra du joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "spin",
+    "name": "Faire tourner la caméra du joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "spin2",
+    "name": "Faire tourner la caméra du joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "spinout",
+    "name": "Provoquer un tête-à-queue au joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "spinout2",
+    "name": "Provoquer un tête-à-queue au joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "coindown",
+    "name": "Retirer une pièce au joueur 1",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "coindown2",
+    "name": "Retirer une pièce au joueur 2",
+    "category": "Super Mario Kart",
+    "available": true
+  },
+  {
+    "id": "useitem_banana",
+    "name": "Utiliser pour le joueur 1 : Banane",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_boo",
+    "name": "Utiliser pour le joueur 1 : Boo",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_coin",
+    "name": "Utiliser pour le joueur 1 : Pièce",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_feather",
+    "name": "Utiliser pour le joueur 1 : Plume",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_greenshell",
+    "name": "Utiliser pour le joueur 1 : Carapace verte",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_lightning",
+    "name": "Utiliser pour le joueur 1 : Éclair",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_mushroom",
+    "name": "Utiliser pour le joueur 1 : Champignon",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_nothing",
+    "name": "Utiliser pour le joueur 1 : Aucun objet",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_redshell",
+    "name": "Utiliser pour le joueur 1 : Carapace rouge",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem_star",
+    "name": "Utiliser pour le joueur 1 : Étoile",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_banana",
+    "name": "Utiliser pour le joueur 2 : Banane",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_boo",
+    "name": "Utiliser pour le joueur 2 : Boo",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_coin",
+    "name": "Utiliser pour le joueur 2 : Pièce",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_feather",
+    "name": "Utiliser pour le joueur 2 : Plume",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_greenshell",
+    "name": "Utiliser pour le joueur 2 : Carapace verte",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_lightning",
+    "name": "Utiliser pour le joueur 2 : Éclair",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_mushroom",
+    "name": "Utiliser pour le joueur 2 : Champignon",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_nothing",
+    "name": "Utiliser pour le joueur 2 : Aucun objet",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_redshell",
+    "name": "Utiliser pour le joueur 2 : Carapace rouge",
+    "category": "Utiliser des objets",
+    "available": true
+  },
+  {
+    "id": "useitem2_star",
+    "name": "Utiliser pour le joueur 2 : Étoile",
+    "category": "Utiliser des objets",
+    "available": true
+  }
+]

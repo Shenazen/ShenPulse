@@ -32,6 +32,7 @@ const ENTITY_GAME_ACTIONS = new Set([
   "select-game",
   "configure-game",
   "install-game",
+  "select-game-rom",
   "launch-game",
   "start-game-session",
   "stop-game-session",
@@ -208,7 +209,12 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
         type: "success",
         scope: "installation",
         title: "Installation terminée",
-        detail: "Le jeu est prêt. Vous pouvez passer aux interactions."
+        detail:
+          MANAGED_BIZHAWK_GAME_IDS.has(id) && !result?.romReady
+            ? `La ROM n’a pas pu être préparée. Relancez la réparation de ${
+                id === "pokemon-red-blue" ? "Pokémon" : "Super Mario Kart"
+              }.`
+            : "Le jeu est prêt. Vous pouvez passer aux interactions."
       });
       return result;
     } catch (error) {
@@ -234,6 +240,35 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
       return null;
     } finally {
       gameInstallBusyId = "";
+      render();
+    }
+  }
+  if (action === "select-game-rom") {
+    const pack = snapshot.packs.find((item) => item.id === id);
+    if (!requireGameAccess(pack)) return;
+    gamePageMessages.delete(id);
+    try {
+      const result = await api.selectGameRom(id);
+      if (result?.canceled) return result;
+      acceptSnapshot(await api.getSnapshot());
+      gamePageMessages.set(id, {
+        type: "success",
+        scope: "installation",
+        title: "ROM Pokémon prête",
+        detail: "La copie locale a été validée et préparée pour les interactions ShenPulse."
+      });
+      toast("ROM Pokémon prête");
+      return result;
+    } catch (error) {
+      gamePageMessages.set(id, {
+        type: "error",
+        scope: "installation",
+        title: "ROM incompatible",
+        detail: error.message || "Sélectionnez Pokémon Rouge ou Bleu (USA/Europe)."
+      });
+      toast("ROM incompatible", error.message || String(error), true);
+      return null;
+    } finally {
       render();
     }
   }
@@ -267,7 +302,10 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
         type: "success",
         scope: "launch",
         title: "Le jeu a été lancé",
-        detail: "Chargez votre partie : ShenPulse s’occupe du reste."
+        detail:
+          MANAGED_BIZHAWK_GAME_IDS.has(id)
+            ? "La ROM est ouverte dans BizHawk avec le connecteur d’interactions actif."
+            : "Chargez votre partie : ShenPulse s’occupe du reste."
       });
       toast("Jeu lancé");
       return result;

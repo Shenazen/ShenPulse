@@ -677,9 +677,14 @@ test("les aperçus overlays se préchargent en fond dès le démarrage", () => {
     /function warmOverlayRuntimePreviews\(\)[\s\S]*overlayDefinitions\(\)\.filter\([\s\S]*canAccessOverlay\(item\)[\s\S]*!item\.catalogHidden/
   );
   assert.match(renderer, /OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY = 2/);
+  assert.match(renderer, /item\.previewKind !== "match"/);
   assert.match(renderer, /iframe\.loading = "eager"/);
   assert.match(renderer, /function discardOverlayBackgroundPreview\(record\)/);
   assert.match(renderer, /function adoptWarmedOverlayPreview\(frame\)/);
+  assert.match(
+    renderer,
+    /placeholderFrame\.hasAttribute\("data-overlay-live-preview"\)[\s\S]*iframe\.setAttribute\("data-overlay-live-preview", ""\)[\s\S]*iframe\.removeAttribute\("data-overlay-runtime-preview"\)/
+  );
   assert.match(renderer, /function preserveOverlayRuntimeFrames\(root = document\)/);
   assert.match(
     renderer,

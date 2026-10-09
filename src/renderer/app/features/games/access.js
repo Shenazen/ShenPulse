@@ -114,7 +114,8 @@ const SHENPULSE_PLATFORM_GAME_IDS = new Set([
 const GAME_PLATFORM_OVERRIDES = Object.freeze({
   fortnite: ["epic-games"],
   "gtav-montchiliad": ["rockstar-games", "steam", "epic-games"],
-  "pokemon-red-blue": ["nintendo"]
+  "pokemon-red-blue": ["nintendo"],
+  "super-mario-kart": ["nintendo"]
 });
 
 const GAME_PLATFORM_LABELS = Object.freeze({

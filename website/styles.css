@@ -1408,6 +1408,72 @@ h3 {
   font-size: 0.82rem;
 }
 
+.game-guide-heading {
+  display: flex;
+  margin-bottom: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.game-guide-heading small,
+.game-guide-grid small {
+  color: var(--cyan);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-description {
+  max-width: 82ch;
+  margin: 6px 0 0;
+  color: white;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.game-guide-link {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--muted-strong);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.game-guide-link:hover {
+  border-color: rgba(25, 214, 232, 0.45);
+  color: var(--cyan);
+}
+
+.game-guide-grid {
+  display: grid;
+  margin-bottom: 22px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.game-guide-grid article {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.game-guide-grid p {
+  margin: 7px 0 0;
+  line-height: 1.55;
+}
+
+.game-detail h4 {
+  margin: 18px 0 8px;
+  color: white;
+  font-size: 0.82rem;
+}
+
 .game-detail ol {
   padding-left: 20px;
 }
@@ -1974,6 +2040,15 @@ h3 {
 
   .game-detail {
     padding-left: 22px;
+  }
+
+  .game-guide-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .game-guide-grid {
+    grid-template-columns: 1fr;
   }
 
   .legal-layout > article > section {

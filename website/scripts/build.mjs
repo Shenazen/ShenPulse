@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { currentPublicGames, serializePublicGames } from './game-catalog.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dist = path.join(root, 'dist')
@@ -11,6 +12,11 @@ await mkdir(dist, { recursive: true })
 for (const file of ['index.html', 'styles.css', 'content.js', 'app.js']) {
   await cp(path.join(root, file), path.join(dist, file))
 }
+
+await writeFile(
+  path.join(dist, 'game-catalog.js'),
+  serializePublicGames(currentPublicGames())
+)
 
 await cp(path.join(root, 'public'), dist, { recursive: true })
 

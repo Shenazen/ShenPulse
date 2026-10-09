@@ -293,7 +293,10 @@ function scheduleOverlayPreviewWarmup(delayMs = 0) {
 function warmOverlayRuntimePreviews() {
   if (!snapshot) return;
   const items = overlayDefinitions().filter(
-    (item) => canAccessOverlay(item) && !item.catalogHidden
+    (item) =>
+      canAccessOverlay(item) &&
+      !item.catalogHidden &&
+      item.previewKind !== "match"
   );
   const desiredCacheKeys = new Set();
   for (const item of items) {
@@ -370,12 +373,10 @@ function startOverlayBackgroundPreview(record) {
     record.item.sourceSize || [];
   iframe.style.setProperty("--overlay-warmup-width", `${sourceWidth}px`);
   iframe.style.setProperty("--overlay-warmup-height", `${sourceHeight}px`);
-  const complete = (ready) => {
+  const complete = (loaded) => {
     if (!record.loading) return;
     record.loading = false;
-    record.ready = ready;
-    if (ready) {
-      iframe.dataset.overlayPreviewReady = "true";
+    if (loaded) {
       window.hydrateOverlayPreviewFrame?.(iframe);
     }
     activeOverlayBackgroundPreviewLoads = Math.max(
@@ -404,6 +405,13 @@ function adoptWarmedOverlayPreview(frame) {
   const iframe = record.iframe;
   placeholderFrame.remove();
   record.inUse = true;
+  if (placeholderFrame.hasAttribute("data-overlay-live-preview")) {
+    iframe.setAttribute("data-overlay-live-preview", "");
+    iframe.removeAttribute("data-overlay-runtime-preview");
+  } else {
+    iframe.removeAttribute("data-overlay-live-preview");
+    iframe.setAttribute("data-overlay-runtime-preview", "true");
+  }
   delete iframe.dataset.overlayPreviewWarm;
   iframe.removeAttribute("aria-hidden");
   iframe.title = placeholderFrame.title;
@@ -560,10 +568,6 @@ function bindOverlayRuntimeFrames(root = document) {
           iframe.dataset.overlaySrc &&
           !iframe.dataset.overlayPreviewLoading
         ) return;
-        iframe.dataset.overlayPreviewReady = "true";
-        iframe
-          .closest("[data-overlay-native-frame]")
-          ?.classList.add("overlay-runtime-frame--ready");
         completeDeferredOverlayPreview(iframe);
         window.hydrateOverlayPreviewFrame?.(iframe);
       });
@@ -582,3 +586,24 @@ function bindOverlayRuntimeFrames(root = document) {
     updateOverlayRuntimeFrameScale(frame);
   });
 }
+
+window.addEventListener("message", (event) => {
+  if (
+    event.data?.source !== "shenpulse-overlay-runtime" ||
+    event.data?.type !== "ready"
+  ) {
+    return;
+  }
+  const iframe = [...document.querySelectorAll("iframe")].find(
+    (candidate) => candidate.contentWindow === event.source
+  );
+  if (!iframe) return;
+  iframe.dataset.overlayPreviewReady = "true";
+  iframe
+    .closest("[data-overlay-native-frame]")
+    ?.classList.add("overlay-runtime-frame--ready");
+  const record = overlayBackgroundPreviewCache.get(
+    iframe.dataset.overlayPreviewCacheKey || ""
+  );
+  if (record?.iframe === iframe) record.ready = true;
+});

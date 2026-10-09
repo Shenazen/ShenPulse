@@ -90,7 +90,9 @@ const CONTENT_TYPES = {
   ".svg": "image/svg+xml; charset=utf-8",
   ".wav": "audio/wav",
   ".webm": "video/webm",
-  ".webp": "image/webp"
+  ".webp": "image/webp",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2"
 };
 
 class OverlayServer {
@@ -352,7 +354,7 @@ class OverlayServer {
       return this.#serveStatic(url.pathname, request, response);
     }
     if (
-      /^\/overlay\/(?!media\/)(?:[^/]+\/)*[^/]+\.(?:css|js|png|svg)$/i.test(
+      /^\/overlay\/(?!media\/)(?:[^/]+\/)*[^/]+\.(?:css|js|png|svg|woff|woff2)$/i.test(
         url.pathname
       )
     ) {
@@ -492,7 +494,7 @@ class OverlayServer {
     }
     const extension = path.extname(target).toLowerCase();
     const isOverlayDocument = extension === ".html";
-    const isCacheableOverlayCode = [".css", ".js"].includes(extension);
+    const isCacheableOverlayCode = [".css", ".js", ".woff", ".woff2"].includes(extension);
     const isProtectedMatchVideo = /^\/overlay\/media\/video\//i.test(
       String(requestPath || "")
     );
@@ -504,8 +506,8 @@ class OverlayServer {
         isOverlayDocument || isProtectedMatchVideo
           ? "no-store"
           : isCacheableOverlayCode
-            ? "private, no-cache"
-          : "public, max-age=3600"
+            ? "private, max-age=31536000, immutable"
+            : "public, max-age=31536000, immutable"
     };
     if (isCacheableOverlayCode) headers.ETag = etag;
     if (

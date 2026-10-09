@@ -87,13 +87,19 @@ test("protège l'état local et accepte un événement authentifié", async () =
       `http://127.0.0.1:${overlayPort}/overlay/overlay.css`
     );
     assert.equal(liveStylesheet.status, 200);
-    assert.equal(liveStylesheet.headers.get("cache-control"), "private, no-cache");
+    assert.equal(
+      liveStylesheet.headers.get("cache-control"),
+      "private, max-age=31536000, immutable"
+    );
     assert.ok(liveStylesheet.headers.get("etag"));
     const liveScript = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/overlay.js`
     );
     assert.equal(liveScript.status, 200);
-    assert.equal(liveScript.headers.get("cache-control"), "private, no-cache");
+    assert.equal(
+      liveScript.headers.get("cache-control"),
+      "private, max-age=31536000, immutable"
+    );
     const cachedLiveScript = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/overlay.js`,
       { headers: { "If-None-Match": liveScript.headers.get("etag") } }
@@ -114,6 +120,12 @@ test("protège l'état local et accepte un événement authentifié", async () =
     );
     assert.equal(importedStylesheet.status, 200);
     assert.match(importedStylesheet.headers.get("content-type"), /css/);
+    const overlayFont = await fetch(
+      `http://127.0.0.1:${overlayPort}/overlay/fonts/inter-latin-wght-normal.woff2?v=1.0.14`
+    );
+    assert.equal(overlayFont.status, 200);
+    assert.match(overlayFont.headers.get("content-type"), /font\/woff2/);
+    assert.match(overlayFont.headers.get("cache-control"), /immutable/);
     const vendorScript = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/vendor/lottie-player.js`
     );

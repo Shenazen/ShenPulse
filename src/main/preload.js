@@ -110,6 +110,7 @@ contextBridge.exposeInMainWorld("shenPulse", {
     invoke("game:interaction-audit", id, effectId, progress),
   getGameRuntimeStatus: (id) => invoke("game:runtime-status", id),
   installGame: (id) => invoke("game:install", id),
+  selectGameRom: (id) => invoke("game:select-rom", id),
   launchGame: (id) => invoke("game:launch", id),
   setGameWindowFormat: (id, format) =>
     invoke("game:window-format", id, format),

@@ -279,27 +279,12 @@ function revealOverlay() {
   }
 }
 
-function mediaUrl(relativePath) {
-  if (relayChannel) {
-    if (/^lottie\/[^/]+\.json$/i.test(relativePath)) {
-      return `https://tikfinity.zerody.one/assets/lotties/${encodeURIComponent(
-        String(relativePath).slice("lottie/".length)
-      )}`;
-    }
-    return `/media/${String(relativePath)
-      .split("/")
-      .map((part) => encodeURIComponent(part))
-      .join("/")}`;
-  }
-  return `/overlay/media/${relativePath}?token=${encodeURIComponent(token)}`;
-}
-
 function setThemeFrame(elementId, kind, classicPath = "") {
   const element = document.getElementById(elementId);
   if (!element) return;
   const path = themeName === "classic"
     ? classicPath
-    : `widgets/interactive-overlays/${kind}-theme-${themeName}.png`;
+    : `widgets/interactive-overlays/${kind}-theme-${themeName}.webp`;
   if (!path) {
     element.hidden = true;
     element.removeAttribute("src");
