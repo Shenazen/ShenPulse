@@ -10,70 +10,79 @@
 function audioOutputSwitchMarkup(rule, action, actionIndex) {
   const live = isLiveAudioOutput(action.config);
   const screen = normalizedLiveScreen(action.config);
-  const label = live ? `LIVE · ÉCRAN ${screen}` : "MOI UNIQUEMENT";
-  return `<label class="audio-output-switch ${live ? "is-live" : "is-local"}" title="${escapeHtml(label)}">
-    <span class="switch"><input type="checkbox" data-action="set-audio-output" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}" ${live ? "checked" : ""}><span></span></span>
-    <small>${escapeHtml(label)}</small>
-  </label>`;
+  const attributes = `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
+  return `<div class="audio-output-control ${live ? "is-live" : "is-local"}">
+    <label class="audio-output-switch" title="Choisir entre une écoute locale et la diffusion dans le LIVE">
+      <small class="audio-output-local">Moi uniquement</small>
+      <span class="switch"><input type="checkbox" data-action="set-audio-output" ${attributes} ${live ? "checked" : ""}><span></span></span>
+      <small class="audio-output-live">LIVE${live ? ` · Écran ${screen}` : ""}</small>
+    </label>
+    ${live ? `<button class="audio-output-configure" title="Changer l’écran de diffusion" data-action="configure-audio-output" ${attributes}>Configurer</button>` : ""}
+  </div>`;
 }
 
-function renderSounds() {
-  const query = normalizeCatalogSearch(soundSearch);
-  const audioRows = soundActionRows().filter(({ rule, action }) =>
-    action.type === "audio.play" &&
-    (!query || normalizeCatalogSearch(`${rule.name} ${triggerLabel(rule)} ${actionDescription(action)}`).includes(query))
-  );
-  const ttsRows = soundActionRows().filter(({ rule, action }) =>
-    action.type === "tts.speak" &&
-    (!query || normalizeCatalogSearch(`${rule.name} ${triggerLabel(rule)} ${actionDescription(action)}`).includes(query))
-  );
-  return `
-    <div class="reference-page sounds-page">
-      <section class="page-hero compact">
-        <div><span class="hero-chip">ATELIER AUDIO</span><h2>Sons & voix</h2><p>Associez une alerte sonore ou une voix à chaque déclencheur, puis vérifiez le rendu en direct.</p></div>
-        <label class="search-control"><span>⌕</span><input data-search="sounds" type="search" value="${escapeHtml(soundSearch)}" placeholder="Rechercher un son ou une règle"></label>
-      </section>
-      <section class="studio-panel audio-panel panel-violet">
-        <header class="studio-panel-heading">
-          <div><span class="panel-accent"></span><div><h3>Jouer des sons</h3><p>Bibliothèque locale incluse, déclencheurs, raccourcis et volume.</p></div></div>
-          <div class="button-row">
-            ${canAccessFeature("backblaze.sounds") ? '<button class="button" data-action="upload-sound">↑ Ajouter un son personnalisé</button>' : ""}
-            <button class="button primary" data-action="add-sound">＋ Créer une alerte sonore</button>
-          </div>
-        </header>
-        <div class="data-table-wrap">
-          <table class="data-table sounds-data-table">
-            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>DIFFUSION</th><th>DÉCLENCHEUR</th><th>SON</th><th>VOLUME</th><th>NOM</th></tr></thead>
-            <tbody>${audioRows.length ? audioRows.map(({ rule, action, actionIndex }) => `
-              <tr>
-                <td class="table-tools"><button title="Écouter" data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶</button><button title="Modifier" data-action="edit-sound" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">✎</button><button title="Supprimer" data-action="delete-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">×</button></td>
-                <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
-                <td>${audioOutputSwitchMarkup(rule, action, actionIndex)}</td>
-                <td>${triggerPill(rule)}</td>
-                <td><span class="sound-name"><span>♫</span>${escapeHtml(actionDescription(action))}</span></td>
-                <td><input class="volume-slider" type="range" min="0" max="1" step="0.05" value="${escapeHtml(action.config?.volume ?? 1)}" data-action="set-sound-volume" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"></td>
-                <td><strong>${escapeHtml(rule.name)}</strong></td>
-              </tr>`).join("") : `<tr><td colspan="7">${emptyInline("Aucune alerte sonore. Créez votre première règle audio.")}</td></tr>`}</tbody>
-          </table>
-        </div>
-      </section>
-      <section class="studio-panel audio-panel panel-cyan" ${canAccessFeature("tts.voices") && canAccessActionType("tts.speak") ? "" : "hidden"}>
-        <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Synthèse vocale</h3><p>Chaque commentaire du chat peut être lu avec la voix Windows de votre choix.</p></div></div><div class="button-row"><button class="button" data-action="preview-tts">Tester la voix</button><button class="button primary" data-action="add-tts">＋ Ajouter une règle TTS</button></div></header>
-        <div class="data-table-wrap">
-          <table class="data-table">
-            <thead><tr><th>OUTILS</th><th>ACTIF</th><th>DIFFUSION</th><th>TEXTE</th><th>VOIX</th><th>VOLUME</th></tr></thead>
-            <tbody>${ttsRows.map(({ rule, action, actionIndex }) => `
-              <tr>
-                <td class="table-tools"><button data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶</button><button data-action="edit-tts" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">✎</button><button data-action="delete-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">×</button></td>
-                <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
-                <td>${audioOutputSwitchMarkup(rule, action, actionIndex)}</td>
-                <td>Commentaire du chat</td><td>${escapeHtml(action.config?.voice || snapshot.state.settings.tts.voice || "Voix Windows par défaut")}</td><td>${Math.round(Number(action.config?.volume ?? snapshot.state.settings.tts.volume) * 100)}%</td>
-              </tr>`).join("") || `<tr><td colspan="6">${emptyInline("Aucune règle de synthèse vocale.")}</td></tr>`}</tbody>
-          </table>
-        </div>
-      </section>
-      ${renderMediaScreensPanel(flattenActions(), { context: "sounds" })}
-      <section class="studio-panel spotify-panel ${spotifyStatus.connected ? "is-connected" : ""}" ${canAccessFeature("spotify.playback") && canAccessActionType("spotify.queue") ? "" : "hidden"}>
+function soundRowAttributes(rule, action, actionIndex) {
+  return `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
+}
+
+function soundContextMenu(rule, action, actionIndex, editorAction) {
+  const attributes = soundRowAttributes(rule, action, actionIndex);
+  return `<details class="compact-context-menu"><summary title="Plus d’options" aria-label="Plus d’options">•••</summary><div>
+    <button data-action="${editorAction}" ${attributes}>Modifier</button>
+    <button class="danger" data-action="delete-action" ${attributes}>Supprimer</button>
+  </div></details>`;
+}
+
+function soundVolumeControl(rule, action, actionIndex) {
+  const volume = Math.max(0, Math.min(1, Number(action.config?.volume ?? 1)));
+  return `<label class="audio-volume-control"><span>Volume <output data-sound-volume-output>${Math.round(volume * 100)} %</output></span><input class="volume-slider" type="range" min="0" max="1" step="0.05" value="${escapeHtml(volume)}" data-sound-volume data-action="set-sound-volume" ${soundRowAttributes(rule, action, actionIndex)}></label>`;
+}
+
+function renderAudioAlerts(rows) {
+  return `<section class="studio-panel audio-panel panel-violet">
+    <header class="studio-panel-heading">
+      <div><span class="panel-accent"></span><div><h3>Alertes sonores</h3><p>Une vue compacte, avec la bibliothèque complète disponible au moment de choisir le son.</p></div></div>
+      <div class="button-row">
+        ${canAccessFeature("backblaze.sounds") ? '<button class="button" data-action="upload-sound">↑ Importer un son</button>' : ""}
+        <button class="button primary" data-action="add-sound">＋ Créer une alerte</button>
+      </div>
+    </header>
+    ${rows.length ? `<div class="audio-card-list">${rows.map(({ rule, action, actionIndex }) => {
+      const attributes = soundRowAttributes(rule, action, actionIndex);
+      return `<article class="audio-rule-card">
+        <button class="audio-preview-button" title="Écouter" data-action="test-action" ${attributes}>▶</button>
+        <div class="audio-rule-copy"><strong>${escapeHtml(rule.name)}</strong><span class="sound-name"><span>♫</span>${escapeHtml(actionDescription(action))}</span></div>
+        <div class="audio-rule-trigger"><small>DÉCLENCHEUR</small>${triggerPill(rule)}</div>
+        ${audioOutputSwitchMarkup(rule, action, actionIndex)}
+        ${soundVolumeControl(rule, action, actionIndex)}
+        <label class="audio-rule-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
+        ${soundContextMenu(rule, action, actionIndex, "edit-sound")}
+      </article>`;
+    }).join("")}</div>` : `<div class="automation-empty">${emptyInline("Aucune alerte sonore. Créez votre première règle audio.")}</div>`}
+  </section>`;
+}
+
+function renderTtsRules(rows) {
+  return `<section class="studio-panel audio-panel panel-cyan">
+    <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Synthèse vocale</h3><p>Chaque commentaire du chat peut être lu avec la voix Windows de votre choix.</p></div></div><div class="button-row"><button class="button" data-action="preview-tts">Tester la voix</button><button class="button primary" data-action="add-tts">＋ Ajouter une règle TTS</button></div></header>
+    ${rows.length ? `<div class="audio-card-list tts-card-list">${rows.map(({ rule, action, actionIndex }) => {
+      const attributes = soundRowAttributes(rule, action, actionIndex);
+      const volume = Math.round(Number(action.config?.volume ?? snapshot.state.settings.tts.volume) * 100);
+      return `<article class="audio-rule-card tts-rule-card">
+        <button class="audio-preview-button" title="Tester la voix" data-action="test-action" ${attributes}>▶</button>
+        <div class="audio-rule-copy"><strong>${escapeHtml(rule.name)}</strong><span>Commentaire du chat</span></div>
+        <div class="audio-rule-trigger"><small>DÉCLENCHEUR</small>${triggerPill(rule)}</div>
+        <div class="tts-voice-summary"><small>VOIX</small><strong>${escapeHtml(action.config?.voice || snapshot.state.settings.tts.voice || "Voix Windows par défaut")}</strong><span>${volume} %</span></div>
+        ${audioOutputSwitchMarkup(rule, action, actionIndex)}
+        <label class="audio-rule-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
+        ${soundContextMenu(rule, action, actionIndex, "edit-tts")}
+      </article>`;
+    }).join("")}</div>` : `<div class="automation-empty">${emptyInline("Aucune règle de synthèse vocale.")}</div>`}
+  </section>`;
+}
+
+function renderSpotifyPanel() {
+  return `<section class="studio-panel spotify-panel ${spotifyStatus.connected ? "is-connected" : ""}">
         <header class="studio-panel-heading">
           <div><span class="spotify-mark">●</span><div><h3>Spotify en direct</h3><p>Contrôlez la musique et ajoutez des titres depuis les interactions du live.</p></div></div>
           <div class="button-row">
@@ -91,8 +100,42 @@ function renderSounds() {
           <button class="button" data-action="spotify-control" data-operation="next" ${spotifyStatus.connected ? "" : "disabled"}>≫ Suivant</button>
           <span>Les actions Spotify des déclencheurs utilisent cette connexion globale.</span>
         </div>
-      </section>
-    </div>`;
+      </section>`;
+}
+
+function renderSounds() {
+  const allRows = soundActionRows();
+  const query = normalizeCatalogSearch(soundSearch);
+  const audioRows = allRows.filter(({ action }) => action.type === "audio.play");
+  const ttsRows = allRows.filter(({ action }) => action.type === "tts.speak");
+  const ttsAvailable = canAccessFeature("tts.voices") && canAccessActionType("tts.speak");
+  const spotifyAvailable = canAccessFeature("spotify.playback") && canAccessActionType("spotify.queue");
+  const availableSections = new Set(["audio", "outputs"]);
+  if (ttsAvailable) availableSections.add("tts");
+  if (spotifyAvailable) availableSections.add("spotify");
+  if (!availableSections.has(soundsSection)) soundsSection = "audio";
+  const visibleRows = (rows) => rows.filter(({ rule, action }) =>
+    !query || normalizeCatalogSearch(`${rule.name} ${triggerLabel(rule)} ${actionDescription(action)}`).includes(query)
+  );
+  const tabs = [
+    ["audio", "Alertes sonores", audioRows.length],
+    ...(ttsAvailable ? [["tts", "Synthèse vocale", ttsRows.length]] : []),
+    ["outputs", "Diffusion LIVE", 8],
+    ...(spotifyAvailable ? [["spotify", "Spotify", spotifyStatus.connected ? "ON" : "OFF"]] : [])
+  ];
+  return `<div class="reference-page sounds-page">
+    <section class="page-hero compact">
+      <div><span class="hero-chip">ATELIER AUDIO</span><h2>Sons & voix</h2><p>Associez une alerte sonore ou une voix à chaque déclencheur, puis choisissez clairement où elle doit être entendue.</p></div>
+      ${["audio", "tts"].includes(soundsSection) ? `<label class="search-control"><span>⌕</span><input data-search="sounds" type="search" value="${escapeHtml(soundSearch)}" placeholder="Rechercher un son ou une règle"></label>` : ""}
+    </section>
+    <nav class="module-tabs sounds-module-tabs" aria-label="Sections audio">
+      ${tabs.map(([id, label, count]) => `<button class="${soundsSection === id ? "active" : ""}" data-action="set-sounds-section" data-value="${id}">${label}<span>${count}</span></button>`).join("")}
+    </nav>
+    ${soundsSection === "audio" ? renderAudioAlerts(visibleRows(audioRows)) : ""}
+    ${soundsSection === "tts" ? renderTtsRules(visibleRows(ttsRows)) : ""}
+    ${soundsSection === "outputs" ? renderMediaScreensPanel(flattenActions(), { context: "sounds" }) : ""}
+    ${soundsSection === "spotify" ? renderSpotifyPanel() : ""}
+  </div>`;
 }
 
 function renderTimersPanel() {

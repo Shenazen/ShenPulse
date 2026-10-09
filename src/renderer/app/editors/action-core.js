@@ -267,6 +267,11 @@ function openActionEditor(row) {
     kicker: "ACTION & DÉCLENCHEUR",
     variant: "wide",
     body: `<div class="action-editor">
+      <nav class="action-editor-progress" aria-label="Étapes de configuration">
+        <span class="active"><b>1</b><small>Action</small></span>
+        <span><b>2</b><small>Déclencheur optionnel</small></span>
+        <span><b>3</b><small>Réglages avancés</small></span>
+      </nav>
       ${dialogSection(
         "1. Action",
         "Définissez ce que ShenPulse exécutera.",

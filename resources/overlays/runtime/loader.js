@@ -6,7 +6,7 @@
  * compteur. OBS télécharge et compile ainsi beaucoup moins de JavaScript.
  */
 (async function loadActiveOverlayRuntime() {
-  const VERSION = "1.0.15";
+  const VERSION = "1.0.16-beta1";
   const query = new URLSearchParams(location.search);
   const isMatchRoute = /^\/(?:match|m)\//i.test(location.pathname);
   const view = isMatchRoute ? "match" : query.get("view") || "alerts";

@@ -582,6 +582,7 @@ const GUEST_BROWSING_ACTIONS = new Set([
   "filter-enabled-actions",
   "select-simulator-type",
   "set-actions-section",
+  "set-sounds-section",
   "set-game-effect-category",
   "set-game-filter",
   "set-overlay-category",

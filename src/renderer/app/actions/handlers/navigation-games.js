@@ -7,6 +7,7 @@
 
 const NAVIGATION_GAME_ACTIONS = new Set([
   "set-actions-section",
+  "set-sounds-section",
   "select-simulator-type",
   "filter-enabled-actions",
   "set-overlay-category",
@@ -56,6 +57,10 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
   if (!NAVIGATION_GAME_ACTIONS.has(action)) return ACTION_NOT_HANDLED;
   if (action === "set-actions-section") {
     actionsSection = target.dataset.value;
+    return render();
+  }
+  if (action === "set-sounds-section") {
+    soundsSection = target.dataset.value;
     return render();
   }
   if (action === "select-simulator-type") {

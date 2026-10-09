@@ -1,0 +1,562 @@
+/* Listes compactes des pages Actions et Sons. */
+
+.automation-list,
+.trigger-card-list,
+.audio-card-list {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.automation-list-head,
+.action-workflow-header {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) minmax(210px, 1fr) 78px 145px;
+  align-items: center;
+  gap: 14px;
+}
+
+.automation-list-head {
+  padding: 0 13px 2px;
+  color: #93a4bd;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+}
+
+.action-workflow-card,
+.trigger-card,
+.audio-rule-card {
+  border: 1px solid rgba(71, 85, 105, 0.66);
+  border-radius: 9px;
+  background: rgba(4, 7, 17, 0.58);
+}
+
+.action-workflow-card:hover,
+.trigger-card:hover,
+.audio-rule-card:hover {
+  border-color: rgba(var(--panel-accent), 0.38);
+  background: rgba(var(--panel-accent), 0.035);
+}
+
+.action-workflow-header {
+  min-height: 64px;
+  padding: 10px 13px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.48);
+}
+
+.action-workflow-identity strong,
+.action-workflow-identity small,
+.action-workflow-automation small,
+.workflow-state small,
+.audio-rule-copy strong,
+.audio-rule-copy > span,
+.audio-rule-trigger > small,
+.tts-voice-summary > * {
+  display: block;
+}
+
+.action-workflow-identity strong,
+.audio-rule-copy strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.action-workflow-identity small,
+.action-workflow-automation small,
+.workflow-state small,
+.workflow-command-hint {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.action-workflow-automation {
+  min-width: 0;
+}
+
+.workflow-state {
+  display: grid;
+  justify-items: start;
+}
+
+.workflow-command-hint {
+  margin: 0;
+  text-align: right;
+}
+
+.action-workflow-steps {
+  display: grid;
+}
+
+.action-workflow-step {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 53px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.34);
+}
+
+.action-workflow-step:last-child {
+  border-bottom: 0;
+}
+
+.action-step-index {
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(168, 85, 247, 0.12);
+  color: #d8b4fe;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.action-step-details {
+  min-width: 0;
+}
+
+.action-step-details > summary,
+.compact-context-menu > summary,
+.media-screens-panel > summary {
+  list-style: none;
+}
+
+.action-step-details > summary::-webkit-details-marker,
+.compact-context-menu > summary::-webkit-details-marker,
+.media-screens-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.action-step-details > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.action-step-details > summary strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-step-details > summary > span:last-child {
+  color: var(--muted);
+  transition: transform 150ms ease;
+}
+
+.action-step-details[open] > summary > span:last-child {
+  transform: rotate(180deg);
+}
+
+.action-step-details > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 10px;
+  padding: 5px 0 9px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.action-step-details > div strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #dbe5f3;
+}
+
+.action-step-commands,
+.trigger-card-commands {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.compact-context-menu {
+  position: relative;
+}
+
+.compact-context-menu > summary {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.compact-context-menu[open] > summary {
+  border-color: rgba(168, 85, 247, 0.46);
+  background: rgba(168, 85, 247, 0.12);
+  color: #fff;
+}
+
+.compact-context-menu > div {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 5px);
+  right: 0;
+  display: grid;
+  min-width: 132px;
+  overflow: hidden;
+  border: 1px solid rgba(71, 85, 105, 0.9);
+  border-radius: 8px;
+  background: #0b1020;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.48);
+}
+
+.compact-context-menu > div button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 0;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.42);
+  background: transparent;
+  color: var(--text);
+  font-size: 9px;
+  text-align: left;
+}
+
+.compact-context-menu > div button:hover {
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.compact-context-menu > div button.danger {
+  color: #fda4af;
+}
+
+.actions-workspace .studio-panel:has(.compact-context-menu),
+.sounds-page .studio-panel:has(.compact-context-menu) {
+  overflow: visible;
+}
+
+:is(.actions-workspace, .sounds-page).reference-page {
+  gap: 8px;
+}
+
+:is(.actions-workspace, .sounds-page) .page-hero.compact {
+  min-height: 74px;
+  padding: 12px 16px;
+}
+
+:is(.actions-workspace, .sounds-page) .page-hero h2 {
+  margin-top: 3px;
+  font-size: clamp(20px, 1.7vw, 25px);
+}
+
+:is(.actions-workspace, .sounds-page) .page-hero p {
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+:is(.actions-workspace, .sounds-page) .module-tabs {
+  min-height: 38px;
+  padding: 4px 6px;
+}
+
+:is(.actions-workspace, .sounds-page) .module-tabs button {
+  min-height: 28px;
+  padding: 0 9px;
+}
+
+:is(.actions-workspace, .sounds-page) .studio-panel-heading {
+  min-height: 46px;
+  padding: 7px 11px;
+}
+
+:is(.actions-workspace, .sounds-page) .catalog-toolbar {
+  min-height: 44px;
+  padding: 6px 8px;
+}
+
+:is(.actions-workspace, .sounds-page) .search-control,
+:is(.actions-workspace, .sounds-page) .search-control input {
+  min-height: 32px;
+  height: 32px;
+}
+
+.automation-list,
+.trigger-card-list,
+.audio-card-list {
+  gap: 5px;
+  padding: 6px;
+}
+
+.automation-list-head {
+  padding: 1px 10px;
+}
+
+.single-action-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) minmax(210px, 1fr) 78px 145px;
+  align-items: center;
+  gap: 14px;
+  min-height: 58px;
+  padding: 7px 11px;
+}
+
+.single-action-row .action-workflow-identity small {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.single-action-row .type-pill {
+  flex: 0 0 auto;
+  min-height: 20px;
+}
+
+.action-workflow-header {
+  min-height: 50px;
+  padding: 7px 11px;
+}
+
+.action-workflow-step {
+  min-height: 43px;
+  padding: 4px 10px;
+}
+
+.automation-empty {
+  padding: 6px;
+}
+
+.trigger-card {
+  display: grid;
+  grid-template-columns: 38px minmax(145px, 0.75fr) minmax(180px, 0.9fr) minmax(250px, 1.4fr) 112px;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 7px 9px;
+}
+
+.trigger-card-copy strong,
+.trigger-card-copy small {
+  display: block;
+}
+
+.trigger-card-copy strong {
+  font-size: 10px;
+}
+
+.trigger-card-copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.trigger-card .trigger-action-chips {
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.trigger-card .timer-action-chips span {
+  padding: 3px 6px;
+}
+
+.audio-rule-card {
+  display: grid;
+  grid-template-columns: 36px minmax(145px, 1fr) minmax(150px, 0.8fr) minmax(205px, auto) 120px 54px 32px;
+  align-items: center;
+  gap: 9px;
+  min-height: 60px;
+  padding: 7px 9px;
+}
+
+.audio-preview-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.1);
+  color: #e9d5ff;
+}
+
+.audio-rule-copy,
+.tts-voice-summary {
+  min-width: 0;
+}
+
+.audio-rule-copy strong,
+.audio-rule-copy > span,
+.audio-rule-trigger > small,
+.tts-voice-summary > * {
+  display: block;
+}
+
+.audio-rule-copy strong {
+  font-size: 10px;
+}
+
+.audio-rule-copy > span {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-rule-trigger > small,
+.tts-voice-summary small {
+  margin-bottom: 3px;
+  color: var(--muted-2);
+  font-size: 7px;
+  font-weight: 850;
+}
+
+.audio-rule-state {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+
+.audio-rule-state small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.audio-volume-control {
+  display: grid;
+  gap: 4px;
+}
+
+.audio-volume-control > span {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 7px;
+}
+
+.audio-volume-control output {
+  color: #dbe5f3;
+  font-weight: 800;
+}
+
+.tts-rule-card {
+  grid-template-columns: 36px minmax(145px, 0.9fr) minmax(150px, 0.8fr) minmax(170px, 1fr) minmax(205px, auto) 54px 32px;
+}
+
+.tts-voice-summary strong {
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tts-voice-summary span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+@media (max-width: 1180px) {
+  .automation-list-head,
+  .action-workflow-header,
+  .single-action-row {
+    grid-template-columns: minmax(210px, 1fr) minmax(190px, 1fr) 72px;
+  }
+
+  .automation-list-head > span:last-child,
+  .workflow-command-hint {
+    display: none;
+  }
+
+  .trigger-card {
+    grid-template-columns: 42px minmax(150px, 0.8fr) minmax(180px, 1fr) minmax(240px, 1.2fr);
+  }
+
+  .trigger-card-commands {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
+  .audio-rule-card,
+  .tts-rule-card {
+    grid-template-columns: 38px minmax(160px, 1fr) minmax(160px, 0.9fr) minmax(210px, 1fr) 58px 34px;
+  }
+
+  .audio-volume-control,
+  .tts-voice-summary {
+    grid-column: 2 / 5;
+  }
+}
+
+@media (max-width: 820px) {
+  .automation-list-head {
+    display: none;
+  }
+
+  .action-workflow-header,
+  .single-action-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .action-workflow-automation {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .single-action-row .action-step-commands {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .action-workflow-step {
+    grid-template-columns: 25px minmax(0, 1fr);
+  }
+
+  .action-step-commands {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .trigger-card,
+  .audio-rule-card,
+  .tts-rule-card {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+
+  .trigger-card-copy,
+  .audio-rule-copy {
+    grid-column: 2;
+  }
+
+  .trigger-card-event,
+  .trigger-card > div:nth-child(4),
+  .audio-rule-trigger,
+  .audio-output-control,
+  .audio-volume-control,
+  .tts-voice-summary {
+    grid-column: 2 / -1;
+  }
+
+  .trigger-card-commands {
+    grid-column: 2 / -1;
+  }
+
+  .audio-rule-state {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .audio-rule-card > .compact-context-menu {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}

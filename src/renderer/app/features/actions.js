@@ -51,15 +51,22 @@ function liveEventRow(event) {
   </div>`;
 }
 
+let flattenedActionsSource = null;
+let flattenedActionsRows = [];
+
 function flattenActions() {
-  if (!snapshot?.state?.rules) return [];
-  return snapshot.state.rules.flatMap((rule) =>
+  const rules = snapshot?.state?.rules;
+  if (!rules) return [];
+  if (flattenedActionsSource === rules) return flattenedActionsRows;
+  flattenedActionsSource = rules;
+  flattenedActionsRows = rules.flatMap((rule) =>
     (rule.actions || []).map((action, actionIndex) => ({
       rule,
       action,
       actionIndex
     }))
   );
+  return flattenedActionsRows;
 }
 
 function soundActionRows() {
@@ -265,26 +272,34 @@ function renderMediaScreensTable(rows) {
   </div>`;
 }
 
-function renderMediaScreensPanel(rows, { context = "actions" } = {}) {
+function renderMediaScreensPanel(
+  rows,
+  { context = "actions", collapsible = context === "actions" } = {}
+) {
   const audioContext = context === "sounds";
   const title = audioContext ? "Écrans audio du LIVE" : "Écrans Media";
+  const wrapper = collapsible ? "details" : "section";
+  const heading = collapsible ? "summary" : "header";
+  const configureLabel = collapsible
+    ? '<span class="media-screens-disclosure">Configurer la diffusion <span aria-hidden="true">⌄</span></span>'
+    : '<span class="badge cyan">TIKTOK LIVE STUDIO · OBS</span>';
   if (!isAccountAuthenticated()) {
-    return `<section class="studio-panel panel-cyan media-screens-panel guest-media-screens">
-      <header class="studio-panel-heading">
+    return `<${wrapper} class="studio-panel panel-cyan media-screens-panel guest-media-screens">
+      <${heading} class="studio-panel-heading">
         <div><span class="panel-accent"></span><div><h3>${title}</h3><p>Les URL de vos sources navigateur sont protégées.</p></div></div>
-        <span class="badge">CONNEXION REQUISE</span>
-      </header>
+        ${collapsible ? configureLabel : '<span class="badge">CONNEXION REQUISE</span>'}
+      </${heading}>
       <div class="media-screens-intro">
         <strong>Connectez-vous pour préparer vos écrans</strong>
         <p>Aucune URL locale ou publique n’est affichée et aucune copie n’est possible en mode consultation.</p>
       </div>
-    </section>`;
+    </${wrapper}>`;
   }
-  return `<section class="studio-panel panel-cyan media-screens-panel">
-    <header class="studio-panel-heading">
+  return `<${wrapper} class="studio-panel panel-cyan media-screens-panel">
+    <${heading} class="studio-panel-heading">
       <div><span class="panel-accent"></span><div><h3>${title}</h3><p>${audioContext ? "Ces champs d’URL servent à préécouter dans ShenPulse et à faire entendre les sons et le TTS sur vos LIVE." : "Ces champs d’URL servent à visualiser les médias dans ShenPulse et à les afficher sur vos LIVE."}</p></div></div>
-      <span class="badge cyan">TIKTOK LIVE STUDIO · OBS</span>
-    </header>
+      ${configureLabel}
+    </${heading}>
     <div class="media-screens-intro">
       <strong>${audioContext ? "Écoutez dans l’interface, diffusez le son dans le LIVE" : "Visualisez dans l’interface, diffusez l’image dans le LIVE"}</strong>
       <p>${audioContext
@@ -292,7 +307,7 @@ function renderMediaScreensPanel(rows, { context = "actions" } = {}) {
         : "Chaque ligne est un champ de source navigateur : copiez son URL HTTPS dans TikTok LIVE Studio ou OBS en 1920 × 1080, puis choisissez le même écran dans l’action Media pour le visualiser dans ShenPulse et sur le LIVE."}</p>
     </div>
     ${renderMediaScreensTable(rows)}
-  </section>`;
+  </${wrapper}>`;
 }
 
 function automaticTriggerRules() {
@@ -348,6 +363,87 @@ function renderTriggerActionChips(rule) {
   </div>`;
 }
 
+function groupActionRows(rows) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = String(row.rule.id);
+    if (!groups.has(key)) groups.set(key, { rule: row.rule, rows: [] });
+    groups.get(key).rows.push(row);
+  }
+  return [...groups.values()];
+}
+
+function actionContextMenu(rule, action, actionIndex) {
+  const attributes = `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
+  return `<details class="compact-context-menu">
+    <summary title="Plus d’options" aria-label="Plus d’options">•••</summary>
+    <div>
+      <button data-action="edit-action" ${attributes}>Modifier</button>
+      <button data-action="duplicate-action" ${attributes}>Dupliquer</button>
+      <button class="danger" data-action="delete-action" ${attributes}>Supprimer</button>
+    </div>
+  </details>`;
+}
+
+function triggerContextMenu(rule) {
+  return `<details class="compact-context-menu">
+    <summary title="Plus d’options" aria-label="Plus d’options">•••</summary>
+    <div>
+      <button data-action="edit-trigger" data-id="${escapeHtml(rule.id)}">Modifier</button>
+      <button class="danger" data-action="delete-trigger" data-id="${escapeHtml(rule.id)}">Supprimer</button>
+    </div>
+  </details>`;
+}
+
+function renderActionWorkflows(groups) {
+  if (!groups.length) {
+    return `<div class="automation-empty">${emptyInline("Aucune action ne correspond à cette recherche.")}</div>`;
+  }
+  return `<div class="automation-list actions-automation-list">
+    <div class="automation-list-head" aria-hidden="true"><span>ACTION</span><span>AUTOMATISATION</span><span>ÉTAT</span><span>COMMANDES</span></div>
+    ${groups.map(({ rule, rows }) => {
+      const cooldown = Math.round(Number(rule.cooldown?.globalMs || 0) / 1000);
+      if (rows.length === 1) {
+        const [{ action, actionIndex }] = rows;
+        const description = actionDescription(action);
+        return `<article class="action-workflow-card single-action-row">
+          <div class="action-workflow-identity"><strong>${escapeHtml(rule.name)}</strong><small><span class="type-pill">${escapeHtml(actionTypeLabel(action.type))}</span> ${escapeHtml(description)}</small></div>
+          <div class="action-workflow-automation">${triggerPill(rule)}<small>${cooldown ? `Cooldown · ${cooldown}s` : "Sans cooldown"}</small></div>
+          <label class="workflow-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
+          <div class="action-step-commands">
+            <button class="button small" title="Tester" data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶ Tester</button>
+            ${actionContextMenu(rule, action, actionIndex)}
+          </div>
+        </article>`;
+      }
+      return `<article class="action-workflow-card">
+        <header class="action-workflow-header">
+          <div class="action-workflow-identity"><strong>${escapeHtml(rule.name)}</strong><small>${rows.length} action${rows.length > 1 ? "s" : ""} dans ce scénario</small></div>
+          <div class="action-workflow-automation">${triggerPill(rule)}<small>${cooldown ? `Cooldown · ${cooldown}s` : "Sans cooldown"}</small></div>
+          <label class="workflow-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
+          <span class="workflow-command-hint">${rows.length > 1 ? "Commandes par action" : "Commande"}</span>
+        </header>
+        <div class="action-workflow-steps">
+          ${rows.map(({ action, actionIndex }, index) => {
+            const description = actionDescription(action);
+            return `<div class="action-workflow-step">
+              <span class="action-step-index">${index + 1}</span>
+              <details class="action-step-details">
+                <summary><span class="type-pill">${escapeHtml(actionTypeLabel(action.type))}</span><strong>${escapeHtml(description)}</strong><span aria-hidden="true">⌄</span></summary>
+                <div><span>Type complet</span><strong>${escapeHtml(actionTypeLabel(action.type))}</strong><span>Détail</span><strong>${escapeHtml(description)}</strong><span>Déclenchement</span><strong>${escapeHtml(triggerLabel(rule))}</strong></div>
+              </details>
+              <div class="action-step-commands">
+                <button class="button small" title="Tester" data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶ Tester</button>
+                ${actionContextMenu(rule, action, actionIndex)}
+              </div>
+            </div>`;
+          }).join("")}
+        </div>
+      </article>`;
+    }).join("")}
+  </div>`;
+}
+
 function renderTriggersPanel() {
   const rules = automaticTriggerRules();
   return `<section class="studio-panel panel-cyan triggers-panel">
@@ -359,30 +455,23 @@ function renderTriggersPanel() {
       <button class="button primary" data-action="add-trigger" ${flattenActions().length ? "" : "disabled"}>＋ Créer un déclencheur</button>
       <span class="table-subline">En mode aléatoire, ShenPulse tire obligatoirement le nombre indiqué parmi les actions sélectionnées.</span>
     </div>
-    <div class="data-table-wrap">
-      <table class="data-table triggers-data-table">
-        <thead><tr><th>OUTILS</th><th>ACTIF</th><th>NOM</th><th>ÉVÉNEMENT</th><th>EXÉCUTION</th><th>ACTIONS EXISTANTES</th><th>COOLDOWN</th></tr></thead>
-        <tbody>${rules.length ? rules.map((rule) => `
-          <tr>
-            <td class="table-tools">
-              <button title="Tester le déclencheur" data-action="run-rule" data-id="${escapeHtml(rule.id)}">▶</button>
-              <button title="Modifier" data-action="edit-trigger" data-id="${escapeHtml(rule.id)}">✎</button>
-              <button title="Supprimer le déclencheur" data-action="delete-trigger" data-id="${escapeHtml(rule.id)}">×</button>
-            </td>
-            <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
-            <td><strong>${escapeHtml(rule.name)}</strong></td>
-            <td>${triggerPill(rule)}</td>
-            <td><span class="trigger-execution-pill ${rule.actionSelection?.mode === "random" ? "random" : "all"}">${escapeHtml(triggerExecutionLabel(rule))}</span></td>
-            <td>${renderTriggerActionChips(rule)}</td>
-            <td>${Math.round(Number(rule.cooldown?.globalMs || 0) / 1000)}s</td>
-          </tr>`).join("") : `<tr><td colspan="7">${emptyInline("Aucun déclencheur. Sélectionnez plusieurs actions existantes pour créer votre premier scénario.")}</td></tr>`}</tbody>
-      </table>
-    </div>
+    ${rules.length ? `<div class="trigger-card-list">${rules.map((rule) => `
+      <article class="trigger-card">
+        <div class="trigger-card-state"><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></div>
+        <div class="trigger-card-copy"><strong>${escapeHtml(rule.name)}</strong><small>${Math.round(Number(rule.cooldown?.globalMs || 0) / 1000)}s de cooldown</small></div>
+        <div class="trigger-card-event">${triggerPill(rule)}</div>
+        <div><span class="trigger-execution-pill ${rule.actionSelection?.mode === "random" ? "random" : "all"}">${escapeHtml(triggerExecutionLabel(rule))}</span>${renderTriggerActionChips(rule)}</div>
+        <div class="trigger-card-commands">
+          <button class="button small" title="Tester le déclencheur" data-action="run-rule" data-id="${escapeHtml(rule.id)}">▶ Tester</button>
+          ${triggerContextMenu(rule)}
+        </div>
+      </article>`).join("")}</div>` : `<div class="automation-empty">${emptyInline("Aucun déclencheur. Sélectionnez plusieurs actions existantes pour créer votre premier scénario.")}</div>`}
   </section>`;
 }
 
 function renderActions() {
-  const rows = flattenActions().filter(
+  const allRows = flattenActions();
+  const rows = allRows.filter(
     ({ action }) =>
       !["audio.play", "tts.speak"].includes(action.type) &&
       canAccessActionType(action.type)
@@ -397,6 +486,7 @@ function renderActions() {
       actionDescription(action)
     ].join(" ").toLowerCase().includes(query);
   });
+  const groupedRows = groupActionRows(filteredRows);
   const tabs = [
     ["actions", "Actions", rows.length],
     ["triggers", "Déclencheurs", automaticTriggerRules().length],
@@ -426,30 +516,9 @@ function renderActions() {
             <label class="filter-check"><input type="checkbox" data-action="filter-enabled-actions" ${onlyEnabledActions ? "checked" : ""}><span>Actives uniquement</span></label>
             <label class="search-control"><span>⌕</span><input data-search="actions" type="search" value="${escapeHtml(actionsSearch)}" placeholder="Rechercher une action, un déclencheur…"></label>
           </div>
-          <div class="data-table-wrap">
-            <table class="data-table actions-data-table">
-              <thead><tr><th>OUTILS</th><th>ACTIF</th><th>NOM</th><th>TYPE</th><th>DÉCLENCHEUR</th><th>DÉTAIL</th><th>COOLDOWN</th></tr></thead>
-              <tbody>
-                ${filteredRows.length ? filteredRows.map(({ rule, action, actionIndex }) => `
-                  <tr>
-                    <td class="table-tools">
-                      <button title="Tester" data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶</button>
-                      <button title="Modifier" data-action="edit-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">✎</button>
-                      <button title="Dupliquer" data-action="duplicate-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">⧉</button>
-                      <button title="Supprimer" data-action="delete-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">×</button>
-                    </td>
-                    <td><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></td>
-                    <td><strong>${escapeHtml(rule.name)}</strong></td>
-                    <td><span class="type-pill">${escapeHtml(actionTypeLabel(action.type))}</span></td>
-                    <td>${triggerPill(rule)}</td>
-                    <td title="${escapeHtml(actionDescription(action))}">${escapeHtml(actionDescription(action))}</td>
-                    <td>${Math.round(Number(rule.cooldown?.globalMs || 0) / 1000)}s</td>
-                  </tr>`).join("") : `<tr><td colspan="7">${emptyInline("Aucune action ne correspond à cette recherche.")}</td></tr>`}
-              </tbody>
-            </table>
-          </div>
+          ${renderActionWorkflows(groupedRows)}
         </section>
-        ${renderMediaScreensPanel(flattenActions())}` : ""}
+        ${renderMediaScreensPanel(allRows)}` : ""}
       ${actionsSection === "triggers" ? renderTriggersPanel() : ""}
       ${actionsSection === "simulator" ? `
         <section class="studio-panel panel-pink">

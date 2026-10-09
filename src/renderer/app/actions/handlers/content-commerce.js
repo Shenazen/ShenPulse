@@ -25,6 +25,7 @@ const CONTENT_COMMERCE_ACTIONS = new Set([
   "edit-sound",
   "set-sound-volume",
   "set-audio-output",
+  "configure-audio-output",
   "preview-sound",
   "preview-tts",
   "spotify-connect",
@@ -150,13 +151,30 @@ async function handleContentAndCommerceAction({ action, target, id }) {
       return openLiveAudioOutputEditor(row);
     }
     return perform(async () => {
+      const outputControl = target.closest(".audio-output-control");
       await updateAudioOutput(
         row,
         "local",
         normalizedLiveScreen(row.action.config)
       );
-      render();
+      const nextRow = findActionRow(
+        target.dataset.rule,
+        id,
+        target.dataset.index
+      );
+      if (outputControl && nextRow) {
+        outputControl.outerHTML = audioOutputSwitchMarkup(
+          nextRow.rule,
+          nextRow.action,
+          nextRow.actionIndex
+        );
+      }
     }, "Lecture réservée à ShenPulse");
+  }
+  if (action === "configure-audio-output") {
+    return openLiveAudioOutputEditor(
+      findActionRow(target.dataset.rule, id, target.dataset.index)
+    );
   }
   if (action === "preview-sound") {
     const sound = SOUND_LIBRARY.find((item) => item.id === id);

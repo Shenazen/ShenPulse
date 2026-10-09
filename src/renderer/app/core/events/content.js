@@ -6,7 +6,24 @@ async function updateToggle(collection, id, enabled) {
   const item = snapshot.state[collection].find((entry) => entry.id === id);
   if (!item) return;
   await perform(() => api.upsert(collection, { ...item, enabled }));
-  snapshot = await api.getSnapshot();
+  acceptSnapshot(await api.getSnapshot());
+  if (
+    collection === "rules" &&
+    ["actions", "sounds"].includes(currentPage) &&
+    !(currentPage === "actions" && onlyEnabledActions && !enabled)
+  ) {
+    content
+      .querySelectorAll('[data-action="toggle-rule"]')
+      .forEach((control) => {
+        if (control.dataset.id !== String(id)) return;
+        control.checked = enabled;
+        const stateLabel = control
+          .closest(".workflow-state, .audio-rule-state")
+          ?.querySelector("small");
+        if (stateLabel) stateLabel.textContent = enabled ? "Actif" : "Inactif";
+      });
+    return;
+  }
   render();
 }
 
@@ -46,6 +63,16 @@ async function toggleSession() {
 }
 
 content.addEventListener("input", (event) => {
+  const soundVolume = event.target.closest("[data-sound-volume]");
+  if (soundVolume) {
+    const value = Math.round(
+      Math.max(0, Math.min(1, Number(soundVolume.value) || 0)) * 100
+    );
+    const output = soundVolume.closest(".audio-volume-control")
+      ?.querySelector("[data-sound-volume-output]");
+    if (output) output.textContent = `${value} %`;
+    return;
+  }
   const liveVolume = event.target.closest("[data-thiercelieux-live-volume]");
   if (liveVolume) {
     const value = Math.max(0, Math.min(100, Math.round(Number(liveVolume.value) || 0)));
@@ -88,12 +115,21 @@ content.addEventListener("input", (event) => {
   if (key === "admin-visibility") adminVisibilitySearch = input.value;
   if (key === "admin-commerce") adminCommerceSearch = input.value;
   const position = input.selectionStart;
-  render();
-  const replacement = content.querySelector(`[data-search="${key}"]`);
-  if (replacement) {
-    replacement.focus();
-    replacement.setSelectionRange(position, position);
+  const renderSearchResults = () => {
+    catalogSearchRenderTimer = null;
+    render();
+    const replacement = content.querySelector(`[data-search="${key}"]`);
+    if (replacement) {
+      replacement.focus();
+      replacement.setSelectionRange(position, position);
+    }
+  };
+  if (["actions", "sounds"].includes(key)) {
+    window.clearTimeout(catalogSearchRenderTimer);
+    catalogSearchRenderTimer = window.setTimeout(renderSearchResults, 120);
+    return;
   }
+  renderSearchResults();
 });
 
 content.addEventListener("change", (event) => {
@@ -373,8 +409,14 @@ content.addEventListener("click", (event) => {
   }
   const action = event.target.closest("[data-action]");
   if (
-    ["set-audio-output", "irl-toggle"].includes(action?.dataset.action) &&
-    action.matches('input[type="checkbox"]')
+    (
+      ["set-audio-output", "irl-toggle"].includes(action?.dataset.action) &&
+      action.matches('input[type="checkbox"]')
+    ) ||
+    (
+      action?.dataset.action === "set-sound-volume" &&
+      action.matches('input[type="range"]')
+    )
   ) {
     return;
   }

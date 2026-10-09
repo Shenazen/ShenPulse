@@ -278,6 +278,54 @@ test("les sons et le TTS choisissent une sortie locale ou un écran LIVE", () =>
   assert.match(styles, /\.live-audio-output-dialog/);
 });
 
+test("les vues compactes conservent toutes les commandes Actions et Sons", () => {
+  const app = readRendererSource();
+  const commands = [
+    "add-action",
+    "test-action",
+    "edit-action",
+    "duplicate-action",
+    "delete-action",
+    "toggle-rule",
+    "add-trigger",
+    "run-rule",
+    "edit-trigger",
+    "delete-trigger",
+    "add-timer",
+    "edit-timer",
+    "test-timer",
+    "toggle-timer",
+    "add-sound",
+    "upload-sound",
+    "edit-sound",
+    "set-sound-volume",
+    "set-audio-output",
+    "configure-audio-output",
+    "add-tts",
+    "edit-tts",
+    "preview-tts",
+    "spotify-connect",
+    "spotify-refresh",
+    "spotify-disconnect",
+    "spotify-control"
+  ];
+  const dynamicCommands = new Set(["edit-sound", "edit-tts"]);
+
+  for (const command of commands) {
+    assert.match(
+      app,
+      dynamicCommands.has(command)
+        ? new RegExp(`["']${command}["']`)
+        : new RegExp(`data-action=["']${command}["']`)
+    );
+  }
+  assert.match(app, /data-action="set-sounds-section"/);
+  assert.match(app, /soundsSection === "audio"/);
+  assert.match(app, /soundsSection === "tts"/);
+  assert.match(app, /soundsSection === "outputs"/);
+  assert.match(app, /soundsSection === "spotify"/);
+});
+
 test("les sons et le TTS restent uniquement dans leur atelier dédié", () => {
   const app = readRendererSource();
   const actionsStart = app.indexOf("function renderActions()");
@@ -326,17 +374,12 @@ test("le TTS propose les voix Windows et démarre sur les commentaires du chat",
   const editorStart = app.indexOf("function openTtsEditor(row)");
   const editorEnd = app.indexOf("function openSoundEditor", editorStart);
   const editor = app.slice(editorStart, editorEnd);
-  const soundsStart = app.indexOf("function renderSounds()");
-  const soundsEnd = app.indexOf("function renderTimersPanel", soundsStart);
-  const sounds = app.slice(soundsStart, soundsEnd);
-  const ttsSectionStart = sounds.indexOf(
-    '<section class="studio-panel audio-panel panel-cyan"'
-  );
-  const ttsSectionEnd = sounds.indexOf(
-    '<section class="studio-panel spotify-panel',
+  const ttsSectionStart = app.indexOf("function renderTtsRules(rows)");
+  const ttsSectionEnd = app.indexOf(
+    "function renderSpotifyPanel",
     ttsSectionStart
   );
-  const ttsSection = sounds.slice(ttsSectionStart, ttsSectionEnd);
+  const ttsSection = app.slice(ttsSectionStart, ttsSectionEnd);
   const actionTypesStart = app.indexOf("function actionTypeOptions");
   const actionTypesEnd = app.indexOf(
     "function gameInteractionRowData",
@@ -365,9 +408,9 @@ test("le TTS propose les voix Windows et démarre sur les commentaires du chat",
   assert.doesNotMatch(editor, /field\("language"/);
   assert.doesNotMatch(editor, /name="triggerType"/);
   assert.doesNotMatch(editor, /Choisissez l’interaction/);
-  assert.doesNotMatch(ttsSection, /<th>DÉCLENCHEUR<\/th>/);
-  assert.match(ttsSection, /<th>VOIX<\/th>/);
-  assert.doesNotMatch(ttsSection, /<th>LANGUE<\/th>/);
+  assert.match(ttsSection, /DÉCLENCHEUR/);
+  assert.match(ttsSection, />VOIX</);
+  assert.doesNotMatch(ttsSection, />LANGUE</);
   assert.doesNotMatch(actionTypes, /tts\.speak/);
   assert.match(
     app,

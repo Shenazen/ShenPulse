@@ -498,6 +498,8 @@
 
 .sound-picker-row {
   display: grid;
+  content-visibility: auto;
+  contain-intrinsic-size: 55px;
   grid-template-columns: 34px minmax(0, 1fr) 70px auto;
   align-items: center;
   gap: 10px;
