@@ -38,6 +38,30 @@ const PUBLIC_GAME_GUIDES = {
     description: 'Un jeu d’adresse vertical où des diamants traversent un plateau rempli d’obstacles avant d’atteindre les zones de gain. Les multiplicateurs et les événements spéciaux renouvellent chaque manche.',
     interactions: 'Le public peut lâcher un diamant, lancer une pluie de diamants, poser une bombe, activer un multiplicateur ou nettoyer le plateau.'
   },
+  'color-strike': {
+    description: 'Un jeu d’action coloré installé et lancé directement par ShenPulse. Les spectateurs peuvent soutenir ou perturber la partie pendant que le joueur affronte les vagues et change d’arme ou de carte.',
+    interactions: 'Les 41 effets couvrent les bombes, tourelles, armes, boosts, changements de carte, contraintes visuelles, boss et compteurs de victoires.'
+  },
+  'tiklive-climb': {
+    description: 'Un jeu d’ascension interactif où chaque réaction du live peut faciliter la progression ou rendre le parcours plus instable. ShenPulse installe le jeu, le lance et relie sa passerelle locale.',
+    interactions: 'Les 18 effets ajoutent des obstacles et des aides, modifient la gravité ou les commandes, pilotent les victoires et déclenchent la roue native.'
+  },
+  'tiklive-cube-wars': {
+    description: 'Une bataille en arène opposant les camps Hommes et Femmes, auxquels les spectateurs peuvent se rallier depuis le chat. ShenPulse gère l’installation, le lancement et les événements de la manche.',
+    interactions: 'Les 18 effets permettent de choisir un camp, pousser les cubes, lancer des vagues, bombes, tornades ou météores, puis suivre les victoires.'
+  },
+  'tiklive-stack-tower': {
+    description: 'Un défi de construction où le joueur tente d’empiler jusqu’à 500 étages pendant que le live stabilise ou sabote la tour. Le jeu autonome est installé et lancé depuis ShenPulse.',
+    interactions: 'Les 28 effets ajoutent ou retirent des étages, modifient la grue et la physique, déclenchent des événements et pilotent la roue ou les victoires.'
+  },
+  'clash-of-live': {
+    description: 'Un affrontement autonome entre une armée rouge et une armée bleue, conçu pour être animé directement par les spectateurs. ShenPulse installe le jeu et transmet les renforts à sa passerelle locale.',
+    interactions: 'Les 15 effets invoquent squelettes, chevaliers, barbares, géants ou dragons, soignent les tours et lancent une roue pour le camp choisi.'
+  },
+  'rocket-league': {
+    description: 'Un profil d’interactions ciblées pour Rocket League qui agit uniquement sur la fenêtre du jeu sans modifier ses fichiers. Les commandes sont adaptées aux dispositions WASD et ZQSD.',
+    interactions: 'Les 21 effets couvrent l’accélération, le freinage, les sauts, le turbo, les rotations, les dérapages, la caméra ballon et plusieurs enchaînements de conduite.'
+  },
   'pokemon-red-blue': {
     description: 'Une aventure Pokémon Rouge/Bleu préparée automatiquement dans BizHawk, avec une passerelle locale qui transforme les événements du live en changements immédiats dans la partie. L’installation, la vérification et le lancement sont guidés par ShenPulse.',
     interactions: 'Les 313 effets couvrent notamment les PV, les statuts, l’équipe, les rencontres, les objets, les combats, l’évolution et de nombreux paramètres de progression.'

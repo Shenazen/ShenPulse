@@ -40,7 +40,7 @@ const app = await readFile(path.join(dist, 'app.js'), 'utf8')
 const content = await readFile(path.join(dist, 'content.js'), 'utf8')
 const { GAMES } = await import(pathToFileURL(path.join(dist, 'game-catalog.js')).href)
 const expectedGames = currentPublicGames()
-const expectedDownload = '/downloads/ShenPulseSetup-1.0.14.exe'
+const expectedDownload = '/downloads/ShenPulseSetup-1.0.16.exe'
 const hiddenProviderPattern = new RegExp(['crowd', 'control'].join('\\s*'), 'i')
 
 for (const file of ['app.js', 'content.js', 'game-catalog.js']) {

@@ -7,7 +7,7 @@ import {
 import { GAMES } from '/game-catalog.js'
 
 const app = document.querySelector('#app')
-const DOWNLOAD_URL = '/downloads/ShenPulseSetup-1.0.14.exe'
+const DOWNLOAD_URL = '/downloads/ShenPulseSetup-1.0.16.exe'
 const SCREENSHOT_VERSION = '20261009'
 const SITE_ORIGIN = 'https://www.shenpulse.leuridan.fr'
 const RETIRED_ROUTES = ['/login', '/setup', '/admin', '/app']
