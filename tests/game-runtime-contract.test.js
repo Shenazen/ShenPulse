@@ -61,6 +61,8 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
   assert.deepEqual(
     Object.keys(GAME_INSTALLERS).sort(),
     [
+      "clash-of-live",
+      "color-strike",
       "cult-of-the-lamb",
       "demonologist",
       "euro-truck-simulator-2",
@@ -72,7 +74,10 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       "resident-evil-3",
       "stardew-valley",
       "super-mario-kart",
-      "terraria"
+      "terraria",
+      "tiklive-climb",
+      "tiklive-cube-wars",
+      "tiklive-stack-tower"
     ]
   );
   assert.ok(
@@ -506,6 +511,12 @@ test("Resident Evil 3 installe le mod officiel recommandé et détecte Steam", (
     safeInstallerAssetUrl(installer.assets[1].url),
     /^https:\/\/one-click\.crowdcontrol\.live\/RE3remake\/RE3net-CC\.zip\?ver=2\.1\.2$/
   );
+  const runtimeSource = fs.readFileSync(
+    path.join(root, "src", "main", "game-runtime.js"),
+    "utf8"
+  );
+  assert.match(runtimeSource, /satisfiedAssetCount: candidateAssets\.length/);
+  assert.match(runtimeSource, /satisfiedAssetIds: candidateAssets/);
 });
 
 test("Demonologist détecte Steam et mémorise son dossier sans modifier le jeu", () => {

@@ -486,6 +486,10 @@ class GameRuntimeService {
           backupPath: manifest.temporaryTarget ? "" : backupRoot,
           installedAt,
           assetCount: assets.length,
+          satisfiedAssetCount: candidateAssets.length,
+          satisfiedAssetIds: candidateAssets
+            .map((asset) => String(asset.id || "").trim())
+            .filter(Boolean),
           installerVersion: String(manifest.version || ""),
           edition: edition || undefined,
           elevated: deployment.elevated,

@@ -39,6 +39,14 @@ function openActionEditor(row) {
       currentAction.type;
   }
   const config = currentAction.config || {};
+  const configuredTimerSeconds = Number(config.seconds ?? 30);
+  const timerOperation =
+    (config.operation || "add") === "add" && configuredTimerSeconds < 0
+      ? "remove"
+      : config.operation || "add";
+  const timerSeconds = ["remove", "random"].includes(timerOperation)
+    ? Math.abs(configuredTimerSeconds)
+    : configuredTimerSeconds;
   const accessiblePacks = visibleGamePacks();
   const configuredPack =
     snapshot.packs.find(
@@ -153,13 +161,15 @@ function openActionEditor(row) {
       "timer.add",
       `<div class="form-grid">
         <label class="field"><span>Commande du timer</span><select name="timerOperation">${[
-          ["add", "Ajouter / retirer du temps"],
+          ["add", "Ajouter du temps"],
+          ["remove", "Retirer du temps"],
+          ["random", "Ajouter ou retirer au hasard"],
           ["set", "Définir le temps"],
           ["pause", "Mettre en pause"],
           ["resume", "Reprendre"],
           ["reset", "Réinitialiser"]
-        ].map(([value, label]) => `<option value="${value}" ${(config.operation || "add") === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-        ${field("seconds", "Secondes", config.seconds ?? 30, "number", 'min="-86399999" max="86399999"')}
+        ].map(([value, label]) => `<option value="${value}" ${timerOperation === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+        ${field("seconds", "Secondes", timerSeconds, "number", 'min="0" max="86399999"')}
         ${field("label", "Libellé", config.label || "TEMPS RESTANT", "text", "full")}
       </div>`
     ),
@@ -363,7 +373,7 @@ function openActionEditor(row) {
         });
       } else if (type === "timer.add") {
         Object.assign(nextConfig, {
-          seconds: Number(data.get("seconds")),
+          seconds: Math.abs(Number(data.get("seconds")) || 0),
           label: data.get("label"),
           operation: data.get("timerOperation")
         });

@@ -308,6 +308,7 @@ function warmOverlayRuntimePreviews() {
     (item) =>
       canAccessOverlay(item) &&
       !item.catalogHidden &&
+      item.key !== "coinJar" &&
       item.previewKind !== "match"
   );
   const visibleKeys = [...content.querySelectorAll("[data-overlay-card]")]
@@ -421,6 +422,38 @@ function startOverlayBackgroundPreview(record) {
   overlayPreviewWarmupHost().appendChild(iframe);
 }
 
+function revealOverlayPreviewFrame(iframe) {
+  const frame = iframe?.closest("[data-overlay-native-frame]");
+  if (!frame) return;
+  const revision = String(
+    (Number(iframe.dataset.overlayPreviewRevealRevision) || 0) + 1
+  );
+  iframe.dataset.overlayPreviewRevealRevision = revision;
+  frame.classList.remove("overlay-runtime-frame--ready");
+  const scheduleFrame = typeof requestAnimationFrame === "function"
+    ? requestAnimationFrame
+    : (callback) => setTimeout(callback, 0);
+  scheduleFrame(() => {
+    if (
+      !iframe.isConnected ||
+      iframe.dataset.overlayPreviewRevealRevision !== revision
+    ) return;
+    // Force la mise en page de l'iframe nouvellement rattachee. Le premier
+    // rendu reste masque par l'apercu leger, puis la vraie source est revelee
+    // au frame suivant, une fois Chromium capable de la peindre sans flash noir.
+    iframe.getBoundingClientRect();
+    scheduleFrame(() => {
+      if (
+        !iframe.isConnected ||
+        iframe.dataset.overlayPreviewRevealRevision !== revision
+      ) return;
+      iframe
+        .closest("[data-overlay-native-frame]")
+        ?.classList.add("overlay-runtime-frame--ready");
+    });
+  });
+}
+
 function adoptWarmedOverlayPreview(frame) {
   const placeholderFrame = frame.querySelector("iframe");
   const key = frame.dataset.overlayPreviewKey || "";
@@ -448,8 +481,8 @@ function adoptWarmedOverlayPreview(frame) {
   frame.appendChild(iframe);
   if (record.ready || iframe.dataset.overlayPreviewReady) {
     iframe.dataset.overlayPreviewReady = "true";
-    frame.classList.add("overlay-runtime-frame--ready");
     window.hydrateOverlayPreviewFrame?.(iframe);
+    revealOverlayPreviewFrame(iframe);
   }
   return iframe;
 }
@@ -603,8 +636,8 @@ function bindOverlayRuntimeFrames(root = document) {
       });
     }
     if (iframe?.dataset.overlayPreviewReady === "true") {
-      frame.classList.add("overlay-runtime-frame--ready");
       window.hydrateOverlayPreviewFrame?.(iframe);
+      revealOverlayPreviewFrame(iframe);
     }
     if (iframe?.dataset.overlaySrc) {
       if (overlayPreviewVisibilityObserver) {
@@ -629,11 +662,9 @@ window.addEventListener("message", (event) => {
   );
   if (!iframe) return;
   iframe.dataset.overlayPreviewReady = "true";
-  iframe
-    .closest("[data-overlay-native-frame]")
-    ?.classList.add("overlay-runtime-frame--ready");
   const record = overlayBackgroundPreviewCache.get(
     iframe.dataset.overlayPreviewCacheKey || ""
   );
   if (record?.iframe === iframe) record.ready = true;
+  revealOverlayPreviewFrame(iframe);
 });

@@ -534,7 +534,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
       !requireGameAccess(pack)
     ) return;
     const layout = target
-      .closest(".game-simple-step")
+      .closest(".smk-command-rail, .game-simple-step")
       ?.querySelector("[data-game-key-layout]")
       ?.value;
     await perform(async () => {

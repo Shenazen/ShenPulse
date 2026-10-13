@@ -28,14 +28,18 @@ function normalizeGiftName(value) {
 
 function rememberGifts(gifts = []) {
   for (const gift of gifts) {
-    const key = normalizeGiftName(gift.name);
-    const id = String(gift.id || "").trim();
-    if (id) giftCatalogById.set(id, gift);
-    if (key && !giftCatalogByName.has(key)) {
-      giftCatalogByName.set(key, gift);
+    const ids = [gift.id, ...(gift.alternateIds || [])]
+      .map((id) => String(id || "").trim())
+      .filter(Boolean);
+    const names = [gift.name, gift.originalName, ...(gift.alternateNames || [])]
+      .map(normalizeGiftName)
+      .filter(Boolean);
+    for (const id of ids) giftCatalogById.set(id, gift);
+    for (const key of names) {
+      if (!giftCatalogByName.has(key)) giftCatalogByName.set(key, gift);
     }
   }
-  GIFT_CATALOG = [...giftCatalogById.values()];
+  GIFT_CATALOG = [...new Set(giftCatalogById.values())];
 }
 
 function giftForName(name) {

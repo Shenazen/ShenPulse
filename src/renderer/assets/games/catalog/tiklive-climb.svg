@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 960" role="img" aria-labelledby="title desc">
+  <title id="title">ShenPulse Climb</title>
+  <desc id="desc">Jaquette du jeu d'escalade interactif ShenPulse Climb</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071225"/>
+      <stop offset="0.56" stop-color="#11142c"/>
+      <stop offset="1" stop-color="#24091f"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1ee8ff"/>
+      <stop offset="0.52" stop-color="#64fbd1"/>
+      <stop offset="1" stop-color="#ff2f78"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="720" height="960" rx="48" fill="url(#bg)"/>
+  <g opacity=".22" stroke="#79dfff" stroke-width="4">
+    <path d="M72 810h160v-92h128v-120h150v-126h138"/>
+    <path d="M0 872h170v-70h142v-116h150v-128h258"/>
+  </g>
+  <g filter="url(#glow)" fill="none" stroke="url(#neon)" stroke-linecap="round">
+    <path d="M102 790h174" stroke-width="16"/>
+    <path d="M252 661h180" stroke-width="16"/>
+    <path d="M396 524h190" stroke-width="16"/>
+    <path d="M506 385h112" stroke-width="16"/>
+  </g>
+  <g fill="#f7fbff">
+    <circle cx="212" cy="718" r="25"/>
+    <rect x="193" y="742" width="38" height="82" rx="17"/>
+    <path d="M194 765l-44 45 17 16 43-38zm36 0 54 34-12 20-57-30zM202 820l-35 67 23 10 39-67zm28 0 37 67-22 11-42-67z"/>
+  </g>
+  <g font-family="Inter,Segoe UI,sans-serif" text-anchor="middle">
+    <text x="360" y="112" fill="#6ff6e3" font-size="32" font-weight="800" letter-spacing="10">SHENPULSE</text>
+    <text x="360" y="230" fill="#ffffff" font-size="104" font-weight="950" letter-spacing="3">CLIMB</text>
+    <rect x="140" y="260" width="440" height="8" rx="4" fill="url(#neon)"/>
+    <text x="360" y="322" fill="#bdc8dd" font-size="25" font-weight="650" letter-spacing="3">LIVE INTERACTIONS</text>
+  </g>
+  <g transform="translate(550 720)" filter="url(#glow)">
+    <circle r="70" fill="#13162e" stroke="#ff376f" stroke-width="7"/>
+    <path d="M0-39 12-12 41-9 19 10 26 40 0 24-26 40-19 10-41-9-12-12Z" fill="#ffd84a"/>
+  </g>
+  <text x="50%" y="920" text-anchor="middle" fill="#ffffff" font-family="Inter,Segoe UI,sans-serif" font-size="24" font-weight="800" letter-spacing="5">ATTEINS LE SOMMET</text>
+</svg>

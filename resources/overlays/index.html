@@ -2,17 +2,17 @@
 <html lang="fr" class="overlay-booting">
   <head>
     <meta charset="UTF-8" />
-    <meta name="shenpulse-overlay-version" content="1.0.16-beta1" />
+    <meta name="shenpulse-overlay-version" content="1.0.16-beta1-overlay6" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ShenPulse Overlay</title>
     <link rel="preconnect" href="https://shenazenoverlay-default-rtdb.firebaseio.com" crossorigin />
     <link rel="dns-prefetch" href="//shenazenoverlay-default-rtdb.firebaseio.com" />
-    <link rel="preload" href="fonts/inter-latin-wght-normal.woff2?v=1.0.16-beta1" as="font" type="font/woff2" crossorigin />
-    <script src="runtime/dependencies.js?v=1.0.16-beta1"></script>
-    <link rel="stylesheet" href="styles/core.css?v=1.0.16-beta1" />
-    <link rel="stylesheet" href="styles/wheel.css?v=1.0.16-beta1" />
-    <link rel="stylesheet" href="styles/themes.css?v=1.0.16-beta1" />
-    <link rel="stylesheet" href="styles/configuration.css?v=1.0.16-beta1" />
+    <link rel="preload" href="fonts/inter-latin-wght-normal.woff2?v=1.0.16-beta1-overlay6" as="font" type="font/woff2" crossorigin />
+    <script src="runtime/dependencies.js?v=1.0.16-beta1-overlay6"></script>
+    <link rel="stylesheet" href="styles/core.css?v=1.0.16-beta1-overlay6" />
+    <link rel="stylesheet" href="styles/wheel.css?v=1.0.16-beta1-overlay6" />
+    <link rel="stylesheet" href="styles/themes.css?v=1.0.16-beta1-overlay6" />
+    <link rel="stylesheet" href="styles/configuration.css?v=1.0.16-beta1-overlay6" />
   </head>
   <body>
     <main id="overlay-root" aria-live="polite">
@@ -74,15 +74,19 @@
           <svg class="coin-jar-clip-definitions" aria-hidden="true">
             <defs>
               <clipPath id="coin-jar-glass-clip" clipPathUnits="objectBoundingBox">
-                <path d="M .31 .075 L .69 .075 L .69 .17 C .75 .19 .785 .24 .785 .31 L .785 .80 C .785 .875 .75 .91 .66 .925 L .34 .925 C .25 .91 .215 .875 .215 .80 L .215 .31 C .215 .24 .25 .19 .31 .17 Z"></path>
+                <path d="M .31 .09 L .69 .09 L .69 .17 C .75 .19 .785 .24 .785 .31 L .785 .80 C .785 .875 .75 .91 .66 .925 L .34 .925 C .25 .91 .215 .875 .215 .80 L .215 .31 C .215 .24 .25 .19 .31 .17 Z"></path>
+              </clipPath>
+              <clipPath id="coin-jar-motion-clip" clipPathUnits="objectBoundingBox">
+                <path d="M .31 -.35 L .69 -.35 L .69 .17 C .75 .19 .785 .24 .785 .31 L .785 .80 C .785 .875 .75 .91 .66 .925 L .34 .925 C .25 .91 .215 .875 .215 .80 L .215 .31 C .215 .24 .25 .19 .31 .17 Z"></path>
               </clipPath>
             </defs>
           </svg>
-          <img id="coin-jar-back" class="coin-jar-layer" alt="" />
+          <img id="coin-jar-back" class="coin-jar-layer coin-jar-back" alt="" />
           <div class="coin-jar-level" aria-hidden="true"><span id="coin-jar-level"></span></div>
           <div id="coin-jar-drops" class="coin-jar-drops">
             <div id="coin-jar-contained-drops" class="coin-jar-drop-layer coin-jar-contained-drops"></div>
             <div id="coin-jar-overflow-drops" class="coin-jar-drop-layer coin-jar-overflow-drops"></div>
+            <div id="coin-jar-exterior-drops" class="coin-jar-drop-layer coin-jar-exterior-drops"></div>
           </div>
           <img id="coin-jar-front" class="coin-jar-layer coin-jar-front" alt="" />
           <div class="coin-jar-meter">
@@ -154,6 +158,6 @@
         </div>
       </section>
     </main>
-    <script src="runtime/loader.js?v=1.0.16-beta1"></script>
+    <script src="runtime/loader.js?v=1.0.16-beta1-overlay6"></script>
   </body>
 </html>

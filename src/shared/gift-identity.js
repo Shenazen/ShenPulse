@@ -107,8 +107,16 @@ function giftIdentity(value = {}) {
   const cost = Number(
     value.giftCost ?? value.cost ?? value.value ?? value.diamondCount ?? 0
   );
+  const id = String(value.giftId ?? value.id ?? "").trim().toLowerCase();
+  const alternateIds = [
+    ...(Array.isArray(value.alternateIds) ? value.alternateIds : []),
+    ...(Array.isArray(value.giftIds) ? value.giftIds : [])
+  ]
+    .map((entry) => String(entry || "").trim().toLowerCase())
+    .filter(Boolean);
   return {
-    id: String(value.giftId ?? value.id ?? "").trim().toLowerCase(),
+    id,
+    ids: [...new Set([id, ...alternateIds].filter(Boolean))],
     family: giftFamily(value),
     name: canonicalGiftName(value, ""),
     nameKey: normalizeGiftName(canonicalGiftName(value, "")),
@@ -131,16 +139,24 @@ function giftCatalogIndex(gifts) {
   const index = { byId: new Map(), byImage: new Map(), byName: new Map() };
   for (const gift of gifts) {
     const identity = giftIdentity(gift);
-    if (identity.id && !index.byId.has(identity.id)) {
-      index.byId.set(identity.id, gift);
+    for (const id of identity.ids) {
+      if (!index.byId.has(id)) index.byId.set(id, gift);
     }
     if (identity.imageKey && !index.byImage.has(identity.imageKey)) {
       index.byImage.set(identity.imageKey, gift);
     }
-    if (identity.nameKey) {
-      const matches = index.byName.get(identity.nameKey) || [];
+    const nameKeys = new Set([
+      identity.nameKey,
+      normalizeGiftName(gift.originalName),
+      ...(Array.isArray(gift.alternateNames)
+        ? gift.alternateNames.map(normalizeGiftName)
+        : [])
+    ]);
+    for (const nameKey of nameKeys) {
+      if (!nameKey) continue;
+      const matches = index.byName.get(nameKey) || [];
       matches.push({ gift, cost: identity.cost });
-      index.byName.set(identity.nameKey, matches);
+      index.byName.set(nameKey, matches);
     }
   }
   catalogIndexes.set(gifts, index);
@@ -171,8 +187,16 @@ function findCatalogGift(gifts = [], candidate = {}) {
 function mergeIdentity(primary = {}, fallback = null) {
   const direct = giftIdentity(primary);
   const resolved = giftIdentity(fallback || {});
+  const resolvedSupportsDirect =
+    !direct.ids.length ||
+    direct.ids.some((id) => resolved.ids.includes(id));
   return {
     id: direct.id || resolved.id,
+    ids: direct.ids.length
+      ? resolvedSupportsDirect
+        ? [...new Set([...direct.ids, ...resolved.ids])]
+        : direct.ids
+      : resolved.ids,
     family: direct.family || resolved.family,
     name: direct.name || resolved.name,
     nameKey: direct.nameKey || resolved.nameKey,
@@ -183,8 +207,8 @@ function mergeIdentity(primary = {}, fallback = null) {
 }
 
 function sameGiftIdentity(expected, actual) {
+  if (expected.ids?.some((id) => actual.ids?.includes(id))) return true;
   if (expected.id && actual.id) {
-    if (expected.id === actual.id) return true;
     return Boolean(
       expected.family && actual.family && expected.family === actual.family
     );
@@ -197,6 +221,7 @@ function giftConditionMatches(condition = {}, event = {}, gifts = []) {
   const eventData = event?.data || {};
   const conditionData = {
     giftId: condition.giftId,
+    giftIds: condition.giftIds,
     giftFamily: condition.giftFamily,
     giftName: condition.value,
     giftImageUrl: condition.giftImageUrl,

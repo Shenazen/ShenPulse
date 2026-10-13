@@ -80,6 +80,26 @@ test("utilise l'identifiant enregistré même sans catalogue chargé", () => {
   );
 });
 
+test("reconnaît tous les ID regroupés derrière un seul cadeau", () => {
+  const aliasesCatalog = [
+    {
+      id: "5655",
+      alternateIds: ["rose", "9999"],
+      alternateNames: ["Rosa"],
+      name: "Rose",
+      cost: 1
+    }
+  ];
+  assert.equal(
+    giftConditionMatches(
+      { value: "Rose", giftId: "5655" },
+      giftEvent("Rosa", 1, "", "9999"),
+      aliasesCatalog
+    ),
+    true
+  );
+});
+
 test("n'assimile pas deux cadeaux uniquement parce que leur prix est égal", () => {
   const event = giftEvent(
     "Un autre cadeau",

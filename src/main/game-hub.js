@@ -8,6 +8,7 @@ const { id, safeString } = require("./utils");
 const { loadShenazenGameCatalog } = require("./game-catalog");
 const { assertGameAccess } = require("./game-access");
 const { assertAdminAccount } = require("./account-access");
+const { findCatalogGift } = require("../shared/gift-identity");
 const { SimpleTcpServerBridge } = require("./simple-tcp-server-bridge");
 const {
   releaseCrowdControlPort
@@ -16,6 +17,15 @@ const {
   WindowsInputService,
   normalizeWindowsInputSequence
 } = require("./windows-input-service");
+const { ColorStrikeBridge } = require("./color-strike-bridge");
+const { TikLiveClimbBridge } = require("./tiklive-climb-bridge");
+const {
+  TikLiveCubeWarsBridge
+} = require("./tiklive-cube-wars-bridge");
+const {
+  TikLiveStackTowerBridge
+} = require("./tiklive-stack-tower-bridge");
+const { ClashOfLiveBridge } = require("./clash-of-live-bridge");
 
 class GameHub extends EventEmitter {
   constructor({
@@ -23,7 +33,13 @@ class GameHub extends EventEmitter {
     packsDirectory,
     resourcesDirectory,
     windowsInputService,
-    crowdControlPortReleaser
+    crowdControlPortReleaser,
+    colorStrikeBridge,
+    tikLiveClimbBridge,
+    tikLiveCubeWarsBridge,
+    tikLiveStackTowerBridge,
+    clashOfLiveBridge,
+    giftCatalog
   }) {
     super();
     this.store = store;
@@ -38,6 +54,15 @@ class GameHub extends EventEmitter {
       windowsInputService || new WindowsInputService();
     this.crowdControlPortReleaser =
       crowdControlPortReleaser || releaseCrowdControlPort;
+    this.colorStrikeBridge = colorStrikeBridge || new ColorStrikeBridge();
+    this.tikLiveClimbBridge =
+      tikLiveClimbBridge || new TikLiveClimbBridge();
+    this.tikLiveCubeWarsBridge =
+      tikLiveCubeWarsBridge || new TikLiveCubeWarsBridge();
+    this.tikLiveStackTowerBridge =
+      tikLiveStackTowerBridge || new TikLiveStackTowerBridge();
+    this.clashOfLiveBridge = clashOfLiveBridge || new ClashOfLiveBridge();
+    this.giftCatalog = giftCatalog || null;
   }
 
   setMinecraftRuntime(runtime) {
@@ -58,11 +83,43 @@ class GameHub extends EventEmitter {
         state.game.recentPacks = ["coin-pusher", "connect-four"];
       });
     }
+    this.disableUnavailableInteractions();
     return this.listPacks();
   }
 
   listPacks() {
     return structuredClone(this.packs);
+  }
+
+  disableUnavailableInteractions() {
+    const lockedEffectIdsByPack = new Map(
+      this.packs.map((pack) => [
+        pack.id,
+        new Set(
+          (pack.effects || [])
+            .filter((effect) => effect.available === false)
+            .map((effect) => effect.id)
+        )
+      ])
+    );
+    let disabled = 0;
+    this.store.mutate((state) => {
+      const rulesByPack = state.game?.interactionRulesByPack || {};
+      for (const [packId, rules] of Object.entries(rulesByPack)) {
+        const lockedEffectIds = lockedEffectIdsByPack.get(packId);
+        if (!lockedEffectIds?.size || !Array.isArray(rules)) continue;
+        for (const rule of rules) {
+          const usesLockedEffect = (rule.actions || []).some((action) =>
+            lockedEffectIds.has(String(action.config?.effectId || ""))
+          );
+          if (usesLockedEffect && rule.enabled !== false) {
+            rule.enabled = false;
+            disabled += 1;
+          }
+        }
+      }
+    }, true);
+    return { disabled };
   }
 
   repairMinecraftWinCounterInteractions() {
@@ -92,7 +149,8 @@ class GameHub extends EventEmitter {
             pack,
             effect,
             mapping,
-            Number(pack.interactionCatalogVersion || 0)
+            Number(pack.interactionCatalogVersion || 0),
+            this.giftCatalog
           );
           const existingRule = existingRulesById.get(expectedRule.id);
           if (
@@ -123,6 +181,9 @@ class GameHub extends EventEmitter {
     const mappings = Array.isArray(pack.defaultMappings)
       ? pack.defaultMappings
       : [];
+    const wheelPresets = Array.isArray(pack.wheelPresets)
+      ? pack.wheelPresets
+      : [];
     const version = Math.max(
       0,
       Number(pack.interactionCatalogVersion || 0)
@@ -133,6 +194,7 @@ class GameHub extends EventEmitter {
 
     let added = 0;
     let repaired = 0;
+    let removed = 0;
     this.store.mutate((state) => {
       state.game.interactionCatalogVersions ||= {};
       const currentVersion = Number(
@@ -143,6 +205,26 @@ class GameHub extends EventEmitter {
       state.game.interactionRulesByPack ||= {};
       const interactionRules =
         state.game.interactionRulesByPack[pack.id] ||= [];
+      const deprecatedPresetIds = new Set(
+        Array.isArray(pack.deprecatedDefaultMappingIds)
+          ? pack.deprecatedDefaultMappingIds
+          : []
+      );
+      const currentPresetIds = new Set(
+        mappings.map((mapping) => String(mapping.id || "")).filter(Boolean)
+      );
+      for (let index = interactionRules.length - 1; index >= 0; index -= 1) {
+        const rule = interactionRules[index];
+        if (
+          rule?.gameInteraction?.default === true &&
+          deprecatedPresetIds.has(rule.gameInteraction.presetId) &&
+          !currentPresetIds.has(rule.gameInteraction.presetId) &&
+          Number(rule.gameInteraction.catalogVersion || 0) < version
+        ) {
+          interactionRules.splice(index, 1);
+          removed += 1;
+        }
+      }
       const existingRulesById = new Map(
         interactionRules.map((rule) => [rule.id, rule])
       );
@@ -155,10 +237,22 @@ class GameHub extends EventEmitter {
           pack,
           effect,
           mapping,
-          version
+          version,
+          this.giftCatalog
         );
         const existingRule = existingRulesById.get(rule.id);
         if (existingRule) {
+          if (
+            repairDefaultGiftInteraction(
+              existingRule,
+              rule,
+              mapping,
+              version
+            )
+          ) {
+            repaired += 1;
+            continue;
+          }
           if (
             repairDefaultWinCounterInteraction(
               pack.id,
@@ -176,11 +270,25 @@ class GameHub extends EventEmitter {
         existingRulesById.set(rule.id, rule);
         added += 1;
       }
+      if (wheelPresets.length) {
+        state.settings ||= {};
+        state.settings.overlayConfigs ||= {};
+        const wheelConfig = state.settings.overlayConfigs.wheel ||= {};
+        const wheels = Array.isArray(wheelConfig.wheels)
+          ? wheelConfig.wheels
+          : (wheelConfig.wheels = []);
+        const wheelIds = new Set(wheels.map((wheel) => wheel.id));
+        for (const wheelPreset of wheelPresets) {
+          if (!wheelPreset?.id || wheelIds.has(wheelPreset.id)) continue;
+          wheels.push(structuredClone(wheelPreset));
+          wheelIds.add(wheelPreset.id);
+        }
+      }
       if (canAddDefaults) {
         state.game.interactionCatalogVersions[pack.id] = version;
       }
     }, true);
-    return { added, repaired, version };
+    return { added, removed, repaired, version };
   }
 
   async testConnection(packId) {
@@ -194,6 +302,21 @@ class GameHub extends EventEmitter {
           ? "Moteur local prêt."
           : "Fiche de référence chargée ; pack natif non disponible."
       };
+    }
+    if (connector.type === "color-strike-http") {
+      return this.colorStrikeBridge.status(connector);
+    }
+    if (connector.type === "tiklive-climb-http") {
+      return this.tikLiveClimbBridge.status(connector);
+    }
+    if (connector.type === "tiklive-cube-wars-http") {
+      return this.tikLiveCubeWarsBridge.status(connector);
+    }
+    if (connector.type === "tiklive-stack-tower-http") {
+      return this.tikLiveStackTowerBridge.status(connector);
+    }
+    if (connector.type === "clash-of-live-http") {
+      return this.clashOfLiveBridge.status(connector);
     }
     if (connector.type === "http") {
       const controller = new AbortController();
@@ -359,6 +482,36 @@ class GameHub extends EventEmitter {
       result = await this.#sendTcp(pack, connector, payload);
     } else if (connector.type === "websocket") {
       result = await this.#sendWebSocket(pack, connector, payload);
+    } else if (connector.type === "color-strike-http") {
+      result = await this.colorStrikeBridge.trigger(
+        connector,
+        payload,
+        context
+      );
+    } else if (connector.type === "tiklive-climb-http") {
+      result = await this.tikLiveClimbBridge.trigger(
+        connector,
+        payload,
+        context
+      );
+    } else if (connector.type === "tiklive-cube-wars-http") {
+      result = await this.tikLiveCubeWarsBridge.trigger(
+        connector,
+        payload,
+        context
+      );
+    } else if (connector.type === "tiklive-stack-tower-http") {
+      result = await this.tikLiveStackTowerBridge.trigger(
+        connector,
+        payload,
+        context
+      );
+    } else if (connector.type === "clash-of-live-http") {
+      result = await this.clashOfLiveBridge.trigger(
+        connector,
+        payload,
+        context
+      );
     } else if (connector.type === "http") {
       result = await this.#sendHttp(connector, payload);
     } else if (connector.type === "udp") {
@@ -404,7 +557,8 @@ class GameHub extends EventEmitter {
         ...(await this.windowsInputService.play(
           connector.processName,
           effect.inputSequence,
-          connector.keyLayout
+          connector.keyLayout,
+          effect.keyboardInputMode || connector.keyboardInputMode
         ))
       };
     } else {
@@ -669,9 +823,18 @@ class GameHub extends EventEmitter {
   }
 }
 
-function defaultGameInteractionRule(pack, effect, mapping, version) {
+function defaultGameInteractionRule(
+  pack,
+  effect,
+  mapping,
+  version,
+  giftCatalog = null
+) {
   const triggerEnabled = mapping.triggerEnabled !== false;
   const giftName = String(mapping.giftName || "").trim();
+  const giftCondition = giftName
+    ? defaultGiftCondition(mapping, giftCatalog?.gifts || [])
+    : null;
   const title = String(mapping.title || effect.name).trim();
   const safePresetId = String(mapping.id || effect.id)
     .replace(/[^a-z0-9_-]+/gi, "-")
@@ -687,16 +850,13 @@ function defaultGameInteractionRule(pack, effect, mapping, version) {
       source: "*",
       threshold: Math.max(1, Number(mapping.threshold || 1))
     },
-    conditions:
-      triggerEnabled && giftName
-        ? [
-            {
-              field: "data.giftName",
-              operator: "equals",
-              value: giftName
-            }
-          ]
-        : [],
+    conditions: triggerEnabled
+      ? Array.isArray(mapping.conditions)
+        ? structuredClone(mapping.conditions)
+        : giftCondition
+          ? [giftCondition]
+          : []
+      : [],
     cooldown: {
       globalMs: Math.max(
         0,
@@ -714,7 +874,7 @@ function defaultGameInteractionRule(pack, effect, mapping, version) {
     actions: [
       {
         id: `action_${pack.id}_${safePresetId}`,
-        type: effect.actionType || "game.effect",
+        type: mapping.actionType || effect.actionType || "game.effect",
         config: {
           packId: pack.id,
           effectId: effect.id,
@@ -741,11 +901,71 @@ function defaultGameInteractionRule(pack, effect, mapping, version) {
                   effect.winCounter.operation ||
                   "adjust"
               }
-            : {})
+            : {}),
+          ...(mapping.actionConfig || {})
         }
       }
     ]
   };
+}
+
+function defaultGiftCondition(mapping, gifts = []) {
+  const configuredIds = [
+    String(mapping.giftId || "").trim(),
+    ...(Array.isArray(mapping.giftIds) ? mapping.giftIds : [])
+  ].filter(Boolean);
+  const catalogGift = findCatalogGift(gifts, {
+    id: configuredIds[0] || "",
+    giftIds: configuredIds.slice(1),
+    name: mapping.giftName,
+    cost: mapping.giftCost
+  });
+  const resolvedIds = [
+    ...configuredIds,
+    String(catalogGift?.id || "").trim(),
+    ...(Array.isArray(catalogGift?.alternateIds)
+      ? catalogGift.alternateIds
+      : [])
+  ].filter(Boolean);
+  const giftId = resolvedIds[0] || "";
+  const giftIds = [...new Set(resolvedIds)].filter((id) => id !== giftId);
+  const giftImageUrl = String(catalogGift?.imageUrl || "").trim();
+  const giftCost = Math.max(
+    0,
+    Number(mapping.giftCost ?? catalogGift?.cost) || 0
+  );
+  const giftFamily = String(
+    mapping.giftFamily || catalogGift?.giftFamily || ""
+  ).trim();
+  return {
+    field: "data.giftName",
+    operator: "equals",
+    value: String(mapping.giftName || catalogGift?.name || "").trim(),
+    ...(giftId ? { giftId } : {}),
+    ...(giftIds.length ? { giftIds } : {}),
+    ...(giftCost ? { giftCost } : {}),
+    ...(giftFamily ? { giftFamily } : {}),
+    ...(giftImageUrl ? { giftImageUrl } : {})
+  };
+}
+
+function repairDefaultGiftInteraction(rule, expectedRule, mapping, version) {
+  if (
+    !mapping.giftId ||
+    rule?.gameInteraction?.default !== true ||
+    String(rule.gameInteraction.presetId || "") !== String(mapping.id || "") ||
+    Number(rule.gameInteraction.catalogVersion || 0) >= version
+  ) {
+    return false;
+  }
+  const enabled = rule.enabled !== false;
+  const triggerEnabled = rule.trigger?.enabled !== false;
+  const replacement = structuredClone(expectedRule);
+  for (const key of Object.keys(rule)) delete rule[key];
+  Object.assign(rule, replacement);
+  rule.enabled = enabled;
+  rule.trigger.enabled = triggerEnabled;
+  return true;
 }
 
 function repairDefaultWinCounterInteraction(

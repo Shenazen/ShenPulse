@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+  <title id="title">Clash Of ShenPulse</title>
+  <desc id="desc">Deux forteresses rouge et bleue s’affrontent dans une arène ShenPulse.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset=".5" stop-color="#111329"/>
+      <stop offset="1" stop-color="#070a16"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ff4d75"/>
+      <stop offset="1" stop-color="#9a1139"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#36d3ff"/>
+      <stop offset="1" stop-color="#1457d8"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="640" height="640" rx="86" fill="url(#bg)"/>
+  <path d="M0 0h320v640H0z" fill="#ff315f" opacity=".08"/>
+  <path d="M320 0h320v640H320z" fill="#16b9ff" opacity=".08"/>
+  <circle cx="122" cy="192" r="98" fill="#ff315f" opacity=".14" filter="url(#glow)"/>
+  <circle cx="518" cy="192" r="98" fill="#16b9ff" opacity=".14" filter="url(#glow)"/>
+  <g transform="translate(58 96)">
+    <path d="M16 196V74h34V38h40v36h42V38h40v36h34v122z" fill="url(#red)" stroke="#ff6d8e" stroke-width="8"/>
+    <path d="M76 196v-54c0-31 70-31 70 0v54" fill="#111329" opacity=".9"/>
+    <path d="M16 88h190M16 118h190" stroke="#ffb0c2" stroke-width="6" opacity=".45"/>
+  </g>
+  <g transform="translate(376 96)">
+    <path d="M16 196V74h34V38h40v36h42V38h40v36h34v122z" fill="url(#blue)" stroke="#67ddff" stroke-width="8"/>
+    <path d="M76 196v-54c0-31 70-31 70 0v54" fill="#111329" opacity=".9"/>
+    <path d="M16 88h190M16 118h190" stroke="#b2efff" stroke-width="6" opacity=".45"/>
+  </g>
+  <g filter="url(#glow)">
+    <path d="M320 164l78 78-78 78-78-78z" fill="#111329" stroke="#f5f7ff" stroke-width="7"/>
+    <text x="320" y="258" text-anchor="middle" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="45" font-weight="900">VS</text>
+  </g>
+  <text x="320" y="406" text-anchor="middle" fill="#fff" font-family="Inter,Arial,sans-serif" font-size="70" font-weight="900" letter-spacing="2">CLASH</text>
+  <text x="320" y="463" text-anchor="middle" fill="#dce7ff" font-family="Inter,Arial,sans-serif" font-size="38" font-weight="800" letter-spacing="8">OF</text>
+  <text x="320" y="531" text-anchor="middle" fill="#37f2d1" font-family="Inter,Arial,sans-serif" font-size="49" font-weight="900" letter-spacing="2">SHENPULSE</text>
+  <rect x="142" y="559" width="356" height="44" rx="22" fill="#111a30" stroke="#37f2d1" stroke-width="2"/>
+  <text x="320" y="588" text-anchor="middle" fill="#aafbef" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="800" letter-spacing="5">LIVE INTERACTIONS</text>
+</svg>

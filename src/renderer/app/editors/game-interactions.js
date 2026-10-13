@@ -66,15 +66,18 @@ function openGameInteractionCatalog(pack, row = null) {
     )
   ].sort((left, right) => left.localeCompare(right, "fr"));
   const currentEffectId = row?.action.config?.effectId || "";
+  const availableEffectCount = (pack.effects || []).filter(
+    (effect) => effect.available !== false
+  ).length;
   const rowData = gameInteractionRowData(row);
   openEditor({
     title: row ? "Changer l’interaction" : "Ajouter une interaction",
-    kicker: `${pack.name.toLocaleUpperCase("fr")} · ${pack.effects.length} ACTIONS DISPONIBLES`,
+    kicker: `${pack.name.toLocaleUpperCase("fr")} · ${availableEffectCount} ACTIONS DISPONIBLES`,
     variant: "effect-library",
     body: `<div class="game-effect-library">
       <header class="game-effect-library-intro">
         <div><span>CATALOGUE DU JEU</span><h3>Choisissez l’action à déclencher</h3><p>Chaque interaction reprend son visuel et sa description. Vous configurerez le cadeau, le follow, les likes ou le message juste après.</p></div>
-        <strong>${pack.effects.length}</strong>
+        <strong>${availableEffectCount}</strong>
       </header>
       <label class="game-effect-library-search">
         <span>⌕</span>
@@ -94,10 +97,13 @@ function openGameInteractionCatalog(pack, row = null) {
               const art = effect.image
                 ? `<img src="${escapeHtml(effect.image)}" alt="" loading="lazy">`
                 : `<span class="game-effect-library-fallback">${escapeHtml(effect.icon || "◇")}</span>`;
-              return `<button type="button" class="game-effect-library-option ${effect.id === currentEffectId ? "selected" : ""}" data-select-game-effect data-pack="${escapeHtml(pack.id)}" data-effect="${escapeHtml(effect.id)}" data-filter="${escapeHtml(searchText)}" ${rowData}>
+              const unavailable = effect.available === false;
+              const unavailableReason =
+                effect.unavailableReason || "Cette interaction est verrouillée.";
+              return `<button type="button" class="game-effect-library-option ${effect.id === currentEffectId ? "selected" : ""} ${unavailable ? "unavailable" : ""}" data-select-game-effect data-pack="${escapeHtml(pack.id)}" data-effect="${escapeHtml(effect.id)}" data-filter="${escapeHtml(searchText)}" ${rowData} ${unavailable ? `disabled title="${escapeHtml(unavailableReason)}" aria-label="${escapeHtml(`${effect.name} · verrouillée`)}"` : ""}>
                 ${art}
-                <span><strong>${escapeHtml(effect.name)}</strong><small>${escapeHtml(effect.description || "Interaction de jeu ShenPulse.")}</small></span>
-                <b>${effect.id === currentEffectId ? "✓" : "＋"}</b>
+                <span><strong>${escapeHtml(effect.name)}</strong><small>${escapeHtml(unavailable ? unavailableReason : effect.description || "Interaction de jeu ShenPulse.")}</small></span>
+                <b>${unavailable ? "🔒" : effect.id === currentEffectId ? "✓" : "＋"}</b>
               </button>`;
             }).join("")}</div>
           </section>`;

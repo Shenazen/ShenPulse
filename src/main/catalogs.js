@@ -5,38 +5,12 @@ const path = require("node:path");
 const { safeString } = require("./utils");
 const {
   canonicalGiftName,
-  giftFamily
+  findCatalogGift,
+  giftFamily,
+  giftImageIdentity,
+  normalizeGiftName
 } = require("../shared/gift-identity");
 
-const FALLBACK_LOCALIZED_GIFT_IDS = new Set([
-  "boxing-gloves",
-  "cap",
-  "corgi",
-  "doughnut",
-  "ellie-the-elephant",
-  "family-9575",
-  "finger-heart",
-  "fireworks",
-  "gg",
-  "go-popular",
-  "hand-hearts",
-  "heart-me",
-  "ice-cream-cone",
-  "leon-the-kitten",
-  "little-crown",
-  "love-you",
-  "money-gun",
-  "perfume",
-  "private-jet",
-  "rose",
-  "sports-car",
-  "swan",
-  "tiktok",
-  "tiktok-shuttle",
-  "tiktok-universe",
-  "train",
-  "you-re-amazing"
-]);
 const LOCALIZED_GIFT_REFRESH_MS = 6 * 60 * 60 * 1000;
 
 const KENNEY_GROUPS = {
@@ -319,10 +293,16 @@ async function searchWikimediaMedia({
 
 class GiftCatalog {
   constructor(resourcesDirectory, {
-    fetchLocalizedGifts = fetchFrenchTikTokGifts
+    fetchLocalizedGifts = fetchFrenchTikTokGifts,
+    fileNames = ["tiktok-gifts.json", "tiklive-gifts.json"]
   } = {}) {
-    this.filePath = path.join(resourcesDirectory, "catalogs", "tiktok-gifts.json");
+    this.filePaths = fileNames.map((fileName) =>
+      path.join(resourcesDirectory, "catalogs", fileName)
+    );
     this.fetchLocalizedGifts = fetchLocalizedGifts;
+    this.baseGifts = [];
+    this.localizedGifts = [];
+    this.learnedGifts = [];
     this.gifts = [];
     this.generatedAt = "";
     this.localizedAtMs = 0;
@@ -332,27 +312,28 @@ class GiftCatalog {
   }
 
   load() {
-    try {
-      const payload = JSON.parse(fs.readFileSync(this.filePath, "utf8"));
-      this.generatedAt = safeString(payload.generatedAt, 100);
-      this.gifts = (Array.isArray(payload.gifts) ? payload.gifts : [])
-        .filter((gift) =>
-          FALLBACK_LOCALIZED_GIFT_IDS.has(String(gift?.id || ""))
-        )
-        .map(normalizeGift)
-        .filter((gift) => gift.name)
-        .sort(
-          (left, right) =>
-            left.cost - right.cost ||
-            left.name.localeCompare(right.name, "fr", {
-              sensitivity: "base",
-              numeric: true
-            })
-        );
-    } catch {
-      this.gifts = [];
-      this.generatedAt = "";
+    const values = [];
+    const generatedAt = [];
+    for (const filePath of this.filePaths) {
+      try {
+        const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+        const source = path.basename(filePath) === "tiklive-gifts.json"
+          ? "tiklive"
+          : "catalog";
+        if (payload.generatedAt) generatedAt.push(safeString(payload.generatedAt, 100));
+        for (const gift of Array.isArray(payload.gifts) ? payload.gifts : []) {
+          values.push({
+            ...gift,
+            source: safeString(gift?.source || source, 40)
+          });
+        }
+      } catch {
+        // Chaque source est optionnelle : le catalogue restant reste utilisable.
+      }
     }
+    this.baseGifts = dedupeGiftCatalog(values);
+    this.gifts = [...this.baseGifts];
+    this.generatedAt = generatedAt.filter(Boolean).sort().at(-1) || "";
     return this.gifts;
   }
 
@@ -373,9 +354,14 @@ class GiftCatalog {
     ).then((values) => {
       const gifts = dedupeLocalizedGifts(values);
       if (!gifts.length) {
-        throw new Error("Le catalogue TikTok français est vide.");
+        throw new Error("Le catalogue TikTok de la salle est vide.");
       }
-      this.gifts = gifts;
+      this.localizedGifts = gifts;
+      this.gifts = dedupeGiftCatalog([
+        ...this.baseGifts,
+        ...this.learnedGifts,
+        ...this.localizedGifts
+      ]);
       this.generatedAt = new Date().toISOString();
       this.localizedAtMs = Date.now();
       this.localizedUsername = targetUsername;
@@ -388,13 +374,51 @@ class GiftCatalog {
     return pending;
   }
 
+  mergeLiveGift(value = {}) {
+    const gift = normalizeGift({
+      ...value,
+      cost:
+        value.giftCost ??
+        value.cost ??
+        value.value ??
+        value.diamondCount ??
+        value.diamond_count,
+      id: value.giftId ?? value.id,
+      imageUrl:
+        value.giftImageUrl ??
+        value.imageUrl ??
+        value.giftPictureUrl ??
+        value.image,
+      name: value.giftName ?? value.name,
+      source: "live"
+    });
+    if (!gift.id || !gift.name) return false;
+
+    const known = findCatalogGift(this.gifts, gift);
+    const knownIds = new Set([
+      String(known?.id || ""),
+      ...(Array.isArray(known?.alternateIds) ? known.alternateIds : [])
+    ]);
+    if (known && knownIds.has(gift.id)) return false;
+
+    this.learnedGifts = dedupeGiftCatalog([...this.learnedGifts, gift]);
+    this.gifts = dedupeGiftCatalog([
+      ...this.baseGifts,
+      ...this.learnedGifts,
+      ...this.localizedGifts
+    ]);
+    return true;
+  }
+
   search(query = "", limit = 80) {
     const needle = normalizeSearch(query);
     const max = Math.min(1000, Math.max(1, Number(limit) || 80));
     const source = needle
       ? this.gifts.filter((gift) =>
           normalizeSearch(
-            `${gift.name} ${gift.originalName || ""} ${gift.id} ${gift.cost}`
+            `${gift.name} ${gift.originalName || ""} ${gift.id} ${gift.cost} ` +
+              `${(gift.alternateNames || []).join(" ")} ` +
+              `${(gift.alternateIds || []).join(" ")}`
           ).includes(needle)
         )
       : this.gifts;
@@ -446,10 +470,8 @@ async function fetchFrenchTikTokGifts(
 }
 
 function dedupeLocalizedGifts(values = []) {
-  const gifts = [];
-  const seenIds = new Set();
-  for (const value of Array.isArray(values) ? values : []) {
-    const gift = normalizeGift({
+  return dedupeGiftCatalog(
+    (Array.isArray(values) ? values : []).map((value) => ({
       cost: value?.cost ?? value?.diamondCount ?? value?.diamond_count,
       id: value?.id ?? value?.giftId ?? value?.gift_id,
       imageUrl:
@@ -469,38 +491,39 @@ function dedupeLocalizedGifts(values = []) {
       primaryEffectId:
         value?.primary_effect_id ?? value?.primaryEffectId,
       source: "tiktok-fr"
-    });
-    if (!gift.id || !gift.name || containsUnsupportedGiftScript(gift.name)) {
-      continue;
-    }
-    if (seenIds.has(gift.id)) continue;
-    seenIds.add(gift.id);
-    gifts.push(gift);
-  }
-  return gifts.sort(
-    (left, right) =>
-      left.cost - right.cost ||
-      left.name.localeCompare(right.name, "fr", {
-        sensitivity: "base",
-        numeric: true
-      })
-  );
-}
-
-function containsUnsupportedGiftScript(value = "") {
-  return /[\u0370-\u052f\u0590-\u08ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u.test(
-    String(value)
+    }))
   );
 }
 
 function normalizeGift(value = {}) {
-  const originalName = safeString(value.name, 200);
+  const originalName = safeString(value.name ?? value.giftName, 200);
+  const rawId = safeString(value.id ?? value.giftId ?? value.gift_id, 160);
+  const inferredNumericId = inferNumericGiftId(rawId);
+  const alternateIds = uniqueStrings([
+    ...(Array.isArray(value.alternateIds) ? value.alternateIds : []),
+    ...(Array.isArray(value.giftIds) ? value.giftIds : []),
+    inferredNumericId
+  ], 160).filter((id) => id !== rawId);
+  const alternateNames = uniqueStrings([
+    ...(Array.isArray(value.alternateNames) ? value.alternateNames : []),
+    value.originalName
+  ], 200).filter((name) => name !== originalName);
   const gift = {
-    id: safeString(value.id, 160),
+    id: rawId,
+    alternateIds,
+    alternateNames,
     name: originalName,
-    cost: Math.max(0, Number(value.cost) || 0),
-    imageUrl: /^https:\/\//i.test(String(value.imageUrl || ""))
-      ? safeString(value.imageUrl, 1000)
+    cost: Math.max(
+      0,
+      Number(value.cost ?? value.diamondCount ?? value.diamond_count) || 0
+    ),
+    imageUrl: /^https:\/\//i.test(
+      String(value.imageUrl || value.image_url || value.giftPictureUrl || "")
+    )
+      ? safeString(
+          value.imageUrl || value.image_url || value.giftPictureUrl,
+          1000
+        )
       : "",
     source: safeString(value.source || "catalog", 40),
     giftType: Math.max(0, Number(value.giftType) || 0),
@@ -517,9 +540,192 @@ function normalizeGift(value = {}) {
     originalName:
       family && originalName !== canonicalGiftName(gift, originalName)
         ? originalName
-        : "",
+        : safeString(value.originalName, 200),
     giftFamily: family
   };
+}
+
+function dedupeGiftCatalog(values = []) {
+  let current = Array.isArray(values) ? values : [];
+  let previousSignature = "";
+  for (let pass = 0; pass < 8; pass += 1) {
+    const next = dedupeGiftCatalogPass(current);
+    const signature = giftCatalogSignature(next);
+    if (signature === previousSignature) return next;
+    previousSignature = signature;
+    current = next;
+  }
+  return current;
+}
+
+function dedupeGiftCatalogPass(values = []) {
+  const normalized = (Array.isArray(values) ? values : [])
+    .map(normalizeGift)
+    .filter((gift) => gift.id && gift.name);
+  const parents = normalized.map((_gift, index) => index);
+  const ranks = normalized.map(() => 0);
+  const keys = new Map();
+
+  const find = (index) => {
+    let root = index;
+    while (parents[root] !== root) root = parents[root];
+    while (parents[index] !== index) {
+      const parent = parents[index];
+      parents[index] = root;
+      index = parent;
+    }
+    return root;
+  };
+  const union = (left, right) => {
+    let leftRoot = find(left);
+    let rightRoot = find(right);
+    if (leftRoot === rightRoot) return;
+    if (ranks[leftRoot] < ranks[rightRoot]) {
+      [leftRoot, rightRoot] = [rightRoot, leftRoot];
+    }
+    parents[rightRoot] = leftRoot;
+    if (ranks[leftRoot] === ranks[rightRoot]) ranks[leftRoot] += 1;
+  };
+
+  normalized.forEach((gift, index) => {
+    for (const key of giftDedupeKeys(gift)) {
+      if (keys.has(key)) union(index, keys.get(key));
+      else keys.set(key, index);
+    }
+  });
+
+  const imageGroups = new Map();
+  normalized.forEach((gift, index) => {
+    const imageKey = giftImageIdentity(gift.imageUrl);
+    if (!imageKey) return;
+    const key = `${imageKey}:${gift.cost}`;
+    const group = imageGroups.get(key) || { legacy: [], numeric: [] };
+    const ids = [gift.id, ...(gift.alternateIds || [])];
+    group[ids.some((id) => /^\d+$/.test(id)) ? "numeric" : "legacy"].push(index);
+    imageGroups.set(key, group);
+  });
+  for (const group of imageGroups.values()) {
+    for (let index = 1; index < group.legacy.length; index += 1) {
+      union(group.legacy[0], group.legacy[index]);
+    }
+    const numericRoots = [...new Set(group.numeric.map(find))];
+    if (group.legacy.length && numericRoots.length === 1) {
+      union(group.legacy[0], numericRoots[0]);
+    }
+  }
+
+  const groups = new Map();
+  normalized.forEach((gift, index) => {
+    const root = find(index);
+    const group = groups.get(root) || [];
+    group.push(gift);
+    groups.set(root, group);
+  });
+
+  return [...groups.values()]
+    .map((group) => group.reduce(mergeGiftEntries))
+    .sort(compareGifts);
+}
+
+function giftCatalogSignature(gifts) {
+  return gifts
+    .map((gift) =>
+      [
+        gift.id,
+        ...(gift.alternateIds || []),
+        gift.name,
+        ...(gift.alternateNames || []),
+        gift.cost,
+        gift.imageUrl
+      ].join("\u0001")
+    )
+    .join("\u0002");
+}
+
+function giftDedupeKeys(gift) {
+  const keys = [];
+  for (const id of [gift.id, ...(gift.alternateIds || [])]) {
+    if (id) keys.push(`id:${String(id).toLowerCase()}`);
+  }
+  if (gift.giftFamily) keys.push(`family:${gift.giftFamily}`);
+  for (const name of [gift.name, ...(gift.alternateNames || [])]) {
+    const nameKey = normalizeGiftName(name);
+    if (nameKey) keys.push(`name:${nameKey}:${gift.cost}`);
+  }
+  return keys;
+}
+
+function mergeGiftEntries(left, right) {
+  const preferred = giftQuality(right) >= giftQuality(left) ? right : left;
+  const fallback = preferred === right ? left : right;
+  const allIds = uniqueStrings([
+    preferred.id,
+    ...(preferred.alternateIds || []),
+    fallback.id,
+    ...(fallback.alternateIds || [])
+  ], 160);
+  const id = /^\d+$/.test(preferred.id)
+    ? preferred.id
+    : allIds.find((value) => /^\d+$/.test(value)) || preferred.id || fallback.id;
+  const allNames = uniqueStrings([
+    preferred.name,
+    preferred.originalName,
+    ...(preferred.alternateNames || []),
+    fallback.name,
+    fallback.originalName,
+    ...(fallback.alternateNames || [])
+  ], 200);
+  const name = preferred.name || fallback.name;
+  return normalizeGift({
+    ...fallback,
+    ...preferred,
+    id,
+    alternateIds: allIds.filter((value) => value !== id),
+    alternateNames: allNames.filter((value) => value !== name),
+    imageUrl: preferred.imageUrl || fallback.imageUrl,
+    name
+  });
+}
+
+function giftQuality(gift) {
+  const sourceRank = {
+    live: 4,
+    "tiktok-fr": 4,
+    catalog: 3,
+    tiklive: 2
+  }[gift.source] || 1;
+  return (
+    sourceRank * 100 +
+    (/^\d+$/.test(gift.id) ? 20 : 0) +
+    (gift.imageUrl ? 10 : 0) +
+    (gift.cost ? 4 : 0) +
+    (gift.giftType ? 2 : 0) +
+    (gift.combo ? 1 : 0)
+  );
+}
+
+function uniqueStrings(values, maximumLength) {
+  return [...new Set(
+    values
+      .map((value) => safeString(value, maximumLength))
+      .filter(Boolean)
+  )];
+}
+
+function inferNumericGiftId(value) {
+  const match = String(value || "").match(/(?:^gift-|[-_])(\d{4,})$/i);
+  return match?.[1] || "";
+}
+
+function compareGifts(left, right) {
+  return (
+    left.cost - right.cost ||
+    left.name.localeCompare(right.name, "fr", {
+      sensitivity: "base",
+      numeric: true
+    }) ||
+    left.id.localeCompare(right.id, "en", { numeric: true })
+  );
 }
 
 function range(start, end) {
@@ -739,6 +945,7 @@ module.exports = {
   normalizeWikimediaMediaPayload,
   searchMyInstantsSounds,
   searchWikimediaMedia,
+  dedupeGiftCatalog,
   dedupeLocalizedGifts,
   fetchFrenchTikTokGifts,
   normalizeGift

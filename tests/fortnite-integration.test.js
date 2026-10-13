@@ -13,6 +13,7 @@ const { GameHub } = require("../src/main/game-hub");
 const {
   WindowsInputService,
   applyKeyboardLayout,
+  normalizeKeyboardInputMode,
   normalizeProcessName,
   normalizeWindowsInputSequence
 } = require("../src/main/windows-input-service");
@@ -59,6 +60,30 @@ test("ne conserve que les effets Fortnite dont la séquence réelle est nommée 
   ]) {
     assert.equal(effectsBySourceId.has(excluded), false);
   }
+
+  assert.deepEqual(
+    FORTNITE_EFFECTS
+      .filter((effect) => effect.keyboardInputMode === "hybrid")
+      .map((effect) => effect.sourceEffectId),
+    ["f_weapon_carousel"]
+  );
+  assert.deepEqual(
+    FORTNITE_EFFECTS
+      .filter((effect) => effect.available === false)
+      .map((effect) => effect.sourceEffectId),
+    ["f_weapon_1", "f_weapon_2", "f_weapon_3", "f_weapon_4", "f_weapon_5"]
+  );
+  assert.ok(
+    FORTNITE_EFFECTS
+      .filter((effect) => effect.available === false)
+      .every((effect) => /verrouillée/i.test(effect.unavailableReason))
+  );
+  assert.deepEqual(
+    FORTNITE_DEFAULT_MAPPINGS
+      .filter((mapping) => /^fortnite-weapon-slot-[1-5]$/.test(mapping.effectId))
+      .map((mapping) => mapping.enabled),
+    [false, false, false, false, false]
+  );
 });
 
 test("valide les séquences Crowd Control et adapte uniquement les déplacements AZERTY", () => {
@@ -93,6 +118,9 @@ test("valide les séquences Crowd Control et adapte uniquement les déplacements
     () => normalizeWindowsInputSequence("m,0,1,0"),
     /Événement d’entrée invalide/
   );
+  assert.equal(normalizeKeyboardInputMode("scan-code"), "scan-code");
+  assert.equal(normalizeKeyboardInputMode("hybrid"), "hybrid");
+  assert.equal(normalizeKeyboardInputMode("invalid"), "virtual-key");
 });
 
 test("Windows PowerShell 5 déplie chaque frappe JSON sans tableau imbriqué", () => {
@@ -110,6 +138,11 @@ test("Windows PowerShell 5 déplie chaque frappe JSON sans tableau imbriqué", (
   );
   assert.match(serviceSource, /\[System\.UInt16\]\$keyCode/);
   assert.doesNotMatch(serviceSource, /\[ushort\]/i);
+  assert.match(serviceSource, /KEYEVENTF_SCANCODE = 0x0008/);
+  assert.match(serviceSource, /MapVirtualKeyEx/);
+  assert.match(serviceSource, /GetKeyboardLayout/);
+  assert.match(serviceSource, /FindWindowForProcess/);
+  assert.match(serviceSource, /SetWindowPos/);
 
   const encodedEvents = Buffer.from(
     JSON.stringify([
@@ -165,8 +198,19 @@ test("le connecteur Fortnite reste réservé au propriétaire et ne route aucun 
       calls.push({ operation: "status", processName });
       return { ok: true, processId: 42 };
     },
-    play: async (processName, sequence, keyLayout) => {
-      calls.push({ operation: "play", processName, sequence, keyLayout });
+    play: async (
+      processName,
+      sequence,
+      keyLayout,
+      keyboardInputMode
+    ) => {
+      calls.push({
+        operation: "play",
+        processName,
+        sequence,
+        keyLayout,
+        keyboardInputMode
+      });
       return { ok: true, eventsSent: 2 };
     }
   };
@@ -186,12 +230,28 @@ test("le connecteur Fortnite reste réservé au propriétaire et ne route aucun 
     "FortniteClient-Win64-Shipping.exe"
   );
   assert.equal(hub.initializeDefaultInteractions("fortnite").added, 22);
+  assert.equal(
+    state.game.interactionRulesByPack.fortnite.filter(
+      (rule) => /^fortnite-weapon-slot-[1-5]$/.test(
+        rule.actions?.[0]?.config?.effectId || ""
+      )
+    ).every((rule) => rule.enabled === false),
+    true
+  );
 
   await hub.testConnection("fortnite");
   await hub.trigger(
     "fortnite-jump",
     { user: { id: "viewer", displayName: "Viewer" } },
     { packId: "fortnite" }
+  );
+  await assert.rejects(
+    () => hub.trigger(
+      "fortnite-weapon-slot-1",
+      { user: { id: "viewer", displayName: "Viewer" } },
+      { packId: "fortnite" }
+    ),
+    /référence visuelle|aucun pack natif/i
   );
   assert.deepEqual(
     calls.map((call) => [call.operation, call.processName]),
@@ -201,6 +261,7 @@ test("le connecteur Fortnite reste réservé au propriétaire et ne route aucun 
     ]
   );
   assert.equal(calls[1].keyLayout, "azerty");
+  assert.equal(calls[1].keyboardInputMode, undefined);
 
   const nonOwnerHub = new GameHub({
     store: storeFor(ownerState("viewer@example.com")),
@@ -214,6 +275,75 @@ test("le connecteur Fortnite reste réservé au propriétaire et ne route aucun 
     /pas autorisé à administrer ShenPulse/
   );
   assert.equal(calls.length, 2);
+});
+
+test("désactive au chargement les anciennes règles Fortnite utilisant les emplacements verrouillés", () => {
+  const state = ownerState();
+  state.game.interactionRulesByPack.fortnite = [
+    {
+      id: "ancienne-regle-emplacement",
+      enabled: true,
+      actions: [
+        {
+          type: "game.effect",
+          config: {
+            packId: "fortnite",
+            effectId: "fortnite-weapon-slot-3"
+          }
+        }
+      ]
+    },
+    {
+      id: "regle-saut",
+      enabled: true,
+      actions: [
+        {
+          type: "game.effect",
+          config: { packId: "fortnite", effectId: "fortnite-jump" }
+        }
+      ]
+    }
+  ];
+  const hub = new GameHub({
+    store: storeFor(state),
+    resourcesDirectory,
+    packsDirectory: path.join(resourcesDirectory, "packs")
+  });
+
+  hub.loadPacks();
+
+  assert.equal(
+    state.game.interactionRulesByPack.fortnite[0].enabled,
+    false
+  );
+  assert.equal(
+    state.game.interactionRulesByPack.fortnite[1].enabled,
+    true
+  );
+});
+
+test("le service transmet le mode hybride uniquement aux interactions concernées", async () => {
+  const calls = [];
+  const service = new WindowsInputService({
+    execute: async (operation, processName, events, keyboardInputMode) => {
+      calls.push({ operation, processName, events, keyboardInputMode });
+      return { ok: true };
+    }
+  });
+
+  await service.play(
+    "FortniteClient-Win64-Shipping.exe",
+    "k,0,49,0;k,40,49,1",
+    "azerty",
+    "hybrid"
+  );
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].keyboardInputMode, "hybrid");
+  assert.deepEqual(
+    calls[0].events.map((event) => event.keyCode),
+    [49, 49]
+  );
 });
 
 test("sérialise les séquences destinées au même processus Fortnite", async () => {

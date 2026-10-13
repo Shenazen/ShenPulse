@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "gameId": "tiklive-cube-wars",
+  "version": "1.0.0-shenpulse1",
+  "parentVersion": "1.0.0",
+  "publishedAt": "2026-10-12T23:49:18.6336575+02:00",
+  "notes": "Version autonome ShenPulse de Cube Wars 1.0.0 : lancement sans ticket ni launcher TIKLIVE, branding ShenPulse, commandes H/F, roue et 18 interactions locales sur le port 7811.",
+  "assets": [
+    {
+      "id": "game",
+      "sourceName": "ShenPulse-Cube-Wars-1.0.0-shenpulse1.zip",
+      "remoteName": "ShenPulse-Cube-Wars-1.0.0-shenpulse1.zip",
+      "size": 38136590,
+      "sha256": "2ffa7f41ed1197cb725e0af45d7449be80029336ebd2a0093adf79a243c80cf4",
+      "role": "standalone-game"
+    }
+  ]
+}

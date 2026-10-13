@@ -782,6 +782,22 @@ function registerIpc({
     if (!rule.actions.length) {
       throw new Error("Cette interaction de jeu ne contient aucun effet.");
     }
+    const pack = core.gameHub
+      .listPacks()
+      .find((entry) => entry.id === targetId);
+    const lockedEffect = rule.actions
+      .map((action) =>
+        pack?.effects.find(
+          (effect) => effect.id === safeString(action.config?.effectId, 160)
+        )
+      )
+      .find((effect) => effect?.available === false);
+    if (lockedEffect) {
+      throw new Error(
+        lockedEffect.unavailableReason ||
+          "Cette interaction est verrouillée et ne peut pas être utilisée."
+      );
+    }
     store.upsertGameInteraction(targetId, rule);
     const nextSnapshot = core.snapshot();
     notify(core, "state-changed", nextSnapshot);
@@ -1132,7 +1148,11 @@ function sanitizeGameConfiguration(packId, value) {
     sanitized && typeof sanitized === "object" && !Array.isArray(sanitized)
       ? sanitized
       : {};
-  if (["fortnite", "demonologist"].includes(safeString(packId, 160))) {
+  if (
+    ["fortnite", "rocket-league", "demonologist"].includes(
+      safeString(packId, 160)
+    )
+  ) {
     return {
       keyLayout:
         String(input.keyLayout || "").toLowerCase() === "azerty"

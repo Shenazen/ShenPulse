@@ -35,6 +35,53 @@ function identify(store, uid = "uid_sound_profile") {
   });
 }
 
+test("restaure les références Backblaze encore présentes dans le coffre local", () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "shenpulse-backblaze-recovery-")
+  );
+  try {
+    const current = createDefaultState();
+    current.settings.backblaze.keyIdSecretId = "";
+    current.settings.backblaze.applicationKeySecretId = "";
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-state.json"),
+      JSON.stringify(current)
+    );
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-secrets.json"),
+      JSON.stringify({
+        "backblaze-key": { encrypted: false, value: "key-id" },
+        "backblaze-application": {
+          encrypted: false,
+          value: "application-key"
+        }
+      })
+    );
+    const backup = structuredClone(current);
+    backup.settings.backblaze.keyIdSecretId = "backblaze-key";
+    backup.settings.backblaze.applicationKeySecretId =
+      "backblaze-application";
+    fs.writeFileSync(
+      path.join(directory, "shenpulse-state.json.12104.tmp"),
+      JSON.stringify(backup)
+    );
+
+    const store = createStore(directory);
+    const state = store.load();
+
+    assert.equal(
+      state.settings.backblaze.keyIdSecretId,
+      "backblaze-key"
+    );
+    assert.equal(
+      state.settings.backblaze.applicationKeySecretId,
+      "backblaze-application"
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("le mode démo reste manuel et ses anciens viewers fictifs sont nettoyés", () => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "shenpulse-demo-migration-")

@@ -6,7 +6,7 @@
  * compteur. OBS télécharge et compile ainsi beaucoup moins de JavaScript.
  */
 (async function loadActiveOverlayRuntime() {
-  const VERSION = "1.0.16-beta1";
+  const VERSION = "1.0.16-beta1-overlay6";
   const query = new URLSearchParams(location.search);
   const isMatchRoute = /^\/(?:match|m)\//i.test(location.pathname);
   const view = isMatchRoute ? "match" : query.get("view") || "alerts";
@@ -31,17 +31,25 @@
     view
   };
 
-  function loadScript(source) {
-    return new Promise((resolve, reject) => {
+  function loadScripts(sources) {
+    const pendingScripts = sources.map((source) => {
       const script = document.createElement("script");
       script.src = `${source}?v=${VERSION}`;
       script.async = false;
-      script.addEventListener("load", resolve, { once: true });
-      script.addEventListener("error", () => reject(new Error(
-        `Impossible de charger ${source}`
-      )), { once: true });
-      document.body.appendChild(script);
+      const completion = new Promise((resolve, reject) => {
+        script.addEventListener("load", resolve, { once: true });
+        script.addEventListener("error", () => reject(new Error(
+          `Impossible de charger ${source}`
+        )), { once: true });
+      });
+      return { completion, script };
     });
+    // Les scripts dynamiques avec async=false s'executent dans leur ordre
+    // d'insertion, tout en etant telecharges en parallele par Chromium.
+    for (const { script } of pendingScripts) {
+      document.body.appendChild(script);
+    }
+    return Promise.all(pendingScripts.map(({ completion }) => completion));
   }
 
   const scripts = ["catalog/shared.js"];
@@ -63,7 +71,7 @@
   scripts.push("runtime/transport.js");
 
   try {
-    for (const source of scripts) await loadScript(source);
+    await loadScripts(scripts);
     globalThis.shenPulseOverlayPerformance.modulesReadyAt = performance.now();
   } catch (error) {
     console.error("[ShenPulse overlay]", error);

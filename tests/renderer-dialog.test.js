@@ -68,6 +68,7 @@ test("les cartes de jeu affichent le titre, les plateformes puis le bouton", () 
   assert.match(app, /function gamePlatformLogos\(pack\)/);
   assert.match(app, /<circle cx="16" cy="16" r="15" fill="#1b75bb"\/>/);
   assert.match(app, /fortnite: \["epic-games"\]/);
+  assert.match(app, /"rocket-league": \["epic-games", "steam"\]/);
   assert.match(
     app,
     /"gtav-montchiliad": \["rockstar-games", "steam", "epic-games"\]/
@@ -81,6 +82,112 @@ test("les cartes de jeu affichent le titre, les plateformes puis le bouton", () 
   assert.match(styles, /\.game-gallery-tile \.tile-platforms/);
   assert.match(styles, /\.game-gallery-tile \.tile-platform-logo/);
   assert.match(styles, /\.tile-platform-logo\.platform-steam svg/);
+});
+
+test("la galerie explique où obtenir le jeu et ce que ShenPulse inclut", () => {
+  const app = readRendererSource();
+  const styles = readRendererStyles();
+  const renderStart = app.indexOf("function renderGamesV2()");
+  const catalog = app.slice(
+    renderStart,
+    app.indexOf("function openMinecraftModeSelector", renderStart)
+  );
+
+  assert.match(app, /function gameCatalogPlatformLegend\(packs\)/);
+  assert.match(app, /Jeu et interactions inclus dans ShenPulse\./);
+  assert.match(
+    app,
+    /Jeu à télécharger sur Steam · interactions incluses dans ShenPulse\./
+  );
+  assert.match(
+    app,
+    /Jeu Nintendo original requis · interactions incluses dans ShenPulse\./
+  );
+  assert.match(
+    catalog,
+    /\$\{gameCatalogPlatformLegend\(availablePacks\)\}/
+  );
+  assert.match(styles, /\.game-platform-legend \{/);
+  assert.match(styles, /\.game-platform-legend-item \{/);
+  assert.match(styles, /\.game-platform-legend-icon\.platform-steam svg/);
+});
+
+test("Super Mario Kart, Resident Evil 3 et Fortnite utilisent le nouveau tableau de session ShenPulse", () => {
+  const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
+  const app = readRendererSource();
+  const styles = readRendererStyles();
+  const workspace = fs.readFileSync(
+    path.join(
+      rendererDirectory,
+      "app",
+      "features",
+      "games",
+      "super-mario-kart-workspace.js"
+    ),
+    "utf8"
+  );
+  const genericStart = app.indexOf("function renderGameWorkspace(pack)");
+  const genericEnd = app.indexOf("function gameJourneyFor(pack)", genericStart);
+  const generic = app.slice(genericStart, genericEnd);
+
+  assert.match(
+    generic,
+    /pack\.id === "super-mario-kart"[\s\S]*renderSuperMarioKartWorkspace\(pack\)/
+  );
+  assert.match(
+    generic,
+    /pack\.id === "resident-evil-3"[\s\S]*renderResidentEvil3Workspace\(pack\)/
+  );
+  assert.match(
+    generic,
+    /pack\.id === "fortnite"[\s\S]*renderFortniteWorkspace\(pack\)/
+  );
+  assert.match(
+    generic,
+    /pack\.id === "rocket-league"[\s\S]*renderRocketLeagueWorkspace\(pack\)/
+  );
+  assert.match(workspace, /smk-workspace-shell/);
+  assert.match(workspace, /smk-command-rail/);
+  assert.match(workspace, /smk-session-dashboard/);
+  assert.match(workspace, /Installation de BizHawk/);
+  assert.match(workspace, /Installation de la ROM/);
+  assert.match(workspace, /Installation du runtime \.NET 8/);
+  assert.match(workspace, /Installation de REFramework/);
+  assert.match(workspace, /renderResidentEvil3Workspace/);
+  assert.match(workspace, /renderFortniteWorkspace/);
+  assert.match(workspace, /renderRocketLeagueWorkspace/);
+  assert.match(workspace, /Aucun mod à installer/);
+  assert.match(workspace, /Connecteur clavier ShenPulse/);
+  assert.match(workspace, /data-game-key-layout/);
+  assert.match(workspace, /processLabel: "Fortnite"/);
+  assert.match(workspace, /processLabel: "Rocket League"/);
+  assert.match(workspace, /Vérifier \$\{escapeHtml\(profile\.processLabel/);
+  assert.match(workspace, /assetCount: 1/);
+  assert.match(workspace, /satisfiedAssetIds/);
+  assert.match(workspace, /componentReady\("dotnet-desktop-runtime-8"\)/);
+  assert.match(workspace, /componentReady\("mod"\)/);
+  assert.match(workspace, /Tout installer en un clic/);
+  assert.match(workspace, /data-action="start-game-session"/);
+  assert.match(workspace, /renderStandardGameInteractions\(pack, unlocked/);
+  assert.match(workspace, /renderGameOverlays\(pack, unlocked\)/);
+  assert.match(workspace, /renderGameLaunchProgressModal\(pack\)/);
+  assert.match(workspace, /Overlay de partie/);
+  assert.match(workspace, /Démarrer la session/);
+  assert.doesNotMatch(workspace, /smk-rail-switcher/);
+  assert.doesNotMatch(workspace, /Crowd\s*Control/i);
+  const landing = workspace.slice(
+    workspace.indexOf("function renderSuperMarioKartSessionLanding"),
+    workspace.indexOf("function renderSuperMarioKartActiveSession")
+  );
+  assert.doesNotMatch(landing, /data-action="launch-game"/);
+  assert.match(app, /game-interaction-add-card/);
+  assert.match(app, /Nouvelle interaction/);
+  assert.match(styles, /\.smk-workspace-shell/);
+  assert.match(styles, /\.smk-command-rail/);
+  assert.match(styles, /\.smk-session-dashboard/);
+  assert.match(styles, /\.smk-install-checklist > article\.ready/);
+  assert.match(styles, /\.smk-install-checklist > article\.working/);
+  assert.match(styles, /\.game-interaction-add-card/);
 });
 
 test("Minecraft affiche les réglages de manche et bloque un second jeu actif", () => {
@@ -1228,6 +1335,20 @@ test("les interactions incomplètes sont signalées avant overlay et lancement",
     app,
     /confirmGameInteractionReadiness\(\s*pack,\s*"de lancer le jeu et son serveur"/
   );
+});
+
+test("les espaces de jeu unifiés démarrent leur session avant de programmer les interactions", () => {
+  const app = readRendererSource();
+  const start = app.indexOf('if (action === "start-game-session")');
+  const end = app.indexOf('if (action === "stop-game-session")', start);
+  const handler = app.slice(start, end);
+
+  assert.match(
+    handler,
+    /"super-mario-kart",[\s\S]*"resident-evil-3",[\s\S]*"fortnite",[\s\S]*"rocket-league"[\s\S]*\.includes\(pack\.id\)/
+  );
+  assert.match(handler, /confirmGameInteractionReadiness/);
+  assert.match(handler, /api\.startGameSession\(id\)/);
 });
 
 test("le simulateur utilise le cout catalogue du cadeau selectionne", () => {

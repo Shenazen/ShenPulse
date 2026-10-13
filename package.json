@@ -19,6 +19,7 @@
     "lint": "node scripts/lint.js",
     "verify": "npm run lint && npm test",
     "games:build": "vite build --config vite.games.config.mjs",
+    "catalog:gifts:import-tiklive": "node scripts/import-tiklive-gift-catalog.js",
     "assets": "node scripts/generate-assets.js",
     "native:store-update": "node scripts/build-store-update-addon.js",
     "build:dir": "npm run games:build && npm run assets && npm run native:store-update && electron-builder --win dir --x64",

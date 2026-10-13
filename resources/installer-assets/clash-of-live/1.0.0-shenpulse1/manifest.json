@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "gameId": "clash-of-live",
+  "version": "1.0.0-shenpulse1",
+  "parentVersion": "1.0.0",
+  "publishedAt": "2026-10-12T23:12:04.6433373+02:00",
+  "notes": "Version autonome Clash Of ShenPulse 1.0.0 : lancement sans licence ni launcher TIKLIVE, branding ShenPulse, roue et 15 interactions locales sur le port 4244.",
+  "assets": [
+    {
+      "id": "game",
+      "sourceName": "Clash-Of-ShenPulse-1.0.0-shenpulse1.zip",
+      "remoteName": "Clash-Of-ShenPulse-1.0.0-shenpulse1.zip",
+      "size": 35021268,
+      "sha256": "bf49da011d7029864e1456eab64700d448b476cdefeaf4a95ceb1e4456c98a56",
+      "role": "standalone-game"
+    }
+  ]
+}

@@ -90,8 +90,8 @@ test("les sources TikTok Studio ne gardent plus un ancien moteur overlay en cach
     (entry) => entry.key === "Cache-Control"
   )?.value || "";
 
-  assert.equal(runtimeVersion.version, packageJson.version);
-  assert.match(overlayHtml, new RegExp(`shenpulse-overlay-version" content="${packageJson.version}`));
+  assert.match(runtimeVersion.version, new RegExp(`^${packageJson.version.replace(/\./g, "\\.")}`));
+  assert.match(overlayHtml, new RegExp(`shenpulse-overlay-version" content="${runtimeVersion.version}`));
   assert.match(rootCacheControl, /no-store/);
   assert.match(rootCacheControl, /max-age=0/);
   assert.match(codeCacheControl, /max-age=31536000/);
@@ -101,7 +101,20 @@ test("les sources TikTok Studio ne gardent plus un ancien moteur overlay en cach
   assert.match(overlayRuntime, /fetch\(versionUrl, \{ cache: "no-store" \}\)/);
   assert.match(
     overlayHtml,
-    new RegExp(`runtime/loader\\.js\\?v=${packageJson.version.replace(/\./g, "\\.")}`)
+    new RegExp(`runtime/loader\\.js\\?v=${runtimeVersion.version.replace(/\./g, "\\.")}`)
+  );
+});
+
+test("le chargeur recupere les modules en parallele sans changer leur ordre", () => {
+  assert.match(overlayRuntime, /function loadScripts\(sources\)/);
+  assert.match(overlayRuntime, /script\.async = false/);
+  assert.match(
+    overlayRuntime,
+    /const pendingScripts = sources\.map[\s\S]*for \(const \{ script \} of pendingScripts\)[\s\S]*Promise\.all/
+  );
+  assert.doesNotMatch(
+    overlayRuntime,
+    /for \(const source of scripts\) await loadScript\(source\)/
   );
 });
 

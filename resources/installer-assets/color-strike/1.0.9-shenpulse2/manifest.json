@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "gameId": "color-strike",
+  "version": "1.0.9-shenpulse2",
+  "parentVersion": "1.0.9-shenpulse1",
+  "publishedAt": "2026-10-12T21:53:42.3531224+02:00",
+  "notes": "Version autonome ShenPulse de Color Strike 1.0.9 : Rouleau, Vol de territoire, Blackout, Nuke et Boss de peinture sont maintenant utilisables en partie solo.",
+  "assets": [
+    {
+      "id": "game",
+      "sourceName": "ShenPulse-Color-Strike-1.0.9-shenpulse2.zip",
+      "remoteName": "ShenPulse-Color-Strike-1.0.9-shenpulse2.zip",
+      "size": 36481280,
+      "sha256": "3651ae7d70629530dd47c9945c360bd869dd642e41ed8b86a12dc73d21062d7d",
+      "role": "standalone-game"
+    }
+  ]
+}

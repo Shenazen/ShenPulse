@@ -1,0 +1,618 @@
+/* Tableau de préparation et de session unifié des jeux pris en charge. */
+
+.smk-workspace-page {
+  width: 100%;
+  max-width: 1580px;
+}
+
+.smk-workspace-page .smk-back-button {
+  margin-bottom: 12px;
+}
+
+.smk-workspace-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  min-height: 150px;
+  padding: 18px 22px;
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.24);
+  border-radius: 20px;
+  background: #0a0d1b;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.3);
+  isolation: isolate;
+}
+
+.smk-hero-backdrop {
+  position: absolute;
+  z-index: -3;
+  inset: -55% 0 -55% 34%;
+  width: 66%;
+  height: 210%;
+  object-fit: cover;
+  object-position: 50% 38%;
+  opacity: 0.24;
+  filter: blur(2px) saturate(0.85);
+  transform: scale(1.04);
+}
+
+.smk-hero-shade {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7, 10, 24, 0.99) 0%, rgba(9, 12, 28, 0.94) 41%, rgba(9, 12, 28, 0.62) 72%, rgba(7, 10, 24, 0.9) 100%),
+    radial-gradient(circle at 74% 22%, rgba(34, 211, 238, 0.18), transparent 34%),
+    radial-gradient(circle at 92% 84%, rgba(236, 72, 153, 0.22), transparent 32%);
+}
+
+.smk-workspace-hero::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink));
+  content: "";
+  opacity: 0.76;
+}
+
+.smk-hero-cover {
+  width: 112px;
+  height: 112px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.48);
+}
+
+.smk-hero-copy {
+  min-width: 0;
+}
+
+.smk-hero-copy > span,
+.smk-session-heading > div:first-child > span,
+.smk-install-group-heading > span {
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.smk-hero-copy h2 {
+  margin: 4px 0 5px;
+  font-size: clamp(25px, 2.5vw, 34px);
+  letter-spacing: -0.04em;
+}
+
+.smk-hero-copy p {
+  max-width: 720px;
+  margin: 0;
+  color: #a9b5cc;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.smk-hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.smk-hero-tags b {
+  padding: 5px 8px;
+  border: 1px solid rgba(168, 85, 247, 0.24);
+  border-radius: 999px;
+  background: rgba(168, 85, 247, 0.1);
+  color: #d8c9ff;
+  font-size: 9px;
+}
+
+.smk-hero-status {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #fcd34d;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.smk-hero-status i,
+.smk-session-metrics i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 11px currentColor;
+}
+
+.smk-hero-status.live,
+.smk-hero-status.ready {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.1);
+  color: #6ee7b7;
+}
+
+.smk-workspace-shell {
+  display: grid;
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+  margin-top: 14px;
+}
+
+.smk-command-rail,
+.smk-session-dashboard {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(13, 16, 35, 0.98), rgba(7, 10, 24, 0.98));
+}
+
+.smk-command-rail {
+  display: flex;
+  min-height: 610px;
+  flex-direction: column;
+  padding: 10px;
+}
+
+.smk-install-group-heading {
+  padding: 8px 6px 14px;
+}
+
+.smk-install-group-heading strong {
+  display: block;
+  margin: 5px 0 4px;
+  color: #fff;
+  font-size: 16px;
+}
+
+.smk-install-group-heading p,
+.smk-rail-help p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.smk-install-all {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 12px;
+}
+
+.smk-input-layout-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.smk-input-layout-field > span {
+  color: #a9b5cc;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.smk-input-layout-field select {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 9px;
+  background: rgba(4, 7, 18, 0.78);
+  color: #edf5ff;
+  font: inherit;
+  font-size: 9px;
+}
+
+.smk-test-input-game {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 7px;
+  font-size: 8px;
+}
+
+.smk-command-rail > .game-page-message {
+  grid-template-columns: 26px minmax(0, 1fr) 24px;
+  margin: 0 0 8px;
+  padding: 9px;
+  font-size: 8px;
+}
+
+.smk-install-checklist {
+  display: grid;
+  gap: 7px;
+}
+
+.smk-install-checklist > article {
+  display: grid;
+  grid-template-columns: 22px 29px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+  min-height: 61px;
+  padding: 9px;
+  border: 1px solid rgba(244, 63, 94, 0.48);
+  border-radius: 11px;
+  background: rgba(244, 63, 94, 0.06);
+}
+
+.smk-install-checklist > article.ready {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.07);
+}
+
+.smk-install-checklist > article.working {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.smk-install-state {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  color: #fb7185;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.smk-install-checklist > article.ready .smk-install-state {
+  color: #6ee7b7;
+}
+
+.smk-install-checklist > article.working .smk-install-state {
+  color: #fcd34d;
+}
+
+.smk-install-icon {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(168, 85, 247, 0.11);
+  color: #c4b5fd;
+  font-size: 12px;
+}
+
+.smk-install-copy {
+  min-width: 0;
+}
+
+.smk-install-copy strong,
+.smk-install-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smk-install-copy strong {
+  color: #edf5ff;
+  font-size: 9px;
+}
+
+.smk-install-copy small {
+  margin-top: 3px;
+  color: #8190a9;
+  font-size: 7px;
+}
+
+.smk-install-checklist > article > b {
+  color: #fb7185;
+  font-size: 7px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.smk-install-checklist > article.ready > b {
+  color: #6ee7b7;
+}
+
+.smk-install-checklist > article.working > b {
+  color: #fcd34d;
+}
+
+.smk-rail-help {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 9px;
+  align-items: start;
+  margin-top: auto;
+  padding: 13px 8px 6px;
+  border-top: 1px solid var(--line);
+}
+
+.smk-rail-help > span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(168, 85, 247, 0.13);
+  color: #c4b5fd;
+}
+
+.smk-rail-help strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #dce7f8;
+  font-size: 9px;
+}
+
+.smk-session-dashboard {
+  min-height: 610px;
+  padding: 15px;
+}
+
+.smk-session-heading {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 2px 2px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.smk-session-heading h3 {
+  margin: 5px 0 5px;
+  color: #fff;
+  font-size: 18px;
+}
+
+.smk-session-heading p {
+  max-width: 690px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.smk-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.smk-session-actions .button {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 8px;
+}
+
+.smk-session-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.smk-session-metrics > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(5, 8, 20, 0.58);
+  color: #8190a8;
+  font-size: 8px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.smk-session-metrics > span.ready,
+.smk-session-metrics > span.live {
+  border-color: rgba(52, 211, 153, 0.24);
+  color: #6ee7b7;
+}
+
+.smk-session-metrics > span.live {
+  border-color: rgba(236, 72, 153, 0.28);
+  color: #f9a8d4;
+}
+
+.smk-session-stage {
+  min-width: 0;
+  padding-top: 14px;
+}
+
+.smk-session-launch {
+  display: flex;
+  min-height: 480px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 34px;
+  text-align: center;
+}
+
+.smk-session-launch-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  margin-bottom: 17px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.13), rgba(168, 85, 247, 0.2));
+  color: var(--cyan);
+  font-size: 23px;
+  box-shadow: 0 0 34px rgba(34, 211, 238, 0.08);
+}
+
+.smk-session-launch > small {
+  color: var(--cyan);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+}
+
+.smk-session-launch h3 {
+  margin: 8px 0 7px;
+  color: #fff;
+  font-size: 23px;
+}
+
+.smk-session-launch p {
+  max-width: 570px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.smk-start-session-button {
+  min-width: 220px;
+  min-height: 52px;
+  margin-top: 22px;
+  font-size: 12px;
+}
+
+.smk-session-launch > em {
+  margin-top: 10px;
+  color: #71809a;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.smk-workspace-page .game-interaction-add-card {
+  display: flex;
+  min-width: 0;
+  min-height: 190px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border: 1px dashed rgba(168, 85, 247, 0.5);
+  border-radius: 14px;
+  background: rgba(168, 85, 247, 0.07);
+  color: #d8c9ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.smk-workspace-page .game-interaction-add-card:hover:not(:disabled) {
+  border-color: var(--cyan);
+  background: linear-gradient(145deg, rgba(34, 211, 238, 0.1), rgba(168, 85, 247, 0.12));
+  transform: translateY(-1px);
+}
+
+.smk-workspace-page .game-interaction-add-card > span {
+  margin-bottom: 10px;
+  color: var(--cyan);
+  font-size: 36px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.smk-workspace-page .game-interaction-add-card > strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.smk-workspace-page .game-interaction-add-card > small {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.smk-workspace-page .smk-session-stage .game-step-footer .button[data-action="game-step"] {
+  display: none;
+}
+
+.smk-workspace-page .smk-session-stage .game-primary-panel,
+.smk-workspace-page .smk-session-stage .game-novice-note,
+.smk-workspace-page .smk-session-stage .game-interaction-toolbar,
+.smk-workspace-page .smk-session-stage .game-overlay-composer-layout {
+  border-color: rgba(148, 163, 184, 0.15);
+  background: rgba(4, 7, 18, 0.48);
+}
+
+.smk-workspace-page .smk-session-stage .game-primary-panel {
+  padding: 17px;
+}
+
+.smk-workspace-page .smk-session-stage .game-simple-step {
+  gap: 12px;
+}
+
+@media (max-width: 1120px) {
+  .smk-workspace-shell {
+    grid-template-columns: 270px minmax(0, 1fr);
+  }
+
+  .smk-session-heading {
+    flex-direction: column;
+  }
+
+  .smk-session-metrics {
+    justify-content: flex-start;
+  }
+
+  .smk-workspace-page .smk-session-stage .game-simple-step {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .smk-workspace-hero {
+    grid-template-columns: 86px minmax(0, 1fr);
+  }
+
+  .smk-hero-cover {
+    width: 86px;
+    height: 86px;
+  }
+
+  .smk-hero-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .smk-workspace-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .smk-command-rail,
+  .smk-session-dashboard {
+    min-height: 0;
+  }
+
+  .smk-rail-help {
+    margin-top: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .smk-workspace-hero {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .smk-hero-cover {
+    width: 64px;
+    height: 64px;
+  }
+
+  .smk-hero-copy p,
+  .smk-hero-tags {
+    display: none;
+  }
+
+  .smk-install-checklist > article > b {
+    display: none;
+  }
+}

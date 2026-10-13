@@ -424,6 +424,37 @@ test("le timer standard applique chaque champ et son démarrage automatique", as
   dom.window.close();
 });
 
+test("le timer ne rejoue pas un delta déjà inclus dans l'état public", async () => {
+  const dom = await loadOverlay("timer", {
+    theme: "classic",
+    timerAutoStart: "false"
+  });
+  const { window } = dom;
+  const { document } = window;
+
+  sendCardMessage(window, "bootstrap", {
+    overlaySession: {
+      hasData: true,
+      timerSeconds: 20,
+      timerEndsAt: 0,
+      timerPaused: true,
+      timerLabel: "TEMPS RESTANT"
+    }
+  });
+  assert.equal(document.getElementById("timer-value").textContent, "00:00:20");
+
+  sendCardMessage(window, "timer", {
+    operation: "add",
+    seconds: 20,
+    remainingSeconds: 20,
+    endsAt: 0,
+    paused: true
+  });
+  assert.equal(document.getElementById("timer-value").textContent, "00:00:20");
+
+  dom.window.close();
+});
+
 test("les deux timers conservent chacun leur propre titre", async () => {
   const dom = await loadOverlay("multiplier-timer", {
     theme: "classic",

@@ -61,12 +61,38 @@ function spawnCoinJarDrop(event) {
     const timer = setTimeout(() => {
       coinJarSpawnTimers.delete(timer);
       if (generation !== coinJarSpawnGeneration) return;
-      spawnCoinJarGift(stage, event);
+      spawnCoinJarGift(stage, event, index);
       scheduleGift(index + 1);
     }, index === 0 ? 0 : interval);
     coinJarSpawnTimers.add(timer);
   };
   scheduleGift(0);
+}
+
+function coinJarGiftRandom(event, index = 0) {
+  const seed = [
+    event.id,
+    event.timestamp,
+    event.user?.id,
+    event.user?.name,
+    event.data?.giftId,
+    event.data?.giftName,
+    event.data?.value,
+    event.data?.count,
+    index
+  ].join("|");
+  let state = 2166136261;
+  for (let offset = 0; offset < seed.length; offset += 1) {
+    state ^= seed.charCodeAt(offset);
+    state = Math.imul(state, 16777619);
+  }
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function currentCoinJarGeometry(stage) {
@@ -89,6 +115,10 @@ function currentCoinJarGeometry(stage) {
       gift.vy *= scaleY;
       gift.visualRadius = (gift.visualRadius || gift.radius) * radiusScale;
       gift.radius *= radiusScale;
+      gift.containmentRadius = Math.max(
+        gift.radius,
+        (gift.containmentRadius || gift.visualRadius) * radiusScale
+      );
       gift.mass = gift.radius * gift.radius;
       if (Number.isFinite(gift.restX)) gift.restX *= scaleX;
       if (Number.isFinite(gift.restY)) gift.restY *= scaleY;
@@ -100,14 +130,15 @@ function currentCoinJarGeometry(stage) {
   return coinJarGeometry;
 }
 
-function spawnCoinJarGift(stage, event) {
+function spawnCoinJarGift(stage, event, index = 0) {
   const geometry = currentCoinJarGeometry(stage);
+  const random = coinJarGiftRandom(event, index);
   const size = globalThis.CoinJarPhysics.giftDiameter(
     event.data?.value,
     geometry.width
   );
   const visualRadius = size / 2;
-  const radius = size * 0.43;
+  const radius = visualRadius;
   const node = document.createElement("span");
   node.className = "coin-jar-gift";
   node.style.width = `${size}px`;
@@ -137,14 +168,15 @@ function spawnCoinJarGift(stage, event) {
   const body = globalThis.CoinJarPhysics.createBody({
     x:
       geometry.centerX +
-      (Math.random() - 0.5) *
+      (random() - 0.5) *
         Math.max(0, geometry.mouthRight - geometry.mouthLeft - size),
-    y: -visualRadius - Math.random() * geometry.height * 0.035,
-    vx: (Math.random() - 0.5) * geometry.width * 0.28,
-    vy: geometry.height * (0.05 + Math.random() * 0.08),
+    y: -visualRadius - random() * geometry.height * 0.035,
+    vx: (random() - 0.5) * geometry.width * 0.28,
+    vy: geometry.height * (0.05 + random() * 0.08),
     radius,
-    angle: (Math.random() - 0.5) * 120,
-    angularVelocity: (Math.random() - 0.5) * 120
+    containmentRadius: visualRadius,
+    angle: (random() - 0.5) * 120,
+    angularVelocity: (random() - 0.5) * 120
   });
   body.visualRadius = visualRadius;
   body.node = node;
@@ -158,11 +190,16 @@ function renderCoinJarGift(gift) {
   const diameter = visualRadius * 2;
   const containedLayer = document.getElementById("coin-jar-contained-drops");
   const overflowLayer = document.getElementById("coin-jar-overflow-drops");
+  const exteriorLayer = document.getElementById("coin-jar-exterior-drops");
   const fullyInsideGlass =
     gift.state === "contained" &&
     coinJarGeometry &&
     gift.y - visualRadius >= coinJarGeometry.mouthTop;
-  const targetLayer = fullyInsideGlass ? containedLayer : overflowLayer;
+  const targetLayer = gift.state === "spilled"
+    ? exteriorLayer
+    : fullyInsideGlass
+      ? containedLayer
+      : overflowLayer;
   if (targetLayer && gift.node.parentElement !== targetLayer) {
     targetLayer.append(gift.node);
   }
@@ -196,12 +233,13 @@ function coinJarGiftNeedsRender(gift) {
 
 function coinJarGiftOutsideOverlay(gift, stage) {
   if (gift.state !== "spilled") return false;
+  const visualRadius = gift.visualRadius || gift.radius;
   const bounds = stage.getBoundingClientRect();
   const scaleX = bounds.width / Math.max(1, stage.clientWidth);
   const scaleY = bounds.height / Math.max(1, stage.clientHeight);
-  const left = bounds.left + (gift.x - gift.radius) * scaleX;
-  const right = bounds.left + (gift.x + gift.radius) * scaleX;
-  const top = bounds.top + (gift.y - gift.radius) * scaleY;
+  const left = bounds.left + (gift.x - visualRadius) * scaleX;
+  const right = bounds.left + (gift.x + visualRadius) * scaleX;
+  const top = bounds.top + (gift.y - visualRadius) * scaleY;
   return right < 0 || left > window.innerWidth || top > window.innerHeight;
 }
 
@@ -483,7 +521,17 @@ function addGameEffect(payload) {
 function updateTimer(payload = {}) {
   revealOverlay();
   const operation = String(payload.operation || "add");
-  if (operation === "set") {
+  const synchronizedSeconds = Number(payload.remainingSeconds);
+  const synchronizedEndsAt = Number(payload.endsAt);
+  if (Number.isFinite(synchronizedSeconds)) {
+    timerPaused = payload.paused === true;
+    timerSeconds = Math.max(
+      0,
+      !timerPaused && synchronizedEndsAt > 0
+        ? Math.ceil((synchronizedEndsAt - Date.now()) / 1000)
+        : synchronizedSeconds
+    );
+  } else if (operation === "set") {
     timerSeconds = Math.max(0, Number(payload.seconds || 0));
     timerPaused = payload.paused === true;
   } else if (operation === "reset") {

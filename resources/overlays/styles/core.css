@@ -725,6 +725,7 @@ body {
   position: absolute;
   z-index: 1;
   inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -822,7 +823,11 @@ body {
 }
 
 .coin-jar-contained-drops {
-  clip-path: url("#coin-jar-glass-clip");
+  clip-path: polygon(31% 9%, 69% 9%, 69% 17%, 75% 19%, 78.5% 24%, 78.5% 80%, 77% 84%, 66% 87.5%, 34% 87.5%, 23% 84%, 21.5% 80%, 21.5% 31%, 22% 24%, 25% 19%, 31% 17%);
+}
+
+.coin-jar-overflow-drops {
+  clip-path: polygon(31% -35%, 69% -35%, 69% 17%, 75% 19%, 78.5% 24%, 78.5% 80%, 77% 84%, 66% 87.5%, 34% 87.5%, 23% 84%, 21.5% 80%, 21.5% 31%, 22% 24%, 25% 19%, 31% 17%);
 }
 
 .coin-jar-drops .coin-jar-gift {

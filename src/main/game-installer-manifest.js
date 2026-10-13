@@ -49,7 +49,137 @@ const POKEMON_RED_BLUE_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/pokemon-red-blue/1.0.1";
 const SUPER_MARIO_KART_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/super-mario-kart/1.0.0";
+const COLOR_STRIKE_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/color-strike/1.0.9-shenpulse2";
+const TIKLIVE_CLIMB_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/tiklive-climb/1.0.0-shenpulse1";
+const TIKLIVE_CUBE_WARS_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/tiklive-cube-wars/1.0.0-shenpulse1";
+const TIKLIVE_STACK_TOWER_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/tiklive-stack-tower/1.0.0-shenpulse1";
+const CLASH_OF_LIVE_ASSET_BASE =
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/clash-of-live/1.0.0-shenpulse1";
 const GAME_INSTALLERS = Object.freeze({
+  "clash-of-live": {
+    version: "1.0.0-shenpulse1",
+    title: "Clash Of ShenPulse",
+    targetLabel: "dossier autonome géré par ShenPulse",
+    managedTarget: true,
+    unattended: true,
+    launchExecutables: ["Clash Of ShenPulse.exe"],
+    warning:
+      "ShenPulse télécharge et installe automatiquement la version autonome de Clash Of ShenPulse dans son espace local géré.",
+    note:
+      "Les fichiers téléchargés et la zone de préparation temporaire sont supprimés après l’installation, y compris en cas d’échec.",
+    assets: [
+      {
+        id: "game",
+        fileName: "Clash-Of-ShenPulse-1.0.0-shenpulse1.zip",
+        action: "extract",
+        targetPath: "",
+        size: 35021268,
+        sha256:
+          "bf49da011d7029864e1456eab64700d448b476cdefeaf4a95ceb1e4456c98a56",
+        url: `${CLASH_OF_LIVE_ASSET_BASE}/Clash-Of-ShenPulse-1.0.0-shenpulse1.zip`
+      }
+    ]
+  },
+  "color-strike": {
+    version: "1.0.9-shenpulse2",
+    title: "ShenPulse Color Strike",
+    targetLabel: "dossier autonome géré par ShenPulse",
+    managedTarget: true,
+    unattended: true,
+    launchExecutables: ["ShenPulse Color Strike.exe"],
+    warning:
+      "ShenPulse télécharge et installe automatiquement la version autonome de Color Strike dans son espace local géré.",
+    note:
+      "Les fichiers téléchargés et la zone de préparation temporaire sont supprimés après l’installation, y compris en cas d’échec.",
+    assets: [
+      {
+        id: "game",
+        fileName: "ShenPulse-Color-Strike-1.0.9-shenpulse2.zip",
+        action: "extract",
+        targetPath: "",
+        size: 36481280,
+        sha256:
+          "3651ae7d70629530dd47c9945c360bd869dd642e41ed8b86a12dc73d21062d7d",
+        url: `${COLOR_STRIKE_ASSET_BASE}/ShenPulse-Color-Strike-1.0.9-shenpulse2.zip`
+      }
+    ]
+  },
+  "tiklive-climb": {
+    version: "1.0.0-shenpulse1",
+    title: "ShenPulse Climb",
+    targetLabel: "dossier autonome géré par ShenPulse",
+    managedTarget: true,
+    unattended: true,
+    launchExecutables: ["ShenPulse Climb.exe"],
+    warning:
+      "ShenPulse télécharge et installe automatiquement la version autonome de Climb dans son espace local géré.",
+    note:
+      "Les fichiers téléchargés et la zone de préparation temporaire sont supprimés après l’installation, y compris en cas d’échec.",
+    assets: [
+      {
+        id: "game",
+        fileName: "ShenPulse-Climb-1.0.0-shenpulse1.zip",
+        action: "extract",
+        targetPath: "",
+        size: 38061187,
+        sha256:
+          "1e01dfe77e0dd0e0d7f70e7c9f25e203625a1b60519757775b5273231cb5a688",
+        url: `${TIKLIVE_CLIMB_ASSET_BASE}/ShenPulse-Climb-1.0.0-shenpulse1.zip`
+      }
+    ]
+  },
+  "tiklive-cube-wars": {
+    version: "1.0.0-shenpulse1",
+    title: "ShenPulse Cube Wars",
+    targetLabel: "dossier autonome géré par ShenPulse",
+    managedTarget: true,
+    unattended: true,
+    launchExecutables: ["ShenPulse Cube Wars.exe"],
+    warning:
+      "ShenPulse télécharge et installe automatiquement la version autonome de Cube Wars dans son espace local géré.",
+    note:
+      "Les fichiers téléchargés et la zone de préparation temporaire sont supprimés après l’installation, y compris en cas d’échec.",
+    assets: [
+      {
+        id: "game",
+        fileName: "ShenPulse-Cube-Wars-1.0.0-shenpulse1.zip",
+        action: "extract",
+        targetPath: "",
+        size: 38136590,
+        sha256:
+          "2ffa7f41ed1197cb725e0af45d7449be80029336ebd2a0093adf79a243c80cf4",
+        url: `${TIKLIVE_CUBE_WARS_ASSET_BASE}/ShenPulse-Cube-Wars-1.0.0-shenpulse1.zip`
+      }
+    ]
+  },
+  "tiklive-stack-tower": {
+    version: "1.0.0-shenpulse1",
+    title: "ShenPulse Stack Tower",
+    targetLabel: "dossier autonome géré par ShenPulse",
+    managedTarget: true,
+    unattended: true,
+    launchExecutables: ["ShenPulse Stack Tower.exe"],
+    warning:
+      "ShenPulse télécharge et installe automatiquement la version autonome de Stack Tower dans son espace local géré.",
+    note:
+      "Les fichiers téléchargés et la zone de préparation temporaire sont supprimés après l’installation, y compris en cas d’échec.",
+    assets: [
+      {
+        id: "game",
+        fileName: "ShenPulse-Stack-Tower-1.0.0-shenpulse1.zip",
+        action: "extract",
+        targetPath: "",
+        size: 38164935,
+        sha256:
+          "32547a3f680581c36fa3d256f5e3e535fdbca6683266e757eec1832a7e12dc7c",
+        url: `${TIKLIVE_STACK_TOWER_ASSET_BASE}/ShenPulse-Stack-Tower-1.0.0-shenpulse1.zip`
+      }
+    ]
+  },
   demonologist: {
     version: "1.0.0",
     title: "Demonologist",

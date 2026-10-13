@@ -49,7 +49,15 @@ test("le runner transmet toutes les commandes du timer à l'overlay", async () =
   const published = [];
   const runner = createRunner(published);
 
-  for (const operation of ["add", "set", "pause", "resume", "reset"]) {
+  for (const operation of [
+    "add",
+    "remove",
+    "random",
+    "set",
+    "pause",
+    "resume",
+    "reset"
+  ]) {
     const result = await runner.run(
       {
         type: "timer.add",
@@ -64,12 +72,62 @@ test("le runner transmet toutes les commandes du timer à l'overlay", async () =
     published.map(({ event, payload }) => [event, payload.operation]),
     [
       ["timer", "add"],
+      ["timer", "remove"],
+      ["timer", "random"],
       ["timer", "set"],
       ["timer", "pause"],
       ["timer", "resume"],
       ["timer", "reset"]
     ]
   );
+});
+
+test("le timer distingue l'ajout, le retrait et le choix aléatoire", async () => {
+  const published = [];
+  const state = {
+    settings: { tts: {} },
+    overlaySession: {
+      hasData: true,
+      timerSeconds: 100,
+      timerEndsAt: 0,
+      timerPaused: true
+    }
+  };
+  const runner = createRunner(published, state, () => {}, {
+    randomImpl: () => 0.75
+  });
+
+  const removed = await runner.run(
+    {
+      type: "timer.add",
+      config: { operation: "remove", seconds: 20 }
+    },
+    {}
+  );
+  const randomized = await runner.run(
+    {
+      type: "timer.add",
+      config: { operation: "random", seconds: 15 }
+    },
+    {}
+  );
+
+  assert.equal(removed.operation, "remove");
+  assert.equal(removed.seconds, -20);
+  assert.equal(removed.remainingSeconds, 80);
+  assert.equal(randomized.operation, "random");
+  assert.equal(randomized.seconds, 15);
+  assert.equal(randomized.remainingSeconds, 95);
+  assert.equal(state.overlaySession.timerSeconds, 95);
+});
+
+test("l'éditeur propose les trois modes explicites du timer", () => {
+  const renderer = readRendererSource();
+
+  assert.match(renderer, /\["add", "Ajouter du temps"\]/);
+  assert.match(renderer, /\["remove", "Retirer du temps"\]/);
+  assert.match(renderer, /\["random", "Ajouter ou retirer au hasard"\]/);
+  assert.doesNotMatch(renderer, /Ajouter \/ retirer du temps/);
 });
 
 test("le runner route le timer multiplicateur sans modifier le timer standard", async () => {
@@ -135,6 +193,7 @@ test("l'overlay gère le réglage, la pause, la reprise et la remise à zéro", 
   assert.match(overlayScript, /if \(!timerPaused && timerSeconds > 0\)/);
   assert.match(overlayScript, /runtime\.timerEndsAt/);
   assert.match(overlayScript, /persistedTimerSeconds/);
+  assert.match(overlayScript, /payload\.remainingSeconds/);
 });
 
 test("le runner persiste le timer avant de le diffuser", async () => {
@@ -442,6 +501,101 @@ test("la roue exécute l'action liée lorsque le secteur gagnant est affiché", 
       published.find(({ event }) => event === "alert")?.payload.mediaUrl,
       "https://media.test/Alice.png"
     );
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test("la roue peut exécuter une interaction du jeu actif", async () => {
+  const published = [];
+  const scheduled = [];
+  const triggered = [];
+  const state = {
+    settings: {
+      tts: {},
+      overlayConfigs: {
+        wheel: {
+          selectedWheelId: "wheel_color_strike",
+          wheels: [{
+            id: "wheel_color_strike",
+            enabled: true,
+            settings: { spinDuration: 1, waitDuration: 0 },
+            segments: [
+              {
+                id: "effect",
+                label: "Bombes bleues ×15",
+                color: "#20d982",
+                action: "action",
+                actionId: "action_color_strike_blue"
+              },
+              {
+                id: "empty",
+                label: "Rien",
+                color: "#111111",
+                action: "none",
+                actionId: ""
+              }
+            ]
+          }]
+        }
+      }
+    },
+    session: {
+      profileId: "profile-1",
+      game: {
+        running: true,
+        packId: "color-strike",
+        profileId: "profile-1"
+      }
+    },
+    game: {
+      interactionRulesByPack: {
+        "color-strike": [{
+          id: "rule_color_strike_blue",
+          actions: [{
+            id: "action_color_strike_blue",
+            type: "game.effect",
+            config: {
+              packId: "color-strike",
+              effectId: "color-strike-bombebleuepetite",
+              quantity: 15
+            }
+          }]
+        }]
+      }
+    },
+    rules: []
+  };
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  try {
+    const runner = createRunner(published, state, () => {}, {
+      gameHub: {
+        trigger: async (...args) => {
+          triggered.push(args);
+          return { ok: true };
+        }
+      },
+      setTimeoutImpl: (callback, delay) => {
+        const handle = { callback, delay, unref() {} };
+        scheduled.push(handle);
+        return handle;
+      }
+    });
+
+    const result = await runner.run(
+      { id: "spin", type: "wheel.spin", config: {} },
+      { user: { displayName: "Alice" } }
+    );
+    assert.equal(result.winnerAction, "action");
+
+    scheduled.find(({ delay }) => delay === 1000).callback();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.equal(triggered.length, 1);
+    assert.equal(triggered[0][0], "color-strike-bombebleuepetite");
+    assert.equal(triggered[0][2].quantity, 15);
   } finally {
     Math.random = originalRandom;
   }

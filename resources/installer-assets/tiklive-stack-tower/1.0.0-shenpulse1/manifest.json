@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "gameId": "tiklive-stack-tower",
+  "version": "1.0.0-shenpulse1",
+  "parentVersion": "1.0.0",
+  "publishedAt": "2026-10-13T09:42:16.3279665+02:00",
+  "notes": "Version autonome ShenPulse de Stack Tower 1.0.0 : lancement sans ticket ni launcher TIKLIVE, branding ShenPulse, roue et 28 interactions locales sur le port 7817.",
+  "assets": [
+    {
+      "id": "game",
+      "sourceName": "ShenPulse-Stack-Tower-1.0.0-shenpulse1.zip",
+      "remoteName": "ShenPulse-Stack-Tower-1.0.0-shenpulse1.zip",
+      "size": 38164935,
+      "sha256": "32547a3f680581c36fa3d256f5e3e535fdbca6683266e757eec1832a7e12dc7c",
+      "role": "standalone-game"
+    }
+  ]
+}

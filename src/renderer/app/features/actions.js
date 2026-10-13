@@ -146,8 +146,17 @@ function actionDescription(action) {
       );
     case "goal.add":
       return `${config.goalId || "objectif"} +${config.amount || 1}`;
-    case "timer.add":
-      return `${timerOperationLabel(config.operation)} · ${config.seconds || 0}s · ${config.label || "Minuteur"}`;
+    case "timer.add": {
+      const configuredSeconds = Number(config.seconds || 0);
+      const operation =
+        (config.operation || "add") === "add" && configuredSeconds < 0
+          ? "remove"
+          : config.operation || "add";
+      const seconds = ["remove", "random"].includes(operation)
+        ? Math.abs(configuredSeconds)
+        : configuredSeconds;
+      return `${timerOperationLabel(operation)} · ${seconds}s · ${config.label || "Minuteur"}`;
+    }
     case "wheel.spin":
       return Array.isArray(config.choices) ? config.choices.join(", ") : "Roue";
     case "action.group": {

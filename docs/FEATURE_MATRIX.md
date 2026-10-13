@@ -13,7 +13,7 @@ compatibilité théorique comme une intégration testée.
 | Automatisations | Filtres, regex, seuils cumulatifs, probabilités, priorités, cooldown global/par utilisateur, actions multiples |
 | Alertes | Texte, image/vidéo distante, son distant, file d'attente, durée, couleurs |
 | Voix | Règles TTS pour cadeau, like, follow, chat, partage, abonnement, raid et arrivée ; langue, voix, vitesse, hauteur, volume |
-| Catalogues | 122 sons locaux partagés et 932 cadeaux TikTok recherchables depuis le simulateur et les éditeurs |
+| Catalogues | 122 sons locaux partagés et plus de 3 000 cadeaux TikTok dédupliqués, recherchables depuis le simulateur et les éditeurs |
 | Overlays | Alertes, objectifs, activité, effets de jeu, timer, roue ; URLs OBS/LIVE Studio |
 | Chatbot | Commandes, réponses, abonnés uniquement, cooldown |
 | Streaming | OBS WebSocket 5, webhooks HTTP, relais WebSocket |

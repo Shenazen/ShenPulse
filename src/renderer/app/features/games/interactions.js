@@ -13,7 +13,10 @@ function renderGameInteractions(pack, unlocked) {
     : renderStandardGameInteractions(pack, unlocked);
 }
 
-function renderStandardGameInteractions(pack, unlocked) {
+function renderStandardGameInteractions(pack, unlocked, options = {}) {
+  const availableEffectCount = (pack.effects || []).filter(
+    (effect) => effect.available !== false
+  ).length;
   const journey = gameJourneyFor(pack);
   const currentStepIndex = journey.findIndex((step) => step.id === "interactions");
   const nextStep = journey[currentStepIndex + 1] || {
@@ -54,8 +57,8 @@ function renderStandardGameInteractions(pack, unlocked) {
     <header class="game-effects-heading">
       <span>${eventIconMarkup("gift")} INTERACTIONS <strong>${rows.length}</strong></span>
       <div class="button-row">
-        <span class="game-effect-catalog-count">${pack.effects.length} actions disponibles</span>
-        <button class="button primary" data-action="add-game-interaction" data-pack="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>＋ Ajouter une interaction</button>
+        <span class="game-effect-catalog-count">${availableEffectCount} actions disponibles</span>
+        ${options.hideHeaderAdd ? "" : `<button class="button primary" data-action="add-game-interaction" data-pack="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>＋ Ajouter une interaction</button>`}
       </div>
     </header>
     <section class="game-interaction-toolbar">
@@ -66,9 +69,10 @@ function renderStandardGameInteractions(pack, unlocked) {
       ${categories.map((category) => `<button class="${gameEffectCategory === category ? "active" : ""}" data-action="set-game-effect-category" data-value="${escapeHtml(category)}">${escapeHtml(category)} <span>${rows.filter((row) => (row.effect.category || "Interaction") === category).length}</span></button>`).join("")}
     </div>
     <section class="game-interaction-grid">
+      ${options.addCard ? `<button class="game-interaction-add-card" data-action="add-game-interaction" data-pack="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}><span>＋</span><strong>Nouvelle interaction</strong><small>Choisir un effet et son déclencheur</small></button>` : ""}
       ${visibleRows.map((row) => {
         const effect = row.effect;
-        const enabled = row.rule.enabled !== false;
+        const enabled = effect.available !== false && row.rule.enabled !== false;
         const title = row.rule.gameInteraction?.title || effect.name;
         const editorData = `data-action="edit-game-interaction" data-pack="${escapeHtml(pack.id)}" data-effect="${escapeHtml(effect.id)}" data-rule="${escapeHtml(row.rule.id)}" data-row-action="${escapeHtml(row.action.id || "")}" data-index="${row.actionIndex}"`;
         return `<article class="game-interaction-card configured ${enabled ? "" : "disabled"} ${effect.available === false ? "unavailable" : ""}">
@@ -80,10 +84,10 @@ function renderStandardGameInteractions(pack, unlocked) {
           </button>
           <button class="game-effect-icon danger" data-action="delete-game-interaction" data-pack="${escapeHtml(pack.id)}" data-rule="${escapeHtml(row.rule.id)}" title="Supprimer" ${unlocked ? "" : "disabled"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></button>
         </div>
-        <button class="game-effect-main" ${editorData} title="${escapeHtml(effect.description || effect.name)}" ${unlocked && effect.available !== false ? "" : "disabled"}>
+        <button class="game-effect-main" ${editorData} title="${escapeHtml(effect.available === false ? effect.unavailableReason || "Cette interaction est verrouillée." : effect.description || effect.name)}" ${unlocked && effect.available !== false ? "" : "disabled"}>
           <span class="game-effect-art">${effect.image ? `<img src="${escapeHtml(effect.image)}" alt="${escapeHtml(effect.name)}" loading="lazy">` : `<span>${escapeHtml(effect.icon || "◇")}</span>`}</span>
           <strong>${escapeHtml(title)}</strong>
-          <small>${escapeHtml(effect.category || "Interaction")}</small>
+          <small>${escapeHtml(effect.category || "Interaction")}${effect.available === false ? " · VERROUILLÉE" : ""}</small>
         </button>
         <div class="game-effect-side right">
           <button class="game-effect-icon" ${editorData} title="Modifier" ${unlocked && effect.available !== false ? "" : "disabled"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.4-10.4a2 2 0 0 0-2.8-2.8L5.4 16.2 4 20Z"/><path d="m14.5 7.1 2.8 2.8"/></svg></button>

@@ -8,6 +8,7 @@ const {
   GiftCatalog,
   SOUND_CATALOG,
   createMediaCatalog,
+  dedupeGiftCatalog,
   dedupeLocalizedGifts,
   extractMyInstantsSounds,
   fetchFrenchTikTokGifts,
@@ -141,32 +142,33 @@ test("normalise les images et GIF du catalogue web Wikimedia Commons", () => {
   assert.match(media[0].detail, /CC BY-SA 4\.0/);
 });
 
-test("le catalogue de secours reste limité aux cadeaux français/anglais", () => {
+test("fusionne les catalogues embarqués sans doublon visible", () => {
   const catalog = new GiftCatalog(resourcesDirectory);
-  assert.equal(catalog.gifts.length, 27);
+  const tikLivePayload = JSON.parse(
+    fs.readFileSync(
+      path.join(resourcesDirectory, "catalogs", "tiklive-gifts.json"),
+      "utf8"
+    )
+  );
+  assert.ok(catalog.gifts.length >= 3000);
+  assert.ok(catalog.gifts.length < tikLivePayload.gifts.length + 932);
   const rose = catalog.search("Rose", 20);
   assert.ok(rose.gifts.some((gift) => /rose/i.test(gift.name)));
   assert.ok(rose.gifts.every((gift) => Number.isFinite(gift.cost)));
-  const all = catalog.search("", 1000);
-  assert.equal(all.gifts.length, 27);
-  assert.equal(all.gifts[0].cost, 1);
+  const all = catalog.gifts;
+  assert.equal(all[0].cost, 1);
   assert.equal(
-    all.gifts.some((gift) => gift.name === "Cœur sur moi"),
+    all.some((gift) => gift.name === "Cœur sur moi"),
     true
   );
   assert.equal(catalog.search("Heart Me", 10).gifts[0].name, "Cœur sur moi");
   assert.equal(catalog.search("Coeur sur moi", 10).gifts[0].name, "Cœur sur moi");
-  assert.equal(
-    all.gifts.some((gift) =>
-      /[\u0370-\u052f\u0590-\u08ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/u.test(
-        gift.name
-      )
-    ),
-    false
-  );
-  for (let index = 1; index < all.gifts.length; index += 1) {
-    const previous = all.gifts[index - 1];
-    const current = all.gifts[index];
+  assert.equal(new Set(all.map((gift) => `${gift.name}|${gift.cost}`)).size, all.length);
+  const allIds = all.flatMap((gift) => [gift.id, ...(gift.alternateIds || [])]);
+  assert.equal(new Set(allIds).size, allIds.length);
+  for (let index = 1; index < all.length; index += 1) {
+    const previous = all[index - 1];
+    const current = all[index];
     assert.ok(previous.cost <= current.cost);
     if (previous.cost === current.cost) {
       assert.ok(
@@ -179,8 +181,9 @@ test("le catalogue de secours reste limité aux cadeaux français/anglais", () =
   }
 });
 
-test("remplace le secours par la liste TikTok localisée en fr-FR", async () => {
+test("ajoute toute la liste TikTok localisée au catalogue", async () => {
   const catalog = new GiftCatalog(resourcesDirectory, {
+    fileNames: [],
     fetchLocalizedGifts: async () => [
       {
         diamond_count: 1,
@@ -207,7 +210,7 @@ test("remplace le secours par la liste TikTok localisée en fr-FR", async () => 
 
   assert.deepEqual(
     catalog.search("", 100).gifts.map((gift) => gift.name),
-    ["Rose", "Finger Heart"]
+    ["Rose", "Finger Heart", "日本語"]
   );
   assert.equal(catalog.search("Rose", 10).gifts[0].id, "5655");
   assert.equal(
@@ -221,7 +224,26 @@ test("remplace le secours par la liste TikTok localisée en fr-FR", async () => 
   );
 });
 
-test("conserve les cadeaux distincts et déduplique seulement leur ID", () => {
+test("complète le catalogue embarqué avec les cadeaux propres au LIVE", async () => {
+  const catalog = new GiftCatalog(resourcesDirectory, {
+    fetchLocalizedGifts: async () => [
+      {
+        id: 987654321,
+        name: "Cadeau exclusif au LIVE",
+        diamond_count: 77,
+        image: { url_list: ["https://example.com/live-only.webp"] }
+      }
+    ]
+  });
+  const baseCount = catalog.gifts.length;
+
+  await catalog.refreshLocalized("viewer");
+
+  assert.equal(catalog.gifts.length, baseCount + 1);
+  assert.equal(catalog.search("987654321", 10).gifts[0].name, "Cadeau exclusif au LIVE");
+});
+
+test("regroupe les variantes visibles et conserve tous leurs ID", () => {
   const gifts = dedupeLocalizedGifts([
     {
       id: 17667,
@@ -282,7 +304,98 @@ test("conserve les cadeaux distincts et déduplique seulement leur ID", () => {
 
   assert.deepEqual(
     gifts.map((gift) => gift.name),
-    ["Le bisou", "Le bisou", "Rose", "Côte à côte", "Côte à côte"]
+    ["Le bisou", "Rose", "Côte à côte"]
+  );
+  const kiss = gifts.find((gift) => gift.name === "Le bisou");
+  assert.deepEqual(
+    new Set([kiss.id, ...kiss.alternateIds]),
+    new Set(["10716", "7832"])
+  );
+  const sideBySide = gifts.find((gift) => gift.name === "Côte à côte");
+  assert.deepEqual(
+    new Set([sideBySide.id, ...sideBySide.alternateIds]),
+    new Set(["17667", "17589"])
+  );
+});
+
+test("donne la priorité aux données de la salle et garde les anciens ID", () => {
+  const [gift] = dedupeGiftCatalog([
+    {
+      id: "rose",
+      name: "Rose",
+      cost: 1,
+      imageUrl: "https://example.com/rose.webp",
+      source: "catalog"
+    },
+    {
+      id: 5655,
+      name: "Rose du LIVE",
+      cost: 1,
+      imageUrl: "https://example.com/rose.webp",
+      source: "tiktok-fr"
+    }
+  ]);
+
+  assert.equal(gift.id, "5655");
+  assert.equal(gift.name, "Rose du LIVE");
+  assert.deepEqual(gift.alternateIds, ["rose"]);
+  assert.ok(gift.alternateNames.includes("Rose"));
+});
+
+test("ne fusionne pas deux ID TikTok distincts sur le seul visuel", () => {
+  const gifts = dedupeGiftCatalog([
+    {
+      id: 1111,
+      name: "Premier cadeau",
+      cost: 20,
+      imageUrl: "https://example.com/shared.webp",
+      source: "tiklive"
+    },
+    {
+      id: 2222,
+      name: "Second cadeau",
+      cost: 20,
+      imageUrl: "https://example.com/shared.webp",
+      source: "tiklive"
+    }
+  ]);
+
+  assert.equal(gifts.length, 2);
+});
+
+test("apprend en direct un cadeau manquant sans créer de doublon", () => {
+  const catalog = new GiftCatalog(resourcesDirectory, { fileNames: [] });
+  assert.equal(
+    catalog.mergeLiveGift({
+      giftId: "5655",
+      giftName: "Rose",
+      value: 1,
+      giftImageUrl: "https://example.com/rose.webp"
+    }),
+    true
+  );
+  assert.equal(
+    catalog.mergeLiveGift({
+      giftId: "5655",
+      giftName: "Rose",
+      value: 1,
+      giftImageUrl: "https://example.com/rose.webp"
+    }),
+    false
+  );
+  assert.equal(
+    catalog.mergeLiveGift({
+      giftId: "9999",
+      giftName: "Rose",
+      value: 1,
+      giftImageUrl: "https://example.com/rose.webp"
+    }),
+    true
+  );
+  assert.equal(catalog.gifts.length, 1);
+  assert.deepEqual(
+    new Set([catalog.gifts[0].id, ...catalog.gifts[0].alternateIds]),
+    new Set(["5655", "9999"])
   );
 });
 

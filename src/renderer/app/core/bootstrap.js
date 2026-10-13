@@ -472,6 +472,11 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  "clash-of-live",
+  "color-strike",
+  "tiklive-climb",
+  "tiklive-cube-wars",
+  "tiklive-stack-tower",
   "demonologist",
   "euro-truck-simulator-2",
   "resident-evil-3",

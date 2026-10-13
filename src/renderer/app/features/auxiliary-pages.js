@@ -60,11 +60,11 @@ function renderGames() {
           <div class="entity-meta" style="margin:0 0 16px">${pack.tags.map((tag) => `<span class="badge">${escapeHtml(tag)}</span>`).join("")}<span class="badge cyan">${escapeHtml(pack.connector.type)}</span></div>
           <div class="effect-grid">
             ${pack.effects.map((effect) => `
-              <article class="effect-card">
+              <article class="effect-card ${effect.available === false ? "effect-unavailable" : ""}">
                 <span class="effect-icon">${escapeHtml(effect.icon || "◇")}</span>
                 <h4>${escapeHtml(effect.name)}</h4>
                 <p>${escapeHtml(effect.description)}</p>
-                <button class="button small" data-action="trigger-effect" data-id="${escapeHtml(effect.id)}">Déclencher</button>
+                <button class="button small" data-action="trigger-effect" data-id="${escapeHtml(effect.id)}" ${effect.available === false ? "disabled" : ""}>${effect.available === false ? "Verrouillée" : "Déclencher"}</button>
               </article>`).join("")}
           </div>
         </div>

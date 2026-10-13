@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "gameId": "color-strike",
+  "version": "1.0.9-shenpulse1",
+  "publishedAt": "2026-10-12T20:45:59.4235933+02:00",
+  "notes": "Version autonome ShenPulse de Color Strike 1.0.9, sans launcher ni dépendance TIKLIVE, avec passerelle locale sur le port 7444.",
+  "assets": [
+    {
+      "id": "game",
+      "sourceName": "ShenPulse-Color-Strike-1.0.9-shenpulse1.zip",
+      "remoteName": "ShenPulse-Color-Strike-1.0.9-shenpulse1.zip",
+      "size": 38178358,
+      "sha256": "912b6e7dcf64c74bcfe8846eb1db849b50670577c963bf83d9d4d6cf1fa29394",
+      "role": "standalone-game"
+    }
+  ]
+}

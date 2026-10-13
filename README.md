@@ -10,7 +10,7 @@ livestream en alertes, overlays, commandes et effets de jeu. Elle est conçue po
 - moteur de règles avec filtres, seuils, probabilités, cooldowns et priorités ;
 - événements chat, cadeau, abonnement, follow, partage, like, raid et test ;
 - catalogue global de 122 sons, règles TTS pour chaque type d'événement et
-  catalogue partagé de 932 cadeaux TikTok ;
+  catalogue fusionné de plus de 3 000 cadeaux TikTok, complété en direct ;
 - alertes audio/vidéo, synthèse vocale, objectifs, compte à rebours et roue ;
 - overlays locaux pour OBS et sources HTTPS publiques pour TikTok LIVE Studio ;
 - API locale HTTP, SSE et WebSocket au format `{ "event": "...", "data": {} }` ;

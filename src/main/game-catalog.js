@@ -39,6 +39,51 @@ const {
   FORTNITE_INTERACTION_CATALOG_VERSION
 } = require("./fortnite-catalog");
 const {
+  ROCKET_LEAGUE_DEFAULT_MAPPINGS,
+  ROCKET_LEAGUE_EFFECTS,
+  ROCKET_LEAGUE_INTERACTION_CATALOG_VERSION
+} = require("./rocket-league-catalog");
+const {
+  COLOR_STRIKE_CONNECTOR,
+  COLOR_STRIKE_DEPRECATED_DEFAULT_MAPPING_IDS,
+  COLOR_STRIKE_DEFAULT_MAPPINGS,
+  COLOR_STRIKE_EFFECTS,
+  COLOR_STRIKE_INTERACTION_CATALOG_VERSION,
+  COLOR_STRIKE_WHEEL_PRESETS
+} = require("./color-strike-catalog");
+const {
+  TIKLIVE_CLIMB_CONNECTOR,
+  TIKLIVE_CLIMB_DEPRECATED_DEFAULT_MAPPING_IDS,
+  TIKLIVE_CLIMB_DEFAULT_MAPPINGS,
+  TIKLIVE_CLIMB_EFFECTS,
+  TIKLIVE_CLIMB_INTERACTION_CATALOG_VERSION,
+  TIKLIVE_CLIMB_WHEEL_PRESETS
+} = require("./tiklive-climb-catalog");
+const {
+  TIKLIVE_CUBE_WARS_CONNECTOR,
+  TIKLIVE_CUBE_WARS_DEPRECATED_DEFAULT_MAPPING_IDS,
+  TIKLIVE_CUBE_WARS_DEFAULT_MAPPINGS,
+  TIKLIVE_CUBE_WARS_EFFECTS,
+  TIKLIVE_CUBE_WARS_INTERACTION_CATALOG_VERSION,
+  TIKLIVE_CUBE_WARS_WHEEL_PRESETS
+} = require("./tiklive-cube-wars-catalog");
+const {
+  TIKLIVE_STACK_TOWER_CONNECTOR,
+  TIKLIVE_STACK_TOWER_DEPRECATED_DEFAULT_MAPPING_IDS,
+  TIKLIVE_STACK_TOWER_DEFAULT_MAPPINGS,
+  TIKLIVE_STACK_TOWER_EFFECTS,
+  TIKLIVE_STACK_TOWER_INTERACTION_CATALOG_VERSION,
+  TIKLIVE_STACK_TOWER_WHEEL_PRESETS
+} = require("./tiklive-stack-tower-catalog");
+const {
+  CLASH_OF_LIVE_CONNECTOR,
+  CLASH_OF_LIVE_DEPRECATED_DEFAULT_MAPPING_IDS,
+  CLASH_OF_LIVE_DEFAULT_MAPPINGS,
+  CLASH_OF_LIVE_EFFECTS,
+  CLASH_OF_LIVE_INTERACTION_CATALOG_VERSION,
+  CLASH_OF_LIVE_WHEEL_PRESETS
+} = require("./clash-of-live-catalog");
+const {
   DEMONOLOGIST_DEFAULT_MAPPINGS,
   DEMONOLOGIST_EFFECTS,
   DEMONOLOGIST_INTERACTION_CATALOG_VERSION
@@ -309,6 +354,126 @@ const INTERNAL_GAMES = [
     requiresPro: true,
     effects: ["Lâcher un diamant", "Pluie de diamants", "Bombe", "Multiplicateur", "Nettoyer le plateau"]
   }),
+  game("color-strike", "Color Strike", {
+    artwork: "catalog/shenpulse-color-strike.jpg",
+    price: 19.99,
+    requiresPro: true,
+    source: "ShenPulse · Color Strike autonome",
+    description:
+      "Pilote les 41 interactions natives de Color Strike depuis ShenPulse par une passerelle HTTP strictement locale.",
+    tags: [
+      "abonnement requis",
+      "achat unique",
+      "jeu autonome",
+      "solo",
+      "multijoueur"
+    ],
+    connector: COLOR_STRIKE_CONNECTOR,
+    effects: COLOR_STRIKE_EFFECTS,
+    deprecatedDefaultMappingIds:
+      COLOR_STRIKE_DEPRECATED_DEFAULT_MAPPING_IDS,
+    defaultMappings: COLOR_STRIKE_DEFAULT_MAPPINGS,
+    wheelPresets: COLOR_STRIKE_WHEEL_PRESETS,
+    interactionCatalogVersion:
+      COLOR_STRIKE_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.9-shenpulse2"
+  }),
+  game("tiklive-climb", "Climb", {
+    artwork: "catalog/shenpulse-climb.jpg",
+    price: 19.99,
+    requiresPro: true,
+    source: "ShenPulse · Climb autonome",
+    description:
+      "Pilote les 18 interactions natives de Climb depuis ShenPulse par une passerelle HTTP strictement locale.",
+    tags: [
+      "abonnement requis",
+      "achat unique",
+      "jeu autonome",
+      "escalade",
+      "roue interactive"
+    ],
+    connector: TIKLIVE_CLIMB_CONNECTOR,
+    effects: TIKLIVE_CLIMB_EFFECTS,
+    deprecatedDefaultMappingIds:
+      TIKLIVE_CLIMB_DEPRECATED_DEFAULT_MAPPING_IDS,
+    defaultMappings: TIKLIVE_CLIMB_DEFAULT_MAPPINGS,
+    wheelPresets: TIKLIVE_CLIMB_WHEEL_PRESETS,
+    interactionCatalogVersion:
+      TIKLIVE_CLIMB_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.0-shenpulse1"
+  }),
+  game("tiklive-cube-wars", "ShenPulse Cube Wars", {
+    artwork: "catalog/shenpulse-cube-wars.png",
+    price: 19.99,
+    requiresPro: true,
+    source: "ShenPulse · Cube Wars autonome",
+    description:
+      "Hommes contre Femmes : les viewers choisissent leur camp puis pilotent les 18 interactions natives de Cube Wars par une passerelle HTTP strictement locale.",
+    tags: [
+      "abonnement requis",
+      "achat unique",
+      "jeu autonome",
+      "équipes",
+      "roue interactive"
+    ],
+    connector: TIKLIVE_CUBE_WARS_CONNECTOR,
+    effects: TIKLIVE_CUBE_WARS_EFFECTS,
+    deprecatedDefaultMappingIds:
+      TIKLIVE_CUBE_WARS_DEPRECATED_DEFAULT_MAPPING_IDS,
+    defaultMappings: TIKLIVE_CUBE_WARS_DEFAULT_MAPPINGS,
+    wheelPresets: TIKLIVE_CUBE_WARS_WHEEL_PRESETS,
+    interactionCatalogVersion:
+      TIKLIVE_CUBE_WARS_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.0-shenpulse1"
+  }),
+  game("tiklive-stack-tower", "ShenPulse Stack Tower", {
+    artwork: "catalog/shenpulse-stack-tower.png",
+    price: 19.99,
+    requiresPro: true,
+    source: "ShenPulse · Stack Tower autonome",
+    description:
+      "Montez jusqu’à 500 étages pendant que les viewers aident ou sabotent la tour grâce aux 28 interactions natives de Stack Tower.",
+    tags: [
+      "abonnement requis",
+      "achat unique",
+      "jeu autonome",
+      "construction",
+      "roue interactive"
+    ],
+    connector: TIKLIVE_STACK_TOWER_CONNECTOR,
+    effects: TIKLIVE_STACK_TOWER_EFFECTS,
+    deprecatedDefaultMappingIds:
+      TIKLIVE_STACK_TOWER_DEPRECATED_DEFAULT_MAPPING_IDS,
+    defaultMappings: TIKLIVE_STACK_TOWER_DEFAULT_MAPPINGS,
+    wheelPresets: TIKLIVE_STACK_TOWER_WHEEL_PRESETS,
+    interactionCatalogVersion:
+      TIKLIVE_STACK_TOWER_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.0-shenpulse1"
+  }),
+  game("clash-of-live", "Clash Of ShenPulse", {
+    artwork: "catalog/clash-of-shenpulse.jpg",
+    price: 19.99,
+    requiresPro: true,
+    source: "ShenPulse · Clash Of ShenPulse autonome",
+    description:
+      "Pilote les 15 interactions natives de Clash Of ShenPulse depuis ShenPulse par une passerelle HTTP strictement locale.",
+    tags: [
+      "abonnement requis",
+      "achat unique",
+      "jeu autonome",
+      "affrontement",
+      "roue interactive"
+    ],
+    connector: CLASH_OF_LIVE_CONNECTOR,
+    effects: CLASH_OF_LIVE_EFFECTS,
+    deprecatedDefaultMappingIds:
+      CLASH_OF_LIVE_DEPRECATED_DEFAULT_MAPPING_IDS,
+    defaultMappings: CLASH_OF_LIVE_DEFAULT_MAPPINGS,
+    wheelPresets: CLASH_OF_LIVE_WHEEL_PRESETS,
+    interactionCatalogVersion:
+      CLASH_OF_LIVE_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.0-shenpulse1"
+  }),
   game("pokemon-red-blue", "Pokémon Rouge/Bleu", {
     artwork: "catalog/pokemon-red-blue.png",
     included: true,
@@ -355,6 +520,31 @@ const INTERNAL_GAMES = [
     defaultMappings: FORTNITE_DEFAULT_MAPPINGS,
     interactionCatalogVersion:
       FORTNITE_INTERACTION_CATALOG_VERSION
+  }),
+  game("rocket-league", "Rocket League", {
+    artworkUrl:
+      "https://resources.crowdcontrol.live/images/RocketLeague/box.jpg",
+    included: true,
+    requiresPro: true,
+    source: "ShenPulse · Interactions Rocket League",
+    description:
+      "Transforme les cadeaux TikTok LIVE en commandes de conduite, sauts, turbo, caméra et actions chaotiques ciblées sur Rocket League.",
+    tags: [
+      "abonnement requis",
+      "inclus",
+      "clavier et souris",
+      "Epic Games",
+      "Steam"
+    ],
+    connector: {
+      type: "windows-input",
+      processName: "RocketLeague.exe",
+      keyLayout: "wasd"
+    },
+    effects: ROCKET_LEAGUE_EFFECTS,
+    defaultMappings: ROCKET_LEAGUE_DEFAULT_MAPPINGS,
+    interactionCatalogVersion:
+      ROCKET_LEAGUE_INTERACTION_CATALOG_VERSION
   }),
   game("demonologist", "Demonologist", {
     artworkUrl:
@@ -608,6 +798,96 @@ const GAME_GUIDES = Object.freeze({
     "Diamond Drop Live s’exécute directement dans ShenPulse.",
     ["Configure les coûts et multiplicateurs.", "Associe les interactions TikTok.", "Lance une partie de test."]
   ),
+  "color-strike": {
+    mode: "native",
+    summary:
+      "La version autonome ShenPulse de Color Strike expose ses interactions uniquement en local sur le port 7444.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Dans Installation, lance le téléchargement et l’installation automatiques depuis ShenPulse.",
+      "Vérifie ou personnalise les cadeaux déjà associés aux interactions Color Strike.",
+      "Clique sur Lancer puis commence une partie dans Color Strike.",
+      "Vérifie la connexion locale avant d’activer la session LIVE."
+    ],
+    notes: [
+      "Le jeu ne demande ni ticket, ni launcher externe, ni connexion aux anciennes API.",
+      "ShenPulse communique uniquement avec 127.0.0.1:7444 ; le jeu et ShenPulse doivent rester ouverts.",
+      "Les cadeaux, likes, follows, partages et la commande !spin de la configuration par défaut sont actifs dès l’initialisation."
+    ],
+    sources: []
+  },
+  "tiklive-climb": {
+    mode: "native",
+    summary:
+      "La version autonome ShenPulse de Climb expose ses interactions uniquement en local sur le port 7777.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Dans Installation, lance le téléchargement et l’installation automatiques depuis ShenPulse.",
+      "Vérifie ou personnalise les cadeaux déjà associés aux interactions Climb.",
+      "Clique sur Lancer puis commence une ascension dans Climb.",
+      "Vérifie la connexion locale avant d’activer la session LIVE."
+    ],
+    notes: [
+      "Le jeu ne demande ni ticket, ni launcher externe, ni connexion aux anciennes API.",
+      "ShenPulse communique uniquement avec 127.0.0.1:7777 ; le jeu et ShenPulse doivent rester ouverts.",
+      "Les cadeaux, likes, follows, partages et la commande !spin de la configuration par défaut sont actifs dès l’initialisation."
+    ],
+    sources: []
+  },
+  "tiklive-cube-wars": {
+    mode: "native",
+    summary:
+      "La version autonome ShenPulse de Cube Wars expose ses interactions uniquement en local sur le port 7811.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Dans Installation, lance le téléchargement et l’installation automatiques depuis ShenPulse.",
+      "Vérifie ou personnalise les cadeaux associés aux camps Hommes et Femmes.",
+      "Clique sur Lancer, démarre une manche, puis les viewers choisissent H ou F dans le chat.",
+      "Vérifie la connexion locale avant d’activer la session LIVE."
+    ],
+    notes: [
+      "Le jeu ne demande ni ticket, ni launcher externe, ni connexion aux anciennes API.",
+      "ShenPulse communique uniquement avec 127.0.0.1:7811 ; le jeu et ShenPulse doivent rester ouverts.",
+      "Les cadeaux, likes, follows, partages, les commandes H/F et !spin de la configuration par défaut sont actifs dès l’initialisation."
+    ],
+    sources: []
+  },
+  "tiklive-stack-tower": {
+    mode: "native",
+    summary:
+      "La version autonome ShenPulse de Stack Tower expose ses interactions uniquement en local sur le port 7817.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Dans Installation, lance le téléchargement et l’installation automatiques depuis ShenPulse.",
+      "Vérifie ou personnalise les cadeaux déjà associés aux aides, sabotages et WINS de Stack Tower.",
+      "Clique sur Lancer, commence la construction et tente d’atteindre les 500 étages.",
+      "Vérifie la connexion locale avant d’activer la session LIVE."
+    ],
+    notes: [
+      "Le jeu ne demande ni ticket, ni launcher externe, ni connexion aux anciennes API.",
+      "ShenPulse communique uniquement avec 127.0.0.1:7817 ; le jeu et ShenPulse doivent rester ouverts.",
+      "Les 31 cadeaux TikLive, le tap-tap, le follow, le partage et la commande !spin sont préconfigurés dès l’initialisation."
+    ],
+    sources: []
+  },
+  "clash-of-live": {
+    mode: "native",
+    summary:
+      "La version autonome Clash Of ShenPulse expose ses interactions uniquement en local sur le port 4244.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Dans Installation, lance le téléchargement et l’installation automatiques depuis ShenPulse.",
+      "Vérifie ou personnalise les cadeaux déjà associés aux renforts rouges et bleus.",
+      "Clique sur Lancer puis démarre une partie dans Clash Of ShenPulse.",
+      "Vérifie la connexion locale avant d’activer la session LIVE."
+    ],
+    notes: [
+      "Le jeu ne demande ni licence, ni launcher externe, ni connexion aux anciennes API.",
+      "ShenPulse communique uniquement avec 127.0.0.1:4244 ; le jeu et ShenPulse doivent rester ouverts.",
+      "Les cadeaux, likes, follows, partages et la commande !spin de la configuration par défaut sont actifs dès l’initialisation."
+    ],
+    sources: []
+  },
   "pokemon-red-blue": {
     mode: "emulator",
     summary: "ShenPulse installe BizHawk, Pokémon Rouge et le pack d’interactions dans un environnement prêt à jouer.",
@@ -674,6 +954,24 @@ const GAME_GUIDES = Object.freeze({
         url: "https://crowdcontrol.live/guides/disrupts"
       }
     ]
+  },
+  "rocket-league": {
+    mode: "input",
+    summary:
+      "Aucun mod n’est installé : ShenPulse envoie les commandes clavier et souris directement à la fenêtre Rocket League.",
+    steps: [
+      "Lance Rocket League sur PC et entre dans une partie jouable.",
+      "Choisis la disposition WASD ou ZQSD et conserve les touches indiquées par ShenPulse.",
+      "Démarre la session, puis ajoute les interactions TikTok souhaitées.",
+      "Teste chaque interaction pendant que la fenêtre Rocket League est ouverte."
+    ],
+    notes: [
+      "Aucun fichier du jeu n’est téléchargé ni modifié.",
+      "Les commandes ciblent uniquement RocketLeague.exe et s’arrêtent si cette fenêtre n’est plus disponible.",
+      "Les touches attendues sont : WASD ou ZQSD pour conduire, Ctrl pour déraper, Espace pour la caméra ballon, Tab pour le score, clic gauche pour le turbo et clic droit pour sauter.",
+      "Le mode plein écran sans bordure ou fenêtré facilite le retour au premier plan pendant les tests."
+    ],
+    sources: []
   },
   demonologist: {
     mode: "input",
@@ -956,6 +1254,10 @@ function game(id, name, options = {}) {
         : structuredClone(effect)
     ),
     defaultMappings: structuredClone(options.defaultMappings || []),
+    deprecatedDefaultMappingIds: structuredClone(
+      options.deprecatedDefaultMappingIds || []
+    ),
+    wheelPresets: structuredClone(options.wheelPresets || []),
     interactionCatalogVersion: Number(
       options.interactionCatalogVersion || 0
     ),

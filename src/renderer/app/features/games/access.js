@@ -106,6 +106,11 @@ const SHENPULSE_PLATFORM_GAME_IDS = new Set([
   "thiercelieux",
   "coin-pusher",
   "connect-four",
+  "clash-of-live",
+  "color-strike",
+  "tiklive-climb",
+  "tiklive-cube-wars",
+  "tiklive-stack-tower",
   "deal-or-no-deal",
   "diamond-bridge",
   "diamond-drop"
@@ -113,6 +118,7 @@ const SHENPULSE_PLATFORM_GAME_IDS = new Set([
 
 const GAME_PLATFORM_OVERRIDES = Object.freeze({
   fortnite: ["epic-games"],
+  "rocket-league": ["epic-games", "steam"],
   "gtav-montchiliad": ["rockstar-games", "steam", "epic-games"],
   "pokemon-red-blue": ["nintendo"],
   "super-mario-kart": ["nintendo"]
@@ -166,6 +172,32 @@ function gamePlatformLogos(pack) {
   const platformIds = gamePlatformIds(pack);
   const labels = platformIds.map((id) => GAME_PLATFORM_LABELS[id]);
   return `<div class="tile-platforms" aria-label="Disponible sur ${escapeHtml(labels.join(", "))}">${platformIds.map((id) => `<span class="tile-platform-logo platform-${escapeHtml(id)}" title="${escapeHtml(GAME_PLATFORM_LABELS[id])}">${gamePlatformIcon(id)}</span>`).join("")}</div>`;
+}
+
+const GAME_CATALOG_PLATFORM_EXPLANATIONS = Object.freeze({
+  shenpulse: "Jeu et interactions inclus dans ShenPulse.",
+  steam: "Jeu à télécharger sur Steam · interactions incluses dans ShenPulse.",
+  "epic-games": "Jeu à télécharger sur Epic Games · interactions incluses dans ShenPulse.",
+  "rockstar-games": "Jeu à télécharger via Rockstar Games · interactions incluses dans ShenPulse.",
+  "microsoft-store": "Jeu à télécharger sur Microsoft Store · interactions incluses dans ShenPulse.",
+  nintendo: "Jeu Nintendo original requis · interactions incluses dans ShenPulse."
+});
+
+function gameCatalogPlatformLegend(packs) {
+  const availablePlatformIds = new Set(
+    packs.flatMap((pack) => gamePlatformIds(pack))
+  );
+  const platformIds = Object.keys(GAME_CATALOG_PLATFORM_EXPLANATIONS).filter(
+    (id) => availablePlatformIds.has(id)
+  );
+  return `
+    <ul class="game-platform-legend" aria-label="Comment obtenir les jeux et leurs interactions">
+      ${platformIds.map((id) => `
+        <li class="game-platform-legend-item">
+          <span class="game-platform-legend-icon platform-${escapeHtml(id)}" aria-hidden="true">${gamePlatformIcon(id)}</span>
+          <span><strong>${escapeHtml(GAME_PLATFORM_LABELS[id])}</strong><small>${escapeHtml(GAME_CATALOG_PLATFORM_EXPLANATIONS[id])}</small></span>
+        </li>`).join("")}
+    </ul>`;
 }
 
 function gamePrice(pack) {
@@ -454,7 +486,7 @@ function renderGamesV2() {
   return `
     <div class="reference-page games-gallery-page">
       <section class="page-hero compact games-heading">
-        <div><span class="hero-chip">JEUX INTERACTIFS</span><h2>Galerie des jeux</h2><p>Parcourez tous les jeux disponibles. Un abonnement ShenPulse actif est requis pour entrer dans un jeu.</p></div>
+        <div class="games-heading-content"><span class="hero-chip">JEUX INTERACTIFS</span><h2>Galerie des jeux</h2><p>Parcourez tous les jeux disponibles. Un abonnement ShenPulse actif est requis pour entrer dans un jeu.</p>${gameCatalogPlatformLegend(availablePacks)}</div>
         <span class="hero-count">${availablePacks.length}</span>
       </section>
       ${hasProAccess() ? "" : `<section class="game-access-warning game-catalog-access-warning"><span aria-hidden="true">🔒</span><div><strong>Le catalogue reste accessible</strong><p>Vous pouvez consulter tous les jeux. Activez un abonnement Pro ou Premium pour ouvrir un jeu, l’installer, le configurer et lancer ses interactions.</p></div><button class="button primary" data-navigate="membership">Voir les abonnements</button></section>`}
@@ -534,6 +566,18 @@ async function enterGameWorkspace(pack) {
 }
 
 function renderGameWorkspace(pack) {
+  if (pack.id === "super-mario-kart") {
+    return renderSuperMarioKartWorkspace(pack);
+  }
+  if (pack.id === "resident-evil-3") {
+    return renderResidentEvil3Workspace(pack);
+  }
+  if (pack.id === "fortnite") {
+    return renderFortniteWorkspace(pack);
+  }
+  if (pack.id === "rocket-league") {
+    return renderRocketLeagueWorkspace(pack);
+  }
   const unlocked = isGameUnlocked(pack);
   const guide = pack.guide || {};
   const mappedEffects = gameMappedEffects(pack);

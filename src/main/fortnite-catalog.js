@@ -238,6 +238,9 @@ function effect(
   icon,
   inputSequence
 ) {
+  const isLockedWeaponSlot = /^f_weapon_[1-5]$/.test(sourceEffectId);
+  const usesPhysicalNumberRow =
+    sourceEffectId === "f_weapon_carousel";
   return Object.freeze({
     id,
     code: sourceEffectId,
@@ -247,7 +250,16 @@ function effect(
     description,
     category,
     icon,
-    available: true,
+    available: !isLockedWeaponSlot,
+    ...(isLockedWeaponSlot
+      ? {
+          unavailableReason:
+            "Interaction verrouillée : la sélection directe d’un emplacement d’arme n’est pas compatible avec Fortnite."
+        }
+      : {}),
+    ...(usesPhysicalNumberRow
+      ? { keyboardInputMode: "hybrid" }
+      : {}),
     inputSequence
   });
 }
@@ -262,7 +274,7 @@ const FORTNITE_DEFAULT_MAPPINGS = Object.freeze(
       triggerType: "gift",
       threshold: 1,
       cooldownSeconds: 0,
-      enabled: true,
+      enabled: entry.available !== false,
       triggerEnabled: false
     })
   )

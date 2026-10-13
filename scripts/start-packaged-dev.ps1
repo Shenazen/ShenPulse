@@ -17,8 +17,29 @@ $running = Get-Process -Name "ShenPulse" -ErrorAction SilentlyContinue |
     }
   }
 if ($running) {
-  $running | Stop-Process -Force
-  $running | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
+  $mainProcesses = $running | Where-Object { $_.MainWindowHandle -ne 0 }
+  foreach ($process in $mainProcesses) {
+    [void]$process.CloseMainWindow()
+  }
+  if ($mainProcesses) {
+    $mainProcesses | Wait-Process -Timeout 15 -ErrorAction SilentlyContinue
+  }
+  $remaining = Get-Process -Name "ShenPulse" -ErrorAction SilentlyContinue |
+    Where-Object {
+      try {
+        [string]::Equals(
+          $_.Path,
+          $executablePath,
+          [StringComparison]::OrdinalIgnoreCase
+        )
+      } catch {
+        $false
+      }
+    }
+  if ($remaining) {
+    $remaining | Stop-Process -Force
+    $remaining | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
+  }
 }
 
 Push-Location $projectRoot

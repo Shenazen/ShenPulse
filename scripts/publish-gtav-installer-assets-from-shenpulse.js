@@ -23,11 +23,17 @@ async function main() {
   }
 
   const userData = path.resolve(requiredOption("user-data"));
+  const statePath = options.state
+    ? path.resolve(options.state)
+    : path.join(userData, "shenpulse-state.json");
+  const secretsPath = options.secrets
+    ? path.resolve(options.secrets)
+    : path.join(userData, "shenpulse-secrets.json");
   const state = JSON.parse(
-    fs.readFileSync(path.join(userData, "shenpulse-state.json"), "utf8")
+    fs.readFileSync(statePath, "utf8")
   );
   const secrets = JSON.parse(
-    fs.readFileSync(path.join(userData, "shenpulse-secrets.json"), "utf8")
+    fs.readFileSync(secretsPath, "utf8")
   );
   const settings = state.settings?.backblaze || {};
   const keyId = readSecret(secrets, settings.keyIdSecretId);

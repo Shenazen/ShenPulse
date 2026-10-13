@@ -5,6 +5,7 @@ const { randomUUID } = require("node:crypto");
 const { shell } = require("electron");
 const { clamp, safeString } = require("./utils");
 const { renderValue } = require("./template");
+const { activeGameInteractionRules } = require("./rule-engine");
 const {
   MAX_TIMER_SECONDS,
   applyOverlayOperation
@@ -281,8 +282,10 @@ class ActionRunner {
         return updated;
       }
       case "timer.add": {
-        const operation = [
+        const requestedOperation = [
           "add",
+          "remove",
+          "random",
           "set",
           "pause",
           "resume",
@@ -290,19 +293,31 @@ class ActionRunner {
         ].includes(String(config.operation || "add"))
           ? String(config.operation || "add")
           : "add";
-        const payload = {
-          operation,
-          seconds: clamp(
-            config.seconds || 0,
-            -MAX_TIMER_SECONDS,
-            MAX_TIMER_SECONDS
-          ),
+        const configuredSeconds = clamp(
+          config.seconds || 0,
+          -MAX_TIMER_SECONDS,
+          MAX_TIMER_SECONDS
+        );
+        const appliedSeconds = requestedOperation === "remove"
+          ? -Math.abs(configuredSeconds)
+          : requestedOperation === "random"
+            ? Math.abs(configuredSeconds) * (this.randomImpl() < 0.5 ? -1 : 1)
+            : configuredSeconds;
+        const appliedPayload = {
+          operation: ["remove", "random"].includes(requestedOperation)
+            ? "add"
+            : requestedOperation,
+          seconds: appliedSeconds,
           label: safeString(config.label || "Temps restant", 100)
         };
-        const runtime = this.#applyOverlayOperation("timer", payload, {
+        const runtime = this.#applyOverlayOperation("timer", appliedPayload, {
           context,
           originActionId: action.id || ""
         });
+        const payload = {
+          ...appliedPayload,
+          operation: requestedOperation
+        };
         if (runtime?.hasData) {
           payload.endsAt = runtime.timerEndsAt;
           payload.paused = runtime.timerPaused;
@@ -439,7 +454,11 @@ class ActionRunner {
             Math.max(0, Number(payload.settings.waitDuration || 0))
           ) * 1000;
         if (winnerAction === "action" && winnerSegment.actionId) {
-          const linkedAction = (this.store.getState().rules || [])
+          const state = this.store.getState();
+          const linkedAction = [
+            ...(state.rules || []),
+            ...activeGameInteractionRules(state)
+          ]
             .flatMap((rule) => rule.actions || [])
             .find((item) => item.id === winnerSegment.actionId);
           if (linkedAction && linkedAction.id !== action.id) {

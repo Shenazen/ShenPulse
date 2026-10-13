@@ -474,12 +474,19 @@ test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
   assert.doesNotMatch(overlayCss, /data-jar-model[^\{]*#coin-jar-back/);
   assert.doesNotMatch(overlayCss, /#coin-jar-back\s*\{[\s\S]*?transform:/);
   assert.match(overlayHtml, /id="coin-jar-glass-clip"/);
+  assert.match(overlayHtml, /id="coin-jar-motion-clip"/);
   assert.match(
     overlayHtml,
-    /M \.31 \.075 L \.69 \.075[\s\S]*L \.785 \.80[\s\S]*L \.34 \.925[\s\S]*L \.215 \.31/
+    /M \.31 \.09 L \.69 \.09[\s\S]*L \.785 \.80[\s\S]*L \.34 \.925[\s\S]*L \.215 \.31/
   );
-  assert.match(overlayHtml, /id="coin-jar-contained-drops"[\s\S]*id="coin-jar-overflow-drops"/);
-  assert.match(overlayCss, /\.coin-jar-contained-drops\s*\{[\s\S]*clip-path:\s*url\("#coin-jar-glass-clip"\)/);
+  assert.match(
+    overlayHtml,
+    /id="coin-jar-contained-drops"[\s\S]*id="coin-jar-overflow-drops"[\s\S]*id="coin-jar-exterior-drops"/
+  );
+  assert.match(overlayCss, /\.coin-jar-contained-drops\s*\{[\s\S]*clip-path:\s*polygon\(/);
+  assert.match(overlayCss, /\.coin-jar-overflow-drops\s*\{[\s\S]*clip-path:\s*polygon\(/);
+  assert.match(overlayRuntime, /gift\.state === "spilled"[\s\S]*\? exteriorLayer/);
+  assert.match(overlayRuntime, /function coinJarGiftRandom\(/);
   assert.match(overlayRuntime, /gift\.y - visualRadius >= coinJarGeometry\.mouthTop/);
   assert.match(overlayRuntime, /jar-test-back-clean-localized\.png/);
   assert.match(overlayHtml, /id="coin-jar-level"/);
@@ -679,10 +686,16 @@ test("les aperçus overlays se préchargent en fond dès le démarrage", () => {
     /function warmOverlayRuntimePreviews\(\)[\s\S]*overlayDefinitions\(\)\.filter\([\s\S]*canAccessOverlay\(item\)[\s\S]*!item\.catalogHidden/
   );
   assert.match(renderer, /OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY = 2/);
+  assert.match(renderer, /item\.key !== "coinJar"/);
   assert.match(renderer, /item\.previewKind !== "match"/);
   assert.match(renderer, /iframe\.loading = "eager"/);
   assert.match(renderer, /function discardOverlayBackgroundPreview\(record\)/);
   assert.match(renderer, /function adoptWarmedOverlayPreview\(frame\)/);
+  assert.match(renderer, /function revealOverlayPreviewFrame\(iframe\)/);
+  assert.match(
+    renderer,
+    /iframe\.getBoundingClientRect\(\);[\s\S]*overlay-runtime-frame--ready/
+  );
   assert.match(
     renderer,
     /placeholderFrame\.hasAttribute\("data-overlay-live-preview"\)[\s\S]*iframe\.setAttribute\("data-overlay-live-preview", ""\)[\s\S]*iframe\.removeAttribute\("data-overlay-runtime-preview"\)/
@@ -694,6 +707,14 @@ test("les aperçus overlays se préchargent en fond dès le démarrage", () => {
   );
   assert.match(renderer, /data-overlay-preview-key="\$\{escapeHtml\(item\.key\)\}"/);
   assert.match(rendererCss, /\.overlay-preview-warmup-host\s*\{/);
+  assert.match(
+    rendererCss,
+    /\.overlay-runtime-frame iframe\s*\{[\s\S]*z-index:\s*1;[\s\S]*opacity:\s*1;/
+  );
+  assert.match(
+    rendererCss,
+    /\.overlay-runtime-placeholder\s*\{[\s\S]*z-index:\s*2;/
+  );
 });
 
 test("les WINS natifs actualisent les aperçus sans reconstruire la page du jeu", () => {

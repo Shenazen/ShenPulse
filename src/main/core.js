@@ -55,14 +55,15 @@ class ShenPulseCore extends EventEmitter {
     this.store = store;
     this.notifyRenderer = notifyRenderer;
     this.appVersion = String(appVersion || "");
+    this.giftCatalog = new GiftCatalog(resourcesDirectory);
     this.gameHub = new GameHub({
       store,
       packsDirectory: path.join(resourcesDirectory, "packs"),
-      resourcesDirectory
+      resourcesDirectory,
+      giftCatalog: this.giftCatalog
     });
     this.sourceHub = new SourceHub({ store });
     this.obsClient = new ObsClient({ store });
-    this.giftCatalog = new GiftCatalog(resourcesDirectory);
     this.soundCatalog = SOUND_CATALOG;
     this.mediaCatalog = createMediaCatalog(resourcesDirectory);
     this.spotifyService = new SpotifyService({ store, notifyRenderer });
@@ -323,7 +324,7 @@ class ShenPulseCore extends EventEmitter {
     try {
       await this.giftCatalog.refreshLocalized(username, { force });
     } catch {
-      // Le petit catalogue local français/anglais reste disponible hors ligne.
+      // Le catalogue fusionné embarqué reste disponible hors ligne.
     }
     return this.giftCatalog.gifts;
   }
@@ -561,6 +562,9 @@ class ShenPulseCore extends EventEmitter {
     const normalized = raw?.type && raw?.user && raw?.data
       ? raw
       : normalizeEvent(raw, source);
+    if (normalized.type === "gift") {
+      this.giftCatalog.mergeLiveGift(normalized.data || {});
+    }
     const event = enrichGiftEvent(normalized, this.giftCatalog.gifts);
     if (!this.followSessionGuard.accept(this.store.getState(), event)) {
       return null;
@@ -944,6 +948,11 @@ class ShenPulseCore extends EventEmitter {
         `@${username || "inconnu"}${roomId ? ` · salle ${roomId}` : ""}`
       );
       if (sessionTransition === "started") {
+        this.refreshGiftCatalog({ force: true })
+          .then(() => this.#changed(true))
+          .catch(() => {
+            // Le catalogue fusionné local et les cadeaux appris restent disponibles.
+          });
         this.overlayCompletionController.stop();
         this.overlayServer.publish(
           "session-state",
@@ -966,6 +975,11 @@ class ShenPulseCore extends EventEmitter {
             )
           );
       } else if (sessionTransition === "resumed") {
+        this.refreshGiftCatalog()
+          .then(() => this.#changed(true))
+          .catch(() => {
+            // La reprise du LIVE ne dépend pas du rafraîchissement du catalogue.
+          });
         this.overlayServer.publish(
           "session-state",
           this.store.getState().overlaySession

@@ -367,6 +367,11 @@ dialog.addEventListener("click", (event) => {
   if (!effect) {
     return showDialogError("Cette interaction n’existe plus.");
   }
+  if (effect.available === false) {
+    return showDialogError(
+      effect.unavailableReason || "Cette interaction est verrouillée."
+    );
+  }
   openGameInteractionEditor(pack, effect, row);
 });
 

@@ -11,36 +11,31 @@ $OutputEncoding = [Console]::OutputEncoding
 $Operation = [string]$env:SHENPULSE_INPUT_OPERATION
 $ProcessName = [string]$env:SHENPULSE_INPUT_PROCESS
 $EncodedEvents = [string]$env:SHENPULSE_INPUT_EVENTS
+$KeyboardInputMode = [string]$env:SHENPULSE_INPUT_KEYBOARD_MODE
 $ErrorActionPreference = 'Stop'
 
-$target = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue |
-  Where-Object { $_.MainWindowHandle -ne 0 } |
-  Select-Object -First 1
-if (-not $target) {
-  throw "$ProcessName n'est pas ouvert ou sa fenêtre n'est pas encore prête."
-}
-$target.Refresh()
-$window = [IntPtr]$target.MainWindowHandle
-if ($window -eq [IntPtr]::Zero) {
-  throw "La fenêtre $ProcessName est introuvable."
-}
-
-if ($Operation -eq 'status') {
-  @{ ok = $true; processId = $target.Id; processName = $target.ProcessName } |
-    ConvertTo-Json -Compress |
-    Write-Output
-  exit 0
+$targets = @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)
+if ($targets.Count -eq 0) {
+  throw "$ProcessName n'est pas ouvert."
 }
 
 Add-Type -TypeDefinition @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 public static class ShenPulseGameInput {
   private const uint INPUT_MOUSE = 0;
   private const uint INPUT_KEYBOARD = 1;
+  private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
   private const uint KEYEVENTF_KEYUP = 0x0002;
+  private const uint KEYEVENTF_SCANCODE = 0x0008;
+  private const uint MAPVK_VK_TO_VSC_EX = 4;
+  private const uint GW_OWNER = 4;
+  private const uint SWP_NOSIZE = 0x0001;
+  private const uint SWP_NOMOVE = 0x0002;
+  private const uint SWP_SHOWWINDOW = 0x0040;
   private const uint MOUSEEVENTF_MOVE = 0x0001;
   private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
   private const uint MOUSEEVENTF_LEFTUP = 0x0004;
@@ -49,6 +44,10 @@ public static class ShenPulseGameInput {
   private const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
   private const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
   private const int SW_RESTORE = 9;
+  private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+  private static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+
+  private delegate bool EnumWindowsCallback(IntPtr window, IntPtr state);
 
   [StructLayout(LayoutKind.Sequential)]
   private struct INPUT {
@@ -109,9 +108,54 @@ public static class ShenPulseGameInput {
   private static extern IntPtr GetForegroundWindow();
 
   [DllImport("user32.dll")]
+  private static extern bool EnumWindows(
+    EnumWindowsCallback callback,
+    IntPtr state
+  );
+
+  [DllImport("user32.dll")]
+  private static extern bool IsWindowVisible(IntPtr window);
+
+  [DllImport("user32.dll")]
+  private static extern IntPtr GetWindow(IntPtr window, uint command);
+
+  [DllImport("user32.dll")]
+  private static extern IntPtr SetActiveWindow(IntPtr window);
+
+  [DllImport("user32.dll")]
+  private static extern IntPtr SetFocus(IntPtr window);
+
+  [DllImport("user32.dll")]
+  private static extern bool SetWindowPos(
+    IntPtr window,
+    IntPtr insertAfter,
+    int x,
+    int y,
+    int width,
+    int height,
+    uint flags
+  );
+
+  [DllImport("user32.dll")]
   private static extern uint GetWindowThreadProcessId(
     IntPtr window,
     IntPtr processId
+  );
+
+  [DllImport("user32.dll", EntryPoint = "GetWindowThreadProcessId")]
+  private static extern uint GetWindowThreadProcessIdWithOwner(
+    IntPtr window,
+    out uint processId
+  );
+
+  [DllImport("user32.dll")]
+  private static extern IntPtr GetKeyboardLayout(uint threadId);
+
+  [DllImport("user32.dll")]
+  private static extern uint MapVirtualKeyEx(
+    uint code,
+    uint mapType,
+    IntPtr keyboardLayout
   );
 
   [DllImport("kernel32.dll")]
@@ -124,20 +168,72 @@ public static class ShenPulseGameInput {
     bool attach
   );
 
+  public static IntPtr FindWindowForProcess(uint processId) {
+    IntPtr visibleWindow = IntPtr.Zero;
+    IntPtr fallbackWindow = IntPtr.Zero;
+    EnumWindows(delegate(IntPtr candidate, IntPtr state) {
+      uint ownerProcessId;
+      GetWindowThreadProcessIdWithOwner(candidate, out ownerProcessId);
+      if (ownerProcessId != processId) return true;
+      if (GetWindow(candidate, GW_OWNER) != IntPtr.Zero) return true;
+      if (fallbackWindow == IntPtr.Zero) fallbackWindow = candidate;
+      if (IsWindowVisible(candidate)) {
+        visibleWindow = candidate;
+        return false;
+      }
+      return true;
+    }, IntPtr.Zero);
+    return visibleWindow != IntPtr.Zero ? visibleWindow : fallbackWindow;
+  }
+
   public static bool Activate(IntPtr window) {
-    ShowWindowAsync(window, SW_RESTORE);
-    IntPtr foreground = GetForegroundWindow();
-    uint currentThread = GetCurrentThreadId();
-    uint foregroundThread = foreground == IntPtr.Zero
-      ? 0
-      : GetWindowThreadProcessId(foreground, IntPtr.Zero);
-    bool attached = foregroundThread != 0 && foregroundThread != currentThread;
-    if (attached) AttachThreadInput(currentThread, foregroundThread, true);
-    try {
-      BringWindowToTop(window);
-      SetForegroundWindow(window);
-    } finally {
-      if (attached) AttachThreadInput(currentThread, foregroundThread, false);
+    for (int attempt = 0; attempt < 20; attempt++) {
+      if (GetForegroundWindow() == window) return true;
+      ShowWindowAsync(window, SW_RESTORE);
+      IntPtr foreground = GetForegroundWindow();
+      uint currentThread = GetCurrentThreadId();
+      uint targetThread = GetWindowThreadProcessId(window, IntPtr.Zero);
+      uint foregroundThread = foreground == IntPtr.Zero
+        ? 0
+        : GetWindowThreadProcessId(foreground, IntPtr.Zero);
+      bool attachedForeground =
+        foregroundThread != 0 && foregroundThread != currentThread &&
+        AttachThreadInput(currentThread, foregroundThread, true);
+      bool attachedTarget =
+        targetThread != 0 && targetThread != currentThread &&
+        AttachThreadInput(currentThread, targetThread, true);
+      try {
+        BringWindowToTop(window);
+        SetWindowPos(
+          window,
+          HWND_TOPMOST,
+          0,
+          0,
+          0,
+          0,
+          SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+        );
+        SetWindowPos(
+          window,
+          HWND_NOTOPMOST,
+          0,
+          0,
+          0,
+          0,
+          SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+        );
+        SetForegroundWindow(window);
+        SetActiveWindow(window);
+        SetFocus(window);
+      } finally {
+        if (attachedTarget) {
+          AttachThreadInput(currentThread, targetThread, false);
+        }
+        if (attachedForeground) {
+          AttachThreadInput(currentThread, foregroundThread, false);
+        }
+      }
+      Thread.Sleep(75);
     }
     return GetForegroundWindow() == window;
   }
@@ -146,12 +242,56 @@ public static class ShenPulseGameInput {
     return GetForegroundWindow() == window;
   }
 
-  public static void SendKey(ushort virtualKey, bool keyUp) {
+  public static void SendKey(
+    IntPtr window,
+    ushort virtualKey,
+    bool keyUp,
+    bool useScanCode,
+    bool sendVirtualFallback
+  ) {
+    if (useScanCode) {
+      SendSingleKey(window, virtualKey, keyUp, true);
+      if (sendVirtualFallback) {
+        SendSingleKey(window, virtualKey, keyUp, false);
+      }
+      return;
+    }
+    SendSingleKey(window, virtualKey, keyUp, false);
+  }
+
+  private static void SendSingleKey(
+    IntPtr window,
+    ushort virtualKey,
+    bool keyUp,
+    bool useScanCode
+  ) {
     INPUT input = new INPUT();
     input.type = INPUT_KEYBOARD;
-    input.U.ki.wVk = virtualKey;
-    input.U.ki.wScan = 0;
-    input.U.ki.dwFlags = keyUp ? KEYEVENTF_KEYUP : 0;
+    uint flags = keyUp ? KEYEVENTF_KEYUP : 0;
+    if (useScanCode) {
+      uint targetThread = GetWindowThreadProcessId(window, IntPtr.Zero);
+      IntPtr keyboardLayout = GetKeyboardLayout(targetThread);
+      uint mappedScanCode = MapVirtualKeyEx(
+        virtualKey,
+        MAPVK_VK_TO_VSC_EX,
+        keyboardLayout
+      );
+      if (mappedScanCode == 0) {
+        throw new InvalidOperationException(
+          "La touche physique demandée est introuvable."
+        );
+      }
+      input.U.ki.wVk = 0;
+      input.U.ki.wScan = (ushort)(mappedScanCode & 0xFF);
+      flags |= KEYEVENTF_SCANCODE;
+      if ((mappedScanCode & 0xFF00) != 0) {
+        flags |= KEYEVENTF_EXTENDEDKEY;
+      }
+    } else {
+      input.U.ki.wVk = virtualKey;
+      input.U.ki.wScan = 0;
+    }
+    input.U.ki.dwFlags = flags;
     input.U.ki.time = 0;
     input.U.ki.dwExtraInfo = UIntPtr.Zero;
     uint sent = SendInput(1, new INPUT[] { input }, Marshal.SizeOf(typeof(INPUT)));
@@ -199,6 +339,45 @@ public static class ShenPulseGameInput {
 }
 '@
 
+$target = $null
+$window = [IntPtr]::Zero
+$windowDeadline = [DateTime]::UtcNow.AddSeconds(4)
+do {
+  foreach ($candidate in $targets) {
+    if ($candidate.HasExited) { continue }
+    $candidate.Refresh()
+    $candidateWindow = [IntPtr]$candidate.MainWindowHandle
+    if ($candidateWindow -eq [IntPtr]::Zero) {
+      $candidateWindow = [ShenPulseGameInput]::FindWindowForProcess(
+        [uint32]$candidate.Id
+      )
+    }
+    if ($candidateWindow -ne [IntPtr]::Zero) {
+      $target = $candidate
+      $window = $candidateWindow
+      break
+    }
+  }
+  if ($window -eq [IntPtr]::Zero) {
+    Start-Sleep -Milliseconds 100
+    $targets = @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)
+  }
+} while (
+  $window -eq [IntPtr]::Zero -and
+  [DateTime]::UtcNow -lt $windowDeadline
+)
+
+if (-not $target -or $window -eq [IntPtr]::Zero) {
+  throw "$ProcessName est ouvert, mais sa fenêtre de jeu n'est pas encore prête."
+}
+
+if ($Operation -eq 'status') {
+  @{ ok = $true; processId = $target.Id; processName = $target.ProcessName } |
+    ConvertTo-Json -Compress |
+    Write-Output
+  exit 0
+}
+
 if (-not [ShenPulseGameInput]::Activate($window)) {
   throw "Windows n'a pas pu placer $ProcessName au premier plan."
 }
@@ -215,12 +394,24 @@ $eventsJson = [Text.Encoding]::UTF8.GetString(
   [Convert]::FromBase64String($EncodedEvents)
 )
 $events = $eventsJson | ConvertFrom-Json
+$useScanCodes = @('scan-code', 'hybrid') -contains $KeyboardInputMode
+$sendVirtualFallback = $KeyboardInputMode -eq 'hybrid'
 $heldKeys = [Collections.Generic.HashSet[int]]::new()
 $heldMouseButtons = [Collections.Generic.HashSet[int]]::new()
 try {
   foreach ($event in $events) {
-    if ([int]$event.delayMs -gt 0) {
-      Start-Sleep -Milliseconds ([int]$event.delayMs)
+    $delayMs = [int]$event.delayMs
+    if (
+      $sendVirtualFallback -and
+      [string]$event.kind -eq 'keyboard' -and
+      [string]$event.action -eq 'up' -and
+      $delayMs -gt 0 -and
+      $delayMs -lt 80
+    ) {
+      $delayMs = 80
+    }
+    if ($delayMs -gt 0) {
+      Start-Sleep -Milliseconds $delayMs
     }
     $target.Refresh()
     if ($target.HasExited) {
@@ -235,12 +426,12 @@ try {
       $keyCode = [int]$event.keyCode
       $action = [string]$event.action
       if ($action -eq 'press') {
-        [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $false)
+        [ShenPulseGameInput]::SendKey($window, [System.UInt16]$keyCode, $false, $useScanCodes, $sendVirtualFallback)
         Start-Sleep -Milliseconds 40
-        [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $true)
+        [ShenPulseGameInput]::SendKey($window, [System.UInt16]$keyCode, $true, $useScanCodes, $sendVirtualFallback)
       } else {
         $keyUp = $action -eq 'up'
-        [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $keyUp)
+        [ShenPulseGameInput]::SendKey($window, [System.UInt16]$keyCode, $keyUp, $useScanCodes, $sendVirtualFallback)
         if ($keyUp) {
           [void]$heldKeys.Remove($keyCode)
         } else {
@@ -273,7 +464,7 @@ try {
       [void][ShenPulseGameInput]::Activate($window)
     }
     foreach ($keyCode in @($heldKeys)) {
-      [ShenPulseGameInput]::SendKey([System.UInt16]$keyCode, $true)
+      [ShenPulseGameInput]::SendKey($window, [System.UInt16]$keyCode, $true, $useScanCodes, $sendVirtualFallback)
     }
     foreach ($button in @($heldMouseButtons)) {
       [ShenPulseGameInput]::SendMouseButton([int]$button, $true)
@@ -304,14 +495,24 @@ class WindowsInputService {
     );
   }
 
-  async play(processName, sequence, keyLayout = "wasd") {
+  async play(
+    processName,
+    sequence,
+    keyLayout = "wasd",
+    keyboardInputMode = "virtual-key"
+  ) {
     const normalizedProcess = normalizeProcessName(processName);
     const events = applyKeyboardLayout(
       normalizeWindowsInputSequence(sequence),
       keyLayout
     );
     return this.#enqueue(normalizedProcess, () =>
-      this.execute("play", normalizedProcess, events)
+      this.execute(
+        "play",
+        normalizedProcess,
+        events,
+        normalizeKeyboardInputMode(keyboardInputMode)
+      )
     );
   }
 
@@ -355,6 +556,13 @@ function normalizeProcessName(value) {
     throw new Error("Le processus Windows ciblé est invalide.");
   }
   return normalized;
+}
+
+function normalizeKeyboardInputMode(value) {
+  const normalized = String(value || "").toLowerCase();
+  return ["scan-code", "hybrid"].includes(normalized)
+    ? normalized
+    : "virtual-key";
 }
 
 function normalizeWindowsInputSequence(sequence) {
@@ -425,7 +633,12 @@ function normalizeWindowsInputSequence(sequence) {
   return events;
 }
 
-function executeWindowsInput(operation, processName, events) {
+function executeWindowsInput(
+  operation,
+  processName,
+  events,
+  keyboardInputMode = "virtual-key"
+) {
   const encodedEvents = Buffer.from(JSON.stringify(events), "utf8").toString(
     "base64"
   );
@@ -445,7 +658,9 @@ function executeWindowsInput(operation, processName, events) {
           ...process.env,
           SHENPULSE_INPUT_OPERATION: operation,
           SHENPULSE_INPUT_PROCESS: processName,
-          SHENPULSE_INPUT_EVENTS: encodedEvents
+          SHENPULSE_INPUT_EVENTS: encodedEvents,
+          SHENPULSE_INPUT_KEYBOARD_MODE:
+            normalizeKeyboardInputMode(keyboardInputMode)
         },
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"]
@@ -492,6 +707,7 @@ module.exports = {
   WindowsInputService,
   applyKeyboardLayout,
   executeWindowsInput,
+  normalizeKeyboardInputMode,
   normalizeProcessName,
   normalizeWindowsInputSequence
 };

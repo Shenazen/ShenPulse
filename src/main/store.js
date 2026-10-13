@@ -163,6 +163,7 @@ class StateStore {
       ...defaults.settings.backblaze,
       ...(this.state.settings.backblaze || {})
     };
+    this.#recoverBackblazeSecretReferences();
     this.state.settings.admin = {
       ...defaults.settings.admin,
       ...(this.state.settings.admin || {})
@@ -413,6 +414,63 @@ class StateStore {
     delete this.state.commerce.premiumSeat.beneficiaryUsernames;
     this.#migrateProfileWorkspaces();
     this.#migrateAccountWorkspaces();
+  }
+
+  #recoverBackblazeSecretReferences() {
+    const backblaze = this.state.settings.backblaze || {};
+    const referenceKeys = [
+      "keyIdSecretId",
+      "applicationKeySecretId"
+    ];
+    const missingKeys = new Set(
+      referenceKeys.filter((key) => !String(backblaze[key] || "").trim())
+    );
+    if (!missingKeys.size) return;
+
+    const fileName = path.basename(this.filePath);
+    const stem = fileName.endsWith(".json")
+      ? fileName.slice(0, -".json".length)
+      : fileName;
+    let candidates = [];
+    try {
+      candidates = fs
+        .readdirSync(this.directory, { withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => entry.name)
+        .filter(
+          (name) =>
+            name !== fileName &&
+            (name === `${fileName}.bak` ||
+              (name.startsWith(`${fileName}.`) && name.endsWith(".tmp")) ||
+              (name.startsWith(`${stem}.before-`) && name.endsWith(".json")))
+        )
+        .map((name) => ({
+          name,
+          modifiedAt: fs.statSync(path.join(this.directory, name)).mtimeMs
+        }))
+        .sort((left, right) => right.modifiedAt - left.modifiedAt);
+    } catch {
+      return;
+    }
+
+    for (const candidate of candidates) {
+      let savedBackblaze;
+      try {
+        savedBackblaze = this.#parseJsonFile(
+          path.join(this.directory, candidate.name)
+        ).value.settings?.backblaze;
+      } catch {
+        continue;
+      }
+      for (const key of [...missingKeys]) {
+        const secretId = String(savedBackblaze?.[key] || "").trim();
+        if (secretId && this.secrets[secretId]?.value) {
+          backblaze[key] = secretId;
+          missingKeys.delete(key);
+        }
+      }
+      if (!missingKeys.size) break;
+    }
   }
 
   #migrateAccountWorkspaces() {

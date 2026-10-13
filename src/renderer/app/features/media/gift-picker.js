@@ -18,7 +18,7 @@ function giftPickerField(
       <button type="button" data-gift-clear title="Effacer">×</button>
     </div>
     <div class="gift-picker-results" data-gift-results hidden></div>
-    <small>Recherche rapide par nom ou nombre de pièces dans le catalogue TikTok français/anglais.</small>
+    <small>Recherche par nom, ID ou nombre de pièces dans le catalogue TikTok fusionné.</small>
   </div>`;
 }
 

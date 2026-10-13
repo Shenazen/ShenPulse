@@ -215,7 +215,9 @@ function formatIntervalDuration(milliseconds) {
 
 function timerOperationLabel(operation = "add") {
   return {
-    add: "Ajouter / retirer",
+    add: "Ajouter",
+    remove: "Retirer",
+    random: "Ajouter ou retirer au hasard",
     set: "Définir",
     pause: "Pause",
     resume: "Reprendre",

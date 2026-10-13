@@ -331,6 +331,12 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
     if (showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
     if (
+      ![
+        "super-mario-kart",
+        "resident-evil-3",
+        "fortnite",
+        "rocket-league"
+      ].includes(pack.id) &&
       !(await confirmGameInteractionReadiness(
         pack,
         "d’activer la session de jeu"
