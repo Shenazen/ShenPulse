@@ -1,0 +1,466 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+.app-shell {
+  min-height: min(100vh, 960px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 0;
+}
+
+.live-frame {
+  --deal-side-width: clamp(66px, 18%, 82px);
+  --deal-side-gap: clamp(4px, 1.6%, 9px);
+  --deal-side-clearance: clamp(7px, 1.9%, 11px);
+  --deal-prize-top: clamp(224px, 24%, 310px);
+  --deal-prize-height: clamp(22px, 2.25vh, 28px);
+  --deal-prize-gap: clamp(3px, 0.36vh, 5px);
+  --deal-game-top: clamp(218px, 35%, 252px);
+  --deal-game-bottom: clamp(54px, 7.8%, 70px);
+  position: relative;
+  width: min(100vw, 56.25vh);
+  height: min(100vh, 177.78vw);
+  max-height: 100vh;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  isolation: isolate;
+  background: #090912;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 26px 90px rgba(0, 0, 0, 0.72);
+}
+
+.stage-image,
+.stage-vignette,
+.scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.stage-image {
+  z-index: -4;
+  background: url("../../../../assets/games/deal-or-no-deal/live-stage.png") center / cover no-repeat;
+  transform: scale(1.04);
+  animation: slowZoom 12s ease-in-out infinite alternate;
+}
+
+.stage-vignette {
+  z-index: -3;
+  background:
+    linear-gradient(180deg, rgba(5, 5, 12, 0.18), rgba(5, 5, 12, 0.06) 42%, rgba(5, 5, 12, 0.72)),
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.08), transparent 34%),
+    radial-gradient(circle at 50% 80%, rgba(12, 248, 196, 0.18), transparent 35%);
+}
+
+.scanlines {
+  z-index: 12;
+  opacity: 0.12;
+  mix-blend-mode: screen;
+  background: repeating-linear-gradient(180deg, transparent 0, transparent 7px, rgba(255, 255, 255, 0.22) 8px);
+}
+
+.audio-control {
+  position: absolute;
+  z-index: 20;
+  top: 10px;
+  left: 10px;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  opacity: 0.42;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.audio-control:hover,
+.audio-control.open,
+.audio-control:focus-within {
+  opacity: 1;
+}
+
+.audio-toggle {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(5, 8, 20, 0.68);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34), 0 0 18px rgba(49, 241, 255, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.audio-panel {
+  width: 150px;
+  display: grid;
+  gap: 8px;
+  padding: 9px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(5, 8, 20, 0.82);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.audio-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.audio-panel-header strong {
+  color: #ffd166;
+  font-size: 0.72rem;
+}
+
+.audio-panel input[type="range"] {
+  width: 100%;
+  accent-color: #35f4ff;
+  cursor: pointer;
+}
+
+.top-hud {
+  display: none;
+}
+
+.brand {
+  display: grid;
+  gap: 5px;
+}
+
+.brand h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.34rem;
+  line-height: 0.93;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.55), 0 0 22px rgba(255, 209, 102, 0.55);
+}
+
+.prize-tile,
+.decision-panel,
+.lobby-panel {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.entry-banner {
+  position: absolute;
+  z-index: 5;
+  top: 20px;
+  left: 50%;
+  width: min(500px, calc(100% - 12px));
+  aspect-ratio: 1870 / 837;
+  overflow: visible;
+  color: #fff;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.entry-banner-art {
+  position: absolute;
+  inset: 0;
+}
+
+.entry-banner-art {
+  z-index: 1;
+  background: url("../../../../assets/games/deal-or-no-deal/entry-banner.png") center / contain no-repeat;
+  filter: saturate(1.05) contrast(1.04);
+}
+
+.entry-banner.is-premium-entry-banner .entry-banner-art {
+  background-image: url("../../../../assets/games/deal-or-no-deal/entry-banner-premium.png");
+  background-size: cover;
+  filter: saturate(1.08) contrast(1.06);
+}
+
+.entry-banner-amount {
+  position: absolute;
+  z-index: 3;
+  left: 22.35%;
+  top: 16.8%;
+  width: 31%;
+  height: 43%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  color: #ffd166;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: calc(4.55rem * var(--entry-amount-scale, 1));
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 0.92;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 #4a2200,
+    0 0 12px rgba(255, 209, 102, 0.56),
+    0 0 26px rgba(255, 139, 31, 0.42);
+}
+
+.premium-entry-text,
+.premium-entry-gain {
+  position: absolute;
+  z-index: 3;
+  min-width: 0;
+  overflow: hidden;
+  color: #ffd166;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 0.92;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 #4a2200,
+    0 0 12px rgba(255, 209, 102, 0.64),
+    0 0 28px rgba(255, 139, 31, 0.46);
+}
+
+.premium-entry-text {
+  top: 20.6%;
+  width: 25%;
+  height: 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.16em;
+  font-size: calc(3.14rem * var(--premium-entry-amount-scale, 1));
+}
+
+.premium-entry-base-price {
+  left: 6.8%;
+}
+
+.premium-entry-premium-price {
+  left: 48.2%;
+}
+
+.premium-entry-gain {
+  left: 48.2%;
+  top: 48.2%;
+  width: 25%;
+  color: #fff4bf;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1.18rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 0 rgba(74, 34, 0, 0.84),
+    0 0 12px rgba(255, 209, 102, 0.58),
+    0 0 20px rgba(52, 211, 153, 0.35);
+}
+
+.prize-rail {
+  position: absolute;
+  z-index: 6;
+  top: var(--deal-prize-top);
+  display: grid;
+  grid-auto-rows: var(--deal-prize-height);
+  align-content: start;
+  gap: var(--deal-prize-gap);
+  width: var(--deal-side-width);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.prize-left {
+  left: var(--deal-side-gap);
+}
+
+.prize-right {
+  right: var(--deal-side-gap);
+}
+
+.prize-tile {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: var(--deal-prize-height);
+  min-height: 0;
+  padding: 1px 2px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(7, 18, 30, 0.74), rgba(14, 12, 24, 0.54));
+  color: #050505;
+  font-size: clamp(0.56rem, min(1.45vh, 2.65vw), 0.74rem);
+  font-weight: 900;
+  line-height: 0.95;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: inset 0 0 18px rgba(64, 242, 255, 0.08);
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.25s ease;
+}
+
+.prize-tile.left-prize {
+  color: #050505;
+  border-color: rgba(77, 236, 255, 0.58);
+  background:
+    linear-gradient(180deg, rgba(126, 244, 255, 0.94), rgba(24, 137, 255, 0.9) 48%, rgba(12, 38, 129, 0.88)),
+    #168dff;
+  box-shadow:
+    inset 0 0 14px rgba(255, 255, 255, 0.2),
+    inset 0 -8px 18px rgba(0, 39, 130, 0.34),
+    0 0 16px rgba(42, 218, 255, 0.38);
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.42);
+}
+
+.prize-tile.left-prize.gone {
+  opacity: 0.27;
+  color: #050505;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.04);
+}
+
+.prize-tile.right-prize {
+  color: #050505;
+  border-color: rgba(255, 70, 110, 0.56);
+  background:
+    linear-gradient(180deg, rgba(255, 99, 132, 0.92), rgba(191, 13, 60, 0.9) 48%, rgba(78, 4, 30, 0.86)),
+    #d80d48;
+  box-shadow:
+    inset 0 0 14px rgba(255, 255, 255, 0.18),
+    inset 0 -8px 18px rgba(120, 0, 36, 0.34),
+    0 0 16px rgba(255, 33, 88, 0.34);
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.42);
+}
+
+.prize-tile.right-prize.right-gold {
+  color: #050505;
+  border-color: rgba(255, 232, 142, 0.76);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 199, 0.98), rgba(255, 202, 62, 0.96) 46%, rgba(179, 96, 5, 0.94)),
+    #ffd166;
+  box-shadow:
+    inset 0 0 14px rgba(255, 255, 255, 0.34),
+    inset 0 -8px 18px rgba(130, 61, 0, 0.28),
+    0 0 18px rgba(255, 209, 102, 0.48);
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.36);
+}
+
+.prize-tile.right-prize.gone {
+  opacity: 0.27;
+  color: #050505;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.04);
+}
+
+.prize-tile.gone {
+  opacity: 0.27;
+  color: #050505;
+  text-decoration: line-through;
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.game-zone {
+  position: absolute;
+  z-index: 4;
+  top: var(--deal-game-top);
+  left: calc(var(--deal-side-gap) + var(--deal-side-width) + var(--deal-side-clearance));
+  right: calc(var(--deal-side-gap) + var(--deal-side-width) + var(--deal-side-clearance));
+  bottom: var(--deal-game-bottom);
+  display: grid;
+  align-items: start;
+}
+
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.case-grid.muted {
+  opacity: 0.26;
+  transform: scale(0.94);
+  pointer-events: none;
+}
+
+.case-box {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1.16 / 1;
+  overflow: hidden;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  padding: 12px 2px 5px;
+  border: 1px solid rgba(255, 236, 159, 0.72);
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 21% 16%, rgba(255, 255, 255, 0.85), transparent 11%),
+    radial-gradient(circle at 75% 87%, rgba(93, 32, 0, 0.38), transparent 22%),
+    linear-gradient(116deg, transparent 0 14%, rgba(255, 255, 255, 0.24) 15% 23%, transparent 24% 100%),
+    linear-gradient(180deg, #fff3ba 0%, #ffd04f 17%, #f0a421 43%, #b85a0b 71%, #66320b 100%);
+  color: #2b1500;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -9px 15px rgba(72, 22, 0, 0.36),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.08),
+    0 8px 14px rgba(0, 0, 0, 0.42),
+    0 0 16px rgba(255, 194, 71, 0.2);
+  transform-style: preserve-3d;
+  transition: transform 0.18s ease, filter 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+}
+
+.case-box::before {
+  content: "";
+  position: absolute;
+  inset: 18% 8% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(64, 21, 0, 0.46), transparent);
+  box-shadow: 0 15px 0 rgba(64, 21, 0, 0.2);
+  z-index: 1;
+}
+
+.case-box::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255, 246, 197, 0.28);
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px rgba(87, 33, 0, 0.22);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.case-box:not(:disabled):hover {
+  transform: translateY(-4px) scale(1.04) rotateX(4deg);
+  filter: saturate(1.18) brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 -9px 15px rgba(72, 22, 0, 0.32),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.12),
+    0 12px 20px rgba(0, 0, 0, 0.44),
+    0 0 22px rgba(255, 217, 102, 0.34);
+}

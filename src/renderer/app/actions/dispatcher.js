@@ -9,8 +9,13 @@ async function handleAction(target) {
   const action = target.dataset.action;
   const id = target.dataset.id;
   if (!action) return;
+  if (STUDIO_PREFERENCE_ACTIONS.has(action)) return handleStudioPreferenceAction({ action });
   if (action === "account-login") {
     return openAccountLogin();
+  }
+  if (action === "membership-offers") {
+    if (canNavigateTo("membership")) return openMembershipPopup();
+    return;
   }
   if (action === "account-logout") {
     const visibleSession = visibleAccountSession();
@@ -22,6 +27,7 @@ async function handleAction(target) {
     ) {
       return;
     }
+    invalidateCreatorPrivateOperations();
     const logoutOperation = (async () => {
       const nextSession = await api.account.logout();
       siteVisibility = await api.admin.visibility();
@@ -30,11 +36,12 @@ async function handleAction(target) {
     })();
     pendingAccountLogoutPromise = logoutOperation;
     accountSession = signedOutAccountSession();
-    for (const key of Object.keys(matchVideoPaths)) {
-      delete matchVideoPaths[key];
-    }
     gameCheatAccessAllowed = false;
     liveEvents = [];
+    resetCreatorUsersAccount(true);
+    resetCreatorMusicAccount(true);
+    clearCreatorSpotifyStatus();
+    disconnectMidiController();
     adminSession = {
       authorized: false,
       email: "",

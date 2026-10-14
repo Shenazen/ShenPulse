@@ -460,7 +460,7 @@ function renderThiercelieuxGameFields(pack, config) {
   const activePanel = ["live", "registration", "village", "roles", "rules", "extensions"].includes(integratedSettingsPanels.get(pack.id))
     ? integratedSettingsPanels.get(pack.id)
     : "live";
-  const gift = giftForIdentity(config.giftName, config.giftId);
+  const gift = giftForSavedReference(config.giftName, config.giftId, config);
   const setup = thiercelieuxSetupState({ ...config, activePlayers: players, roleIds });
   const waiting = queue.filter((entry) => !["removed", "in-game"].includes(entry.status));
   const enabledVariants = new Set(Array.isArray(config.selectedVariantIds) ? config.selectedVariantIds : []);
@@ -494,7 +494,7 @@ function renderThiercelieuxGameFields(pack, config) {
               <div><small>CADEAU D'INSCRIPTION</small><strong data-thiercelieux-gift-preview-name>${escapeHtml(config.giftName || "À choisir")}</strong><p data-thiercelieux-gift-preview-cost>${Number(gift?.cost || config.giftValue || 0).toLocaleString("fr-FR")} pièce${Number(gift?.cost || config.giftValue || 0) > 1 ? "s" : ""} · ×${Math.max(1, Number(config.giftQuantity) || 1)}</p></div>
             </div>
             <div class="integrated-settings-grid">
-              ${giftPickerField("thiercelieuxGiftName", "Cadeau d'inscription", config.giftName || "", "full", "", config.giftId || "")}
+              ${giftPickerField("thiercelieuxGiftName", "Cadeau d'inscription", config.giftName || "", "full", "", config.giftId || "", config)}
               ${integratedNumberField("thiercelieuxGiftQuantity", "Quantité demandée", config.giftQuantity || 1, 1, 999)}
               ${integratedNumberField("thiercelieuxRegistrationMinutes", "Validité dans la file (min)", config.registrationMinutes || 120, 1, 10080)}
               <label class="integrated-setting-field"><span>Ordre de priorité</span><select name="thiercelieuxPriorityMode"><option value="arrival" ${config.priorityMode !== "value" ? "selected" : ""}>Ordre d'arrivée</option><option value="value" ${config.priorityMode === "value" ? "selected" : ""}>Valeur offerte</option></select><small>Vous pourrez toujours réordonner la file.</small></label>
@@ -608,7 +608,7 @@ function thiercelieuxConfigurationFromForm(data, current) {
   };
   const gift = integratedGiftDefinition(
     data.get("thiercelieuxGiftName"),
-    { giftId: current.giftId, name: current.giftName, image: current.giftImage, cost: current.giftValue },
+    { giftId: current.giftId, giftIds: current.giftIds, giftFamily: current.giftFamily, name: current.giftName, image: current.giftImage, cost: current.giftValue },
     data.get("thiercelieuxGiftNameGiftId")
   );
   const players = thiercelieuxReadJson(data.get("thiercelieuxPlayers"), current.activePlayers || []).slice(0, THIERCELIEUX_MAX_PLAYERS);
@@ -665,6 +665,8 @@ function thiercelieuxConfigurationFromForm(data, current) {
     voteSeconds: Math.round(number("thiercelieuxVoteSeconds", current.voteSeconds || 60, 15, 600)),
     revealSeconds: Math.round(number("thiercelieuxRevealSeconds", current.revealSeconds || 20, 5, 120)),
     giftName: gift.name,
+    ...(Array.isArray(gift.giftIds) && gift.giftIds.length ? { giftIds: gift.giftIds } : {}),
+    ...(gift.giftFamily ? { giftFamily: gift.giftFamily } : {}),
     giftId: gift.giftId,
     giftImage: gift.image,
     giftValue: gift.cost || Math.max(0, Number(current.giftValue) || 0),
@@ -702,7 +704,7 @@ function syncThiercelieuxGiftPreview(root, gift = null) {
   if (!preview) return;
   const input = root?.querySelector("[data-gift-picker]");
   const quantity = Math.max(1, Number(form.querySelector('[name="thiercelieuxGiftQuantity"]')?.value) || 1);
-  const selected = gift || giftForIdentity(input?.value, root?.querySelector("[data-gift-id-input]")?.value);
+  const selected = gift || giftForSavedReference(input?.value, root?.querySelector("[data-gift-id-input]")?.value, giftPickerSavedReference(root));
   const image = preview.querySelector("[data-thiercelieux-gift-preview-image]");
   const name = preview.querySelector("[data-thiercelieux-gift-preview-name]");
   const cost = preview.querySelector("[data-thiercelieux-gift-preview-cost]");

@@ -80,6 +80,63 @@
         }
       }
     },
+    "publicLiveDirectory": {
+      ".indexOn": "updatedAt",
+      ".read": "query.orderByChild == 'updatedAt' && query.startAt != null && query.limitToLast != null && query.limitToLast >= 1 && query.limitToLast <= 100 && query.limitToFirst == null",
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['protocolVersion', 'instanceId', 'updatedAt', 'streams'])",
+        "protocolVersion": {
+          ".validate": "newData.val() == 1"
+        },
+        "instanceId": {
+          ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9-]{1,80}$/)"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber() && newData.val() >= now - 5000 && newData.val() <= now + 5000"
+        },
+        "streams": {
+          ".validate": "newData.hasChild('tiktok') || newData.hasChild('kick')",
+          "tiktok": {
+            ".validate": "newData.hasChildren(['username', 'avatarUrl'])",
+            "username": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_.]{1,80}$/)"
+            },
+            "avatarUrl": {
+              ".validate": "newData.isString() && newData.val().length <= 1000 && (newData.val() == '' || (newData.val().length > 8 && newData.val().beginsWith('https://') && newData.val().matches(/^[!-~]+$/) && !newData.val().contains('@')))"
+            },
+            "viewers": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000 && newData.val() % 1 == 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "kick": {
+            ".validate": "newData.hasChildren(['username', 'avatarUrl'])",
+            "username": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_.-]{1,160}$/)"
+            },
+            "avatarUrl": {
+              ".validate": "newData.isString() && newData.val().length <= 1000 && (newData.val() == '' || (newData.val().length > 8 && newData.val().beginsWith('https://') && newData.val().matches(/^[!-~]+$/) && !newData.val().contains('@')))"
+            },
+            "viewers": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000 && newData.val() % 1 == 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "publicOverlayRelay": {
       "$channel": {
         ".read": true,

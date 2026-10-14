@@ -1,6 +1,8 @@
 import { giftTriggers } from '../data/wheelConfig'
 
 export type LiveGift = {
+  giftIds?: string[]
+  giftFamily?: string
   cost: number
   id: string
   imageUrl: string
@@ -9,6 +11,9 @@ export type LiveGift = {
 }
 
 export type GiftTriggerOption = {
+  alternateIds?: string[]
+  alternateNames?: string[]
+  giftIds?: string[]
   coinCost?: number
   colors: string[]
   cost: string
@@ -46,7 +51,7 @@ const giftAliasGroups = [
   ['rose', '5655'],
   ['gg', '6064'],
   ['finger-heart', '5487', 'finger heart', 'finger hearts', 'coeur avec les doigts', 'coeur doigts', 'c\u0153ur avec les doigts', 'c\u0153ur doigts'],
-  ['heart-me', '7934', 'heart me'],
+  ['heart-me', '7934', '17712', '62816', '601333', 'heart me', 'coeur sur moi', 'cœur sur moi', 'coeur du jour', 'cœur du jour', 'community heart', 'envoie moi un coeur'],
   ['perfume', '5658', 'parfum'],
   ['doughnut', '5879', 'donut', 'beignet'],
   ['cap', '6104', 'casquette'],
@@ -167,6 +172,8 @@ export function normalizeGiftTriggerOption(option: GiftTriggerOptionInput | null
 
   return {
     ...option,
+    alternateIds: uniqueOptionStrings(option.alternateIds, option.giftIds),
+    alternateNames: uniqueOptionStrings(option.alternateNames),
     coinCost: Number.isFinite(parsedCost) && parsedCost > 0 ? parsedCost : undefined,
     colors,
     cost,
@@ -192,6 +199,8 @@ export function giftToTriggerOption(gift: RawGift = {}): GiftTriggerOption {
     : normalized.id ? `gift:${normalized.id}` : nameId
   return {
     id: optionId,
+    alternateIds: uniqueOptionStrings(gift.alternateIds, gift.giftIds).map((id) => id.startsWith('gift:') ? id : `gift:${id}`),
+    alternateNames: uniqueOptionStrings(gift.alternateNames, [gift.originalName]),
     name: normalized.name,
     cost: normalized.cost ? String(normalized.cost) : '',
     coinCost: normalized.cost,
@@ -203,10 +212,12 @@ export function giftToTriggerOption(gift: RawGift = {}): GiftTriggerOption {
 
 export function normalizeLiveGift(gift: RawGift = {}): LiveGift {
   return {
+    ...(Array.isArray(gift.giftIds) ? { giftIds: [...new Set(gift.giftIds.map((id: unknown) => String(id || '').trim()).filter(Boolean))] as string[] } : {}),
+    ...(gift.giftFamily ? { giftFamily: String(gift.giftFamily).trim() } : {}),
     id: String(gift.id || gift.giftId || gift.gift_id || '').trim(),
     name: String(gift.name || gift.giftName || '').trim(),
-    cost: Number(gift.cost || gift.diamondCount || gift.diamond_count || 0) || 0,
-    imageUrl: String(gift.imageUrl || gift.giftPictureUrl || '').trim(),
+    cost: Number(gift.cost || gift.giftCost || gift.value || gift.diamondCount || gift.diamond_count || 0) || 0,
+    imageUrl: String(gift.imageUrl || gift.giftImageUrl || gift.giftPictureUrl || '').trim(),
     source: String(gift.source || '').trim(),
   }
 }
@@ -216,6 +227,11 @@ export function triggerMatchesGift(triggerId: string, gift: RawGift) {
   if (!triggerId || triggerId === 'none') return false
 
   if (normalized.id && triggerId === `gift:${normalized.id}`) return true
+  if (normalized.giftFamily === 'community-heart' && giftAliasLookup.get(slugify(triggerId.replace(/^gift:/, ''))) === 'heart-me') return true
+  if (normalized.id && (triggerId.startsWith('gift:') || /^\d+$/.test(triggerId))) {
+    // Les alias techniques confirmés sont permis, pas le nom d'un autre ID.
+    return [normalized.id, ...(normalized.giftIds || [])].some((id) => giftLookupKeysIntersect(giftLookupKeys(triggerId), giftLookupKeys(id)))
+  }
   return giftLookupKeysIntersect(
     giftLookupKeys(triggerId),
     giftLookupKeysForGift(normalized),
@@ -225,18 +241,23 @@ export function triggerMatchesGift(triggerId: string, gift: RawGift) {
 export function findGiftTriggerOption(triggerId: string, options: GiftTriggerOption[] = []) {
   const value = String(triggerId || '').trim()
   const normalizedOptions = normalizeGiftTriggerOptions(options)
-  if (!value) return normalizedOptions.find((option) => option.id === value)
-  return normalizedOptions.find((option) => option.id === value)
-    || normalizedOptions.find((option) => giftTriggerOptionMatches(option, value))
+  const exact = normalizedOptions.filter((option) => option.id === value)
+  if (exact.length) return exact.length === 1 ? exact[0] : undefined
+  if (!value) return undefined
+  const matches = normalizedOptions.filter((option) => giftTriggerOptionMatches(option, value))
+  return matches.length === 1 ? matches[0] : undefined
 }
 
 export function giftTriggerOptionMatches(option: GiftTriggerOption | null | undefined, triggerId: string) {
   if (!option) return false
-  const triggerKeys = giftLookupKeys(triggerId)
+  const value = String(triggerId || '').trim()
+  const triggerKeys = giftLookupKeys(value)
   if (!triggerKeys.size) return false
-  if (option.id === triggerId) return true
-  if (giftLookupKeysIntersect(giftLookupKeys(option.id), triggerKeys)) return true
-  return giftLookupKeysIntersect(giftLookupKeys(option.name), triggerKeys)
+  if (option.id === value) return true
+  const isNameReference = value.startsWith('gift-name:')
+  if (!isNameReference && giftLookupKeysIntersect(optionTechnicalKeys(option), triggerKeys)) return true
+  if (!isNameReference && (/^gift:/i.test(value) || /^\d+$/.test(value))) return false
+  return [option.name, ...(option.alternateNames || [])].some((name) => giftLookupKeysIntersect(giftLookupKeys(name), triggerKeys))
 }
 
 export function giftTriggerLabel(triggerId: string, options: GiftTriggerOption[] = [], fallback = '') {
@@ -270,10 +291,11 @@ export function findGiftTriggerOptionByName(name: string, options: GiftTriggerOp
 
   const normalizedOptions = normalizeGiftTriggerOptions(options)
   const needleKeys = giftLookupKeys(name)
-  return normalizedOptions.find((gift) => giftLookupKeysIntersect(giftLookupKeys(gift.name), needleKeys))
-    || normalizedOptions.find((gift) => giftLookupKeysIntersect(giftLookupKeys(gift.id), needleKeys) || gift.id === `gift-name:${needle}`)
-    || normalizedOptions.find((gift) => slugify(gift.name).includes(needle) || slugify(gift.id).includes(needle))
-    || fallback
+  const matches = normalizedOptions.filter((gift) =>
+    [gift.name, ...(gift.alternateNames || [])].some((alias) => giftLookupKeysIntersect(giftLookupKeys(alias), needleKeys))
+      || giftLookupKeysIntersect(optionTechnicalKeys(gift), needleKeys)
+      || gift.id === `gift-name:${needle}`)
+  return matches.length === 1 ? matches[0] : fallback
 }
 
 export function slugify(value: unknown) {
@@ -282,7 +304,9 @@ export function slugify(value: unknown) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/œ/g, 'oe')
+    .replace(/æ/g, 'ae')
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '')
 }
 
@@ -296,41 +320,33 @@ function colorPair(seed: unknown) {
 }
 
 function dedupeOptions(options: GiftTriggerOption[]) {
-  const deduped: GiftTriggerOption[] = []
+  const parents = options.map((_option, index) => index)
   const indexById = new Map<string, number>()
-  const indexByImage = new Map<string, number>()
-  const indexByName = new Map<string, number>()
-
-  for (const option of options) {
-    const nameKey = dedupeNameKey(option.name)
-    const imageKey = String(option.imageUrl || '').trim().toLowerCase()
-    let existingIndex = indexById.get(option.id)
-    if (existingIndex === undefined && option.id !== 'none' && imageKey) {
-      existingIndex = indexByImage.get(imageKey)
+  const find = (index: number): number => {
+    while (parents[index] !== index) {
+      parents[index] = parents[parents[index]]
+      index = parents[index]
     }
-    if (existingIndex === undefined && option.id !== 'none' && nameKey) {
-      existingIndex = indexByName.get(nameKey)
-    }
-
-    if (existingIndex === undefined) {
-      existingIndex = deduped.length
-      deduped.push(option)
-    } else {
-      deduped[existingIndex] = mergeGiftTriggerOptions(deduped[existingIndex], option)
-    }
-
-    const merged = deduped[existingIndex]
-    indexById.set(merged.id, existingIndex)
-    indexById.set(option.id, existingIndex)
-    if (nameKey) indexByName.set(nameKey, existingIndex)
-    const mergedNameKey = dedupeNameKey(merged.name)
-    if (mergedNameKey) indexByName.set(mergedNameKey, existingIndex)
-    if (imageKey) indexByImage.set(imageKey, existingIndex)
-    const mergedImageKey = String(merged.imageUrl || '').trim().toLowerCase()
-    if (mergedImageKey) indexByImage.set(mergedImageKey, existingIndex)
+    return index
   }
-
-  return deduped
+  options.forEach((option, index) => {
+    const keys = option.id?.startsWith('gift-name:')
+      ? new Set([`name-reference:${slugify(option.id)}`])
+      : optionTechnicalKeys(option)
+    // Un nom, un dessin ou un prix communs ne suppriment plus un autre ID.
+    for (const key of keys) {
+      if (indexById.has(key)) parents[find(index)] = find(indexById.get(key)!)
+      else indexById.set(key, index)
+    }
+  })
+  const groups = new Map<number, GiftTriggerOption[]>()
+  options.forEach((option, index) => {
+    const root = find(index)
+    const group = groups.get(root) || []
+    group.push(option)
+    groups.set(root, group)
+  })
+  return [...groups.values()].map((group) => group.reduce(mergeGiftTriggerOptions))
 }
 
 function mergeGiftTriggerOptions(current: GiftTriggerOption, candidate: GiftTriggerOption): GiftTriggerOption {
@@ -340,6 +356,10 @@ function mergeGiftTriggerOptions(current: GiftTriggerOption, candidate: GiftTrig
     ...other,
     ...better,
     id: mergedGiftTriggerId(current, candidate, better),
+    alternateIds: uniqueOptionStrings([current.id, candidate.id], current.alternateIds, candidate.alternateIds)
+      .filter((id) => id !== mergedGiftTriggerId(current, candidate, better)),
+    alternateNames: uniqueOptionStrings([current.name, candidate.name], current.alternateNames, candidate.alternateNames)
+      .filter((name) => name !== better.name),
   }
 }
 
@@ -350,7 +370,21 @@ function mergedGiftTriggerId(current: GiftTriggerOption, candidate: GiftTriggerO
 }
 
 function isNumericGiftOptionId(value: string) {
-  return /^gift:\d+$/.test(value)
+  return /^(?:gift:)?\d+$/.test(value)
+}
+
+function uniqueOptionStrings(...groups: unknown[]): string[] {
+  return [...new Set(groups.flatMap((group) => Array.isArray(group) ? group : [])
+    .map((value) => String(value || '').trim()).filter(Boolean))]
+}
+
+function optionTechnicalKeys(option: GiftTriggerOption): Set<string> {
+  const keys = new Set<string>()
+  for (const id of [option.id, ...(option.alternateIds || []), ...(option.giftIds || [])]) {
+    if (!id || id.startsWith('gift-name:')) continue
+    for (const key of giftLookupKeys(id)) keys.add(key)
+  }
+  return keys
 }
 
 function giftOptionQuality(option: GiftTriggerOption) {
@@ -364,6 +398,7 @@ function giftOptionQuality(option: GiftTriggerOption) {
 }
 
 function catalogGiftLiveId(gift: LiveGift) {
+  if (/^\d+$/.test(gift.id)) return gift.id
   const idKey = slugify(gift.id)
   const nameKey = slugify(gift.name)
   const idMatch = giftAliasNumericIdLookup.get(idKey) || giftAliasCatalogIdLookup.get(idKey)

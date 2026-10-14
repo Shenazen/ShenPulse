@@ -212,8 +212,8 @@ function openProfileManager() {
           <article class="profile-manager-card ${profile.id === activeProfileId ? "active" : ""}">
             <span class="profile-manager-icon">${escapeHtml(profile.name.slice(0, 2).toUpperCase())}</span>
             <div>
-              <h3>${escapeHtml(profile.name)} ${profile.id === activeProfileId ? '<span class="badge success">ACTIF</span>' : ""}</h3>
-              <p>${escapeHtml(profile.description || "Aucune description")}</p>
+              <h3><span data-studio-user-content>${escapeHtml(profile.name)}</span> ${profile.id === activeProfileId ? '<span class="badge success">ACTIF</span>' : ""}</h3>
+              <p ${profile.description ? "data-studio-user-content" : ""}>${escapeHtml(profile.description || "Aucune description")}</p>
               <small>${ruleCount} règle${ruleCount > 1 ? "s" : ""} · espace de travail indépendant</small>
             </div>
             <div class="profile-manager-actions">
@@ -279,16 +279,7 @@ function openGoalEditor(goal) {
 }
 
 function openCommandEditor(command) {
-  const current = command || { id: "", command: "!", response: "", enabled: true, subscriberOnly: false, cooldownMs: 10000 };
-  openEditor({
-    title: command ? "Modifier la commande" : "Nouvelle commande",
-    kicker: "CHATBOT",
-    body: `<div class="form-grid">${field("command","Commande",current.command,"text","required")}${field("cooldown","Cooldown (ms)",current.cooldownMs,"number",'min="0"')}${field("response","Réponse",current.response,"text","required full")}<label class="field"><span>Accès</span><select name="subscriberOnly"><option value="false" ${!current.subscriberOnly ? "selected" : ""}>Tout le monde</option><option value="true" ${current.subscriberOnly ? "selected" : ""}>Abonnés uniquement</option></select></label></div>`,
-    onSubmit: async (data) => {
-      await api.upsert("commands", { ...current, id: current.id || `command_${cryptoId()}`, command: data.get("command"), response: data.get("response"), cooldownMs: Number(data.get("cooldown")), subscriberOnly: data.get("subscriberOnly") === "true" });
-      snapshot = await api.getSnapshot();
-    }
-  });
+  return openCreatorChatbotEditor(command, "command");
 }
 
 function openGameConfig(pack) {

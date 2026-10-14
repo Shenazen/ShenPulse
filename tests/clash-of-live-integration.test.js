@@ -154,7 +154,7 @@ test("vérifie le service et répète une invocation multiple", async () => {
 });
 
 test("branche le catalogue, la roue et le pont Clash Of ShenPulse", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   const calls = [];
   const clashOfLiveBridge = {
     status: async (connector) => {
@@ -180,7 +180,7 @@ test("branche le catalogue, la roue et le pont Clash Of ShenPulse", async () => 
   assert.equal(pack.connector.type, "clash-of-live-http");
   assert.equal(pack.connector.url, "http://127.0.0.1:4244");
   assert.equal(pack.price, 19.99);
-  assert.equal(pack.requiresPro, true);
+  assert.equal(pack.requiresPro, false);
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");
 
   const initialized = hub.initializeDefaultInteractions(pack.id);
@@ -220,7 +220,8 @@ test("associe l’archive Backblaze et l’exécutable autonome", () => {
   assert.match(installer.assets[0].url, /backblazeb2\.com/);
 });
 
-function subscribedState() {
+function purchasedGameState() {
+  // Depuis la politique Pro, l’achat du produit s’ajoute à un accès Pro actif.
   return {
     settings: {
       account: {
@@ -235,7 +236,7 @@ function subscribedState() {
     commerce: {
       subscription: {
         tier: "pro",
-        source: "subscription",
+        source: "own",
         status: "active"
       },
       gameEntitlements: ["clash-of-live"]

@@ -405,7 +405,10 @@ function updateInteractiveWidgets(event) {
   if (event.type === "like") {
     const likes = Math.max(1, Number(event.data?.count || 1));
     const previousCurrent = likeGoalCurrent;
-    likeGoalCurrent += likes;
+    const synchronizedCurrent = event.data?.likeGoalCurrent;
+    likeGoalCurrent = typeof synchronizedCurrent === "number" && Number.isFinite(synchronizedCurrent)
+      ? Math.max(0, synchronizedCurrent)
+      : likeGoalCurrent + likes;
     renderLikeGoalChange(previousCurrent);
     if (leaderboardKind === "tappers") {
       updateLeaderboardScore(event, likes);

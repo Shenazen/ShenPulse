@@ -8,9 +8,7 @@
 const ENTITY_GAME_ACTIONS = new Set([
   "test-event",
   "copy",
-  "copy-match-video-path",
   "open-url",
-  "prepare-match-video",
   "restart-servers",
   "rotate-public-overlay-urls",
   "rotate-match-overlay-url",
@@ -57,35 +55,7 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
       }
     }, target.dataset.copySuccess || "URL copiée");
   }
-  if (action === "copy-match-video-path") {
-    const filePath = matchVideoPaths[id] || "";
-    if (!filePath) {
-      return toast(
-        "Fichier non préparé",
-        "Préparez d’abord cette vidéo Match.",
-        true
-      );
-    }
-    return perform(() => api.copy(filePath), "Chemin copié");
-  }
   if (action === "open-url") return perform(() => api.openExternal(target.dataset.value));
-  if (action === "prepare-match-video") {
-    return perform(
-      async () => {
-        const result = await api.prepareMatchVideo({
-          key: id,
-          variant: target.dataset.variant
-        });
-        matchVideoPaths[id] = result.filePath;
-        updateMatchVideoPathUi(id, result.filePath);
-        return result;
-      },
-      {
-        title: "Fichier vidéo temporaire prêt",
-        detail: "Copiez son chemin dans TikTok Studio, OBS ou votre autre logiciel de diffusion."
-      }
-    );
-  }
   if (action === "restart-servers") return perform(async () => { await api.restartServers(); snapshot = await api.getSnapshot(); render(); }, "Services redémarrés");
   if (action === "rotate-public-overlay-urls") {
     if (

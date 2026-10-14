@@ -5,20 +5,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { readRendererScriptGroup } = require("./helpers/source-bundles");
 
 const root = path.join(__dirname, "..");
-const overlayExport = fs.readFileSync(
-  path.join(
-    root,
-    "src",
-    "renderer",
-    "app",
-    "features",
-    "games",
-    "overlay-export.js"
-  ),
-  "utf8"
-);
+const overlayExport = readRendererScriptGroup("app/features/games/overlay-export");
 const overlayCards = fs.readFileSync(
   path.join(
     root,

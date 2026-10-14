@@ -104,6 +104,7 @@
   });
 
   const coreRoutes = Object.freeze([
+    { key: "scene", view: "scene" },
     { key: "alerts", view: "alerts" },
     { key: "goals", view: "goals" },
     { key: "feed", view: "feed" }

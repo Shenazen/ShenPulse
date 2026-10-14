@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const {
   readOverlayRuntimeSource,
   readOverlayStyles,
@@ -44,6 +46,14 @@ function createStore({ authenticated = false } = {}) {
         : ""
   };
 }
+
+test("un invité ne reçoit jamais participants, contributeurs, UID, historique ou automatismes de Matchs", () => {
+  const guest = createGuestSnapshot({ state: { settings: { matches: { automations: [{ id: "private-action-id", moment: "victory" }] } },
+    matchSession: { scope: { uid: "private-uid" }, participants: [{ username: "private-user" }], liveContributors: [{ username: "private-donor" }],
+      history: [{ battleId: "private-battle" }], session: { wins: 10 } } } });
+  assert.equal(JSON.stringify(guest).includes("private-"), false);
+  assert.equal(guest.state.matchSession.session.wins, 0); assert.deepEqual(guest.state.settings.matches.automations, []);
+});
 
 test("reconnaît uniquement une session locale complète et chiffrée", () => {
   assert.equal(hasAuthenticatedAccount(createStore()), false);
@@ -280,10 +290,7 @@ test("coupe les événements privés envoyés au rendu en mode invité", () => {
 
 test("l’interface invitée reste navigable mais verrouille données et commandes", () => {
   const renderer = readRendererSource();
-  const ipc = fs.readFileSync(
-    path.join(__dirname, "..", "src", "main", "ipc.js"),
-    "utf8"
-  );
+  const ipc = readMainSource("ipc.js");
   assert.match(
     renderer,
     /page\.id === "activity" && !isAccountAuthenticated\(\)/
@@ -310,6 +317,7 @@ test("l’interface invitée reste navigable mais verrouille données et command
   assert.doesNotMatch(guestChannels, /entity:upsert/);
   assert.doesNotMatch(guestChannels, /sound:upload/);
   assert.doesNotMatch(guestChannels, /overlay:match-video-prepare/);
+  assert.doesNotMatch(renderer, /api\.prepareMatchVideo|matchVideoPaths/);
 });
 
 test("le visiteur peut essayer localement les designs et animations d’overlays", () => {
@@ -324,6 +332,7 @@ test("le visiteur peut essayer localement les designs et animations d’overlays
   );
   assert.match(guestActions, /"preview-overlay"/);
   assert.doesNotMatch(guestActions, /"prepare-match-video"/);
+  assert.doesNotMatch(renderer, /"copy-match-video-path"|"prepare-match-video"/);
   assert.match(renderer, /control\.matches\("\[data-overlay-design\]"\)/);
   assert.match(renderer, /Essai local et temporaire/);
   assert.match(

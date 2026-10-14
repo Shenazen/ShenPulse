@@ -1,8 +1,17 @@
+(function exposeGiftIdentity(root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  else root.ShenPulseGiftIdentity = api;
+})(typeof globalThis === "object" ? globalThis : this, function createGiftIdentityApi() {
 "use strict";
 
 const catalogIndexes = new WeakMap();
 const COMMUNITY_HEART_CANONICAL_NAME = "Cœur sur moi";
+// Visuel générique actuel fourni par le CDN TikTok pour le cadeau 17712.
+// L'ancien « Heart Me » (7934) reste un alias fonctionnel, pas son ancien dessin.
+const COMMUNITY_HEART_IMAGE_URL = "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/dad7a63955f98891958e37071bb067f3.png~tplv-obj.webp";
 const COMMUNITY_HEART_GIFT_IDS = new Set([
+  "heart-me",
   "7934",
   "17712",
   "62816",
@@ -31,7 +40,9 @@ function normalizeGiftName(value = "") {
     .replace(/[œŒ]/g, "oe")
     .replace(/[æÆ]/g, "ae")
     .replace(/[’'`]/g, " ")
-    .replace(/[^a-z0-9]+/gi, " ")
+    // Garder les lettres non latines : « TikTok 화산 » et « TikTok » ne sont
+    // pas le même cadeau, même si le catalogue propose des traductions.
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .toLowerCase();
 }
@@ -42,7 +53,10 @@ function giftImageIdentity(value = "") {
     .replace(/[?#].*$/, "")
     .replace(/~.*$/, "");
   if (!clean) return "";
-  return clean.split("/").filter(Boolean).pop()?.toLowerCase() || "";
+  const filename = clean.split("/").filter(Boolean).pop()?.toLowerCase() || "";
+  // Le CDN TikTok expose le même hash avec ou sans extension. Ne généraliser
+  // cette équivalence ni aux noms de fichiers ordinaires ni à l'identité du cadeau.
+  return filename.match(/^([a-f0-9]{32})(?:\.(?:png|jpe?g|webp))?$/i)?.[1] || filename;
 }
 
 function giftFamily(value = {}) {
@@ -58,13 +72,13 @@ function giftFamily(value = {}) {
   };
   const id = String(
     value.giftId ?? value.id ?? gift.giftId ?? gift.id ?? ""
-  ).trim();
+  ).trim().toLowerCase();
   const nameKey = normalizeGiftName(
     value.giftName ?? value.name ?? gift.giftName ?? gift.name
   );
   if (
     COMMUNITY_HEART_GIFT_IDS.has(id) ||
-    COMMUNITY_HEART_NAMES.has(nameKey)
+    (!id && COMMUNITY_HEART_NAMES.has(nameKey))
   ) {
     return "community-heart";
   }
@@ -132,18 +146,17 @@ function giftIdentity(value = {}) {
 
 function giftCatalogIndex(gifts) {
   if (!Array.isArray(gifts)) {
-    return { byId: new Map(), byImage: new Map(), byName: new Map() };
+    return { byId: new Map(), byName: new Map() };
   }
   const cached = catalogIndexes.get(gifts);
-  if (cached) return cached;
-  const index = { byId: new Map(), byImage: new Map(), byName: new Map() };
+  if (cached && cached.length === gifts.length) return cached;
+  const index = { byId: new Map(), byName: new Map(), length: gifts.length };
   for (const gift of gifts) {
     const identity = giftIdentity(gift);
     for (const id of identity.ids) {
-      if (!index.byId.has(id)) index.byId.set(id, gift);
-    }
-    if (identity.imageKey && !index.byImage.has(identity.imageKey)) {
-      index.byImage.set(identity.imageKey, gift);
+      const matches = index.byId.get(id) || new Set();
+      matches.add(gift);
+      index.byId.set(id, matches);
     }
     const nameKeys = new Set([
       identity.nameKey,
@@ -163,25 +176,57 @@ function giftCatalogIndex(gifts) {
   return index;
 }
 
+/**
+ * Résout une référence enregistrée sans modifier le choix de l'utilisateur.
+ * L'ID exact prime, puis les alias techniques déjà connus. Un ID inconnu ne
+ * peut jamais être remplacé sur la seule base du nom, du prix ou du dessin.
+ * Les anciens choix sans ID sont repris uniquement si le nom (et le prix,
+ * lorsqu'il est enregistré) désigne un seul cadeau du catalogue.
+ */
 function findCatalogGift(gifts = [], candidate = {}) {
   const identity = giftIdentity(candidate);
   const index = giftCatalogIndex(gifts);
   if (identity.id && index.byId.has(identity.id)) {
-    return index.byId.get(identity.id);
+    const matches = index.byId.get(identity.id);
+    return matches.size === 1 ? matches.values().next().value : null;
   }
-  if (identity.imageKey && index.byImage.has(identity.imageKey)) {
-    return index.byImage.get(identity.imageKey);
+  const aliases = new Set();
+  for (const id of identity.ids) {
+    for (const gift of index.byId.get(id) || []) aliases.add(gift);
   }
+  if (aliases.size) return aliases.size === 1 ? aliases.values().next().value : null;
+  if (identity.ids.length) return null;
   if (!identity.nameKey) return null;
   const byName = index.byName.get(identity.nameKey) || [];
-  if (!byName.length) return null;
-  if (identity.cost) {
-    return (
-      byName.find((entry) => entry.cost === identity.cost)?.gift ||
-      null
-    );
-  }
-  return byName.length === 1 ? byName[0].gift : null;
+  const matches = new Set(byName
+    .filter((entry) => !identity.cost || entry.cost === identity.cost)
+    .map((entry) => entry.gift));
+  return matches.size === 1 ? matches.values().next().value : null;
+}
+
+/**
+ * Retrouve seulement un visuel, jamais un identifiant ou des alias à déclencher.
+ * Certaines anciennes sélections ne contiennent qu'un nom. Plusieurs variantes
+ * régionales peuvent avoir exactement ce nom, le même prix et la même image :
+ * leur dessin commun peut être affiché sans choisir arbitrairement un ID.
+ * Dès que les dessins/prix diffèrent ou qu'un ID inconnu est présent, aucun
+ * repli de ce type n'est permis. La résolution technique reste distincte.
+ */
+function giftVisualUrl(gifts = [], candidate = {}) {
+  const resolved = findCatalogGift(gifts, candidate);
+  if (resolved) return giftIdentity(resolved).imageUrl;
+  const identity = giftIdentity(candidate);
+  if (identity.ids.length || !identity.nameKey) return "";
+  const matches = giftCatalogIndex(gifts).byName.get(identity.nameKey) || [];
+  const compatible = matches.filter((entry) => !identity.cost || entry.cost === identity.cost);
+  if (!compatible.length) return "";
+  const first = giftIdentity(compatible[0].gift);
+  if (!first.imageKey || !first.imageUrl || !first.cost) return "";
+  const allShareVisual = compatible.every(({ gift }) => {
+    const next = giftIdentity(gift);
+    return next.cost === first.cost && next.imageKey === first.imageKey;
+  });
+  return allShareVisual ? first.imageUrl : "";
 }
 
 function mergeIdentity(primary = {}, fallback = null) {
@@ -269,8 +314,9 @@ function enrichGiftEvent(event = {}, gifts = []) {
   };
 }
 
-module.exports = {
+return Object.freeze({
   COMMUNITY_HEART_CANONICAL_NAME,
+  COMMUNITY_HEART_IMAGE_URL,
   canonicalGiftName,
   enrichGiftEvent,
   findCatalogGift,
@@ -278,6 +324,8 @@ module.exports = {
   giftFamily,
   giftIdentity,
   giftImageIdentity,
+  giftVisualUrl,
   normalizeGiftName,
   sameGiftIdentity
-};
+});
+});

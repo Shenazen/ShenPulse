@@ -1,3 +1,4 @@
+/* FICHIER GÉNÉRÉ — modifier styles/*.css puis reconstruire le site. */
 :root {
   color-scheme: dark;
   --bg: #070815;
@@ -277,6 +278,8 @@ h3 {
   grid-template-columns: minmax(0, 1.04fr) minmax(500px, 0.96fr);
   gap: clamp(36px, 4vw, 68px);
 }
+
+
 
 .hero::after {
   position: absolute;
@@ -877,6 +880,8 @@ h3 {
   font-size: 0.75rem;
 }
 
+
+
 .docs-page {
   width: min(calc(100% - 40px), var(--max));
   margin: 0 auto;
@@ -1254,6 +1259,8 @@ h3 {
   list-style: none;
 }
 
+
+
 .accordion-list summary > span {
   color: var(--cyan);
   font-size: 0.74rem;
@@ -1547,6 +1554,8 @@ h3 {
   text-align: center;
 }
 
+
+
 [hidden] {
   display: none !important;
 }
@@ -1734,6 +1743,8 @@ h3 {
   opacity: 1;
   transform: translateY(0);
 }
+
+
 
 @keyframes header-in {
   from {

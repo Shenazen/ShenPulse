@@ -8,16 +8,7 @@
  */
 
 function visibilityScope(section, id) {
-  const storedId = visibilityTools.storageKey(id);
-  const stored = siteVisibility?.[section]?.[storedId]?.scope;
-  if (stored) return stored;
-  if (
-    (section === "navigation" && id === "irl") ||
-    (["features", "actionTypes"].includes(section) && id === "irl.shelly")
-  ) {
-    return "admin";
-  }
-  return "public";
+  return visibilityTools.scopeFor(siteVisibility, section, id, undefined, "public");
 }
 
 function canAccessCatalogItem(section, id) {
@@ -28,7 +19,8 @@ function canAccessCatalogItem(section, id) {
 }
 
 function canAccessFeature(id) {
-  if (id === "irl.shelly") return isVerifiedAdminSession();
+  if (id === "irl.shelly" && (!isAccountAuthenticated() || !hasProAccess() ||
+      !canAccessCatalogItem("navigation", "irl"))) return false;
   return canAccessCatalogItem("features", id);
 }
 
@@ -58,7 +50,7 @@ function minecraftLauncherPack(modePacks) {
     artworkUrl: "",
     accessMode: "included",
     included: true,
-    requiresPro: true,
+    requiresPro: false,
     price: 0,
     currency: "EUR",
     source: "Minecraft",
@@ -95,9 +87,10 @@ const ACTION_FEATURE_REQUIREMENTS = Object.freeze({
 
 function canAccessActionType(type) {
   const canonicalType = canonicalActionType(type);
-  if (canonicalType === "irl.shelly" && !isVerifiedAdminSession()) {
+  if (["irl.shelly", "game.effect"].includes(canonicalType) && (!isAccountAuthenticated() || !hasProAccess())) {
     return false;
   }
+  if (canonicalType === "game.effect" && !canAccessCatalogItem("navigation", "games")) return false;
   if (canonicalType === "overlay.match" && !hasProAccess()) {
     return false;
   }
@@ -108,7 +101,10 @@ function canAccessActionType(type) {
   );
 }
 
-function canAccessPage(page) {
+/** Visibilité et droit d'utilisation sont distincts : les rubriques Pro
+ * restent dans le menu des comptes Free, sans permettre d'en ouvrir le contenu.
+ */
+function canDisplayPage(page) {
   if (!page?.id || page.hidden?.()) return false;
   if (page.id === "admin") return isVerifiedAdminSession();
   if (page.ownerOnly && !isVerifiedAdminSession()) return false;
@@ -116,6 +112,24 @@ function canAccessPage(page) {
     return false;
   }
   return canAccessCatalogItem("navigation", page.id);
+}
+
+function canAccessPage(page) {
+  return canDisplayPage(page) && (!ShenPulseProAccess.requiresProSection(page.id) ||
+    isAccountAuthenticated() && hasProAccess());
+}
+
+/** Un lien Pro verrouillé ouvre seulement les offres ; aucun paiement ni
+ * effet n'est lancé. Les restrictions de visibilité explicites restent prioritaires.
+ */
+function showProNavigationOffers(pageId) {
+  const canonicalId = { rules: "actions", sounds: "voice", studio: "games" }[pageId] || pageId;
+  const page = pages.find((entry) => entry.id === canonicalId);
+  if (!page || !canDisplayPage(page) || !ShenPulseProAccess.requiresProSection(canonicalId) ||
+      isAccountAuthenticated() && hasProAccess()) return false;
+  if (canNavigateTo("membership")) openMembershipPopup();
+  else toast("Abonnement Pro requis", "Cette rubrique nécessite un abonnement Pro ou Premium actif.", true);
+  return true;
 }
 
 function isAccountAuthenticated() {
@@ -154,7 +168,7 @@ function visibleNavigationEntries() {
       pendingSection = page;
       continue;
     }
-    if (!canAccessPage(page)) continue;
+    if (!canDisplayPage(page)) continue;
     if (pendingSection) {
       entries.push(pendingSection);
       pendingSection = null;
@@ -167,11 +181,12 @@ function visibleNavigationEntries() {
 function firstAccessiblePageId() {
   return (
     pages.find((page) => page.id && page.id !== "admin" && canAccessPage(page))
-      ?.id || "dashboard"
+      ?.id || "home"
   );
 }
 
 function ensureCurrentPageAccess() {
+  if (currentPage === "studio") currentPage = "games";
   const current = pages.find((page) => page.id === currentPage);
   if (!current || !canAccessPage(current)) {
     currentPage = firstAccessiblePageId();
@@ -179,29 +194,32 @@ function ensureCurrentPageAccess() {
 }
 
 function canNavigateTo(pageId) {
+  pageId = { rules: "actions", sounds: "voice", studio: "games" }[pageId] || pageId;
   return canAccessPage(pages.find((page) => page.id === pageId));
 }
 
 function renderNavigation() {
   const entries = visibleNavigationEntries();
+  const promotion = typeof renderCreatorSidebarPromotion === "function" ? renderCreatorSidebarPromotion() : "";
   const nextStructureSignature = JSON.stringify(
-    entries.map((page) =>
+    [promotion, entries.map((page) =>
       page.section
         ? ["section", page.section]
         : ["page", page.id, page.label]
-    )
+    )]
   );
   if (nextStructureSignature !== navigationStructureSignature) {
     navigation.innerHTML = entries
       .map((page) => {
         if (page.section) return `<div class="nav-section">${escapeHtml(page.section)}</div>`;
         return `
-          <button class="nav-item" data-navigate="${page.id}">
+          <button class="nav-item" data-navigate="${page.id}" ${ShenPulseProAccess.requiresProSection(page.id) ? 'data-pro-required="true"' : ""}>
             <span class="nav-icon">${navigationIcon(page.id)}</span>
-            <span>${escapeHtml(page.label)}</span>
+            <span class="nav-label">${escapeHtml(page.label)}</span>
+            <span class="nav-meta">${ShenPulseProAccess.requiresProSection(page.id) ? '<span class="nav-pro-badge" title="Disponible dès Pro · Premium inclus">PRO</span>' : ""}</span>
           </button>`;
       })
-      .join("");
+      .join("") + promotion;
     navigationStructureSignature = nextStructureSignature;
   }
 
@@ -216,6 +234,7 @@ function renderNavigation() {
     const item = navigationItems.get(page.id);
     if (!item) continue;
     item.classList.toggle("active", currentPage === page.id);
+    item.classList.toggle("is-pro-locked", ShenPulseProAccess.requiresProSection(page.id) && !canAccessPage(page));
     const count = page.count?.();
     let countNode = item.querySelector(".nav-count");
     if (count == null) {
@@ -225,7 +244,9 @@ function renderNavigation() {
     if (!countNode) {
       countNode = document.createElement("span");
       countNode.className = "nav-count";
-      item.appendChild(countNode);
+      const metadata = item.querySelector(".nav-meta");
+      // Le badge d’accès termine toujours la ligne, après le compteur éventuel.
+      metadata.insertBefore(countNode, metadata.querySelector(".nav-pro-badge"));
     }
     const nextCount = String(count);
     if (countNode.textContent !== nextCount) countNode.textContent = nextCount;
@@ -408,9 +429,6 @@ function syncAccountChrome() {
   const email = authenticated
     ? visibleSession.email
     : "Se connecter à ShenPulse";
-  const initials = accountInitials(visibleSession);
-  accountAvatar.textContent = initials;
-  accountMenuAvatar.textContent = initials;
   accountName.textContent = displayName;
   accountName.title = authenticated
     ? visibleSession.email
@@ -433,16 +451,18 @@ function syncAccountChrome() {
   profileControl.hidden = !authenticated;
   tiktokControl.hidden = !authenticated;
   sessionButton.hidden = !authenticated;
+  syncCreatorAccountChrome();
 }
 
 function syncChrome() {
+  if (typeof rendererVisualsActive === "function" && !rendererVisualsActive()) return;
   ensureCurrentPageAccess();
   const page =
     pages.find((item) => item.id === currentPage) ||
     pages.find((item) => item.id === firstAccessiblePageId()) ||
     pages[1];
-  pageTitle.textContent = page.title;
-  pageKicker.textContent = page.kicker;
+  // Le repère accessible reste nommé, sans bandeau de titre visuel redondant.
+  content.setAttribute("aria-label", studioTranslate(page.title));
   const state = snapshot?.state;
   if (!state) return;
   syncAccountChrome();
@@ -500,18 +520,8 @@ function syncChrome() {
   }
   sessionButton.classList.toggle("running", state.session.running);
   sessionLabel.textContent = state.session.running ? `LIVE · ${formatDuration(state.session.startedAt)}` : "Démarrer le live";
-  const tiktok = tiktokMeta();
-  tiktokAccountLabel.textContent = tiktok.username
-    ? `@${tiktok.username}`
-    : "@ TikTok";
-  tiktokStatusLabel.textContent = tiktok.label;
-  tiktokStatusDot.className = `tiktok-status-dot status-${tiktok.status}`;
-  tiktokConnectionButton.classList.toggle("connected", tiktok.connected);
-  tiktokConnectionButton.disabled = !tiktok.username;
-  tiktokConnectionButton.textContent = tiktok.connected ? "■" : "↻";
-  tiktokConnectionButton.title = tiktok.connected
-    ? "Arrêter la détection TikTok LIVE"
-    : "Détecter automatiquement si le compte TikTok est en LIVE";
+  syncCreatorTopbar();
+  if (currentPage === "home" && typeof syncCreatorHomeLive === "function") syncCreatorHomeLive();
   const serverDot = document.getElementById("server-dot");
   const serverDetail = document.getElementById("server-detail");
   const appVersion = document.getElementById("app-version");
@@ -523,11 +533,24 @@ function syncChrome() {
 
 function render() {
   if (!snapshot) return;
+  if (typeof rendererVisualsActive === "function" && !rendererVisualsActive()) {
+    scheduleRendererRefresh({ redraw: true });
+    return;
+  }
+  // Les anciens liens Studio ouvrent le catalogue unique, sans démarrer de jeu.
+  if (currentPage === "studio") currentPage = "games";
+  if (currentPage === "rules") { currentPage = "actions"; actionsSection = "advanced"; }
+  if (currentPage === "sounds") { currentPage = "voice"; creatorVoiceTab = "sounds"; }
+  if (typeof synchronizeCreatorMusicPolling === "function") synchronizeCreatorMusicPolling();
   const adminScrollState = captureAdminScrollState();
   ensureCurrentPageAccess();
   renderNavigation();
   syncChrome();
+  syncStudioPreferences();
+  applyStudioLanguage(navigation);
+  applyStudioLanguage(document.querySelector(".topbar"));
   const renderers = {
+    home: renderCreatorHome,
     dashboard: renderDashboard,
     live: renderLive,
     actions: renderActions,
@@ -538,13 +561,18 @@ function render() {
     games: renderGamesV2,
     goals: renderGoals,
     commands: renderCommands,
+    matches: renderCreatorMatches,
     membership: renderMembership,
     connections: renderConnections,
     activity: renderActivity,
     settings: renderSettings,
+    users: renderCreatorUsers,
+    voice: renderCreatorVoice,
+    music: renderCreatorMusic,
+    controllers: renderControllers,
     admin: renderAdmin
   };
-  const pageMarkup = (renderers[currentPage] || renderDashboard)();
+  const pageMarkup = (renderers[currentPage] || renderCreatorHome)();
   const installPack = (snapshot.packs || []).find(
     (pack) => pack.id === gameInstallProgress?.gameId
   );
@@ -560,21 +588,27 @@ function render() {
   ) {
     syncPublicOverlayRelayStatus();
     applyGuestReadOnlyMode(content);
+    applyStudioLanguage(content);
     return;
   }
-  if (typeof preserveOverlayRuntimeFrames === "function") {
-    preserveOverlayRuntimeFrames(content);
+  if (typeof disposeOverlayRuntimePreviews === "function") {
+    disposeOverlayRuntimePreviews(content);
   }
   content.innerHTML = nextContentMarkup;
   renderedContentPage = currentPage;
   renderedContentMarkup = nextContentMarkup;
+  if (currentPage === "home" && typeof syncCreatorHomeLive === "function") syncCreatorHomeLive();
   bindOverlayRuntimeFrames(content);
+  bindSceneComposer(content);
+  applyStudioLanguage(content);
   syncPublicOverlayRelayStatus();
   applyGuestReadOnlyMode(content);
   restoreAdminScrollState(adminScrollState);
 }
 
 const GUEST_BROWSING_ACTIONS = new Set([
+  "studio-toggle-language",
+  "studio-toggle-light",
   "account-login",
   "close-game",
   "dismiss-game-message",
@@ -591,7 +625,7 @@ const GUEST_BROWSING_ACTIONS = new Set([
 ]);
 
 function renderGuestAccessNotice() {
-  if (currentPage === "activity") return "";
+  if (currentPage === "activity" || currentPage === "home") return "";
   return `<aside class="guest-access-notice">
     <span aria-hidden="true">SP</span>
     <div>

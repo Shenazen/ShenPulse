@@ -3,6 +3,9 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $packageJson = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw |
     ConvertFrom-Json
+. (Join-Path $PSScriptRoot 'lib\smoke-registry-isolation.ps1')
+. (Join-Path $PSScriptRoot 'lib\smoke-process-isolation.ps1')
+Assert-ShenPulseSmokeRegistryIsolation -PackageJson $packageJson | Out-Null
 $version = [string]$packageJson.version
 $expectedWindowsVersion = if (($version -split '\.').Count -eq 3) { "$version.0" } else { $version }
 $installerPath = Join-Path $projectRoot "dist\ShenPulseSetup-$version-x64.exe"
@@ -42,6 +45,7 @@ foreach ($shortcut in $shortcutBackups) {
     }
 }
 
+$smokeSucceeded = $false
 try {
     $installer = Start-Process `
         -FilePath $installerPath `
@@ -82,20 +86,18 @@ try {
         throw "L'application installée ne s'est pas lancée."
     }
 
-    foreach ($process in $running) {
-        Stop-Process -Id $process.Id -Force
-    }
-    Wait-Process -Id $running.Id -Timeout 10 -ErrorAction SilentlyContinue
+    Stop-ShenPulseSmokeProcesses -Executable $installedExecutable | Out-Null
 
     $uninstaller = Start-Process `
         -FilePath $uninstallerPath `
-        -ArgumentList @('/S', '/currentuser') `
+        -ArgumentList @('/S', '/currentuser', "_?=$installRoot") `
         -WindowStyle Hidden `
         -Wait `
         -PassThru
     if ($uninstaller.ExitCode -ne 0) {
         throw "La désinstallation silencieuse a échoué avec le code $($uninstaller.ExitCode)."
     }
+    Wait-ShenPulseSmokeRegistryIsolation -PackageJson $packageJson | Out-Null
 
     for ($attempt = 0; $attempt -lt 20 -and (Test-Path -LiteralPath $installedExecutable); $attempt++) {
         Start-Sleep -Milliseconds 500
@@ -104,25 +106,30 @@ try {
         throw "L'application est encore présente après la désinstallation."
     }
 
+    $smokeSucceeded = $true
     Write-Output "Installation, lancement et désinstallation de ShenPulse $version validés."
 }
+catch {
+    # Conserver le diagnostic primaire même si le contrôle de nettoyage échoue.
+    Write-Error -ErrorRecord $_ -ErrorAction Continue
+    throw
+}
 finally {
-    $testProcesses = @(
-        Get-Process -Name ShenPulse -ErrorAction SilentlyContinue |
-            Where-Object { $_.Path -and $_.Path.StartsWith($installRoot, [System.StringComparison]::OrdinalIgnoreCase) }
-    )
-    foreach ($process in $testProcesses) {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-    }
+    try {
+        Stop-ShenPulseSmokeProcesses -Executable (Join-Path $installRoot 'ShenPulse.exe') | Out-Null
 
-    $remainingUninstaller = Join-Path $installRoot 'Uninstall ShenPulse.exe'
-    if (Test-Path -LiteralPath $remainingUninstaller) {
-        Start-Process `
-            -FilePath $remainingUninstaller `
-            -ArgumentList @('/S', '/currentuser') `
-            -WindowStyle Hidden `
-            -Wait | Out-Null
+        $remainingUninstaller = Join-Path $installRoot 'Uninstall ShenPulse.exe'
+        if (Test-Path -LiteralPath $remainingUninstaller) {
+            $cleanupUninstaller = Start-Process `
+                -FilePath $remainingUninstaller `
+                -ArgumentList @('/S', '/currentuser', "_?=$installRoot") `
+                -WindowStyle Hidden `
+                -Wait -PassThru
+            if ($cleanupUninstaller.ExitCode -ne 0) { throw 'Le désinstalleur de nettoyage a échoué.' }
+            Wait-ShenPulseSmokeRegistryIsolation -PackageJson $packageJson | Out-Null
+        }
     }
+    finally {
 
     foreach ($shortcut in $shortcutBackups) {
         if ($shortcut.Existed -and (Test-Path -LiteralPath $shortcut.Backup)) {
@@ -133,11 +140,15 @@ finally {
         }
     }
 
+    Assert-ShenPulseSmokeRegistryIsolation -PackageJson $packageJson | Out-Null
+
     if (
+        $smokeSucceeded -and
         (Test-Path -LiteralPath $smokeRoot) -and
         $smokeRoot.StartsWith($temporaryBase, [System.StringComparison]::OrdinalIgnoreCase) -and
         ([System.IO.Path]::GetFileName($smokeRoot) -like 'ShenPulseInstallerSmoke-*')
     ) {
         Remove-Item -LiteralPath $smokeRoot -Recurse -Force
+    }
     }
 }

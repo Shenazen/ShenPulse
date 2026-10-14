@@ -13,6 +13,7 @@ const requiredFiles = [
   '404.html',
   'styles.css',
   'app.js',
+  'app/legal-pages.js',
   'content.js',
   'game-catalog.js',
   'og.png',
@@ -36,14 +37,18 @@ for (const file of requiredFiles) {
 }
 
 const index = await readFile(path.join(dist, 'index.html'), 'utf8')
-const app = await readFile(path.join(dist, 'app.js'), 'utf8')
+const app = [await readFile(path.join(dist, 'app.js'), 'utf8'),
+  await readFile(path.join(dist, 'app/legal-pages.js'), 'utf8')].join('\n')
 const content = await readFile(path.join(dist, 'content.js'), 'utf8')
 const { GAMES } = await import(pathToFileURL(path.join(dist, 'game-catalog.js')).href)
 const expectedGames = currentPublicGames()
-const expectedDownload = '/downloads/ShenPulseSetup-1.0.16.exe'
+const projectPackage = JSON.parse(await readFile(path.join(root, '..', 'package.json'), 'utf8'))
+const sitePackage = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
+const { APP_TABS, CLIENT_RELEASE } = await import(pathToFileURL(path.join(dist, 'content.js')).href)
+const expectedDownload = `/downloads/ShenPulseSetup-${projectPackage.version}.exe`
 const hiddenProviderPattern = new RegExp(['crowd', 'control'].join('\\s*'), 'i')
 
-for (const file of ['app.js', 'content.js', 'game-catalog.js']) {
+for (const file of ['app.js', 'app/legal-pages.js', 'content.js', 'game-catalog.js']) {
   try {
     execFileSync(process.execPath, ['--check', path.join(dist, file)], { stdio: 'pipe' })
   } catch (error) {
@@ -57,6 +62,18 @@ if (!app.includes(`const DOWNLOAD_URL = '${expectedDownload}'`)) {
 
 if (!index.includes(`href="${expectedDownload}"`)) {
   errors.push(`Lien de téléchargement sans JavaScript incorrect : ${expectedDownload}`)
+}
+
+if (sitePackage.version !== projectPackage.version || CLIENT_RELEASE.version !== projectPackage.version) {
+  errors.push('La version du site et de ses notes ne correspond pas à celle de l’application')
+}
+
+for (const tab of ['Commandes', 'Matchs', 'Machines IRL', 'Musique', 'Utilisateurs']) {
+  if (!APP_TABS.some((item) => item.title === tab)) errors.push(`Espace actuel non documenté : ${tab}`)
+}
+
+if (APP_TABS.some((item) => item.title === 'Chatbot') || content.includes('Sous-onglet Simulateur')) {
+  errors.push('Une ancienne présentation du Chatbot ou du simulateur des Actions subsiste')
 }
 
 if (`${index}\n${app}`.includes('/downloads/ShenPulseSetup.exe')) {

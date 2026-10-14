@@ -6,6 +6,10 @@
  */
 
 const CONTENT_COMMERCE_ACTIONS = new Set([
+  "creator-simulate-gift",
+  "creator-add-music",
+  "creator-user-page",
+  "creator-voice-tab",
   "add-action",
   "add-trigger",
   "edit-trigger",
@@ -45,6 +49,25 @@ const CONTENT_COMMERCE_ACTIONS = new Set([
 
 async function handleContentAndCommerceAction({ action, target, id }) {
   if (!CONTENT_COMMERCE_ACTIONS.has(action)) return ACTION_NOT_HANDLED;
+  if (action === "creator-voice-tab") {
+    creatorVoiceTab = ["voice", "sounds", "outputs"].includes(target.dataset.value) ? target.dataset.value : "voice";
+    return render();
+  }
+  if (action === "creator-user-page") {
+    creatorUserPage = Math.max(0, creatorUserPage + (Number(target.dataset.direction) > 0 ? 1 : -1));
+    return syncCreatorUsersRuntime();
+  }
+  if (action === "creator-add-music") return openActionEditor(null, {
+    rule: { id: "", name: "Demande de musique", enabled: true, priority: 50, trigger: { enabled: true, type: "chat", source: "*", threshold: 1 }, conditions: [{ field: "data.message", operator: "contains", value: "!song " }], cooldown: { globalMs: 3000, perUserMs: 15000 }, chance: 1, actions: [] },
+    action: { id: "", type: "spotify.queue", config: { operation: "queue", query: "{{data.message}}", chatCommand: "!song", maxDurationMinutes: 10, allowExplicit: false } }
+  });
+  if (action === "creator-simulate-gift") {
+    const gift = giftForIdentity("", id);
+    if (!gift) throw new Error("Cadeau introuvable dans le catalogue.");
+    const form = content.querySelector("#simulator-form");
+    const values = form ? new FormData(form) : new FormData();
+    return perform(() => api.simulateEvent({ type: "gift", username: values.get("username") || "test_viewer", nickname: values.get("nickname") || "Spectateur test", count: Math.max(1, Math.min(1000, Number(values.get("count")) || 1)), value: Math.max(1, Number(gift.cost) || 1), giftId: gift.id, giftName: gift.name, giftImageUrl: gift.imageUrl || "" }), `${gift.name} injecté dans les déclencheurs`);
+  }
   if (action === "add-action") return openActionEditor();
   if (action === "add-trigger") return openRuleEditor();
   if (action === "edit-trigger") {
@@ -201,14 +224,19 @@ async function handleContentAndCommerceAction({ action, target, id }) {
     );
   }
   if (action === "spotify-connect") {
+    const owner = captureCreatorPrivateOperation();
     return perform(async () => {
+      assertCreatorPrivateOperation(owner);
       const result = await api.connectSpotify();
+      assertCreatorPrivateOperation(owner);
+      clearCreatorSpotifyStatus();
       spotifyStatus = result.status;
       acceptSnapshot(result.snapshot);
       render();
     }, "Spotify connecté");
   }
   if (action === "spotify-disconnect") {
+    const owner = captureCreatorPrivateOperation();
     if (
       !(await confirmAction("Déconnecter le compte Spotify de ShenPulse ?", {
         title: "Déconnecter Spotify",
@@ -217,8 +245,12 @@ async function handleContentAndCommerceAction({ action, target, id }) {
     ) {
       return;
     }
+    assertCreatorPrivateOperation(owner);
     return perform(async () => {
+      assertCreatorPrivateOperation(owner);
       const result = await api.disconnectSpotify();
+      assertCreatorPrivateOperation(owner);
+      clearCreatorSpotifyStatus();
       spotifyStatus = result.status;
       acceptSnapshot(result.snapshot);
       render();
@@ -228,8 +260,11 @@ async function handleContentAndCommerceAction({ action, target, id }) {
     return perform(() => refreshSpotifyStatus(), "État Spotify actualisé");
   }
   if (action === "spotify-control") {
+    const owner = captureCreatorPrivateOperation();
     return perform(async () => {
+      assertCreatorPrivateOperation(owner);
       await api.controlSpotify({ operation: target.dataset.operation });
+      assertCreatorPrivateOperation(owner);
       await refreshSpotifyStatus();
     }, "Commande Spotify envoyée");
   }

@@ -72,6 +72,7 @@ function openWheelOverlayConfig(item, rawConfig = null) {
                   giftLabel: "Cadeau TikTok",
                   giftValue: wheel.trigger,
                   giftId: wheel.triggerGift?.giftId || "",
+                  savedReference: wheel.triggerGift,
                   modeName: "wheelGiftTriggerMode",
                   operatorName: "wheelGiftValueOperator",
                   amountName: "wheelGiftValueAmount"
@@ -672,29 +673,29 @@ function openOverlayConfigLegacy(item) {
 function renderMatchOverlayGuide() {
   return `<aside class="match-overlay-guide">
     <header>
-      <span aria-hidden="true">WEBM</span>
+      <span aria-hidden="true">LIVE</span>
       <div>
-        <strong>Utiliser les 8 Matchs comme fichiers vidéo temporaires</strong>
-        <p>Avec Pro ou Premium, ShenPulse prépare le design choisi dans son cache privé et permet de copier son chemin sans jamais l’afficher.</p>
+        <strong>Une source protégée pour toutes vos animations Matchs</strong>
+        <p>Avec Pro ou Premium, ShenPulse lit les vidéos localement depuis son paquet chiffré, sans exporter de fichier. TikControl, Gladiador et six animations Cyber conservent leurs réglages.</p>
       </div>
       <div class="match-overlay-guide-actions">
         <small>Accès Pro / Premium</small>
       </div>
     </header>
     <ol>
-      <li><b>1</b><span>Choisissez le design sur une carte Match puis cliquez sur <strong>Préparer le fichier vidéo</strong>.</span></li>
-      <li><b>2</b><span>Cliquez sur <strong>Copier le chemin</strong>, puis collez-le dans le sélecteur de fichier de TikTok LIVE Studio, OBS ou votre autre logiciel. Le chemin reste masqué dans ShenPulse.</span></li>
-      <li><b>3</b><span>Répétez l’opération pour les Matchs utiles. Le cache est contrôlé régulièrement et définitivement supprimé dès que le compte n’a plus d’abonnement <strong>Pro ou Premium actif</strong>.</span></li>
+      <li><b>1</b><span>Choisissez le pack de l’animation, puis cliquez sur <strong>Copier pour TikTok Studio</strong>.</span></li>
+      <li><b>2</b><span>Collez ce lien dans une <strong>source Lien / Navigateur</strong> de TikTok LIVE Studio ou OBS, sur le même PC que ShenPulse. Une seule source suffit pour toutes les animations.</span></li>
+      <li><b>3</b><span>Configurez vos moments dans <strong>Matchs → Automatisations</strong>. La lecture nécessite ShenPulse ouvert et un abonnement <strong>Pro ou Premium actif</strong>. Aucun fichier vidéo n’est exporté.</span></li>
       <li class="match-overlay-source-settings">
         <b>4</b>
         <span>
-          Réglages recommandés de la source Vidéo&nbsp;:
+          Réglages recommandés de la source Navigateur&nbsp;:
           <small><strong>Largeur</strong> · 1080 px</small>
           <small><strong>Hauteur</strong> · 1920 px</small>
-          <small><strong>Format</strong> · WebM transparent</small>
-          <small><strong>Boucle</strong> · selon votre usage</small>
-          <small>Le fichier vidéo est autonome et se lance avec les commandes du logiciel de diffusion.</small>
-          <small>Les actions ShenPulse continuent à piloter le lecteur Match interne pour les déclenchements automatiques.</small>
+          <small><strong>Fond</strong> · transparent</small>
+          <small><strong>Source active</strong> · conserver activée</small>
+          <small>La vidéo est déchiffrée uniquement en mémoire et délivrée par un ticket temporaire.</small>
+          <small>Cette protection empêche la copie directe des fichiers livrés, pas une extraction experte ou une capture d’écran.</small>
         </span>
       </li>
     </ol>
@@ -706,19 +707,19 @@ function renderOverlaysV2() {
   const accessibleItems = overlayDefinitions().filter(canAccessOverlay);
   const catalogItems = accessibleItems.filter((item) => !item.catalogHidden);
   const categoryDefinitions = [
-    ["counters", "Compteurs", "◎"],
-    ["rankings", "Classements", "♛"],
-    ["interactions", "Interactions", "✦"],
-    ["actions", "Actions", "⚡"],
-    ["events", "Événements", "◌"],
-    ["points", "Points", "★"],
-    ["likes", "Likes", "♥"],
-    ["gifts", "Cadeaux", "♢"],
-    ["games", "Jeux", "◇"],
-    ["music", "Musique", "♫"],
-    ["seasonal", "Saisonnier", "❄"],
-    ["tools", "Outils", "⌁"],
-    ["matches", "Matchs", "VS"]
+    ["counters", "Compteurs"],
+    ["rankings", "Classements"],
+    ["interactions", "Interactions"],
+    ["actions", "Actions"],
+    ["events", "Événements"],
+    ["points", "Points"],
+    ["likes", "Likes"],
+    ["gifts", "Cadeaux"],
+    ["games", "Jeux"],
+    ["music", "Musique"],
+    ["seasonal", "Saisonnier"],
+    ["tools", "Outils"],
+    ["matches", "Matchs"]
   ];
   const availableCategoryIds = new Set(catalogItems.map((item) => item.category));
   const categories = categoryDefinitions.filter(([id]) => availableCategoryIds.has(id));
@@ -733,19 +734,15 @@ function renderOverlaysV2() {
     return matchesCategory && matchesSearch;
   });
   const sections = categories
-    .map(([id, label, icon]) => ({
+    .map(([id, label]) => ({
       id,
       label,
-      icon,
       items: items.filter((item) => item.category === id)
     }))
     .filter((section) => section.items.length);
   return `
     <div class="reference-page overlay-catalog-page">
-      <section class="page-hero">
-        <div><span class="hero-chip">GALERIE OVERLAYS</span><h2>Overlays & widgets</h2><p>Les overlays ShenPulse classés comme dans ShenazenOverlay, avec leurs réglages persistants.</p></div>
-        <span class="hero-count">${catalogItems.length}</span>
-      </section>
+      ${renderStudioHero("overlays", "Overlays & widgets", `${catalogItems.length} widgets interactifs. Personnalisez chaque source et ajoutez son URL dans OBS ou TikTok LIVE Studio.`)}
       ${isAccountAuthenticated() ? `<section class="card public-overlay-relay-card" data-public-overlay-relay>
         <header class="card-header">
           <div>
@@ -767,15 +764,7 @@ function renderOverlaysV2() {
         </div>
       </section>
       <div class="overlay-section-stack">
-        ${sections.map((section) => `<section class="overlay-category-section" data-overlay-category="${escapeHtml(section.id)}">
-          <header class="overlay-category-heading">
-            <span aria-hidden="true">${section.icon}</span>
-            <h3>${escapeHtml(section.label)}</h3>
-            <small>${section.items.length} overlay${section.items.length > 1 ? "s" : ""}</small>
-          </header>
-          ${section.id === "matches" ? renderMatchOverlayGuide() : ""}
-          <div class="overlay-catalog-grid">${section.items.map((item) => renderOverlayCard(item)).join("")}</div>
-        </section>`).join("")}
+        ${sections.map(renderOverlayCategorySection).join("")}
       </div>
       ${items.length ? "" : emptyInline("Aucun overlay ne correspond à ces filtres.")}
     </div>`;

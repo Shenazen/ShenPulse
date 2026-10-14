@@ -8,7 +8,7 @@
  */
 
 const ADMIN_VISIBILITY_SECTIONS = [
-  ["navigation", "Pages ShenPulse", "Les 14 pages réellement présentes dans la navigation de ShenPulseNew"],
+  ["navigation", "Pages ShenPulse", "Les pages actuelles de ShenPulse et les routes conservées pour vos configurations"],
   ["features", "Fonctionnalités", "Les services réellement disponibles dans l’application"],
   ["actionTypes", "Actions disponibles", "Les actions proposées dans les éditeurs ShenPulseNew"],
   ["overlays", "Overlays", "Les 17 overlays réellement présents dans la galerie"],
@@ -51,8 +51,7 @@ function adminVisibilityCatalog() {
       label,
       detail: "Action disponible dans les déclencheurs et automatisations",
       icon: "⚡",
-      defaultScope: id === "irl.shelly" ? "admin" : "public",
-      ownerOnly: id === "irl.shelly"
+      defaultScope: "public"
     })),
     overlays: overlayDefinitions().map((overlay) => ({
       id: overlay.key,

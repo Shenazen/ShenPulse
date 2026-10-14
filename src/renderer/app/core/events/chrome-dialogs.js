@@ -12,6 +12,24 @@ accountMenuButton.addEventListener("click", () => {
   accountMenu.hidden = !opening;
   accountMenuButton.setAttribute("aria-expanded", String(opening));
 });
+document.addEventListener("click", (event) => {
+  if (accountMenuButton.closest(".account-control").contains(event.target)) return;
+  accountMenu.hidden = true;
+  accountMenuButton.setAttribute("aria-expanded", "false");
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (!accountMenu.hidden) {
+    accountMenu.hidden = true;
+    accountMenuButton.setAttribute("aria-expanded", "false");
+    accountMenuButton.focus();
+  }
+  if (!profileMenu.hidden) {
+    profileMenu.hidden = true;
+    profilePickerButton.setAttribute("aria-expanded", "false");
+    profilePickerButton.focus();
+  }
+});
 profilePickerButton.addEventListener("click", () => {
   if (!isAccountAuthenticated()) return openAccountLogin();
   const opening = profileMenu.hidden;
@@ -71,14 +89,21 @@ gameSessionStop.addEventListener("click", async () => {
     gameSessionStop.title = "Arrêter la session de jeu";
   }
 });
-tiktokAccountButton.addEventListener("click", () =>
-  isAccountAuthenticated() ? openTikTokEditor() : openAccountLogin()
-);
+tiktokUsernameInput.addEventListener("input", () => {
+  creatorTikTokDraftDirty = true;
+  clearCreatorTikTokError();
+});
+tiktokUsernameInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  toggleTikTok().catch(() => {});
+});
 tiktokConnectionButton.addEventListener("click", () =>
   isAccountAuthenticated()
     ? toggleTikTok().catch(() => {})
     : openAccountLogin()
 );
+document.getElementById("membership-popup-button").addEventListener("click", openMembershipPopup);
 profileSelect.addEventListener("change", async () => {
   if (!isAccountAuthenticated()) return openAccountLogin();
   await perform(() => api.selectProfile(profileSelect.value), "Profil actif modifié");
@@ -183,6 +208,7 @@ dialog.addEventListener("cancel", () => {
 
 dialog.addEventListener("close", () => {
   stopEditorAudioPreview();
+  disposeOverlayRuntimePreviews(dialogBody);
   dialogSessionId += 1;
   dialogSubmitHandler = null;
   dialogForm.setAttribute("aria-busy", "false");
@@ -277,7 +303,9 @@ dialog.addEventListener("click", (event) => {
       "overlay-quick",
       "copy",
       "open-url",
-      "open-minecraft-mode"
+      "open-minecraft-mode",
+      "studio-toggle-language",
+      "studio-toggle-light"
     ].includes(action.dataset.action)
   ) {
     event.preventDefault();

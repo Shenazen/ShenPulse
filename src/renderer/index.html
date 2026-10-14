@@ -19,6 +19,7 @@
             src="assets/brand/shenpulse-banner-transparent.png"
             alt="ShenPulse"
           />
+          <small class="brand-tagline" data-studio-user-content>STREAM - INTERACTIONS - ENSEMBLE</small>
         </div>
 
         <nav id="navigation" aria-label="Navigation principale"></nav>
@@ -46,6 +47,14 @@
                   <strong id="account-menu-name">Compte ShenPulse</strong>
                   <small id="account-menu-email">Non connecté</small>
                 </span>
+              </div>
+              <div class="account-menu-preferences">
+                <button class="account-preference-button" id="studio-light-mode" type="button" data-action="studio-toggle-light" role="menuitem" aria-pressed="false" title="Réduire les effets visuels"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 0 0 16Z" fill="currentColor" stroke="none"></path></svg><span class="light-mode-copy">Mode léger</span></button>
+                <div class="account-language-preference"><span>Langue</span><button class="account-preference-button" id="studio-language" type="button" data-action="studio-toggle-language" role="menuitem" title="Français / English" aria-label="Français / English">FR</button></div>
+                <div class="account-directory-preference" id="account-directory-preference" hidden>
+                  <button class="account-preference-button" id="account-directory-toggle" type="button" role="menuitemcheckbox" aria-checked="false" aria-describedby="account-directory-description"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3"></circle><path d="M5 21v-2a7 7 0 0 1 14 0v2M18 5h4M20 3v4"></path></svg><span>Afficher mes LIVE dans l’annuaire public</span><span class="account-directory-switch" aria-hidden="true"></span></button>
+                  <small id="account-directory-description">Partage votre @, photo publique, plateforme et audience. Retrait à l’arrêt du LIVE, ou après 90 s sans connexion. Désactivé par défaut.</small>
+                </div>
               </div>
               <div class="account-menu-actions">
                 <button type="button" data-navigate="settings" role="menuitem">
@@ -89,10 +98,9 @@
       </aside>
 
       <div class="workspace">
-        <header class="titlebar">
-          <div class="page-heading">
-            <p id="page-kicker">CENTRE DE CONTRÔLE</p>
-            <h1 id="page-title">Vue d’ensemble</h1>
+        <header class="titlebar topbar creator-topbar">
+          <div class="creator-topbar-left">
+            <button class="creator-pro-button" id="membership-popup-button" type="button" aria-haspopup="dialog" title="Choisir votre abonnement"><svg class="creator-pro-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.6 2.2 4.7 13.1a.8.8 0 0 0 .6 1.3h5l-1.1 7.1a.5.5 0 0 0 .9.4l9.2-11a.8.8 0 0 0-.6-1.3h-5.2l1-7.1a.5.5 0 0 0-.9-.3Z"></path></svg><span id="membership-popup-label">Pro</span></button>
           </div>
           <div class="titlebar-actions">
             <button
@@ -127,17 +135,15 @@
               <div class="profile-menu" id="profile-menu" role="listbox" aria-label="Choisir un profil" hidden></div>
               <button class="profile-manage-button" id="profile-manage-button" title="Gérer les profils" aria-label="Gérer les profils">•••</button>
             </div>
-            <div class="tiktok-control">
-              <button class="tiktok-account" id="tiktok-account-button" title="Configurer le compte TikTok">
-                <span class="tiktok-status-dot" id="tiktok-status-dot"></span>
-                <span>
-                  <strong id="tiktok-account-label">@ TikTok</strong>
-                  <small id="tiktok-status-label">À configurer</small>
-                </span>
-              </button>
-              <button class="tiktok-power" id="tiktok-connection-button" title="Activer ou arrêter la détection TikTok LIVE" aria-label="Activer ou arrêter la détection TikTok LIVE">↻</button>
+            <div class="tiktok-control creator-tiktok-control">
+              <span class="tiktok-status-dot" id="tiktok-status-dot" aria-hidden="true"></span>
+              <label class="creator-tiktok-input-wrap" for="tiktok-username"><span class="creator-tiktok-at" aria-hidden="true">@</span><span class="visually-hidden">Nom d’utilisateur TikTok</span><input id="tiktok-username" type="text" placeholder="username" maxlength="80" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tiktok-status-label tiktok-input-error"></label>
+              <span class="visually-hidden" id="tiktok-status-label" role="status"></span>
+              <button class="creator-tiktok-connect" id="tiktok-connection-button" type="button"><svg id="tiktok-connection-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3v5M16 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"></path></svg><span id="tiktok-connection-label">Connecter</span></button>
+              <span class="creator-tiktok-error" id="tiktok-input-error" role="alert" hidden></span>
             </div>
-            <button class="live-button" id="session-button">
+            <span class="creator-live-status" id="topbar-live-status" hidden><span aria-hidden="true"></span><strong>LIVE</strong><small id="topbar-live-account"></small></span>
+            <button class="live-button" id="session-button" hidden tabindex="-1">
               <span class="live-dot"></span>
               <span id="session-label">Démarrer le live</span>
             </button>
@@ -252,6 +258,15 @@
     <div id="audio-stage" aria-hidden="true"></div>
     <datalist id="gift-catalog-options"></datalist>
     <script src="../shared/visibility-catalog.js"></script>
+    <script src="../shared/pro-access.js"></script>
+    <script src="../shared/matches-contract.js"></script>
+    <script src="../shared/controller-contract.js"></script>
+    <script src="../shared/live-statistics.js"></script>
+    <script src="../shared/viewer-ranks.js"></script>
+    <script src="../shared/gift-identity.js"></script>
+    <script src="../shared/command-execution.js"></script>
+    <script src="../shared/chatbot-command.js"></script>
+    <script src="../shared/spotify-capabilities.js"></script>
     <script src="../../resources/overlays/catalog/shared.js"></script>
     <script src="../../resources/overlays/catalog/my-actions.js"></script>
     <script src="../../resources/overlays/catalog/game.js"></script>
@@ -265,14 +280,20 @@
     <script src="../../resources/overlays/catalog/wheel.js"></script>
     <script src="../../resources/overlays/catalog/matches.js"></script>
     <script src="../../resources/overlays/overlay-catalog.js"></script>
+    <script src="../../resources/overlays/scene-layout.js"></script>
     <script src="vendor/lottie-player.js"></script>
     <script src="game-overlay-generator.js"></script>
     <script src="app/core/bootstrap.js"></script>
+    <script src="app/core/components.js"></script>
+    <script src="app/core/automation-table.js"></script>
     <script src="app/core/ui-foundations.js"></script>
+    <script src="app/features/studio-design.js"></script>
+    <script src="app/features/studio-language.js"></script>
     <script src="app/features/media/gift-picker.js"></script>
     <script src="app/features/media/library.js"></script>
-    <script src="app/features/media/spotify.js"></script>
     <script src="app/core/access-navigation.js"></script>
+    <script src="app/core/account-operation-guard.js"></script>
+    <script src="app/features/media/spotify.js"></script>
     <script src="app/features/dashboard.js"></script>
     <script src="app/features/actions.js"></script>
     <script src="app/features/irl.js"></script>
@@ -282,6 +303,7 @@
     <script src="app/features/overlays/cards.js"></script>
     <script src="app/features/overlays/fields.js"></script>
     <script src="app/features/overlays/editor.js"></script>
+    <script src="app/features/overlays/scene.js"></script>
     <script src="app/features/audio.js"></script>
     <script src="app/features/games/access.js"></script>
     <script src="app/features/games/settings-defaults.js"></script>
@@ -290,12 +312,34 @@
     <script src="app/features/games/settings-thiercelieux.js"></script>
     <script src="app/features/games/settings-editor.js"></script>
     <script src="app/features/games/overlay-cards.js"></script>
+    <script src="app/features/games/overlay-export-canvas.js"></script>
+    <script src="app/features/games/overlay-export-entries.js"></script>
+    <script src="app/features/games/overlay-export-dialogs.js"></script>
     <script src="app/features/games/overlay-export.js"></script>
     <script src="app/features/games/coin-pusher.js"></script>
     <script src="app/features/games/interactions.js"></script>
     <script src="app/features/games/super-mario-kart-workspace.js"></script>
     <script src="app/features/membership.js"></script>
+    <script src="app/features/membership-popup.js"></script>
     <script src="app/features/auxiliary-pages.js"></script>
+    <script src="app/features/games/community.js"></script>
+    <script src="app/features/creator-home-live.js"></script>
+    <script src="app/features/creator-home.js"></script>
+    <script src="app/features/creator-users.js"></script>
+    <script src="app/features/matches/reactions.js"></script>
+    <script src="app/features/matches/editor.js"></script>
+    <script src="app/features/matches/widgets.js"></script>
+    <script src="app/features/creator-matches.js"></script>
+    <script src="app/features/creator-voice.js"></script>
+    <script src="app/features/creator-music.js"></script>
+    <script src="app/features/chatbot/execution.js"></script>
+    <script src="app/features/creator-chatbot.js"></script>
+    <script src="app/features/chatbot/delivery.js"></script>
+    <script src="app/features/chatbot/editor.js"></script>
+    <script src="app/features/creator-performance.js"></script>
+    <script src="app/features/creator-topbar.js"></script>
+    <script src="app/features/creator-sidebar.js"></script>
+    <script src="app/features/controllers.js"></script>
     <script src="app/features/admin/page.js"></script>
     <script src="app/features/admin/account.js"></script>
     <script src="app/editors/core.js"></script>
@@ -305,6 +349,13 @@
     <script src="app/editors/rules-profiles.js"></script>
     <script src="app/actions/overlays.js"></script>
     <script src="app/actions/handlers/contracts.js"></script>
+    <script src="app/actions/handlers/connections-messages.js"></script>
+    <script src="app/actions/handlers/creator-audience.js"></script>
+    <script src="app/actions/handlers/creator-matches.js"></script>
+    <script src="app/actions/handlers/creator-music.js"></script>
+    <script src="app/actions/handlers/creator-chatbot.js"></script>
+    <script src="app/actions/scene.js"></script>
+    <script src="app/actions/handlers/controllers.js"></script>
     <script src="app/actions/handlers/admin-irl.js"></script>
     <script src="app/actions/handlers/navigation-games.js"></script>
     <script src="app/actions/handlers/content-commerce.js"></script>

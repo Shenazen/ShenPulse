@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -286,10 +288,7 @@ test("le Play manuel du groupe conserve le mode test des interactions IRL", asyn
 });
 
 test("le test manuel autorise les groupes d’actions via IPC", () => {
-  const ipcSource = fs.readFileSync(
-    path.join(__dirname, "..", "src", "main", "ipc.js"),
-    "utf8"
-  );
+  const ipcSource = readMainSource("ipc.js");
   const handlerStart = ipcSource.indexOf('handle("action:test"');
   const handlerEnd = ipcSource.indexOf('handle("timer:test"', handlerStart);
 

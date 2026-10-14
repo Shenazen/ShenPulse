@@ -37,7 +37,8 @@ async function installDotNetDesktopRuntime(
     roots,
     runInstaller = runDotNetInstaller,
     detectionTimeoutMs = 120000,
-    detectionPollIntervalMs = 500
+    detectionPollIntervalMs = 500,
+    assertAccess = () => {}
   } = {}
 ) {
   if (platform !== "win32") {
@@ -50,6 +51,7 @@ async function installDotNetDesktopRuntime(
   if (!stat?.isFile()) {
     throw new Error("L’installateur officiel du runtime .NET est introuvable.");
   }
+  assertAccess();
   const code = Number(
     await runInstaller(absolute, ["/install", "/quiet", "/norestart"])
   );

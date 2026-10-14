@@ -1,0 +1,22 @@
+[
+  {
+    "file": "CoinPusherGame.vue",
+    "hash": "516a6cc72c97cc470688e33bc25c9d4c86525c80bcb42f39fb9a7c8c9659e068"
+  },
+  {
+    "file": "CoinPusherMysteryReveal.vue",
+    "hash": "0be71b20ac0167537e61cbfa0d5a823addb8e7d5897a617837bfcaf8c051fa58"
+  },
+  {
+    "file": "ConnectFourGame.vue",
+    "hash": "4bf1fc7ad7d5db4990da581dabe828e1797c9d6601db0a957799f9a32393b0a4"
+  },
+  {
+    "file": "DealOrNoDealGame.vue",
+    "hash": "630ba66e5840abe87e81ad0be3d802e4185d7f39b6c2d147625c525d69be4e64"
+  },
+  {
+    "file": "ThiercelieuxGame.vue",
+    "hash": "ca24318c4a475ac395fab2d868935aed0827735015f576af245a3bb3fc75d855"
+  }
+]

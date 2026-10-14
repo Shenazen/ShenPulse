@@ -132,7 +132,7 @@ test("cible uniquement RocketLeague.exe avec le connecteur clavier et souris", a
 
 test("n’affiche aucune attribution externe dans la fiche Rocket League", () => {
   const source = fs.readFileSync(
-    path.join(__dirname, "..", "src", "main", "game-catalog.js"),
+    path.join(__dirname, "..", "src", "main", "game-catalog", "internal-games.js"),
     "utf8"
   );
   const start = source.indexOf('game("rocket-league"');

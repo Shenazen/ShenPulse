@@ -1,4 +1,5 @@
 "use strict";
+const { createMatchSession, normalizeMatchesConfig } = require("../shared/matches-contract");
 
 const PRIVATE_RENDERER_CHANNELS = new Set([
   "deal-host-state",
@@ -11,7 +12,9 @@ const PRIVATE_RENDERER_CHANNELS = new Set([
   "overlay-completion-fired",
   "playback",
   "public-overlay-relay-status",
-  "runtime-state-changed"
+  "runtime-state-changed",
+  "users-changed",
+  "song-requests-changed"
 ]);
 const ADMIN_OWNER_EMAIL = "alexandre.leuridan@gmail.com";
 
@@ -38,7 +41,9 @@ const PREVIEW_OVERLAY_KEYS = new Set([
 ]);
 
 function hasAuthenticatedAccount(store) {
-  const account = store?.getState?.()?.settings?.account || {};
+  const account = store?.getAccountSession?.() ||
+    store?.getStateProjection?.(["settings.account"])?.settings?.account ||
+    store?.getState?.()?.settings?.account || {};
   const email = String(account.email || "").trim().toLowerCase();
   const uid = String(account.uid || "").trim();
   const secretId = String(account.refreshTokenSecretId || "").trim();
@@ -65,7 +70,9 @@ function assertAuthenticatedAccount(store) {
 
 function assertAdminAccount(store) {
   assertAuthenticatedAccount(store);
-  const account = store.getState().settings.account || {};
+  const account = store.getAccountSession?.() ||
+    store.getStateProjection?.(["settings.account"])?.settings?.account ||
+    store.getState().settings.account || {};
   if (
     String(account.email || "").trim().toLowerCase() !==
       ADMIN_OWNER_EMAIL ||
@@ -92,8 +99,10 @@ function snapshotForRenderer(snapshot, store) {
 }
 
 function withoutAccountWorkspaces(snapshot = {}) {
-  if (!snapshot.state?.accountWorkspaces) return snapshot;
-  const { accountWorkspaces: _accountWorkspaces, ...state } = snapshot.state;
+  if (!snapshot.state) return snapshot;
+  const privateKeys = ["accountWorkspaces", "accountWorkspaceSchemaVersion", "activeAccountUid", "unclaimedAccountWorkspace", "viewerDatabase"];
+  if (!privateKeys.some((key) => Object.hasOwn(snapshot.state, key))) return snapshot;
+  const state = Object.fromEntries(Object.entries(snapshot.state).filter(([key]) => !privateKeys.includes(key)));
   return { ...snapshot, state };
 }
 
@@ -116,6 +125,7 @@ function withoutOwnerOnlyPacks(snapshot = {}) {
 }
 
 function createGuestSnapshot(snapshot = {}) {
+  snapshot = withoutAccountWorkspaces(snapshot);
   const originalState = snapshot.state || {};
   const customSoundIds = new Set(
     (originalState.customSounds || []).flatMap((item) => [
@@ -140,6 +150,7 @@ function createGuestSnapshot(snapshot = {}) {
   );
 
   state.activity = [];
+  state.matchSession = createMatchSession();
   state.connections = [];
   state.customSounds = [];
   state.customMedia = [];
@@ -177,7 +188,12 @@ function createGuestSnapshot(snapshot = {}) {
     account: emptyAccount(),
     admin: emptyAccount(),
     matchAccess: { accessKey: "" },
+    matches: normalizeMatchesConfig(),
     irl: { enabled: false, devices: [] },
+    kick: { configured: false },
+    controllers: { devices: [], mappings: [] },
+    liveDirectory: { publishEnabled: false },
+    overlayScene: {},
     tiktok: {
       username: "",
       relayUrl: "",
@@ -214,7 +230,11 @@ function createGuestSnapshot(snapshot = {}) {
     publicOverlayRelay: {
       connected: false,
       status: "account-required"
-    }
+    },
+    ...(snapshot.liveDirectory ? { liveDirectory: {
+      ...snapshot.liveDirectory, enabled: false, publishing: false,
+      rows: (snapshot.liveDirectory.rows || []).map((row) => ({ ...row, own: false }))
+    } } : {})
   };
 }
 

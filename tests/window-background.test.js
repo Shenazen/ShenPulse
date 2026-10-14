@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -8,10 +10,7 @@ const test = require("node:test");
 const root = path.join(__dirname, "..");
 
 test("réduire ShenPulse conserve les services LIVE et les interactions actifs", () => {
-  const ipc = fs.readFileSync(
-    path.join(root, "src", "main", "ipc.js"),
-    "utf8"
-  );
+  const ipc = readMainSource("ipc.js");
   const minimizeStart = ipc.indexOf('handle("window:minimize"');
   const minimizeEnd = ipc.indexOf(
     'handle("window:maximize"',
@@ -28,14 +27,8 @@ test("réduire ShenPulse conserve les services LIVE et les interactions actifs",
 });
 
 test("les fenêtres ShenPulse ne sont pas ralenties en arrière-plan", () => {
-  const main = fs.readFileSync(
-    path.join(root, "src", "main", "main.js"),
-    "utf8"
-  );
-  const gameRuntime = fs.readFileSync(
-    path.join(root, "src", "main", "game-runtime.js"),
-    "utf8"
-  );
+  const main = readMainSource("main.js");
+  const gameRuntime = readMainSource("game-runtime.js");
 
   assert.match(main, /backgroundThrottling:\s*false/);
   assert.match(gameRuntime, /backgroundThrottling:\s*false/);

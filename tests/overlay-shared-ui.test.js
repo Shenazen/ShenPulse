@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const {
   readOverlayRuntimeSource,
   readOverlayStyles,
@@ -18,24 +20,15 @@ const rendererHtml = fs.readFileSync(
   path.join(root, "src", "renderer", "index.html"),
   "utf8"
 );
-const mainProcess = fs.readFileSync(
-  path.join(root, "src", "main", "main.js"),
-  "utf8"
-);
+const mainProcess = readMainSource("main.js");
 const overlayRuntime = readOverlayRuntimeSource();
 const overlayStyles = readOverlayStyles();
 const overlayHtml = fs.readFileSync(
   path.join(root, "resources", "overlays", "index.html"),
   "utf8"
 );
-const actionRunner = fs.readFileSync(
-  path.join(root, "src", "main", "action-runner.js"),
-  "utf8"
-);
-const ipc = fs.readFileSync(
-  path.join(root, "src", "main", "ipc.js"),
-  "utf8"
-);
+const actionRunner = readMainSource("action-runner.js");
+const ipc = readMainSource("ipc.js");
 
 test("le catalogue et les jeux réutilisent la même carte d’overlay", () => {
   assert.match(renderer, /function renderOverlayCard/);

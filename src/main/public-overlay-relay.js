@@ -1,6 +1,9 @@
 "use strict";
 
+const { isCancelledRequest, isMissingFirebaseUser } = require("./relay/errors");
+
 const crypto = require("node:crypto");
+const { abortRequests, requestRelay, requestJson } = require("./relay/request-client");
 const { EventEmitter } = require("node:events");
 const {
   DEFAULT_FIREBASE_API_KEY,
@@ -16,26 +19,50 @@ const {
 const { hasProOverlayAccess } = require("./overlay-server");
 const {
   createMatchChannelId,
-  matchAccountNumber,
   matchPublicSourcePath
 } = require("./match-access");
+const { readState, selectStatePaths } = require("./state-projection");
+const { PRO_ACCESS_PATHS } = require("./pro-feature-access");
+const { addPublicMatchWidgetUrls } = require("./relay/match-widgets");
+const { MATCH_MESSAGE_CHANNELS } = require("./relay/match-messages");
+const { MatchPublication } = require("./relay/match-publication");
 
 const AUTH_BASE_URL = "https://identitytoolkit.googleapis.com/v1";
 const TOKEN_BASE_URL = "https://securetoken.googleapis.com/v1";
 const EVENT_BATCH_DELAY_MS = 4;
 const STATE_DELAY_MS = 32;
 const HEARTBEAT_MS = 45_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_QUEUED_MESSAGES = 1_000;
 const MAX_BATCH_MESSAGES = 250;
+const CONFIGURATION_PATHS = ["settings.publicOverlayRelay"];
+const MATCH_SOURCE_PATHS = [
+  ...PRO_ACCESS_PATHS, "settings.overlayPort"
+];
+// Keep this projection aligned with createRelayState, not the complete local
+// workspace (catalogues, chat history, secrets and other accounts stay local).
+const RELAY_STATE_PATHS = [
+  "goals", "session.running", "session.startedAt", "overlaySession",
+  "settings.overlayScene", "commerce.subscription",
+  ...["sessionEvents", "sessionActions", "sessionLikes", "sessionUniqueViewers",
+    "lifetimeEvents", "likes", "gifts", "follows", "subscribers"]
+    .map((key) => `statistics.${key}`)
+];
+const RELAY_CONTEXT_PATHS = [...new Set([
+  ...CONFIGURATION_PATHS, ...MATCH_SOURCE_PATHS, ...RELAY_STATE_PATHS
+])];
 
 class PublicOverlayRelay extends EventEmitter {
-  constructor({ store, fetchImpl = globalThis.fetch, appVersion = "" }) {
+  constructor({ store, fetchImpl = globalThis.fetch, appVersion = "", requestTimeoutMs = REQUEST_TIMEOUT_MS }) {
     super();
     if (typeof fetchImpl !== "function") {
       throw new TypeError("Une implémentation de fetch est requise.");
     }
     this.store = store;
     this.fetch = fetchImpl;
+    this.requestTimeoutMs = Number.isFinite(requestTimeoutMs) && requestTimeoutMs > 0
+      ? requestTimeoutMs : REQUEST_TIMEOUT_MS;
+    this.requestControllers = new Map();
     this.appVersion = String(appVersion || "");
     this.running = false;
     this.connected = false;
@@ -46,9 +73,25 @@ class PublicOverlayRelay extends EventEmitter {
     this.tokenExpiresAt = 0;
     this.authPromise = null;
     this.connectPromise = null;
+    this.stopPromise = null;
+    this.rotating = false;
     this.eventQueue = [];
     this.pendingState = null;
+    this.pendingStateRevision = 0;
     this.publishedState = null;
+    this.publishedStateSignature = "";
+    this.publicationPromise = Promise.resolve();
+    // Une requête lente d'un autre overlay ne doit pas retenir un score ou une
+    // réaction Match. Le canal dédié reste lui-même strictement sérialisé.
+    this.matchPublisher = new MatchPublication({
+      store, write: (...args) => this.#write(...args),
+      configuration: () => this.configuration(), running: () => this.running,
+      connected: () => this.connected, rotating: () => this.rotating,
+      proAccess: hasProOverlayAccess, presence: (connected) => this.#presence(connected),
+      onFailure: (error) => this.#connectionFailed(error), scheduleReconnect: () => this.#scheduleReconnect()
+    });
+    this.eventFlushPromise = null;
+    this.stateFlushPromise = null;
     this.eventTimer = null;
     this.stateTimer = null;
     this.heartbeatTimer = null;
@@ -59,7 +102,7 @@ class PublicOverlayRelay extends EventEmitter {
   }
 
   configuration() {
-    return this.store.getState().settings.publicOverlayRelay || {};
+    return readState(this.store, CONFIGURATION_PATHS).settings?.publicOverlayRelay || {};
   }
 
   prepareConfiguration() {
@@ -68,8 +111,8 @@ class PublicOverlayRelay extends EventEmitter {
   }
 
   urls({ includeRestricted = false } = {}) {
-    const config = this.configuration();
-    const state = this.store.getState();
+    const state = readState(this.store, [...CONFIGURATION_PATHS, ...MATCH_SOURCE_PATHS]);
+    const config = state.settings?.publicOverlayRelay || {};
     const proAccess =
       includeRestricted || hasProOverlayAccess(state);
     const urls = publicOverlayUrls({
@@ -87,7 +130,7 @@ class PublicOverlayRelay extends EventEmitter {
           config.publicBaseUrl || DEFAULT_PUBLIC_OVERLAY_BASE_URL
         ).replace(/\/$/, "")}${matchPath}`
       : "";
-    return urls;
+    return addPublicMatchWidgetUrls(urls, { store: this.store, state, includeRestricted });
   }
 
   status() {
@@ -121,14 +164,24 @@ class PublicOverlayRelay extends EventEmitter {
     return this.connectPromise;
   }
 
-  async stop() {
+  stop() {
+    if (this.stopPromise) return this.stopPromise;
+    this.stopPromise = this.#stop().finally(() => { this.stopPromise = null; });
+    return this.stopPromise;
+  }
+
+  async #stop() {
+    const wasConnected = this.connected;
     this.running = false;
     this.#clearTimers();
-    if (this.connected) {
+    this.#abortRequests();
+    await Promise.allSettled([this.publicationPromise, this.matchPublisher.promise, this.connectPromise, this.authPromise]);
+    this.matchPublisher.clearQueue();
+    if (wasConnected) {
       try {
         await Promise.all([
           this.#write({ presence: this.#presence(false) }),
-          this.#writeMatchLink(false)
+          this.#writeMatchLink(false, { force: true, allowDuringRotation: true })
         ]);
       } catch {
         // La fermeture de l'application ne doit jamais être bloquée par le cloud.
@@ -140,10 +193,16 @@ class PublicOverlayRelay extends EventEmitter {
   }
 
   publish(channel, payload) {
-    if (!this.running || this.configuration().enabled === false) return;
+    if (!this.running) return;
+    const config = this.configuration();
+    if (config.enabled === false) return;
+    if (MATCH_MESSAGE_CHANNELS.has(channel)) {
+      this.matchPublisher.publish(channel, payload);
+      return;
+    }
     this.eventQueue.push(
       createRelayMessage(channel, payload, {
-        baseUrl: this.configuration().publicBaseUrl
+        baseUrl: config.publicBaseUrl
       })
     );
     if (this.eventQueue.length > MAX_QUEUED_MESSAGES) {
@@ -152,7 +211,7 @@ class PublicOverlayRelay extends EventEmitter {
         this.eventQueue.length - MAX_QUEUED_MESSAGES
       );
     }
-    if (this.eventTimer) return;
+    if (this.eventTimer || this.eventFlushPromise) return;
     this.eventTimer = setTimeout(() => {
       this.eventTimer = null;
       this.#flushEvents().catch((error) => this.#connectionFailed(error));
@@ -160,12 +219,20 @@ class PublicOverlayRelay extends EventEmitter {
     this.eventTimer.unref?.();
   }
 
-  publishState(state = this.store.getState()) {
+  publishState(state) {
     if (!this.running || this.configuration().enabled === false) return;
-    this.pendingState = createRelayState(state, {
-      baseUrl: this.configuration().publicBaseUrl
-    });
-    if (this.stateTimer) return;
+    // Read the latest owned projection only after coalescing. Explicit snapshots
+    // retain historical API semantics without keeping a mutable caller reference.
+    this.pendingState = state === undefined
+      ? true
+      : selectStatePaths(state, RELAY_STATE_PATHS);
+    this.pendingStateRevision += 1;
+    this.#scheduleStateFlush();
+    this.matchPublisher.publishState();
+  }
+
+  #scheduleStateFlush() {
+    if (this.stateTimer || this.stateFlushPromise) return;
     this.stateTimer = setTimeout(() => {
       this.stateTimer = null;
       this.#flushState().catch((error) => this.#connectionFailed(error));
@@ -174,47 +241,68 @@ class PublicOverlayRelay extends EventEmitter {
   }
 
   async rotateChannel() {
-    if (this.connected) {
-      try {
-        await this.#deleteCurrentChannel();
-      } catch {
-        // La rotation reste possible même si l'ancien canal est hors ligne.
+    const wasConnected = this.connected;
+    this.connected = false;
+    this.rotating = true;
+    this.#clearTimers();
+    this.#abortRequests();
+    try {
+      await Promise.allSettled([this.publicationPromise, this.matchPublisher.promise, this.connectPromise, this.authPromise]);
+      if (wasConnected) {
+        try {
+          await this.#deleteCurrentChannel();
+        } catch {
+          // La rotation reste possible même si l'ancien canal est hors ligne.
+        }
       }
+      const channelId = crypto.randomBytes(24).toString("base64url");
+      this.store.mutate((state) => {
+        state.settings.publicOverlayRelay.channelId = channelId;
+      }, true);
+      this.eventQueue = [];
+      this.matchPublisher.clearQueue();
+      this.publishedState = null;
+      this.publishedStateSignature = "";
+      this.matchPublisher.publishedSignature = "";
+      this.pendingState = true;
+      this.matchPublisher.pendingState = true;
+      if (this.running && this.configuration().enabled !== false) {
+        await this.#connect();
+      }
+      return {
+        urls: this.urls(),
+        status: this.status()
+      };
+    } finally {
+      this.rotating = false;
     }
-    const channelId = crypto.randomBytes(24).toString("base64url");
-    this.store.mutate((state) => {
-      state.settings.publicOverlayRelay.channelId = channelId;
-    }, true);
-    this.eventQueue = [];
-    this.publishedState = null;
-    this.pendingState = createRelayState(this.store.getState(), {
-      baseUrl: this.configuration().publicBaseUrl
-    });
-    if (this.running && this.configuration().enabled !== false) {
-      this.connected = false;
-      await this.#connect();
-    }
-    return {
-      urls: this.urls(),
-      status: this.status()
-    };
   }
 
   async rotateMatchChannel() {
     const currentChannel = this.configuration().matchChannelId;
-    if (this.connected && currentChannel) {
-      try {
-        await this.#deleteChannel(currentChannel);
-      } catch {
-        // La nouvelle URL reste générée si l'ancien alias est déjà hors ligne.
+    this.rotating = true;
+    try {
+      this.#abortRequests(currentChannel);
+      await Promise.all([this.publicationPromise, this.matchPublisher.promise]);
+      if (this.connected && currentChannel) {
+        try {
+          await this.#deleteChannel(currentChannel);
+        } catch {
+          // La nouvelle URL reste générée si l'ancien alias est déjà hors ligne.
+        }
       }
+      this.store.mutate((state) => {
+        state.settings.publicOverlayRelay.matchChannelId = createMatchChannelId();
+      }, true);
+      this.matchPublisher.clearQueue();
+      if (this.running && this.configuration().enabled !== false) {
+        await this.#writeMatchLink(true, { force: true, allowDuringRotation: true });
+      }
+    } finally {
+      this.rotating = false;
     }
-    this.store.mutate((state) => {
-      state.settings.publicOverlayRelay.matchChannelId = createMatchChannelId();
-    }, true);
-    if (this.running && this.configuration().enabled !== false) {
-      await this.#writeMatchLink(true);
-    }
+    await this.#flushState();
+    await this.matchPublisher.flush();
     return {
       urls: this.urls(),
       status: this.status()
@@ -222,8 +310,7 @@ class PublicOverlayRelay extends EventEmitter {
   }
 
   #ensureConfiguration() {
-    const current =
-      this.store.getState().settings.publicOverlayRelay || {};
+    const current = this.configuration();
     const next = {
       enabled: current.enabled !== false,
       publicBaseUrl:
@@ -250,31 +337,33 @@ class PublicOverlayRelay extends EventEmitter {
     if (!this.running) return;
     this.#setStatus("connecting");
     await this.#ensureToken();
-    const state = createRelayState(this.store.getState(), {
-      baseUrl: this.configuration().publicBaseUrl
-    });
+    if (!this.running) return;
+    const context = readState(this.store, [...RELAY_CONTEXT_PATHS, "settings.overlayConfigs"]);
+    const config = context.settings?.publicOverlayRelay || {};
+    const state = createRelayState(context, { baseUrl: config.publicBaseUrl });
     const configurations = createPublicOverlayConfigurations(
-      this.store.getState(),
-      { baseUrl: this.configuration().publicBaseUrl }
+      context,
+      { baseUrl: config.publicBaseUrl }
     );
     await Promise.all([
       this.#write({
-        ownerUid: this.configuration().uid,
+        ownerUid: config.uid,
         protocolVersion: PUBLIC_OVERLAY_PROTOCOL_VERSION,
         state,
         configurations,
         presence: this.#presence(true)
       }),
-      this.#writeMatchLink(true)
+      this.#writeMatchLink(true, { force: true, allowDuringRotation: true, state: context })
     ]);
     this.publishedState = state;
+    this.publishedStateSignature = this.#stateSignature(state, config);
     if (!this.running) return;
     this.connected = true;
     this.reconnectAttempt = 0;
     this.lastError = "";
     this.#setStatus("connected");
     this.#startHeartbeat();
-    await Promise.all([this.#flushState(), this.#flushEvents()]);
+    await Promise.all([this.#flushState(), this.#flushEvents(), this.matchPublisher.flush()]);
   }
 
   async #ensureToken(force = false) {
@@ -319,7 +408,8 @@ class PublicOverlayRelay extends EventEmitter {
           localId: refreshed.user_id
         });
         return this.idToken;
-      } catch {
+      } catch (error) {
+        if (isCancelledRequest(error)) throw error;
         // Le mot de passe local permet de restaurer la session si le refresh
         // token a été révoqué.
       }
@@ -414,21 +504,29 @@ class PublicOverlayRelay extends EventEmitter {
     channelId = this.configuration().channelId
   ) {
     const token = await this.#ensureToken();
+    // Le canal Match utilise une fabrique : une authentification lente ou une
+    // reprise 401 ne doit pas republier le profil ou les droits précédents.
+    const publicationValues = typeof values === "function" ? values() : values;
+    if (!publicationValues) return;
     const config = this.configuration();
-    const response = await this.fetch(
+    const response = await this.#request(
       `${relayDatabaseUrl(
         config.databaseUrl,
         channelId
-      )}?auth=${encodeURIComponent(token)}`,
+      )}?auth=${encodeURIComponent(token)}&print=silent`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ownerUid: config.uid,
           protocolVersion: PUBLIC_OVERLAY_PROTOCOL_VERSION,
-          ...values
+          ...publicationValues
         })
-      }
+      },
+      async (result) => ({
+        ok: result.ok, status: result.status,
+        detail: result.ok ? "" : (await result.text()).slice(0, 500)
+      })
     );
     if ((response.status === 401 || response.status === 403) && retry) {
       this.idToken = "";
@@ -436,7 +534,7 @@ class PublicOverlayRelay extends EventEmitter {
       return this.#write(values, false, channelId);
     }
     if (!response.ok) {
-      const detail = (await response.text()).slice(0, 500);
+      const detail = response.detail;
       throw new Error(
         `Relais Firebase indisponible (${response.status})${
           detail ? ` : ${detail}` : ""
@@ -452,7 +550,7 @@ class PublicOverlayRelay extends EventEmitter {
   async #deleteChannel(channelId, retry = true) {
     const token = await this.#ensureToken();
     const config = this.configuration();
-    const response = await this.fetch(
+    const response = await this.#request(
       `${relayDatabaseUrl(
         config.databaseUrl,
         channelId
@@ -471,8 +569,15 @@ class PublicOverlayRelay extends EventEmitter {
     }
   }
 
-  async #flushEvents() {
-    if (!this.eventQueue.length) return;
+  #flushEvents() {
+    if (this.eventFlushPromise) return this.eventFlushPromise;
+    this.eventFlushPromise = this.#queuePublication(() => this.#flushEventsNow())
+      .finally(() => { this.eventFlushPromise = null; });
+    return this.eventFlushPromise;
+  }
+
+  async #flushEventsNow() {
+    if (!this.running || !this.eventQueue.length) return;
     if (!this.connected) {
       this.#scheduleReconnect();
       return;
@@ -484,12 +589,15 @@ class PublicOverlayRelay extends EventEmitter {
     const includesConfiguration = messages.some(
       (message) => message?.channel === "configuration"
     );
-    const state = createRelayState(this.store.getState(), {
-      baseUrl: this.configuration().publicBaseUrl
-    });
+    const stateRevision = this.pendingStateRevision;
+    const context = readState(this.store, includesConfiguration
+      ? [...RELAY_CONTEXT_PATHS, "settings.overlayConfigs"]
+      : RELAY_CONTEXT_PATHS);
+    const config = context.settings?.publicOverlayRelay || {};
+    const state = createRelayState(context, { baseUrl: config.publicBaseUrl });
     const configurations = includesConfiguration
-      ? createPublicOverlayConfigurations(this.store.getState(), {
-          baseUrl: this.configuration().publicBaseUrl
+      ? createPublicOverlayConfigurations(context, {
+          baseUrl: config.publicBaseUrl
         })
       : null;
     try {
@@ -511,8 +619,17 @@ class PublicOverlayRelay extends EventEmitter {
         presence: this.#presence(true)
       });
       this.publishedState = state;
+      this.publishedStateSignature = this.#stateSignature(state, config);
+      // The atomic batch includes the latest store state. An older pending
+      // snapshot must not be replayed after it; a newer publication still wins.
+      if (this.pendingState && stateRevision === this.pendingStateRevision) {
+        this.pendingState = true;
+      }
     } catch (error) {
       this.eventQueue.unshift(...messages);
+      if (this.eventQueue.length > MAX_QUEUED_MESSAGES) {
+        this.eventQueue.splice(0, this.eventQueue.length - MAX_QUEUED_MESSAGES);
+      }
       throw error;
     }
     if (this.eventQueue.length && !this.eventTimer) {
@@ -524,32 +641,59 @@ class PublicOverlayRelay extends EventEmitter {
     }
   }
 
-  async #flushState() {
-    if (!this.pendingState || !this.connected) return;
-    const state = this.pendingState;
+  #flushState() {
+    if (this.stateFlushPromise) return this.stateFlushPromise;
+    this.stateFlushPromise = this.#queuePublication(() => this.#flushStateNow())
+      .finally(() => {
+        this.stateFlushPromise = null;
+        if (this.running && this.connected && this.pendingState) this.#scheduleStateFlush();
+      });
+    return this.stateFlushPromise;
+  }
+
+  async #flushStateNow() {
+    if (!this.running || !this.pendingState || !this.connected) return;
+    const pending = this.pendingState;
+    const context = readState(this.store, RELAY_CONTEXT_PATHS);
+    const config = context.settings?.publicOverlayRelay || {};
+    const state = createRelayState(pending === true ? context : pending, {
+      baseUrl: config.publicBaseUrl
+    });
+    const signature = this.#stateSignature(state, config);
     this.pendingState = null;
     try {
-      await Promise.all([
-        this.#write({
-          state,
-          presence: this.#presence(true)
-        }),
-        this.#writeMatchLink(true)
-      ]);
+      if (signature !== this.publishedStateSignature) await this.#write({ state, presence: this.#presence(true) });
       this.publishedState = state;
+      this.publishedStateSignature = signature;
     } catch (error) {
-      this.pendingState = state;
+      // A newer state queued during a failed request must not be overwritten by
+      // the older request's retry. Reconnect will also send the current snapshot.
+      this.pendingState ||= pending;
       throw error;
     }
+  }
+
+  #queuePublication(callback) {
+    const publication = this.publicationPromise.then(callback);
+    this.publicationPromise = publication.catch(() => {});
+    return publication;
+  }
+
+  #stateSignature(state, config) {
+    return JSON.stringify([config.databaseUrl, config.channelId, config.uid, state]);
   }
 
   #startHeartbeat() {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
-      Promise.all([
-        this.#write({ presence: this.#presence(true) }),
-        this.#writeMatchLink(true)
-      ]).catch((error) => this.#connectionFailed(error));
+      if (!this.running || !this.connected || this.rotating || this.configuration().enabled === false) return;
+      // Chaque canal possède sa propre file. Les permissions Match sont relues
+      // après sérialisation ; le heartbeat ne peut réappliquer un ancien score.
+      this.#queuePublication(async () => {
+        if (!this.running || !this.connected || this.rotating || this.configuration().enabled === false) return;
+        await this.#write({ presence: this.#presence(true) });
+      }).catch((error) => this.#connectionFailed(error));
+      this.#writeMatchLink(true, { force: true }).catch((error) => this.#connectionFailed(error));
     }, HEARTBEAT_MS);
     this.heartbeatTimer.unref?.();
   }
@@ -562,32 +706,12 @@ class PublicOverlayRelay extends EventEmitter {
     };
   }
 
-  #matchSource() {
-    const state = this.store.getState();
-    const port = Number(state.settings?.overlayPort || 0);
-    return {
-      enabled: hasProOverlayAccess(state),
-      accountNumber: matchAccountNumber(state.settings?.account?.uid),
-      localPort:
-        Number.isInteger(port) && port >= 1 && port <= 65_535 ? port : 0
-    };
-  }
-
-  #writeMatchLink(connected) {
-    const config = this.configuration();
-    return this.#write(
-      {
-        sourceChannel: config.channelId,
-        matchSource: this.#matchSource(),
-        presence: this.#presence(connected)
-      },
-      true,
-      config.matchChannelId
-    );
+  #writeMatchLink(connected, options = {}) {
+    return this.matchPublisher.writeLink(connected, options);
   }
 
   #connectionFailed(error) {
-    if (!this.running) return;
+    if (!this.running || this.rotating) return;
     this.connected = false;
     this.lastError = String(error?.message || error || "Erreur inconnue").slice(
       0,
@@ -600,6 +724,7 @@ class PublicOverlayRelay extends EventEmitter {
   #scheduleReconnect() {
     if (
       !this.running ||
+      this.rotating ||
       this.configuration().enabled === false ||
       this.reconnectTimer
     ) {
@@ -640,34 +765,28 @@ class PublicOverlayRelay extends EventEmitter {
     this.stateTimer = null;
     this.heartbeatTimer = null;
     this.reconnectTimer = null;
+    this.matchPublisher.clearTimer();
   }
 
-  async #requestJson(url, options) {
-    const response = await this.fetch(url, options);
-    const text = await response.text();
-    let body = {};
-    try {
-      body = text ? JSON.parse(text) : {};
-    } catch {
-      body = {};
-    }
-    if (!response.ok) {
-      const message =
-        body?.error?.message ||
-        body?.error ||
-        `Requête Firebase refusée (${response.status}).`;
-      const error = new Error(String(message));
-      error.status = response.status;
-      throw error;
-    }
-    return body;
+  #requestContext() {
+    return {
+      fetch: (...args) => this.fetch(...args),
+      requestControllers: this.requestControllers,
+      requestTimeoutMs: this.requestTimeoutMs
+    };
   }
-}
 
-function isMissingFirebaseUser(error) {
-  return /EMAIL_NOT_FOUND|USER_DISABLED|INVALID_LOGIN_CREDENTIALS/i.test(
-    String(error?.message || "")
-  );
+  #abortRequests(channelId = "") {
+    return abortRequests(this.#requestContext(), channelId);
+  }
+
+  #request(url, options, readResponse) {
+    return requestRelay(this.#requestContext(), url, options, readResponse);
+  }
+
+  #requestJson(url, options) {
+    return requestJson(this.#requestContext(), url, options);
+  }
 }
 
 module.exports = {

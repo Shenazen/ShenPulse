@@ -15,8 +15,6 @@ if (!overlayCatalog) {
 }
 const content = document.getElementById("content");
 const navigation = document.getElementById("navigation");
-const pageTitle = document.getElementById("page-title");
-const pageKicker = document.getElementById("page-kicker");
 const profileSelect = document.getElementById("profile-select");
 const profileControl = document.getElementById("profile-control");
 const profilePickerButton = document.getElementById("profile-picker-button");
@@ -30,10 +28,10 @@ const gameSessionStop = document.getElementById("game-session-stop");
 const sessionButton = document.getElementById("session-button");
 const sessionLabel = document.getElementById("session-label");
 const accountAuthCta = document.getElementById("account-auth-cta");
-const tiktokAccountButton = document.getElementById("tiktok-account-button");
-const tiktokControl = tiktokAccountButton.closest(".tiktok-control");
+const tiktokUsernameInput = document.getElementById("tiktok-username");
+const tiktokControl = tiktokUsernameInput.closest(".tiktok-control");
 const tiktokConnectionButton = document.getElementById("tiktok-connection-button");
-const tiktokAccountLabel = document.getElementById("tiktok-account-label");
+const tiktokConnectionLabel = document.getElementById("tiktok-connection-label");
 const tiktokStatusLabel = document.getElementById("tiktok-status-label");
 const tiktokStatusDot = document.getElementById("tiktok-status-dot");
 const accountMenuButton = document.getElementById("account-menu-button");
@@ -98,7 +96,7 @@ function readCopiedMediaScreenUrls() {
 }
 
 let snapshot = null;
-let currentPage = "dashboard";
+let currentPage = "home";
 let liveEvents = [];
 let navigationStructureSignature = "";
 let profileChromeSignature = "";
@@ -240,22 +238,21 @@ const MATCH_OVERLAYS = overlayCatalog.matches.map(({ key, name, match }) => [
 ]);
 
 const overlayDesignSelections = Object.create(null);
-const matchVideoPaths = Object.create(null);
 
 const SUBSCRIPTION_PLANS = [
   {
     tier: "free",
     name: "Free",
     price: 0,
-    description: "Catalogue visible, overlays inclus, actions et simulateur.",
-    features: ["Overlays locaux", "Actions et simulateur", "Catalogue des jeux consultable"]
+    description: "Les outils essentiels pour préparer votre LIVE.",
+    features: ["3 actions réutilisables et 1 profil", "Voix, sons et musique", "Overlays de base et simulateur"]
   },
   {
     tier: "pro",
     name: "Pro",
     price: 9.99,
-    description: "Débloque les fonctions Pro et l’accès aux jeux ShenPulse.",
-    features: ["Toutes les fonctions Pro", "Accès aux jeux interactifs", "Passerelles locales et support des packs"]
+    description: "Votre studio avancé, avec plus de liberté de création.",
+    features: ["Actions et profils illimités", "Jeux vidéo, interactions IRL, commandes et matchs", "Scènes et widgets Pro", "Modules communautaires inclus dans Pro"]
   },
   {
     tier: "premium",
@@ -311,6 +308,8 @@ const ACTION_TYPE_ICONS = {
 };
 
 const NAVIGATION_ICONS = {
+  statistics: '<path d="M4 21V13h4v8M10 21V8h4v13M16 21V3h4v18"></path>',
+  home: '<path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M9 21v-9h6v9"></path>',
   dashboard: `
     <rect width="7" height="9" x="3" y="3" rx="1"></rect>
     <rect width="7" height="5" x="14" y="3" rx="1"></rect>
@@ -392,6 +391,7 @@ function navigationIcon(pageId) {
 
 const pages = [
   { section: "PILOTAGE" },
+  { id: "home", label: "Accueil", icon: "⌂", title: "Accueil", kicker: "BIENVENUE CHEZ SHENPULSE" },
   { id: "dashboard", label: "Vue d’ensemble", icon: "⌁", title: "Vue d’ensemble", kicker: "CENTRE DE CONTRÔLE" },
   { id: "live", label: "Session en direct", icon: "◉", title: "Session en direct", kicker: "ÉVÉNEMENTS TEMPS RÉEL", count: () => isAccountAuthenticated() ? liveEvents.length : null },
   { section: "CRÉATION" },
@@ -400,18 +400,17 @@ const pages = [
   { id: "games", label: "Jeux & effets", icon: "◇", title: "Jeux & effets", kicker: "INTERACTIONS EN JEU", count: () => snapshot?.packs.length },
   {
     id: "irl",
-    label: "Interactions IRL",
+    label: "Machines IRL",
     icon: "⚡",
-    title: "Interactions IRL",
+    title: "Machines IRL",
     kicker: "APPAREILS CONNECTÉS",
     count: () =>
       snapshot?.state.settings.irl?.devices?.filter(isPlugPlusIrlDevice)
         .length || null,
-    ownerOnly: true,
-    defaultScope: "admin"
+    defaultScope: "public"
   },
   { id: "goals", label: "Objectifs", icon: "◎", title: "Objectifs", kicker: "PROGRESSION EN DIRECT" },
-  { id: "commands", label: "Chatbot", icon: "⌘", title: "Chatbot & commandes", kicker: "ENGAGEMENT DU CHAT" },
+  { id: "commands", label: "Commandes", icon: "⌘", title: "Commandes", kicker: "PILOTAGE PAR LE CHAT" },
   { section: "SYSTÈME" },
   { id: "membership", label: "Abonnement", icon: "♛", title: "Tarifs & abonnement", kicker: "ACCÈS SHENPULSE" },
   { id: "connections", label: "Connexions", icon: "⌁", title: "Connexions", kicker: "PLATEFORMES & RELAIS", count: () => snapshot?.state.connections.length },
@@ -448,6 +447,35 @@ pages.splice(
     count: () => soundActionRows().length
   }
 );
+
+// Keep legacy routes for saved links, but present one creator workflow in navigation.
+pages.find((page) => page.id === "rules").hidden = () => true;
+pages.find((page) => page.id === "sounds").hidden = () => true;
+Object.assign(pages.find((page) => page.id === "dashboard"), { label: "Tableau de bord", title: "Tableau de bord" });
+Object.assign(pages.find((page) => page.id === "games"), { label: "Jeux vidéo", title: "Jeux vidéo compatibles" });
+pages.splice(pages.findIndex((page) => page.section === "CRÉATION"), 0,
+  { id: "users", label: "Utilisateurs", title: "Utilisateurs & statistiques", kicker: "VOTRE COMMUNAUTÉ", icon: "♧" }
+);
+pages.splice(pages.findIndex((page) => page.id === "actions") + 1, 0,
+  { id: "voice", label: "Voix & sons", title: "Voix & sons", kicker: "AUDIO INTERACTIF", icon: "♪" },
+  { id: "music", label: "Musique", title: "Musique & song requests", kicker: "AMBIANCE DU LIVE", icon: "♫" }
+);
+pages.splice(pages.findIndex((page) => page.id === "connections") + 1, 0,
+  { id: "controllers", label: "Contrôleurs", title: "Stream Deck & MIDI", kicker: "RÉGIE PHYSIQUE", icon: "▦" }
+);
+// Les commandes gardent leur route historique, après les interactions IRL.
+const chatbotNavigationEntry = pages.splice(pages.findIndex((page) => page.id === "commands"), 1)[0];
+pages.splice(pages.findIndex((page) => page.id === "irl") + 1, 0, chatbotNavigationEntry,
+  { id: "matches", label: "Matchs", icon: "VS", title: "Matchs", kicker: "LES TEMPS FORTS DU LIVE", defaultScope: "public" }
+);
+Object.assign(NAVIGATION_ICONS, {
+  users: '<circle cx="9" cy="8" r="3"></circle><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M19 21v-3a6 6 0 0 0-3-5"></path>',
+  voice: '<rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"></path>',
+  music: '<path d="M9 18V5l12-3v13M9 8l12-3"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="15" r="3"></circle>',
+  commands: '<rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="m7 9 3 3-3 3M13 15h4"></path>',
+  matches: '<path d="m4 3 5 2 1 6-4 4-3-2V7zM20 3l-5 2-1 6 4 4 3-2V7zM6 15v6h5M18 15v6h-5"></path>',
+  controllers: '<rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M9 3v18M15 3v18M3 9h18M3 15h18"></path>'
+});
 
 const eventIcons = {
   gift: "🎁",

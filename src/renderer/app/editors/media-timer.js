@@ -53,6 +53,7 @@ function openTtsEditor(row) {
     onSubmit: async (data) => {
       const actionConfig = {
         ...config,
+        ...readTtsModerationFields(data),
         text: "{{data.message}}",
         voice: data.get("voice"),
         rate: Number(data.get("rate")),
@@ -85,8 +86,8 @@ function openTtsEditor(row) {
           source: "*",
           threshold: 1
         },
-        conditions: [],
-        cooldown: { globalMs: 0, perUserMs: 0 },
+        conditions: currentRule.conditions || [],
+        cooldown: currentRule.cooldown || { globalMs: 0, perUserMs: 0 },
         actions
       });
       await ensureRuleInActiveProfile(ruleId);

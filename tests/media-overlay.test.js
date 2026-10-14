@@ -1,3 +1,5 @@
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const {
   readOverlayRuntimeSource,
   readOverlayStyles,
@@ -53,10 +55,7 @@ test("l'éditeur Media exige un média et masque les réglages d'alerte", () => 
 });
 
 test("l'ancien identifiant Alerte est lui aussi rendu en Media seul", () => {
-  const runner = fs.readFileSync(
-    path.join(root, "src", "main", "action-runner.js"),
-    "utf8"
-  );
+  const runner = readMainSource("action-runner.js");
   const mediaBranch = runner.slice(
     runner.indexOf('case "overlay.alert"'),
     runner.indexOf('case "tts.speak"')

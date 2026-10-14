@@ -1,0 +1,119 @@
+/* Creator bar beside the full-height sidebar; existing profile/account controls are reused. */
+.app-shell { grid-template-columns:var(--sidebar-width) minmax(0,1fr); grid-template-rows:64px minmax(0,1fr); }
+.creator-topbar { grid-column:2; grid-row:1; display:flex; align-items:center; gap:20px; min-width:0; padding:7px 13px 7px 18px; border-bottom:1px solid rgba(152,118,224,.17); background:linear-gradient(90deg,#0a0c18,#0c0b19 65%,#090d17); backdrop-filter:none; }
+.creator-topbar button,.creator-topbar input,.creator-topbar label { -webkit-app-region:no-drag; }
+.app-shell > .sidebar { grid-column:1; grid-row:1 / -1; height:100%; max-height:100%; }
+.sidebar .brand { height:auto; min-height:66px; flex:0 0 auto; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
+.sidebar .brand-logo { object-position:center; }
+.sidebar .brand-tagline { display:block; width:100%; text-align:center; color:#9094ad; font-size:7.5px; letter-spacing:.105em; line-height:1.35; white-space:nowrap; }
+.app-shell > .workspace { grid-column:2; grid-row:2; grid-template-rows:auto minmax(0,1fr); }
+.workspace > .store-update-banner { grid-row:1; }
+.workspace > #content { grid-row:2; }
+.creator-topbar #session-button { display:none; }
+.creator-topbar .game-session-control { height:34px; flex:0 0 auto; }
+.creator-topbar .game-session-summary { min-width:0; max-width:150px; padding:0 10px; }
+.creator-topbar-left { display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+.creator-topbar-left[hidden],.creator-pro-button[hidden] { display:none; }
+.creator-live-status { display:inline-flex; align-items:center; gap:6px; min-height:25px; max-width:158px; padding:4px 9px; border:1px solid rgba(34,211,238,.22); border-radius:999px; background:rgba(8,61,58,.32); color:#ff6577; }
+.creator-live-status[hidden] { display:none; }
+.creator-live-status > span { width:7px; height:7px; flex:0 0 auto; border-radius:50%; background:#fb536b; }
+.creator-live-status strong { font-size:10px; font-weight:650; }
+.creator-live-status small { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:#98a2b9; font-size:9px; font-weight:650; }
+.creator-pro-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:33px; padding:7px 12px; border:1px solid rgba(206,155,255,.54); border-radius:999px; background:linear-gradient(110deg,#8b35ed,#b745e7); color:#fff; box-shadow:0 0 14px rgba(159,74,242,.18),inset 0 1px rgba(243,212,255,.14); font-size:11px; font-weight:800; white-space:nowrap; cursor:pointer; }
+.creator-pro-icon { display:block; width:17px; height:17px; flex:0 0 auto; }
+.creator-pro-button:hover { background:linear-gradient(110deg,#a14cf1,#c25beb); border-color:#d7b5fc; }
+.creator-topbar-center { display:flex; align-items:center; justify-content:center; gap:10px; flex:1 1 520px; min-width:320px; }
+.creator-topbar-center > .creator-live-status { flex:0 1 auto; }
+.creator-topbar .titlebar-actions { flex:0 0 auto; gap:12px; min-width:0; }
+.creator-tiktok-control { position:relative; display:flex; align-items:center; gap:10px; flex:0 1 430px; min-width:0; width:min(100%,430px); height:44px; padding:4px 5px 4px 16px; overflow:visible; border:1px solid rgba(166,106,255,.24); border-radius:999px; background:linear-gradient(110deg,#111324,#0d1020); box-shadow:0 0 0 3px rgba(139,68,222,.045); }
+.creator-tiktok-control:focus-within { border-color:rgba(196,132,255,.62); }
+.creator-tiktok-input-wrap { display:flex; align-items:center; gap:5px; flex:1 1 auto; min-width:0; }
+.creator-tiktok-at { color:#76768d; font-size:16px; font-weight:800; }
+.creator-tiktok-control #tiktok-username { min-width:0; width:100%; height:35px; padding:0; border:0; outline:none; border-radius:0; color:#f0ebfa; background:transparent; box-shadow:none; font-family:inherit; font-size:13px; font-weight:750; }
+.creator-tiktok-control #tiktok-username:disabled { opacity:1; color:#e9e4f7; cursor:default; }
+.creator-tiktok-control #tiktok-username::placeholder { color:#595d72; }
+.creator-tiktok-control .tiktok-status-dot { flex:0 0 auto; width:9px; height:9px; margin:0; box-shadow:none; background:#3b3e52; }
+.creator-tiktok-control .status-live { background:#14c88c; box-shadow:0 0 7px rgba(20,200,140,.23); }
+.creator-tiktok-control .status-waiting,.creator-tiktok-control .status-busy { background:#b55afb; }
+.creator-tiktok-connect { display:inline-flex; align-items:center; justify-content:center; gap:7px; flex:0 0 auto; min-height:34px; padding:6px 15px; border:1px solid rgba(215,167,252,.15); border-radius:999px; color:#fff; background:linear-gradient(105deg,#aa4df2,#c254f1); box-shadow:0 3px 10px rgba(151,66,219,.22); font-size:12px; font-weight:800; white-space:nowrap; cursor:pointer; }
+.creator-tiktok-connect svg { width:17px; height:17px; }
+.creator-tiktok-connect:hover:not(:disabled) { filter:brightness(1.1); }
+.creator-tiktok-connect:disabled { cursor:wait; opacity:.7; }
+.creator-tiktok-control[data-connection-state="live"] .creator-tiktok-connect { background:linear-gradient(105deg,#049b72,#05b77f); border-color:rgba(41,212,155,.3); box-shadow:0 3px 12px rgba(0,160,113,.16); }
+.creator-tiktok-control[data-connection-state="waiting"] .creator-tiktok-connect { background:linear-gradient(105deg,#913dcc,#b43dec); }
+.creator-tiktok-error { position:absolute; top:calc(100% + 9px); left:8px; z-index:1150; max-width:min(430px,calc(100vw - 35px)); padding:10px 13px; border:1px solid rgba(244,100,135,.35); border-radius:10px; color:#fecdd3; background:#25101f; box-shadow:0 8px 20px rgba(0,0,0,.3); font-size:11px; line-height:1.5; }
+.creator-tiktok-error[hidden] { display:none; }
+.creator-topbar .profile-control { height:39px; max-width:190px; border-color:rgba(160,126,219,.2); border-radius:11px; background:#111321; }
+.creator-topbar .profile-picker { min-width:130px; max-width:158px; padding:0 9px; grid-template-columns:minmax(0,1fr) 12px; gap:7px; }
+.creator-topbar .profile-picker > span { display:none; }
+.creator-topbar .profile-picker > strong { font-size:11px; }
+.creator-topbar .profile-manage-button { width:31px; flex-shrink:0; }
+.creator-topbar .profile-menu { right:0; }
+.creator-topbar .account-control { flex:0 0 auto; width:218px; }
+.creator-topbar .user-chip { grid-template-columns:32px minmax(0,1fr) 18px; gap:8px; height:42px; padding:4px 8px 4px 4px; border:1px solid rgba(174,146,218,.52); border-radius:10px 3px 10px 3px; background:linear-gradient(115deg,#151529,#141020); }
+.creator-topbar .user-chip strong { display:block; font-size:12px; font-weight:750; }
+.creator-topbar .user-chip .chevron { display:grid; place-items:center; width:18px; height:18px; border-radius:6px; color:#cdb5eb; background:#2b193f; transform:rotate(90deg); font-size:17px; }
+.creator-topbar .user-chip #account-email { display:none; }
+.creator-topbar .avatar { width:32px; height:32px; border-radius:50%; overflow:hidden; border:2px solid rgba(133,204,212,.75); background:linear-gradient(135deg,#57409e,#923dda); }
+.creator-topbar .avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+.creator-topbar .account-menu { top:calc(100% + 10px); bottom:auto; left:auto; width:290px; max-width:calc(100vw - 28px); z-index:1150; }
+.creator-topbar .account-menu-avatar { border-radius:50%; }
+.creator-topbar .account-menu-preferences { display:grid; gap:5px; padding:8px 0; border-bottom:1px solid rgba(174,146,218,.15); }
+.creator-topbar .account-preference-button { display:flex; align-items:center; gap:8px; width:100%; min-height:34px; padding:7px 9px; border:0; border-radius:8px; color:var(--text); background:transparent; font-size:11px; text-align:left; }
+.creator-topbar .account-preference-button:hover { background:rgba(255,255,255,.06); }
+.creator-topbar .account-preference-button[aria-pressed="true"] { color:#c8a2f6; background:rgba(153,80,223,.13); }
+.creator-topbar .account-preference-button svg { width:16px; height:16px; flex:0 0 auto; }
+.creator-topbar .account-language-preference { display:flex; align-items:center; justify-content:space-between; padding-left:9px; color:var(--text); font-size:11px; }
+.creator-topbar #studio-language { justify-content:center; width:42px; margin-right:4px; border:1px solid rgba(174,146,218,.18); background:rgba(153,80,223,.08); font-weight:750; }
+.creator-topbar .account-directory-preference { padding-top:7px; margin-top:3px; border-top:1px solid rgba(174,146,218,.15); }
+.creator-topbar .account-directory-preference[hidden] { display:none; }
+.creator-topbar #account-directory-toggle { align-items:flex-start; line-height:1.45; }
+.creator-topbar #account-directory-toggle > span:first-of-type { flex:1; }
+.creator-topbar #account-directory-toggle:disabled { opacity:.6; cursor:wait; }
+.creator-topbar .account-directory-switch { position:relative; width:25px; height:15px; flex:0 0 25px; margin-top:1px; border:1px solid #565268; border-radius:999px; background:#282637; }
+.creator-topbar .account-directory-switch::after { position:absolute; top:2px; left:2px; width:9px; height:9px; border-radius:50%; background:#a6a0b3; content:""; }
+.creator-topbar #account-directory-toggle[aria-checked="true"] .account-directory-switch { border-color:#b460ec; background:#7735b5; }
+.creator-topbar #account-directory-toggle[aria-checked="true"] .account-directory-switch::after { left:12px; background:#fff; }
+.creator-topbar #account-directory-description { display:block; padding:0 9px 5px; color:#9f94b3; font-size:9px; line-height:1.6; }
+.creator-topbar .creator-account-plan { display:inline-flex; width:max-content; max-width:100%; align-items:center; margin-top:4px; padding:2px 6px; border-radius:3px; color:#ececf4; background:#5c6276; font-size:7px; font-weight:900; letter-spacing:.13em; line-height:1; }
+.creator-topbar .creator-account-plan[data-tier="pro"] { background:#6636ad; color:#eedbff; }
+.creator-topbar .creator-account-plan[data-tier="premium"] { background:#7a5928; color:#ffe6a8; }
+.creator-topbar .window-buttons { flex:0 0 auto; gap:2px; margin-left:0; border:0; }
+.creator-topbar .window-buttons > button { width:32px; height:35px; border-radius:6px; color:#a4abc1; font-size:16px; }
+.creator-topbar .account-auth-cta { min-width:0; height:40px; padding:7px 15px; border-radius:999px; grid-template-columns:24px auto; gap:8px; }
+.creator-topbar .account-auth-cta small { display:none; }
+.creator-topbar .account-auth-cta-icon { width:24px; height:24px; border-radius:50%; font-size:8px; }
+.creator-topbar button:focus-visible { outline:2px solid #68e7f3; outline-offset:3px; }
+.creator-topbar .visually-hidden { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); border:0; white-space:nowrap; }
+.studio-light-mode .creator-topbar .creator-pro-button,.studio-light-mode .creator-topbar .creator-tiktok-connect,.studio-light-mode .creator-topbar .creator-tiktok-control { box-shadow:none; }
+@media (max-width:1500px) {
+  .creator-topbar { gap:16px; padding-left:14px; }
+  .creator-topbar .titlebar-actions { gap:9px; }
+  .creator-topbar .account-control { width:196px; }
+  .creator-topbar .profile-control { max-width:170px; }
+  .creator-topbar .profile-picker { min-width:104px; max-width:133px; }
+  .creator-tiktok-control { max-width:390px; }
+  .creator-topbar .game-session-summary { grid-template-columns:9px; width:34px; padding:0 12px; }
+  .creator-topbar .game-session-summary > span:last-child { display:none; }
+}
+@media (max-width:1250px) {
+  .creator-topbar { gap:10px; padding:7px 12px; }
+  .creator-live-status { max-width:100px; }
+  .creator-live-status small { display:none; }
+  .creator-pro-button { padding:7px 10px; }
+  .creator-topbar .titlebar-actions { gap:6px; }
+  .creator-topbar .profile-control { max-width:130px; }
+  .creator-topbar .profile-picker { min-width:80px; max-width:104px; }
+  .creator-topbar-center { gap:7px; min-width:220px; }
+  .creator-tiktok-connect { font-size:11px; padding:6px 10px; }
+  .creator-topbar .account-control { width:155px; }
+  .creator-topbar .window-buttons > button { width:27px; }
+}
+@media (max-width:1050px) {
+  .app-shell { grid-template-rows:104px minmax(0,1fr); }
+  .creator-topbar { flex-wrap:wrap; gap:4px 10px; padding:5px 10px; }
+  .creator-topbar-left { order:1; flex:1; }
+  .creator-topbar .titlebar-actions { order:2; margin-left:auto; }
+  .creator-topbar-center { order:3; flex:1 0 100%; min-width:0; }
+  .creator-tiktok-control { width:100%; max-width:530px; }
+}

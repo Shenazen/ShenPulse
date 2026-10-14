@@ -15,10 +15,13 @@ const {
   FEATURE_ITEMS,
   auditVisibility,
   canAccessScope,
-  canonicalizeVisibility
+  canonicalizeVisibility,
+  migrateVisibility,
+  scopeFor
 } = require("../src/shared/visibility-catalog");
 
 const CURRENT_PAGE_IDS = [
+  "home",
   "dashboard",
   "live",
   "actions",
@@ -29,11 +32,16 @@ const CURRENT_PAGE_IDS = [
   "irl",
   "goals",
   "commands",
+  "matches",
   "membership",
   "connections",
   "activity",
   "settings",
-  "admin"
+  "admin",
+  "users",
+  "voice",
+  "music",
+  "controllers"
 ];
 
 test("l’inventaire admin reprend exactement les pages déclarées par ShenPulseNew", () => {
@@ -147,7 +155,7 @@ test("la migration remplace les identifiants hérités sans perdre leurs portée
   };
 
   const migrated = canonicalizeVisibility(legacy, catalog);
-  assert.equal(migrated.schemaVersion, 7);
+  assert.equal(migrated.schemaVersion, 9);
   assert.deepEqual(migrated.navigation.live, { scope: "admin" });
   assert.deepEqual(migrated.navigation.goals, { scope: "hidden" });
   assert.deepEqual(migrated.navigation.dashboard, { scope: "public" });
@@ -163,6 +171,43 @@ test("la migration remplace les identifiants hérités sans perdre leurs portée
     legacy.cheatAccess,
     "les accès propriétaires non liés à la visibilité sont conservés"
   );
+});
+
+test("Studio Live and overlays have independent scopes after the version 8 migration", () => {
+  const catalog = { navigation: [{ id: "studio" }, { id: "overlays" }] };
+  const legacy = canonicalizeVisibility({ schemaVersion: 7,
+    navigation: { studio: { scope: "admin" } } }, catalog);
+  assert.equal(legacy.schemaVersion, 9);
+  assert.deepEqual(legacy.navigation.overlays, { scope: "admin" });
+  assert.deepEqual(legacy.navigation.studio, { scope: "public" });
+  const updated = canonicalizeVisibility({ schemaVersion: 8,
+    navigation: { studio: { scope: "hidden" } } }, catalog);
+  assert.deepEqual(updated.navigation.studio, { scope: "hidden" });
+  assert.deepEqual(updated.navigation.overlays, { scope: "public" });
+});
+
+test("the dedicated voice and music pages retain legacy audio navigation scopes", () => {
+  const catalog = { navigation: [{ id: "sounds" }, { id: "voice" }, { id: "music" }] };
+  const migrated = canonicalizeVisibility({ schemaVersion: 7,
+    navigation: { sounds: { scope: "hidden" }, song: { scope: "admin" } } }, catalog);
+  assert.deepEqual(migrated.navigation.sounds, { scope: "hidden" });
+  assert.deepEqual(migrated.navigation.voice, { scope: "hidden" });
+  assert.deepEqual(migrated.navigation.music, { scope: "admin" });
+});
+
+test("Accueil is public by default and does not overwrite saved navigation visibility", () => {
+  const catalog = { navigation: [{ id: "home", defaultScope: "public" },
+    { id: "dashboard" }, { id: "studio" }, { id: "overlays" }] };
+  const migrated = canonicalizeVisibility({ schemaVersion: 7,
+    navigation: { dashboard: { scope: "hidden" }, studio: { scope: "admin" } } }, catalog);
+  assert.equal(migrated.schemaVersion, 9, "la migration commerciale conserve les droits des autres pages");
+  assert.deepEqual(migrated.navigation.home, { scope: "public" });
+  assert.deepEqual(migrated.navigation.dashboard, { scope: "hidden" });
+  assert.deepEqual(migrated.navigation.overlays, { scope: "admin" });
+  const restricted = canonicalizeVisibility({ schemaVersion: 8,
+    navigation: { home: { scope: "admin" }, dashboard: { scope: "public" } } }, catalog);
+  assert.deepEqual(restricted.navigation.home, { scope: "admin" }, "explicit admin scope remains authoritative");
+  assert.deepEqual(restricted.navigation.dashboard, { scope: "public" });
 });
 
 test("l’audit distingue les entrées manquantes et obsolètes", () => {
@@ -202,20 +247,63 @@ test("masqué reste invisible même pour le propriétaire", () => {
   assert.equal(canAccessScope("hidden", true), false);
 });
 
-test("les interactions IRL sont réservées au propriétaire par défaut", () => {
+test("les interactions IRL sont publiques par défaut, avec abonnement vérifié séparément", () => {
   const catalog = {
-    navigation: [{ id: "irl", defaultScope: "admin", ownerOnly: true }],
+    navigation: [{ id: "irl", defaultScope: "public" }],
     features: FEATURE_ITEMS,
     actionTypes: [
       {
         id: "irl.shelly",
-        defaultScope: "admin",
-        ownerOnly: true
+        defaultScope: "public"
       }
     ]
   };
   const visibility = canonicalizeVisibility({}, catalog);
-  assert.deepEqual(visibility.navigation.irl, { scope: "admin" });
-  assert.deepEqual(visibility.features["irl:shelly"], { scope: "admin" });
-  assert.deepEqual(visibility.actionTypes["irl:shelly"], { scope: "admin" });
+  assert.deepEqual(visibility.navigation.irl, { scope: "public" });
+  assert.deepEqual(visibility.features["irl:shelly"], { scope: "public" });
+  assert.deepEqual(visibility.actionTypes["irl:shelly"], { scope: "public" });
+  assert.equal(FEATURE_ITEMS.find((item) => item.id === "irl.shelly").ownerOnly, undefined);
+});
+
+test("la migration IRL ouvre uniquement les anciennes portées forcées propriétaire", () => {
+  const old = { schemaVersion: 8, navigation: { irl: { scope: "admin" }, games: { scope: "admin" } },
+    features: { "irl:shelly": { scope: "admin", detail: "conservé" }, "obs:websocket": { scope: "admin" } },
+    actionTypes: { "irl.shelly": { scope: "admin" }, "http:request": { scope: "hidden" } },
+    games: { private: { scope: "admin" } }, actionTypeOverrides: { "irl:shelly": false } };
+  const saved = structuredClone(old);
+  const migrated = migrateVisibility(old);
+  assert.equal(migrated.schemaVersion, 9);
+  assert.equal(scopeFor(old, "navigation", "irl"), "public", "le chemin chaud interprète aussi le cache brut");
+  assert.deepEqual(migrated.navigation.irl, { scope: "public" });
+  assert.deepEqual(migrated.features["irl:shelly"], { scope: "public", detail: "conservé" });
+  assert.deepEqual(migrated.actionTypes["irl.shelly"], { scope: "public" });
+  assert.deepEqual(migrated.navigation.games, saved.navigation.games);
+  assert.deepEqual(migrated.features["obs:websocket"], saved.features["obs:websocket"]);
+  assert.deepEqual(migrated.games, saved.games);
+  assert.deepEqual(migrated.actionTypeOverrides, saved.actionTypeOverrides);
+  assert.deepEqual(old, saved, "le document d'origine ne doit pas être muté");
+  assert.deepEqual(migrateVisibility(migrated), migrated, "migration idempotente");
+});
+
+test("IRL conserve les interdictions anciennes et toutes les restrictions modernes", () => {
+  for (const schemaVersion of [0, 8, 9, 100]) {
+    for (const scope of ["hidden", false]) {
+      const source = { schemaVersion, navigation: { irl: scope }, features: { "irl:shelly": scope }, actionTypes: { "irl:shelly": scope } };
+      const migrated = migrateVisibility(source);
+      for (const [section, id] of [["navigation", "irl"], ["features", "irl.shelly"], ["actionTypes", "irl.shelly"]]) {
+        assert.equal(scopeFor(source, section, id), "hidden");
+        assert.equal(scopeFor(migrated, section, id), "hidden");
+      }
+    }
+  }
+  const source = { schemaVersion: 9, navigation: { irl: { scope: "admin" } },
+    features: { "irl:shelly": { scope: "admin" } }, actionTypes: { "irl:shelly": { scope: "admin" } } };
+  assert.deepEqual(migrateVisibility(source), source);
+  assert.equal(scopeFor(source, "navigation", "irl"), "admin");
+});
+
+test("relever le schéma conserve l'alias historique Studio des overlays", () => {
+  const migrated = migrateVisibility({ schemaVersion: 7, navigation: { studio: { scope: "hidden" } } });
+  assert.equal(scopeFor(migrated, "navigation", "overlays"), "hidden");
+  assert.equal(scopeFor(migrated, "navigation", "studio"), "public");
 });

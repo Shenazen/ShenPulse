@@ -25,17 +25,31 @@ function soundRowAttributes(rule, action, actionIndex) {
   return `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
 }
 
-function soundContextMenu(rule, action, actionIndex, editorAction) {
-  const attributes = soundRowAttributes(rule, action, actionIndex);
-  return `<details class="compact-context-menu"><summary title="Plus d’options" aria-label="Plus d’options">•••</summary><div>
-    <button data-action="${editorAction}" ${attributes}>Modifier</button>
-    <button class="danger" data-action="delete-action" ${attributes}>Supprimer</button>
-  </div></details>`;
-}
-
 function soundVolumeControl(rule, action, actionIndex) {
   const volume = Math.max(0, Math.min(1, Number(action.config?.volume ?? 1)));
   return `<label class="audio-volume-control"><span>Volume <output data-sound-volume-output>${Math.round(volume * 100)} %</output></span><input class="volume-slider" type="range" min="0" max="1" step="0.05" value="${escapeHtml(volume)}" data-sound-volume data-action="set-sound-volume" ${soundRowAttributes(rule, action, actionIndex)}></label>`;
+}
+
+/** Outils communs aux alertes et à la voix ; le test garde sa sortie configurée. */
+function soundTableCommands(rule, action, actionIndex, editorAction) {
+  const attributes = soundRowAttributes(rule, action, actionIndex);
+  const live = isLiveAudioOutput(action.config);
+  const testLabel = `${action.type === "tts.speak" ? "Tester la voix" : "Écouter le son"}${live ? " dans le LIVE" : " uniquement sur cet ordinateur"}`;
+  return `${renderAutomationIconButton({ action: "test-action", label: testLabel, attributes, icon: "play", tone: "success" })}
+    ${renderAutomationIconButton({ action: editorAction, label: "Modifier", attributes, icon: "edit" })}
+    ${renderAutomationIconButton({ action: "duplicate-action", label: "Dupliquer", attributes, icon: "copy" })}
+    ${renderAutomationIconButton({ action: "delete-action", label: "Supprimer", attributes, icon: "trash", tone: "danger" })}`;
+}
+
+/** Les réglages restent à portée de clic sans agrandir toutes les lignes. */
+function soundTableSettings(rule, action, actionIndex, { voice = false } = {}) {
+  const config = action.config || {};
+  const volume = Math.round(Number(config.volume ?? snapshot.state.settings.tts?.volume ?? 1) * 100);
+  const voiceLabel = config.voice || snapshot.state.settings.tts?.voice || "Voix Windows par défaut";
+  return `<details class="automation-row-settings audio-row-settings"><summary>Diffusion & réglages</summary><div class="automation-row-settings-body">
+    ${voice ? `<div class="tts-voice-summary"><small>VOIX</small><strong>${escapeHtml(voiceLabel)}</strong><span>${volume} %</span></div>` : soundVolumeControl(rule, action, actionIndex)}
+    ${audioOutputSwitchMarkup(rule, action, actionIndex)}
+  </div></details>`;
 }
 
 function renderAudioAlerts(rows) {
@@ -47,37 +61,40 @@ function renderAudioAlerts(rows) {
         <button class="button primary" data-action="add-sound">＋ Créer une alerte</button>
       </div>
     </header>
-    ${rows.length ? `<div class="audio-card-list">${rows.map(({ rule, action, actionIndex }) => {
-      const attributes = soundRowAttributes(rule, action, actionIndex);
-      return `<article class="audio-rule-card">
-        <button class="audio-preview-button" title="Écouter" data-action="test-action" ${attributes}>▶</button>
-        <div class="audio-rule-copy"><strong>${escapeHtml(rule.name)}</strong><span class="sound-name"><span>♫</span>${escapeHtml(actionDescription(action))}</span></div>
-        <div class="audio-rule-trigger"><small>DÉCLENCHEUR</small>${triggerPill(rule)}</div>
-        ${audioOutputSwitchMarkup(rule, action, actionIndex)}
-        ${soundVolumeControl(rule, action, actionIndex)}
-        <label class="audio-rule-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
-        ${soundContextMenu(rule, action, actionIndex, "edit-sound")}
-      </article>`;
-    }).join("")}</div>` : `<div class="automation-empty">${emptyInline("Aucune alerte sonore. Créez votre première règle audio.")}</div>`}
+    ${rows.length ? renderAutomationTable({
+      key: "sounds",
+      label: "Alertes sonores du profil actif",
+      rows: rows.map(({ rule, action, actionIndex }) => ({
+        id: action.id || `${rule.id}_${actionIndex}`,
+        className: "audio-rule-card audio-alert-card",
+        name: rule.name,
+        trigger: triggerPill(rule, { compact: true }),
+        effects: `<div class="automation-effect-chips">${renderAutomationEffectChip({ label: `Play ${actionDescription(action)}`, kind: "sound", tone: "amber", icon: "sound" })}</div>${soundTableSettings(rule, action, actionIndex)}`,
+        status: renderAutomationStatus(rule),
+        date: "",
+        commands: soundTableCommands(rule, action, actionIndex, "edit-sound")
+      }))
+    }) : `<div class="automation-empty">${emptyInline("Aucune alerte sonore. Créez votre première règle audio.")}</div>`}
   </section>`;
 }
 
 function renderTtsRules(rows) {
   return `<section class="studio-panel audio-panel panel-cyan">
     <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Synthèse vocale</h3><p>Chaque commentaire du chat peut être lu avec la voix Windows de votre choix.</p></div></div><div class="button-row"><button class="button" data-action="preview-tts">Tester la voix</button><button class="button primary" data-action="add-tts">＋ Ajouter une règle TTS</button></div></header>
-    ${rows.length ? `<div class="audio-card-list tts-card-list">${rows.map(({ rule, action, actionIndex }) => {
-      const attributes = soundRowAttributes(rule, action, actionIndex);
-      const volume = Math.round(Number(action.config?.volume ?? snapshot.state.settings.tts.volume) * 100);
-      return `<article class="audio-rule-card tts-rule-card">
-        <button class="audio-preview-button" title="Tester la voix" data-action="test-action" ${attributes}>▶</button>
-        <div class="audio-rule-copy"><strong>${escapeHtml(rule.name)}</strong><span>Commentaire du chat</span></div>
-        <div class="audio-rule-trigger"><small>DÉCLENCHEUR</small>${triggerPill(rule)}</div>
-        <div class="tts-voice-summary"><small>VOIX</small><strong>${escapeHtml(action.config?.voice || snapshot.state.settings.tts.voice || "Voix Windows par défaut")}</strong><span>${volume} %</span></div>
-        ${audioOutputSwitchMarkup(rule, action, actionIndex)}
-        <label class="audio-rule-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
-        ${soundContextMenu(rule, action, actionIndex, "edit-tts")}
-      </article>`;
-    }).join("")}</div>` : `<div class="automation-empty">${emptyInline("Aucune règle de synthèse vocale.")}</div>`}
+    ${rows.length ? renderAutomationTable({
+      key: "tts",
+      label: "Règles de synthèse vocale du profil actif",
+      rows: rows.map(({ rule, action, actionIndex }) => ({
+        id: action.id || `${rule.id}_${actionIndex}`,
+        className: "audio-rule-card tts-rule-card",
+        name: rule.name,
+        trigger: triggerPill(rule, { compact: true }),
+        effects: `<div class="automation-effect-chips">${renderAutomationEffectChip({ label: "Lecture du commentaire", kind: "voice", tone: "violet", icon: "voice" })}</div>${soundTableSettings(rule, action, actionIndex, { voice: true })}`,
+        status: renderAutomationStatus(rule),
+        date: "",
+        commands: soundTableCommands(rule, action, actionIndex, "edit-tts")
+      }))
+    }) : `<div class="automation-empty">${emptyInline("Aucune règle de synthèse vocale.")}</div>`}
   </section>`;
 }
 
@@ -166,7 +183,7 @@ function renderTimersPanel() {
           <span class="count-pill">${timers.length}</span>
         </header>
         <div class="data-table-wrap">
-          <table class="data-table timers-data-table">
+          <table class="data-table timers-data-table automation-table">
             <thead><tr><th>OUTILS</th><th>ACTIF</th><th>NOM</th><th>FRÉQUENCE</th><th>RÉPÉTITIONS</th><th>ACTIONS</th><th>PROCHAINE EXÉCUTION</th></tr></thead>
             <tbody>${timers.length ? timers.map((timer) => {
               const runtime = runtimeById.get(timer.id);
@@ -176,9 +193,9 @@ function renderTimersPanel() {
               return `
               <tr>
                 <td class="table-tools">
-                  <button title="Exécuter maintenant" data-action="test-timer" data-id="${escapeHtml(timer.id)}">▶</button>
-                  <button title="Modifier" data-action="edit-timer" data-id="${escapeHtml(timer.id)}">✎</button>
-                  <button title="Supprimer" data-action="delete-entity" data-collection="timers" data-id="${escapeHtml(timer.id)}">×</button>
+                  ${renderAutomationIconButton({ action: "test-timer", label: "Exécuter maintenant", attributes: `data-id="${escapeHtml(timer.id)}"`, icon: "play", tone: "success" })}
+                  ${renderAutomationIconButton({ action: "edit-timer", label: "Modifier", attributes: `data-id="${escapeHtml(timer.id)}"`, icon: "edit" })}
+                  ${renderAutomationIconButton({ action: "delete-entity", label: "Supprimer", attributes: `data-collection="timers" data-id="${escapeHtml(timer.id)}"`, icon: "trash", tone: "danger" })}
                 </td>
                 <td><label class="switch"><input type="checkbox" data-action="toggle-timer" data-id="${escapeHtml(timer.id)}" ${timer.enabled !== false ? "checked" : ""}><span></span></label></td>
                 <td><strong>${escapeHtml(timer.name)}</strong><small class="table-subline">${timer.lastRunAt ? `Dernière : ${escapeHtml(formatTime(timer.lastRunAt))}` : "Jamais exécuté"}</small></td>

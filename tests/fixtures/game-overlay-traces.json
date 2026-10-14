@@ -1,0 +1,77 @@
+[
+  {
+    "type": "styled",
+    "model": 1,
+    "hash": "b265d2871b085a1ae417eff720b1c585b5a879239b80e12946eb204899ff6d31",
+    "operations": 464,
+    "width": 1080,
+    "height": 1920,
+    "images": [
+      "https://example.invalid/rose.png",
+      "assets/brand/shenpulse-banner-transparent.png"
+    ],
+    "api": [
+      "downloadMinecraftBedrockOverlay",
+      "downloadMinecraftStyledOverlay",
+      "renderMinecraftBedrockOverlay",
+      "renderMinecraftStyledOverlay"
+    ]
+  },
+  {
+    "type": "styled",
+    "model": 2,
+    "hash": "f34582eebcfa2c31568179f3ca0cd7ea2d39ddeb17ff1dfd6cef2577ac90b9d2",
+    "operations": 668,
+    "width": 1080,
+    "height": 1920,
+    "images": [
+      "https://example.invalid/rose.png",
+      "assets/brand/shenpulse-banner-transparent.png",
+      "https://example.invalid/effect.png"
+    ],
+    "api": [
+      "downloadMinecraftBedrockOverlay",
+      "downloadMinecraftStyledOverlay",
+      "renderMinecraftBedrockOverlay",
+      "renderMinecraftStyledOverlay"
+    ]
+  },
+  {
+    "type": "bedrock",
+    "model": 1,
+    "hash": "3b5dbbd4ce7f9f964c2998993360bc90774748c41c9021f93647663d13615e12",
+    "operations": 230,
+    "width": 1080,
+    "height": 1920,
+    "images": [
+      "https://example.invalid/rose.png",
+      "assets/brand/shenpulse-banner-transparent.png"
+    ],
+    "api": [
+      "downloadMinecraftBedrockOverlay",
+      "downloadMinecraftStyledOverlay",
+      "renderMinecraftBedrockOverlay",
+      "renderMinecraftStyledOverlay"
+    ]
+  },
+  {
+    "type": "bedrock",
+    "model": 2,
+    "hash": "c69d6bbf10de256657999bd5c2ccd66b5e7dec300df4aa76ec5932bf887ce434",
+    "operations": 325,
+    "width": 1080,
+    "height": 1920,
+    "images": [
+      "https://example.invalid/rose.png",
+      "assets/brand/shenpulse-banner-transparent.png",
+      "/overlay-assets/minecraft-bedrock/interaction-sprites.png",
+      "/overlay-assets/minecraft-bedrock/interaction-icons/bedrock-reset-ai.png"
+    ],
+    "api": [
+      "downloadMinecraftBedrockOverlay",
+      "downloadMinecraftStyledOverlay",
+      "renderMinecraftBedrockOverlay",
+      "renderMinecraftStyledOverlay"
+    ]
+  }
+]

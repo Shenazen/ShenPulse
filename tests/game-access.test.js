@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const {
   readOverlayRuntimeSource,
   readOverlayStyles,
@@ -99,6 +101,23 @@ test("un jeu vendu séparément exige abonnement et droit produit", () => {
   );
 });
 
+test("les anciens packs sans requiresPro exigent aussi le palier actif sans perdre leurs droits produit", () => {
+  const oldIncluded = { ...includedGame, requiresPro: false };
+  const oldPurchase = { ...paidGame, requiresPro: false };
+  const free = state({ gameEntitlements: ["paid"] });
+  assert.equal(hasGameEntitlement(free, oldIncluded), true);
+  assert.equal(hasGameEntitlement(free, oldPurchase), true);
+  assert.equal(hasGameAccess(free, oldIncluded), false);
+  assert.equal(hasGameAccess(free, oldPurchase), false);
+  assert.throws(() => assertGameAccess(free, oldPurchase), /abonnement ShenPulse Pro ou Premium actif/);
+  assert.deepEqual(free.commerce.gameEntitlements, ["paid"], "le verrou ne supprime aucun achat");
+  const pro = state({ tier: "pro", gameEntitlements: ["paid"] });
+  assert.equal(hasGameAccess(pro, oldIncluded), true);
+  assert.equal(hasGameAccess(pro, oldPurchase), true);
+  assert.equal(hasGameAccess(state({ tier: "pro" }), oldPurchase), false);
+  assert.throws(() => assertGameAccess(state(), oldPurchase), /abonnement.*achat|abonnement.*essai/);
+});
+
 test("les essais expirés sont refusés et les essais actifs acceptés", () => {
   const nowMs = Date.parse("2026-07-28T12:00:00.000Z");
   assert.equal(
@@ -147,22 +166,13 @@ test("les essais expirés sont refusés et les essais actifs acceptés", () => {
 
 test("le renderer et les IPC appliquent le verrou avant d’entrer", () => {
   const renderer = readRendererSource();
-  const ipc = fs.readFileSync(
-    path.join(root, "src", "main", "ipc.js"),
-    "utf8"
-  );
-  const core = fs.readFileSync(
-    path.join(root, "src", "main", "core.js"),
-    "utf8"
-  );
+  const ipc = readMainSource("ipc.js");
+  const core = readMainSource("core.js");
   const hub = fs.readFileSync(
     path.join(root, "src", "main", "game-hub.js"),
     "utf8"
   );
-  const runtime = fs.readFileSync(
-    path.join(root, "src", "main", "game-runtime.js"),
-    "utf8"
-  );
+  const runtime = readMainSource("game-runtime.js");
   const preload = fs.readFileSync(
     path.join(root, "src", "main", "preload.js"),
     "utf8"
@@ -176,7 +186,7 @@ test("le renderer et les IPC appliquent le verrou avant d’entrer", () => {
     renderer,
     /if \(action === "open-game"\)[\s\S]*?pack\.accessMode === "purchase"[\s\S]*?!hasGameEntitlement\(pack\)[\s\S]*?openGamePurchaseDialog\(pack\)[\s\S]*?if \(!requireGameAccess\(pack\)\) return;/
   );
-  assert.match(renderer, /Le catalogue reste accessible/);
+  assert.match(renderer, /Jeux vidéo : accès Pro requis/);
   assert.match(renderer, /Acheter le jeu/);
   assert.match(renderer, /function openGamePurchaseDialog\(pack\)/);
   assert.match(renderer, /api\.account\.startGameCheckout/);
@@ -194,7 +204,7 @@ test("le renderer et les IPC appliquent le verrou avant d’entrer", () => {
   assert.match(core, /startGameSession\(packId\)[\s\S]*?this\.gameHub\.assertAccess\(targetId\);/);
   assert.match(hub, /async trigger\(effectId[\s\S]*?this\.assertAccess\(packId\);/);
   assert.match(runtime, /status\(gameId\) \{\s*this\.assertAccess\(gameId\);/);
-  assert.match(runtime, /async install\(gameId\) \{\s*this\.assertAccess\(gameId\);/);
+  assert.match(runtime, /async function installGame\(runtime, gameId\) \{\s*runtime\.assertAccess\(gameId\);/);
   assert.match(runtime, /async launch\(gameId\) \{\s*this\.assertAccess\(gameId\);/);
   assert.match(preload, /auditGameInteraction:/);
   assert.match(ipc, /handle\(\s*"game:interaction-audit"/);

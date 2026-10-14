@@ -1,0 +1,211 @@
+{
+  "snapshots": [
+    {
+      "label": "cadeau-dedup-et-physique",
+      "phase": "playing",
+      "remaining": 900000,
+      "spawned": 12,
+      "scored": 0,
+      "diamonds": 42,
+      "queue": [],
+      "players": [],
+      "coins": "0fe556e3b2cf81781f7ef2b52d8fe4fa0d596879363df683f7ad8f176131df6b",
+      "particles": "82f954b298cc5c8e002b13da3ecdb15b993a126c716dbf3ad6398073dacb36b1",
+      "floating": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "fullPush": false,
+      "finishAfter": false,
+      "mystery": [
+        false,
+        "rolling",
+        0
+      ],
+      "multiplier": 1,
+      "latestCount": 12
+    },
+    {
+      "label": "scores-agreges",
+      "phase": "playing",
+      "remaining": 900000,
+      "spawned": 12,
+      "scored": 3,
+      "diamonds": 42,
+      "queue": [],
+      "players": [
+        {
+          "avatarUrl": "",
+          "coinsScored": 3,
+          "lastScore": 10,
+          "name": "Alice",
+          "points": 128,
+          "rankPulse": 1750000000000,
+          "username": "alice",
+          "viewerId": "alice"
+        }
+      ],
+      "coins": "0fe556e3b2cf81781f7ef2b52d8fe4fa0d596879363df683f7ad8f176131df6b",
+      "particles": "88df4835b42702f3d15ffb38d401f747f851d07a26fcd038c4eaccaeac897700",
+      "floating": "7ba1c41efc721ae22e5fe6a15f9c1c4548854df46224c325dc98e9bd80c6fdfe",
+      "fullPush": false,
+      "finishAfter": false,
+      "mystery": [
+        false,
+        "rolling",
+        0
+      ],
+      "multiplier": 1,
+      "latestCount": 12
+    },
+    {
+      "label": "poussee-finale-capacite",
+      "phase": "paused",
+      "remaining": 0,
+      "spawned": 80,
+      "scored": 0,
+      "diamonds": 0,
+      "queue": [
+        [
+          "coin",
+          120
+        ]
+      ],
+      "players": [],
+      "coins": "10a4657764679ac8811647c1022b12d0a089515f06247f0483e34e2ed04c5508",
+      "particles": "19682e9caaf596aa96294149662481f6a0965144814923be7507b3254ad183cb",
+      "floating": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "fullPush": true,
+      "finishAfter": true,
+      "mystery": [
+        false,
+        "rolling",
+        0
+      ],
+      "multiplier": 1,
+      "latestCount": 0
+    },
+    {
+      "label": "podium-apres-toutes-les-pieces",
+      "phase": "finished",
+      "remaining": 0,
+      "spawned": 200,
+      "scored": 200,
+      "diamonds": 0,
+      "queue": [],
+      "players": [
+        {
+          "avatarUrl": "",
+          "coinsScored": 200,
+          "lastScore": 25,
+          "name": "Alice",
+          "points": 3495,
+          "rankPulse": 1750000000000,
+          "username": "alice",
+          "viewerId": "alice"
+        }
+      ],
+      "coins": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "particles": "6054ce170dc6ad165b7aed797bd3d63229b15a1ef6fd3754c086d746e6a94e8c",
+      "floating": "49f840cc91cc4dafc3df6231bbe98e26dd772a9559b1ed88d71e808eebb963ed",
+      "fullPush": false,
+      "finishAfter": false,
+      "mystery": [
+        false,
+        "rolling",
+        0
+      ],
+      "multiplier": 1,
+      "latestCount": 0
+    },
+    {
+      "label": "mysteres-file-et-debordement",
+      "phase": "playing",
+      "remaining": 900000,
+      "spawned": 1,
+      "scored": 0,
+      "diamonds": 0,
+      "queue": [],
+      "players": [
+        {
+          "avatarUrl": "",
+          "coinsScored": 0,
+          "lastScore": 10,
+          "name": "Alice",
+          "points": 30,
+          "rankPulse": 1750000000000,
+          "username": "alice",
+          "viewerId": "alice"
+        }
+      ],
+      "coins": "93a6bd9450358e27efff409e492c1d182c96d5da3df9020a7d330bbf5d9fc8fc",
+      "particles": "bcb864ebd40ab640cf11ba2f5e61a956acbdc2e804c12987ecfe9c4e7b1e911c",
+      "floating": "0d58d47fc295ec902b5d0cd1e3942c425c133dbf6901ee881034cc26281650b9",
+      "fullPush": false,
+      "finishAfter": false,
+      "mystery": [
+        true,
+        "rolling",
+        8
+      ],
+      "multiplier": 1,
+      "latestCount": 0
+    },
+    {
+      "label": "mysteres-resolus",
+      "phase": "playing",
+      "remaining": 900000,
+      "spawned": 1,
+      "scored": 0,
+      "diamonds": 0,
+      "queue": [],
+      "players": [
+        {
+          "avatarUrl": "",
+          "coinsScored": 0,
+          "lastScore": 10,
+          "name": "Alice",
+          "points": 120,
+          "rankPulse": 1750000050000,
+          "username": "alice",
+          "viewerId": "alice"
+        }
+      ],
+      "coins": "93a6bd9450358e27efff409e492c1d182c96d5da3df9020a7d330bbf5d9fc8fc",
+      "particles": "b8df4eb91cd08d6d524e1f2f19db09b7f6330e99992baa82cf497fd9f6a3ff63",
+      "floating": "e3beee800068de0a5e106a6fdd0b148c0eb8569d00c4475e48b191e33eae0905",
+      "fullPush": false,
+      "finishAfter": false,
+      "mystery": [
+        false,
+        "revealed",
+        0
+      ],
+      "multiplier": 1,
+      "latestCount": 0
+    },
+    {
+      "label": "reinitialisation",
+      "phase": "playing",
+      "remaining": 900000,
+      "spawned": 0,
+      "scored": 0,
+      "diamonds": 0,
+      "queue": [],
+      "players": [],
+      "coins": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "particles": "002d922931a5ec0ae222c9940cce598be3493718f8f1be4230e79f244d6668c5",
+      "floating": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "fullPush": false,
+      "finishAfter": false,
+      "mystery": [
+        false,
+        "rolling",
+        0
+      ],
+      "multiplier": 1,
+      "latestCount": 0
+    }
+  ],
+  "canvas": {
+    "operations": 4219,
+    "hash": "2885c18328551e990dda88a72a55c4ebf047b8aefe790fa62dd75c48fd8b1eb3"
+  }
+}

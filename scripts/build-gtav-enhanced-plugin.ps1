@@ -1,13 +1,26 @@
+param(
+  # Une sortie isolée permet de vérifier une refonte sans écraser le module publié.
+  [string]$BuildDirectory = ""
+)
+
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $nativeRoot = Join-Path $projectRoot "native\gtav-montchiliad-enhanced"
 $sourcePath = Join-Path $nativeRoot "src\ShenPulseMontChiliadEnhanced.cpp"
+$sourcePaths = @(
+  Get-ChildItem -LiteralPath (Join-Path $nativeRoot "src") -Filter "*.cpp" -File |
+    Sort-Object -Property Name |
+    Select-Object -ExpandProperty FullName
+)
 $includePath = Join-Path $nativeRoot "sdk\inc"
 $libraryPath = Join-Path $nativeRoot "sdk\lib"
-$buildRoot = Join-Path $nativeRoot "build"
+$buildRoot = if ($BuildDirectory) {
+  [System.IO.Path]::GetFullPath($BuildDirectory)
+} else {
+  Join-Path $nativeRoot "build"
+}
 $outputPath = Join-Path $buildRoot "ShenPulseMontChiliadEnhanced.asi"
-$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 
 if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
   throw "Source GTA Enhanced introuvable : $sourcePath"
@@ -15,30 +28,11 @@ if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
 if (-not (Test-Path -LiteralPath (Join-Path $libraryPath "ScriptHookV.lib") -PathType Leaf)) {
   throw "SDK ScriptHookV Enhanced incomplet."
 }
-if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
-  throw "Visual Studio Build Tools est requis pour compiler le module GTA Enhanced."
-}
-
-$visualStudio = & $vswhere -latest -products "*" -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-if (-not $visualStudio) {
-  throw "Les outils C++ x64 de Visual Studio sont introuvables."
-}
-$vsDevCmd = Join-Path $visualStudio "Common7\Tools\VsDevCmd.bat"
-if (-not (Test-Path -LiteralPath $vsDevCmd -PathType Leaf)) {
-  throw "VsDevCmd.bat est introuvable."
-}
-
-$environmentLines = & $env:ComSpec /d /s /c "`"$vsDevCmd`" -no_logo -arch=x64 -host_arch=x64 >nul && set"
-foreach ($line in $environmentLines) {
-  $separator = $line.IndexOf("=")
-  if ($separator -le 0) { continue }
-  $name = $line.Substring(0, $separator)
-  $value = $line.Substring($separator + 1)
-  Set-Item -LiteralPath "Env:$name" -Value $value
-}
+. (Join-Path $PSScriptRoot "lib\visual-studio-environment.ps1")
+Initialize-ShenPulseVisualStudioEnvironment
 
 New-Item -ItemType Directory -Path $buildRoot -Force | Out-Null
-$objectPath = Join-Path $buildRoot "ShenPulseMontChiliadEnhanced.obj"
+$objectDirectory = $buildRoot.TrimEnd('\') + '\'
 $pdbPath = Join-Path $buildRoot "ShenPulseMontChiliadEnhanced.pdb"
 $importLibraryPath = Join-Path $buildRoot "ShenPulseMontChiliadEnhanced.lib"
 
@@ -54,8 +48,8 @@ $compilerArguments = @(
   "/D_WINDOWS",
   "/D_USRDLL",
   "/I$includePath",
-  "/Fo$objectPath",
-  $sourcePath,
+  "/Fo$objectDirectory"
+) + $sourcePaths + @(
   "/link",
   "/NOLOGO",
   "/SUBSYSTEM:WINDOWS",

@@ -17,6 +17,9 @@ function escapeHtml(value) {
 }
 
 function normalizeGiftName(value) {
+  if (typeof ShenPulseGiftIdentity !== "undefined") {
+    return ShenPulseGiftIdentity.normalizeGiftName(value);
+  }
   return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -27,6 +30,7 @@ function normalizeGiftName(value) {
 }
 
 function rememberGifts(gifts = []) {
+  const replacements = new Map();
   for (const gift of gifts) {
     const ids = [gift.id, ...(gift.alternateIds || [])]
       .map((id) => String(id || "").trim())
@@ -34,31 +38,130 @@ function rememberGifts(gifts = []) {
     const names = [gift.name, gift.originalName, ...(gift.alternateNames || [])]
       .map(normalizeGiftName)
       .filter(Boolean);
-    for (const id of ids) giftCatalogById.set(id, gift);
+    for (const id of ids) {
+      const previous = giftCatalogById.get(id);
+      if (previous && previous !== gift) replacements.set(previous, gift);
+      giftCatalogById.set(id, gift);
+    }
     for (const key of names) {
-      if (!giftCatalogByName.has(key)) giftCatalogByName.set(key, gift);
+      const previous = giftCatalogByName.get(key);
+      const matches = Array.isArray(previous) ? previous : previous ? [previous] : [];
+      if (!matches.includes(gift)) matches.push(gift);
+      giftCatalogByName.set(key, matches);
+    }
+  }
+  // Les alias déjà chargés continuent de résoudre le même cadeau, mais avec
+  // ses données actualisées. Un seul parcours par lot évite les scans répétés.
+  if (replacements.size) {
+    for (const [id, gift] of giftCatalogById) {
+      if (replacements.has(gift)) giftCatalogById.set(id, replacements.get(gift));
+    }
+    for (const [name, gifts] of giftCatalogByName) {
+      giftCatalogByName.set(name, [...new Set(gifts.map((gift) => replacements.get(gift) || gift))]);
     }
   }
   GIFT_CATALOG = [...new Set(giftCatalogById.values())];
 }
 
 function giftForName(name) {
-  return giftCatalogByName.get(normalizeGiftName(name)) || null;
+  return giftForIdentity(name);
 }
 
-function giftForIdentity(name, id = "") {
-  return giftCatalogById.get(String(id || "").trim()) || giftForName(name);
+function giftForIdentity(name, id = "", metadata = {}) {
+  metadata = metadata && typeof metadata === "object" ? metadata : {};
+  const candidate = {
+    ...metadata,
+    giftName: name,
+    giftId: id,
+    giftCost: metadata.giftCost ?? metadata.cost ?? metadata.giftValue,
+    giftImageUrl: metadata.giftImageUrl || metadata.imageUrl || metadata.image || metadata.giftImage
+  };
+  // Les alias confirmés lors d'un lot précédent restent valides après rafraîchissement.
+  const byId = giftCatalogById.get(String(id || "").trim());
+  if (byId) return byId;
+  if (typeof ShenPulseGiftIdentity !== "undefined") {
+    const gift = ShenPulseGiftIdentity.findCatalogGift(GIFT_CATALOG, candidate);
+    if (gift) return gift;
+  }
+  // Repli aux noms déjà connus : jamais de choix arbitraire entre homonymes.
+  if (String(id || "").trim()) return null;
+  const previous = giftCatalogByName.get(normalizeGiftName(name));
+  const matches = Array.isArray(previous) ? previous : previous ? [previous] : [];
+  const cost = Number(metadata.giftCost ?? metadata.cost ?? 0);
+  const compatible = cost > 0 ? matches.filter((gift) => Number(gift.cost) === cost) : matches;
+  return compatible.length === 1 ? compatible[0] : null;
+}
+
+/** Affiche les références sauvegardées même si TikTok ne les propose plus. */
+function giftForSavedReference(name, id = "", metadata = {}) {
+  metadata = metadata && typeof metadata === "object" ? metadata : {};
+  const gift = giftForIdentity(name, id, metadata);
+  const savedImage = String(metadata.giftImageUrl || metadata.imageUrl || metadata.image || metadata.giftImage || "");
+  if (gift) {
+    // Un catalogue partiel ne doit pas effacer le visuel de ce même cadeau.
+    return !gift.imageUrl && savedImage ? { ...gift, imageUrl: savedImage } : gift;
+  }
+  if (!String(name || "").trim() && !String(id || "").trim()) return null;
+  // Plusieurs IDs peuvent partager un même dessin vérifié. L'image est alors
+  // utilisable sans choisir un ID ni fabriquer une nouvelle association.
+  const commonImage = !String(id || "").trim() && !savedImage &&
+    typeof ShenPulseGiftIdentity !== "undefined" && typeof ShenPulseGiftIdentity.giftVisualUrl === "function"
+    ? ShenPulseGiftIdentity.giftVisualUrl(GIFT_CATALOG, {
+        ...metadata,
+        giftName: name,
+        giftId: "",
+        giftCost: metadata.giftCost ?? metadata.cost ?? metadata.giftValue
+      })
+    : "";
+  return {
+    id: String(id || metadata.giftId || ""),
+    name: String(name || metadata.name || "Cadeau TikTok"),
+    cost: Math.max(0, Number(metadata.giftCost ?? metadata.cost ?? metadata.giftValue) || 0),
+    imageUrl: savedImage || commonImage,
+    giftFamily: String(metadata.giftFamily || metadata.family || "")
+  };
+}
+
+/** Une modification sans changement de cadeau conserve son ID et ses conditions. */
+function giftReferenceForSave(name, id = "", existing = {}) {
+  existing = existing && typeof existing === "object" ? existing : {};
+  const cleanName = String(name || "").trim();
+  const cleanId = String(id || "").trim();
+  if (!cleanName && !cleanId) return null;
+  const previousId = String(existing.giftId || existing.id || "").trim();
+  const previousName = existing.value ?? existing.giftName ?? existing.name ?? "";
+  const unchanged = cleanId && previousId
+    ? cleanId === previousId
+    : normalizeGiftName(cleanName) === normalizeGiftName(previousName);
+  const saved = unchanged ? existing : {};
+  const effectiveId = cleanId || (unchanged ? previousId : "");
+  const gift = giftForSavedReference(cleanName, effectiveId, saved);
+  const result = {
+    ...saved,
+    giftId: effectiveId || String(gift?.id || ""),
+    giftCost: Math.max(0, Number(saved.giftCost ?? saved.cost ?? saved.giftValue ?? gift?.cost) || 0),
+    giftImageUrl: String(gift?.imageUrl || "")
+  };
+  const family = String(saved.giftFamily || gift?.giftFamily || gift?.family || "");
+  if (family) result.giftFamily = family;
+  const knownIds = [gift?.id, ...(gift?.alternateIds || [])].map((value) => String(value || "")).filter(Boolean);
+  const catalogGift = giftCatalogById.get(String(gift?.id || ""));
+  if (catalogGift && knownIds.length && (!effectiveId || knownIds.includes(effectiveId) || giftCatalogById.get(effectiveId) === catalogGift || knownIds.some((knownId) => saved.giftIds?.includes(knownId)))) {
+    result.giftIds = [...new Set([...(Array.isArray(saved.giftIds) ? saved.giftIds : []), ...knownIds])];
+  }
+  return result;
 }
 
 function eventIconMarkup(type, options = {}) {
   const kind = String(type || "").toLocaleLowerCase("fr");
-  const imageUrl =
-    options.imageUrl ||
-    (kind === "gift"
-      ? giftForIdentity(options.giftName, options.giftId)?.imageUrl
-      : "");
+  const referenceAttribute = kind === "gift" && (options.giftId || options.giftName)
+    ? ` data-gift-visual-reference="${escapeHtml(JSON.stringify(options))}"`
+    : "";
+  const imageUrl = kind === "gift"
+    ? giftForSavedReference(options.giftName, options.giftId, options)?.imageUrl || options.imageUrl
+    : options.imageUrl;
   if (imageUrl) {
-    return `<span class="event-visual event-${escapeHtml(kind)}"><img src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></span>`;
+    return `<span class="event-visual event-${escapeHtml(kind)}"${referenceAttribute}><img src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></span>`;
   }
   const paths = {
     gift: '<path d="M4 10h16v10H4zM3 7h18v4H3zM12 7v13M12 7H8.8A2.8 2.8 0 1 1 12 4.2V7Zm0 0h3.2A2.8 2.8 0 1 0 12 4.2V7Z"/>',
@@ -71,7 +174,21 @@ function eventIconMarkup(type, options = {}) {
     raid: '<path d="m13 2-9 12h7l-1 8 9-12h-7Z"/>',
     manual: '<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4Z"/>'
   };
-  return `<span class="event-visual event-${escapeHtml(kind || "other")}"><svg viewBox="0 0 24 24" aria-hidden="true">${paths[kind] || '<circle cx="12" cy="12" r="7"/>'}</svg></span>`;
+  return `<span class="event-visual event-${escapeHtml(kind || "other")}"${referenceAttribute}><svg viewBox="0 0 24 24" aria-hidden="true">${paths[kind] || '<circle cx="12" cy="12" r="7"/>'}</svg></span>`;
+}
+
+/** Actualise seulement les visuels, jamais les valeurs saisies dans un formulaire. */
+function refreshGiftVisuals(root = document) {
+  root.querySelectorAll("[data-gift-visual-reference]").forEach((node) => {
+    try {
+      const reference = JSON.parse(node.dataset.giftVisualReference);
+      const template = document.createElement("template");
+      template.innerHTML = eventIconMarkup("gift", reference);
+      node.replaceWith(template.content.firstElementChild);
+    } catch {
+      // Une référence illisible ne justifie pas de supprimer le badge existant.
+    }
+  });
 }
 
 function ruleGiftCondition(rule) {
@@ -116,7 +233,7 @@ function giftValueFilterLabel(filter) {
     greaterOrEqual: "≥",
     greater: ">"
   };
-  return `${symbols[filter.operator] || "≥"} ${new Intl.NumberFormat("fr-FR").format(value)} pièces`;
+  return `${symbols[filter.operator] || "≥"} ${rendererFormatters.integer.format(value)} pièces`;
 }
 
 function normalizeGiftValueFilterConfig(filter) {
@@ -138,28 +255,33 @@ function hasAutomaticTrigger(rule) {
   return rule?.trigger?.enabled !== false;
 }
 
-function triggerPill(rule) {
+function triggerPill(rule, { compact = false } = {}) {
   if (!hasAutomaticTrigger(rule)) {
     return `<span class="trigger-pill trigger-manual">${eventIconMarkup("manual")}<span>Lancement manuel</span></span>`;
   }
   const type = rule?.trigger?.type || "*";
   const giftCondition = type === "gift" ? ruleGiftCondition(rule) : null;
   const giftName = giftCondition?.value || "";
-  const gift = giftForIdentity(giftName, giftCondition?.giftId);
-  return `<span class="trigger-pill">${eventIconMarkup(type, {
+  const gift = giftForSavedReference(giftName, giftCondition?.giftId, giftCondition);
+  const threshold = Number(rule.trigger?.threshold || 1);
+  const cost = Number(gift?.cost ?? giftCondition?.giftCost ?? 0);
+  const compactLabel = compact ? type === "gift" ? giftName || EVENT_LABELS.gift || "Cadeau" : EVENT_LABELS[type] || type : "";
+  const valueFilter = compact && type === "gift" ? ruleGiftValueLabel(rule) : "";
+  return `<span class="trigger-pill${compact ? " automation-trigger-compact" : ""}" data-trigger-type="${escapeHtml(type)}">${eventIconMarkup(type, {
+    ...giftCondition,
     giftId: giftCondition?.giftId,
     giftName,
     imageUrl: gift?.imageUrl || giftCondition?.giftImageUrl
-  })}<span>${escapeHtml(triggerLabel(rule))}</span></span>`;
+  })}<span>${escapeHtml(compact ? `${compactLabel}${threshold > 1 ? ` ×${threshold}` : ""}` : triggerLabel(rule))}</span>${compact && type === "gift" && Number.isFinite(cost) && cost > 0 ? `<span class="automation-gift-price" title="${cost} pièce${cost > 1 ? "s" : ""}" aria-label="${cost} pièce${cost > 1 ? "s" : ""}">${rendererFormatters.integer.format(cost)}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><ellipse cx="10" cy="4" rx="4" ry="2"/><path d="M6 4v3c0 1 1.8 2 4 2s4-1 4-2V4M6 7v3c0 1 1.8 2 4 2s4-1 4-2V7"/><ellipse cx="5" cy="10" rx="4" ry="2"/><path d="M1 10v3c0 1 1.8 2 4 2s4-1 4-2v-3"/></svg></span>` : ""}</span>${valueFilter ? `<small class="automation-row-note">${escapeHtml(valueFilter)}</small>` : ""}`;
 }
 
 function asNumber(value) {
-  return new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 }).format(Number(value || 0));
+  return rendererFormatters.compact.format(Number(value || 0));
 }
 
 function formatTime(value) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value));
+  return rendererFormatters.time.format(new Date(value));
 }
 
 function formatDuration(startedAt) {
@@ -323,14 +445,6 @@ async function perform(work, successMessage) {
 
 function acceptSnapshot(value) {
   snapshot = value;
-  if (typeof scheduleOverlayPreviewWarmup === "function") {
-    scheduleOverlayPreviewWarmup();
-  }
-  if (typeof hasProAccess === "function" && !hasProAccess()) {
-    for (const key of Object.keys(matchVideoPaths)) {
-      delete matchVideoPaths[key];
-    }
-  }
   if (value?.state?.settings?.siteVisibility) {
     siteVisibility = value.state.settings.siteVisibility;
   }
@@ -365,6 +479,7 @@ function overlayPageStateSignature(value) {
       profile.name
     ]),
     overlayConfigs: state.settings?.overlayConfigs || {},
+    overlayScene: state.settings?.overlayScene || {},
     overlayVisibility: state.settings?.siteVisibility?.overlays || {},
     subscription: state.commerce?.subscription || {}
   });
@@ -381,6 +496,7 @@ function overlayPageStableStateSignature(value) {
       profile.id,
       profile.name
     ]),
+    overlayScene: state.settings?.overlayScene || {},
     overlayVisibility: state.settings?.siteVisibility?.overlays || {},
     subscription: state.commerce?.subscription || {}
   });

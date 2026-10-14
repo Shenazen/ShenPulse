@@ -10,6 +10,10 @@ $ErrorActionPreference = 'Stop'
 
 function Invoke-UpgradeSmoke {
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$packageJson = Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json
+. (Join-Path $PSScriptRoot 'lib\smoke-registry-isolation.ps1')
+. (Join-Path $PSScriptRoot 'lib\smoke-process-isolation.ps1')
+Assert-ShenPulseSmokeRegistryIsolation -PackageJson $packageJson | Out-Null
 $previousInstaller = Join-Path $projectRoot "dist\ShenPulseSetup-$PreviousVersion-x64.exe"
 $currentInstaller = Join-Path $projectRoot "dist\ShenPulseSetup-$CurrentVersion-x64.exe"
 foreach ($installer in @($previousInstaller, $currentInstaller)) {
@@ -54,6 +58,7 @@ foreach ($shortcut in $shortcutBackups) {
     }
 }
 
+$smokeSucceeded = $false
 try {
     Install-Version -Installer $previousInstaller -Destination $installRoot
 
@@ -71,30 +76,30 @@ try {
     }
     Start-And-Stop-Version -Executable $installedExecutable -UserDataDirectory $userDataRoot
 
+    $smokeSucceeded = $true
     Write-Output "Mise à jour $PreviousVersion -> $CurrentVersion validée avec conservation des données utilisateur."
 }
+catch {
+    # La sortie du diagnostic ne doit pas être remplacée par une erreur finally.
+    Write-Error -ErrorRecord $_ -ErrorAction Continue
+    throw
+}
 finally {
-    $remainingProcesses = @(
-        Get-Process -Name ShenPulse -ErrorAction SilentlyContinue |
-            Where-Object {
-                $_.Path -and $_.Path.StartsWith(
-                    $installRoot,
-                    [System.StringComparison]::OrdinalIgnoreCase
-                )
-            }
-    )
-    foreach ($process in $remainingProcesses) {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-    }
+    try {
+        Stop-ShenPulseSmokeProcesses -Executable (Join-Path $installRoot 'ShenPulse.exe') | Out-Null
 
-    $uninstallerPath = Join-Path $installRoot 'Uninstall ShenPulse.exe'
-    if (Test-Path -LiteralPath $uninstallerPath -PathType Leaf) {
-        Start-Process `
-            -FilePath $uninstallerPath `
-            -ArgumentList @('/S', '/currentuser') `
-            -WindowStyle Hidden `
-            -Wait | Out-Null
+        $uninstallerPath = Join-Path $installRoot 'Uninstall ShenPulse.exe'
+        if (Test-Path -LiteralPath $uninstallerPath -PathType Leaf) {
+            $cleanupUninstaller = Start-Process `
+                -FilePath $uninstallerPath `
+                -ArgumentList @('/S', '/currentuser', "_?=$installRoot") `
+                -WindowStyle Hidden `
+                -Wait -PassThru
+            if ($cleanupUninstaller.ExitCode -ne 0) { throw 'Le désinstalleur de nettoyage a échoué.' }
+            Wait-ShenPulseSmokeRegistryIsolation -PackageJson $packageJson | Out-Null
+        }
     }
+    finally {
 
     foreach ($shortcut in $shortcutBackups) {
         if ($shortcut.Existed -and (Test-Path -LiteralPath $shortcut.Backup)) {
@@ -105,13 +110,17 @@ finally {
         }
     }
 
+    Assert-ShenPulseSmokeRegistryIsolation -PackageJson $packageJson | Out-Null
+
     $resolvedSmokeRoot = [System.IO.Path]::GetFullPath($smokeRoot)
     if (
+        $smokeSucceeded -and
         (Test-Path -LiteralPath $resolvedSmokeRoot) -and
         $resolvedSmokeRoot.StartsWith($temporaryBase, [System.StringComparison]::OrdinalIgnoreCase) -and
         [System.IO.Path]::GetFileName($resolvedSmokeRoot) -like 'ShenPulseUpgradeSmoke-*'
     ) {
         Remove-Item -LiteralPath $resolvedSmokeRoot -Recurse -Force
+    }
     }
 }
 
@@ -185,10 +194,7 @@ function Start-And-Stop-Version {
     if ($running.Count -eq 0) {
         throw "L'application installée ne s'est pas lancée : $Executable"
     }
-    foreach ($process in $running) {
-        Stop-Process -Id $process.Id -Force
-    }
-    Wait-Process -Id $running.Id -Timeout 10 -ErrorAction SilentlyContinue
+    Stop-ShenPulseSmokeProcesses -Executable $Executable | Out-Null
 }
 
 Invoke-UpgradeSmoke

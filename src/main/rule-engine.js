@@ -1,6 +1,7 @@
 "use strict";
 
 const { EventEmitter } = require("node:events");
+const { readState } = require("./state-projection");
 const { getPath, id } = require("./utils");
 const { renderValue } = require("./template");
 const { compareGiftValue } = require("../shared/gift-value-filter");
@@ -18,16 +19,19 @@ class RuleEngine extends EventEmitter {
     this.processing = false;
     this.activeJobs = 0;
     this.maxConcurrentJobs = 8;
+    this.nextCooldownCleanupAt = 0;
   }
 
   resetProfileState() {
     this.cooldowns.clear();
     this.thresholds.clear();
+    this.nextCooldownCleanupAt = 0;
     for (const job of this.queue.splice(0)) job.resolveCompletion();
   }
 
   async process(event) {
-    const state = this.store.getState();
+    this.#pruneExpiredCooldowns();
+    const state = this.store.getRuleEngineState?.(event.type) || readState(this.store, ["rules", "profiles", "session.profileId", "session.game", "game.interactionRulesByPack"]);
     const profile = state.profiles.find((item) => item.id === state.session.profileId);
     const enabledIds = new Set(profile?.enabledRuleIds || state.rules.map((rule) => rule.id));
     const globalRules = state.rules.filter(
@@ -76,7 +80,7 @@ class RuleEngine extends EventEmitter {
   }
 
   async test(ruleId, event) {
-    const rule = this.store.getState().rules.find((item) => item.id === ruleId);
+    const rule = readState(this.store, ["rules"]).rules.find((item) => item.id === ruleId);
     if (!rule) throw new Error("Règle introuvable.");
     const completion = this.#enqueue(
       rule,
@@ -179,14 +183,14 @@ class RuleEngine extends EventEmitter {
     const threshold = Math.max(1, Number(rule.trigger?.threshold || 1));
     if (threshold <= 1) return;
     const key = this.#thresholdKey(rule, event);
-    this.thresholds.set(
-      key,
-      Math.max(
+    const remaining = Math.max(
         0,
         (this.thresholds.get(key) || 0) -
           threshold * Math.max(1, Number(executionCount) || 1)
-      )
-    );
+      );
+    // Un seuil consommé à zéro n'a plus d'état utile à retenir pour ce viewer.
+    if (remaining === 0) this.thresholds.delete(key);
+    else this.thresholds.set(key, remaining);
   }
 
   #thresholdKey(rule, event) {
@@ -202,6 +206,14 @@ class RuleEngine extends EventEmitter {
     const userUntil =
       this.cooldowns.get(`${rule.id}:user:${event.user?.id || "anonymous"}`) || 0;
     return now < globalUntil || now < userUntil;
+  }
+
+  /** Nettoyage opportuniste, sans timer permanent ni suppression d'un cooldown actif. */
+  #pruneExpiredCooldowns() {
+    const now = Date.now();
+    if (now < this.nextCooldownCleanupAt) return;
+    this.nextCooldownCleanupAt = now + 30_000;
+    for (const [key, expiresAt] of this.cooldowns) if (expiresAt <= now) this.cooldowns.delete(key);
   }
 
   #startCooldown(rule, event) {
@@ -283,10 +295,13 @@ class RuleEngine extends EventEmitter {
         event: executionEvent,
         jobId: job.id
       });
-      const actions = selectRuleActions(
-        job.rule,
-        this.store.getState().rules
-      );
+      const selection = job.rule?.actionSelection;
+      // Les actions propres sont déjà isolées dans la règle du travail. Seule
+      // une sélection inter-règles nécessite une lecture des actions courantes.
+      const selectedRules = selection && Array.isArray(selection.actionIds)
+        ? this.store.getRuleActionState?.(selection.actionIds) || readState(this.store, ["rules"]).rules
+        : undefined;
+      const actions = selectRuleActions(job.rule, selectedRules);
       for (const action of actions) {
         const hydratedAction = {
           ...action,

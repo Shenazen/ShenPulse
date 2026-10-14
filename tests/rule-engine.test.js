@@ -76,6 +76,7 @@ test("déclenche une ancienne règle française sur le cadeau LIVE anglais", asy
         {
           id: "hat-and-mustache",
           name: "Chapeau et moustache",
+          alternateNames: ["Hat and Mustache"],
           cost: 99,
           imageUrl: `https://p16.example/${imageHash}~tplv-obj.webp`
         }

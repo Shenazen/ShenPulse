@@ -234,24 +234,24 @@ function renderIntegratedGameSettings(pack, unlocked) {
 
 function integratedGiftDefinition(name, fallback = {}, giftId = "") {
   const cleanName = String(name || "").trim();
-  if (!cleanName) {
+  if (!cleanName && !String(giftId || "").trim()) {
     return { giftId: "", name: "", image: "", cost: 0 };
   }
-  const gift = giftForIdentity(cleanName, giftId);
-  const sameAsFallback =
-    normalizeGiftName(cleanName) === normalizeGiftName(fallback.name);
+  const gift = giftReferenceForSave(cleanName, giftId, fallback);
   return {
+    ...(Array.isArray(gift?.giftIds) && gift.giftIds.length ? { giftIds: gift.giftIds } : {}),
+    ...(gift?.giftFamily ? { giftFamily: gift.giftFamily } : {}),
     giftId: String(
-      gift?.id || (sameAsFallback ? fallback.giftId : "") || ""
+      gift?.giftId || ""
     ).trim(),
     name: cleanName,
     image: String(
-      gift?.imageUrl || (sameAsFallback ? fallback.image : "") || ""
+      gift?.giftImageUrl || ""
     ).trim(),
     cost: Math.max(
       0,
       Math.round(
-        Number(gift?.cost ?? (sameAsFallback ? fallback.cost : 0)) || 0
+        Number(gift?.giftCost) || 0
       )
     )
   };

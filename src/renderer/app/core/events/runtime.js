@@ -179,9 +179,19 @@ window.addEventListener("focus", () => {
 });
 
 document.addEventListener("visibilitychange", () => {
+  synchronizeRendererVisibility();
   if (document.visibilityState === "visible") {
     refreshAccountEntitlements();
   }
+});
+
+api.on("renderer-visibility", ({ visible } = {}) => {
+  if (typeof visible === "boolean") setRendererWindowVisibility(visible);
+});
+
+api.on("song-requests-changed", acceptCreatorSongRequestsStatus);
+api.on("users-changed", () => {
+  if (currentPage === "users" && isAccountAuthenticated()) void refreshCreatorUsersDatabase({ force: true });
 });
 
 setInterval(() => {
@@ -197,6 +207,7 @@ storeUpdateButton.addEventListener("click", () => {
 });
 
 setInterval(() => {
+  if (!rendererVisualsActive()) return;
   if (
     (gameInstallBusyId || gameLaunchBusyId) &&
     currentPage === "games" &&

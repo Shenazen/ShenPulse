@@ -1,5 +1,7 @@
 "use strict";
 
+const { liveLikeCount, isRealLiveEvent } = require("../shared/live-statistics");
+
 const MAX_LEADERBOARD_ENTRIES = 100;
 const MAX_RECENT_EVENTS = 40;
 const MAX_TIMER_SECONDS = 86_399_999;
@@ -13,6 +15,7 @@ function createDefaultOverlaySession() {
     endedAt: null,
     updatedAt: null,
     likeGoalCurrent: 0,
+    likeGoalManual: false,
     coinJarCurrent: 0,
     winCounterCurrent: 0,
     winCounterMultiplier: 1,
@@ -64,6 +67,7 @@ function normalizeOverlaySession(value = {}) {
     endedAt: source.endedAt || null,
     updatedAt: source.updatedAt || null,
     likeGoalCurrent: finiteNumber(source.likeGoalCurrent),
+    likeGoalManual: source.likeGoalManual === true,
     coinJarCurrent: Math.max(0, finiteNumber(source.coinJarCurrent)),
     winCounterCurrent: finiteNumber(source.winCounterCurrent),
     winCounterMultiplier: multiplierActive
@@ -126,7 +130,19 @@ function resetOverlaySession(state, now = new Date().toISOString()) {
     startedAt: now,
     updatedAt: now
   };
+  synchronizeLikeGoalWithLive(state);
   return state.overlaySession;
+}
+
+/** Répare les anciens compteurs/reprend la même salle, sans effacer un réglage manuel. */
+function synchronizeLikeGoalWithLive(state, { preserveManual = true } = {}) {
+  const runtime = state.overlaySession;
+  const live = state.statistics?.liveSession;
+  if (!runtime || live?.hasData !== true || (preserveManual && runtime.likeGoalManual)) return runtime;
+  runtime.likeGoalCurrent = liveLikeCount(live);
+  runtime.likeGoalManual = false;
+  runtime.hasData = true;
+  return runtime;
 }
 
 function finishOverlaySession(state, now = new Date().toISOString()) {
@@ -152,7 +168,14 @@ function recordOverlayEvent(state, event, now = new Date().toISOString()) {
 
   if (event.type === "like") {
     const likes = Math.max(1, finiteNumber(event.data?.count, 1));
-    runtime.likeGoalCurrent = Math.max(0, runtime.likeGoalCurrent + likes);
+    if (isRealLiveEvent(state, event) && state.statistics?.liveSession?.hasData === true) {
+      // recordEventStatistics est exécuté avant : le total plateforme inclut
+      // les tapotages antérieurs à notre connexion, contrairement au lot reçu.
+      synchronizeLikeGoalWithLive(state, { preserveManual: false });
+    } else {
+      runtime.likeGoalCurrent = Math.max(0, runtime.likeGoalCurrent + likes);
+      runtime.likeGoalManual = true;
+    }
     updateLeaderboard(runtime.leaderboards.tappers, event.user, likes);
   } else if (event.type === "gift") {
     const count = Math.max(1, finiteNumber(event.data?.count, 1));
@@ -182,6 +205,7 @@ function applyOverlayOperation(
       amount,
       false
     );
+    runtime.likeGoalManual = true;
   } else if (channel === "coin-jar") {
     runtime.coinJarCurrent = applyNumberOperation(
       runtime.coinJarCurrent,
@@ -443,5 +467,6 @@ module.exports = {
   finishOverlaySession,
   normalizeOverlaySession,
   recordOverlayEvent,
-  resetOverlaySession
+  resetOverlaySession,
+  synchronizeLikeGoalWithLive
 };

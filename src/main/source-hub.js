@@ -1,6 +1,9 @@
 "use strict";
 
 const { EventEmitter } = require("node:events");
+const { readState } = require("./state-projection");
+const { EVENTS: TIKTOK_MATCH_EVENTS, DECODED: TIKTOK_MATCH_DECODED, normalizeTikTokBattle, tiktokBattleEventKind } = require("./matches/tiktok-battle");
+const { hasAuthenticatedAccount } = require("./account-access");
 const tls = require("node:tls");
 const {
   ControlEvent,
@@ -8,31 +11,52 @@ const {
   WebcastEvent
 } = require("tiktok-live-connector");
 const { normalizeEvent } = require("./event-normalizer");
-const { preferredImageUrl, safeString, serializeError } = require("./utils");
+const { safeString, serializeError } = require("./utils");
 
-const TIKTOK_REQUEST_POLLING_INTERVAL_MS = 250;
-const MAX_TIKTOK_LIKE_EVENT_IDS = 2000;
-const MAX_TIKTOK_EVENT_IDS = 4000;
-const DEDUPLICATED_TIKTOK_EVENT_TYPES = new Set([
-  "chat",
-  "follow",
-  "gift",
-  "join",
-  "like",
-  "share",
-  "subscribe"
-]);
+const {
+  TIKTOK_REQUEST_POLLING_INTERVAL_MS,
+  connectTikTokWhenLive,
+  isTikTokOfflineError,
+  parseTikTokRelayStatus,
+  tiktokCurrentViewerCount,
+  tiktokRelayLiveMetadata,
+  tiktokRoomLiveMetadata,
+  applyTikTokLikeDelta,
+  shouldEmitTikTokEvent,
+  tiktokDecodedEventType,
+  tiktokDecodedPayload,
+  tiktokDirectConnectionOptions,
+  tiktokGiftIsFinal,
+  tiktokConnectorPayload,
+  tiktokSocialEventType,
+  normalizeTikTokMetadataUsername,
+  tiktokMetadataRoomId,
+  friendlyTikTokError
+} = require("./sources/tiktok-protocol");
+const { parseTwitchLine } = require("./sources/twitch-protocol");
+const { RelayChatDelivery } = require("./sources/relay-chat-delivery");
+const { EulerOAuthChatDelivery } = require("./sources/euler-oauth-chat-delivery");
 
 class SourceHub extends EventEmitter {
-  constructor({ store }) {
+  constructor({ store, kickService = null, fetchFn = globalThis.fetch }) {
     super();
     this.store = store;
     this.runtimes = new Map();
+    this.kickService = kickService;
+    this.fetchFn = fetchFn;
+    kickService?.on("event", (event) => this.emit("event", event));
+    kickService?.on("diagnostic", (entry) => this.emit("diagnostic", entry));
+    kickService?.on("live-status", ({ connectionId, live, viewers }) => {
+      this.store.mutateRuntime((state) => {
+        const connection = state.connections.find((entry) => entry.id === connectionId);
+        if (connection) connection.liveStatus = live ? "live" : "offline";
+      });
+      this.emit("kick-status", { connectionId, live, viewers });
+    });
   }
 
   async start(connectionId) {
-    const connection = this.store
-      .getState()
+    const connection = readState(this.store, ["connections"])
       .connections.find((item) => item.id === connectionId);
     if (!connection) throw new Error("Connexion introuvable.");
     await this.stop(connectionId);
@@ -47,6 +71,15 @@ class SourceHub extends EventEmitter {
         this.#startWebSocket(connection, true);
       } else if (connection.type === "tiktok-direct") {
         this.#startTikTokDirect(connection);
+      } else if (connection.type === "kick-native") {
+        if (!this.kickService) throw new Error("Le service Kick est indisponible.");
+        await this.kickService.start(connection);
+        this.runtimes.set(connection.id, {
+          closed: false,
+          stop: () => this.kickService.stop(),
+          send: (payload, options) => this.kickService.send(payload, options)
+        });
+        this.#status(connection.id, "connected");
       } else if (connection.type === "twitch-irc") this.#startTwitchIrc(connection);
       else throw new Error(`Type de source non pris en charge : ${connection.type}`);
       return { ok: true };
@@ -60,12 +93,12 @@ class SourceHub extends EventEmitter {
   }
 
   async stop(connectionId) {
-    const connection = this.store
-      .getState()
+    const connection = readState(this.store, ["connections"])
       .connections.find((item) => item.id === connectionId);
     const runtime = this.runtimes.get(connectionId);
     if (!runtime) {
       this.#status(connectionId, "disconnected");
+      if (connection?.type === "kick-native") this.#kickDisconnected(connectionId);
       if (["tiktok-direct", "tiktok-relay"].includes(connection?.type)) {
         this.#tiktokStatus(connectionId, "disconnected");
       }
@@ -79,14 +112,14 @@ class SourceHub extends EventEmitter {
     await runtime.stop?.();
     this.runtimes.delete(connectionId);
     this.#status(connectionId, "disconnected");
+    if (connection?.type === "kick-native") this.#kickDisconnected(connectionId);
     if (["tiktok-direct", "tiktok-relay"].includes(connection?.type)) {
       this.#tiktokStatus(connectionId, "disconnected");
     }
   }
 
   async startEnabled() {
-    const enabled = this.store
-      .getState()
+    const enabled = readState(this.store, ["connections"])
       .connections.filter((item) => item.enabled);
     const automatic = enabled.filter((item) => item.type !== "demo");
     const results = await Promise.allSettled(
@@ -99,10 +132,59 @@ class SourceHub extends EventEmitter {
     await Promise.all([...this.runtimes.keys()].map((id) => this.stop(id)));
   }
 
-  send(connectionId, payload) {
+  send(connectionId, payload, options) {
     const runtime = this.runtimes.get(connectionId);
     if (!runtime?.send) throw new Error("La connexion ne prend pas en charge l'envoi.");
-    return runtime.send(payload);
+    if (options?.shouldSend && !options.shouldSend()) throw new Error("L'envoi appartient à un compte ou un profil précédent.");
+    return runtime.send(payload, options);
+  }
+
+  /** Capacités d'envoi sans exposer de clé, de jeton ou de session au renderer. */
+  getChatCapabilities(connectionId) {
+    const connection = readState(this.store, ["connections"]).connections.find((entry) => entry.id === connectionId);
+    const runtime = this.runtimes.get(connectionId);
+    if (!connection || connection.enabled !== true || !runtime || runtime.closed) return { canSend: false, transport: "none", reason: "disconnected", confirmation: "none", requiresAuthorization: false };
+    if (connection.type === "tiktok-direct") {
+      const capability = runtime.chatDelivery.status();
+      if (!runtime.connector || runtime.connecting || connection.status !== "connected") return { ...capability, canSend: false, reason: "not-live" };
+      return capability;
+    }
+    if (connection.type === "tiktok-relay") return { ...runtime.chatDelivery.status(), transport: "tiktok-relay",
+      confirmation: "relay", reason: runtime.chatDelivery.canSend() ? "authorized-relay" : "relay-authorization-required",
+      requiresAuthorization: !runtime.chatDelivery.authorized };
+    if (connection.type === "kick-native" && this.kickService?.status) {
+      const status = this.kickService.status();
+      const missingScope = (status.scopesKnown === true || status.scopes?.length) && !status.scopes?.includes("chat:write");
+      const canSend = connection.status === "connected" && status.connected === true && !missingScope;
+      return { canSend, transport: "kick-native", confirmation: "platform",
+        reason: missingScope ? "kick-scope-missing" : status.connected ? "connected" : "kick-authorization-required",
+        requiresAuthorization: !status.connected || Boolean(missingScope) };
+    }
+    const canSend = connection.status === "connected" && typeof runtime.send === "function";
+    return { canSend, transport: connection.type, reason: canSend ? "connected" : "disconnected",
+      confirmation: connection.type === "kick-native" ? "platform" : "socket", requiresAuthorization: false };
+  }
+
+  refreshChatCapabilities(connectionId = "source_tiktok") {
+    const capability = this.getChatCapabilities(connectionId);
+    this.emit("chat-capabilities", { connectionId, ...capability });
+    return capability;
+  }
+
+  /** Annule les envois en attente sans arrêter la réception du LIVE. */
+  resetChatDelivery(connectionId = "source_tiktok") {
+    this.runtimes.get(connectionId)?.chatDelivery?.reset();
+  }
+
+  #tiktokChatSession() {
+    const state = readState(this.store, ["settings.tiktok.chat", "settings.account"]);
+    const config = state.settings?.tiktok?.chat || { provider: "none" };
+    const accountUid = state.settings?.account?.uid || "";
+    const authenticated = hasAuthenticatedAccount(this.store);
+    const ownCredentials = authenticated && config.provider === "euler-oauth" && config.accountUid === accountUid;
+    return { config, accountUid, authenticated,
+      apiKey: ownCredentials && config.apiKeySecretId ? this.store.getSecret(config.apiKeySecretId) : "",
+      accessToken: ownCredentials && config.accessTokenSecretId ? this.store.getSecret(config.accessTokenSecretId) : "" };
   }
 
   #startDemo(connection) {
@@ -132,11 +214,20 @@ class SourceHub extends EventEmitter {
       seenTikTokEventObjects: new WeakMap(),
       reconnectTimer: null,
       stop: async () => {
+        runtime.chatDelivery.reset();
         const connector = runtime.connector;
         runtime.connector = null;
         connector?.removeAllListeners?.();
         await connector?.disconnect?.().catch(() => {});
       }
+    };
+    runtime.chatDelivery = new EulerOAuthChatDelivery({ getSession: () => this.#tiktokChatSession(), fetchFn: this.fetchFn });
+    runtime.send = (payload, { shouldSend = () => true } = {}) => {
+      const connector = runtime.connector;
+      const roomId = String(runtime.roomId || connector?.roomId || "");
+      return runtime.chatDelivery.send(roomId, payload, { shouldSend: () => shouldSend() && !runtime.closed &&
+        this.runtimes.get(connection.id) === runtime && runtime.connector === connector && !runtime.connecting &&
+        String(runtime.roomId || connector?.roomId || "") === roomId });
     };
 
     const emitEvent = (type, event) => {
@@ -183,32 +274,55 @@ class SourceHub extends EventEmitter {
       if (runtime.closed || runtime.connector !== connector) return;
       runtime.connector = null;
       runtime.connecting = false;
+      runtime.roomId = "";
+      runtime.chatDelivery.reset();
       connector.removeAllListeners?.();
       connector.disconnect?.().catch(() => {});
       this.#status(connection.id, "reconnecting", reason);
       this.#tiktokStatus(connection.id, "offline");
+      this.refreshChatCapabilities(connection.id);
       scheduleReconnect(true);
     };
 
     const bind = (connector) => {
+      const isCurrent = () => !runtime.closed && runtime.connector === connector &&
+        this.runtimes.get(connection.id) === runtime;
+      const emitCurrentEvent = (type, event) => {
+        if (isCurrent()) emitEvent(type, event);
+      };
+      const emitCurrentMatch = (kind, event) => {
+        if (!isCurrent() || !shouldEmitTikTokEvent(runtime, kind, event)) return;
+        const match = normalizeTikTokBattle(kind, event, { roomId: runtime.roomId || connector.roomId, channelUsername: username });
+        if (match) this.emit("match-event", { ...match, source: connection.id });
+      };
+      for (const kind of Object.keys(TIKTOK_MATCH_EVENTS)) connector.on(kind, (event) => emitCurrentMatch(kind, event));
       connector.on(WebcastEvent.GIFT, (event) => {
-        if (tiktokGiftIsFinal(event)) emitEvent("gift", event);
+        if (tiktokGiftIsFinal(event)) emitCurrentEvent("gift", event);
       });
-      connector.on(WebcastEvent.LIKE, (event) => emitEvent("like", event));
-      connector.on(WebcastEvent.CHAT, (event) => emitEvent("chat", event));
-      connector.on(WebcastEvent.FOLLOW, (event) => emitEvent("follow", event));
-      connector.on(WebcastEvent.SHARE, (event) => emitEvent("share", event));
+      connector.on(WebcastEvent.LIKE, (event) => emitCurrentEvent("like", event));
+      connector.on(WebcastEvent.CHAT, (event) => emitCurrentEvent("chat", event));
+      connector.on(WebcastEvent.FOLLOW, (event) => emitCurrentEvent("follow", event));
+      connector.on(WebcastEvent.SHARE, (event) => emitCurrentEvent("share", event));
       connector.on(WebcastEvent.SOCIAL, (event) => {
         const type = tiktokSocialEventType(event);
-        if (type) emitEvent(type, event);
+        if (type) emitCurrentEvent(type, event);
       });
-      connector.on(WebcastEvent.MEMBER, (event) => emitEvent("join", event));
+      connector.on(WebcastEvent.MEMBER, (event) => emitCurrentEvent("join", event));
+      connector.on(WebcastEvent.ROOM_USER, (event) => {
+        if (!isCurrent()) return;
+        const currentViewers = tiktokCurrentViewerCount(event);
+        if (currentViewers === null) return;
+        if (this.#tiktokLiveMetadata(connection.id, runtime, username, {
+          roomId: tiktokMetadataRoomId(event), currentViewers
+        })) runtime.roomUserReceived = true;
+      });
       connector.on(ControlEvent.DECODED_DATA, (messageType, decoded) => {
         const event = tiktokDecodedPayload(decoded);
         queueMicrotask(() => {
+          if (TIKTOK_MATCH_DECODED[messageType]) { emitCurrentMatch(TIKTOK_MATCH_DECODED[messageType], event); return; }
           const type = tiktokDecodedEventType(messageType, event);
           if (!type || (type === "gift" && !tiktokGiftIsFinal(event))) return;
-          emitEvent(type, event);
+          emitCurrentEvent(type, event);
         });
       });
       connector.on(WebcastEvent.STREAM_END, () =>
@@ -230,6 +344,7 @@ class SourceHub extends EventEmitter {
     const connect = async () => {
       if (runtime.closed || runtime.connecting || runtime.connector) return;
       runtime.connecting = true;
+      runtime.roomUserReceived = false;
       this.#status(
         connection.id,
         runtime.attempts ? "reconnecting" : "connecting"
@@ -252,6 +367,7 @@ class SourceHub extends EventEmitter {
         }
         runtime.connecting = false;
         runtime.attempts = 0;
+        runtime.roomId = String(state?.roomId || state?.roomInfo?.roomId || connector.roomId || "");
         this.#status(connection.id, "connected");
         this.#tiktokStatus(connection.id, "live", {
           roomId: String(
@@ -261,8 +377,26 @@ class SourceHub extends EventEmitter {
               ""
           )
         });
+        this.refreshChatCapabilities(connection.id);
+        const roomId = String(state?.roomId || connector.roomId || "");
+        const applyRoomInfo = (roomInfo) => {
+          if (runtime.closed || runtime.connector !== connector) return;
+          const metadata = tiktokRoomLiveMetadata(roomInfo, username, roomId);
+          // A push update received meanwhile is newer than the HTTP room snapshot.
+          if (metadata && runtime.roomUserReceived) delete metadata.currentViewers;
+          if (metadata) this.#tiktokLiveMetadata(connection.id, runtime, username, metadata);
+          return metadata;
+        };
+        const roomInfo = state?.roomInfo || connector.roomInfo;
+        const initialMetadata = roomInfo ? applyRoomInfo(roomInfo) : null;
+        if (!initialMetadata?.broadcaster?.avatarUrl && typeof connector.fetchRoomInfo === "function") {
+          // Missing artwork must never hold up LIVE monitoring. No extra polling:
+          // the connector normally includes this information during connect().
+          Promise.resolve().then(() => connector.fetchRoomInfo())
+            .then(applyRoomInfo).catch(() => {});
+        }
       } catch (error) {
-        if (runtime.closed) return;
+        if (runtime.closed || runtime.connector !== connector) return;
         runtime.connecting = false;
         runtime.connector = null;
         connector.removeAllListeners?.();
@@ -301,16 +435,29 @@ class SourceHub extends EventEmitter {
       socket: null,
       reconnectTimer: null,
       attempts: 0,
-      send: (payload) => {
+      send: (payload, { shouldSend = () => true } = {}) => {
+        if (runtime.closed || !shouldSend() || this.runtimes.get(connection.id) !== runtime) throw new Error("L'envoi n'appartient plus à la connexion active.");
         if (runtime.socket?.readyState !== 1) {
           throw new Error("WebSocket non connecté.");
         }
         runtime.socket.send(JSON.stringify(payload));
-        return { sent: true };
+        // Compatibilité des actions génériques ; le ChatBot distingue ce simple
+        // transfert d'un accusé d'acceptation de la plateforme.
+        return { sent: true, forwarded: true, acknowledged: false, confirmation: "socket" };
       }
     };
+    if (isTikTok) {
+      runtime.chatDelivery = new RelayChatDelivery({ getSocket: () => runtime.socket,
+        getRoomId: () => runtime.liveStatus === "live" ? runtime.roomId : "", isCurrent: () => !runtime.closed && this.runtimes.get(connection.id) === runtime,
+        onChanged: () => this.refreshChatCapabilities(connection.id) });
+      runtime.send = (payload, options) => runtime.chatDelivery.send(payload, options);
+      runtime.stop = () => runtime.chatDelivery.reset();
+    }
+    const username = safeString(connection.config?.username, 80).trim().replace(/^@+/, "");
     const connect = () => {
       if (runtime.closed) return;
+      runtime.liveStatus = "checking";
+      runtime.chatDelivery?.reset();
       const headers = {};
       const secret = connection.secretId
         ? this.store.getSecret(connection.secretId)
@@ -319,31 +466,76 @@ class SourceHub extends EventEmitter {
       if (secret) targetUrl.searchParams.set(connection.config?.tokenParameter || "token", secret);
       const socket = new WebSocket(targetUrl);
       runtime.socket = socket;
+      const isCurrent = () => !runtime.closed && runtime.socket === socket &&
+        this.runtimes.get(connection.id) === runtime;
       socket.addEventListener("open", () => {
+        if (!isCurrent()) return;
         runtime.attempts = 0;
         this.#status(connection.id, "connected");
         if (isTikTok) {
-          const username = safeString(connection.config?.username, 80).replace(/^@+/, "");
           socket.send(JSON.stringify({
             action: "subscribe",
             platform: "tiktok",
             username
           }));
           this.#tiktokStatus(connection.id, "checking");
+          runtime.chatDelivery.requestCapabilities();
         }
       });
       socket.addEventListener("message", (event) => {
+        if (!isCurrent()) return;
         try {
           const raw = JSON.parse(String(event.data));
           if (isTikTok) {
+            if (runtime.chatDelivery.handle(raw)) return;
             const liveStatus = parseTikTokRelayStatus(raw);
+            const data = raw.data && typeof raw.data === "object" ? raw.data : raw;
+            const kind = safeString(raw.event || raw.type || raw.action || data.event || data.type, 80)
+              .replace(/[^a-z]/gi, "").toLowerCase();
+            const matchKind = tiktokBattleEventKind(kind) || (kind === "decodeddata" ? tiktokBattleEventKind(data.type) : "");
+            if (matchKind) {
+              // Même canal dédié que le connecteur direct : un match n'est
+              // jamais transformé en chat/cadeau, ni reçu d'un WebSocket générique.
+              if (!runtime.roomId) return;
+              const packet = tiktokDecodedPayload(data);
+              const match = normalizeTikTokBattle(matchKind, packet, { roomId: runtime.roomId, channelUsername: username });
+              if (!match || !shouldEmitTikTokEvent(runtime, matchKind, packet)) return;
+              this.#tiktokStatus(connection.id, "live", { lastEventAt: new Date().toISOString() });
+              runtime.liveStatus = "live";
+              this.emit("match-event", { ...match, source: connection.id });
+              return;
+            }
+            const roomPayload = data.roomInfo?.data || data.roomInfo || data;
+            const reportedRoomId = tiktokMetadataRoomId(roomPayload) ||
+              (kind === "roominfo" ? safeString(roomPayload.id_str || roomPayload.id || "", 160) : "");
+            // Only an explicit LIVE status may bind the relay to the next room.
+            // Late stats/end/room-info packets from the preceding room are ignored.
+            if (runtime.roomId && reportedRoomId && runtime.roomId !== reportedRoomId &&
+                !(liveStatus?.status === "live" && kind !== "roominfo")) return;
             if (liveStatus) {
+              runtime.liveStatus = liveStatus.status;
+              if (liveStatus.status === "live" && liveStatus.roomId) {
+                if (runtime.roomId && runtime.roomId !== liveStatus.roomId) runtime.chatDelivery.cancelPending();
+                runtime.roomId = liveStatus.roomId;
+              }
+              if (liveStatus.status !== "live") runtime.chatDelivery.cancelPending();
               this.#tiktokStatus(connection.id, liveStatus.status, liveStatus);
+              this.refreshChatCapabilities(connection.id);
+              if (liveStatus.status === "live") {
+                const metadata = tiktokRelayLiveMetadata(raw, username);
+                if (metadata) this.#tiktokLiveMetadata(connection.id, runtime, username, metadata);
+              }
               return;
             }
             this.#tiktokStatus(connection.id, "live", {
               lastEventAt: new Date().toISOString()
             });
+            runtime.liveStatus = "live";
+            const metadata = tiktokRelayLiveMetadata(raw, username);
+            if (metadata) {
+              this.#tiktokLiveMetadata(connection.id, runtime, username, metadata);
+              return;
+            }
           }
           this.emit("event", normalizeEvent(raw, connection.id));
         } catch (error) {
@@ -355,12 +547,17 @@ class SourceHub extends EventEmitter {
         }
       });
       socket.addEventListener("error", () => {
+        if (!isCurrent()) return;
+        runtime.chatDelivery?.reset();
+        runtime.liveStatus = "error";
         this.#status(connection.id, "error", "Erreur WebSocket.");
         if (isTikTok) this.#tiktokStatus(connection.id, "error");
       });
       socket.addEventListener("close", () => {
-        if (runtime.closed) return;
+        if (!isCurrent()) return;
         runtime.attempts += 1;
+        runtime.chatDelivery?.reset();
+        runtime.liveStatus = "disconnected";
         this.#status(connection.id, "reconnecting");
         if (isTikTok) this.#tiktokStatus(connection.id, "disconnected");
         const delay = Math.min(30000, 1000 * 2 ** Math.min(runtime.attempts, 5));
@@ -391,10 +588,11 @@ class SourceHub extends EventEmitter {
       }
     );
     runtime.socket = socket;
-    runtime.send = (payload) => {
+    runtime.send = (payload, { shouldSend = () => true } = {}) => {
+      if (runtime.closed || !shouldSend() || this.runtimes.get(connection.id) !== runtime || socket.destroyed) throw new Error("Connexion Twitch indisponible pour l'envoi.");
       const message = safeString(payload.message || payload, 450).replace(/[\r\n]/g, " ");
       socket.write(`PRIVMSG #${channel} :${message}\r\n`);
-      return { sent: true };
+      return { sent: true, forwarded: true, acknowledged: false, confirmation: "socket" };
     };
     let buffer = "";
     socket.setEncoding("utf8");
@@ -432,8 +630,17 @@ class SourceHub extends EventEmitter {
     let changed = false;
     this.store.mutateRuntime((state) => {
       const connection = state.connections.find((item) => item.id === connectionId);
+      const primary = state.connections.find((item) => item.id === "source_tiktok");
+      if (primary && primary.id !== connectionId) {
+        if (connection) {
+          connection.liveStatus = status;
+          if (details.roomId) connection.roomId = safeString(details.roomId, 160);
+        }
+        return;
+      }
       const username =
         connection?.config?.username || state.settings.tiktok?.username || "";
+      const previousUsername = state.settings.tiktok?.username || "";
       const previousStatus = state.settings.tiktok?.status;
       const previousRoomId = state.settings.tiktok?.roomId || "";
       const reportedRoomId = Object.prototype.hasOwnProperty.call(
@@ -445,15 +652,20 @@ class SourceHub extends EventEmitter {
       // TikTok et certains relais omettent la salle pendant une coupure.
       // Elle reste pourtant l'identité fiable qui permet de distinguer une
       // reconnexion du même LIVE du démarrage du LIVE suivant.
-      const roomId = reportedRoomId || previousRoomId;
+      const sameUsername = normalizeTikTokMetadataUsername(username) ===
+        normalizeTikTokMetadataUsername(previousUsername);
+      const roomId = reportedRoomId || (sameUsername ? previousRoomId : "");
+      const clearMetadata = status !== "live" || !sameUsername || previousRoomId !== roomId;
       changed =
         previousStatus !== status ||
-        previousRoomId !== roomId;
+        previousRoomId !== roomId || !sameUsername;
       state.settings.tiktok = {
         ...(state.settings.tiktok || {}),
         username,
         status,
         roomId,
+        broadcaster: clearMetadata ? null : state.settings.tiktok?.broadcaster || null,
+        currentViewers: clearMetadata ? null : state.settings.tiktok?.currentViewers ?? null,
         lastCheckedAt: now,
         lastEventAt: details.lastEventAt || state.settings.tiktok?.lastEventAt || ""
       };
@@ -473,6 +685,40 @@ class SourceHub extends EventEmitter {
     if (changed) this.emit("tiktok-status", payload);
   }
 
+  #tiktokLiveMetadata(connectionId, runtime, username, details) {
+    if (runtime.closed || this.runtimes.get(connectionId) !== runtime) return false;
+    const state = readState(this.store, ["connections", "settings.tiktok"]);
+    const connection = state.connections.find((item) => item.id === connectionId);
+    const primary = state.connections.find((item) => item.id === "source_tiktok");
+    const tiktok = state.settings.tiktok || {};
+    if (!connection || (primary && primary.id !== connectionId) ||
+        connection.status !== "connected" || tiktok.status !== "live" ||
+        normalizeTikTokMetadataUsername(connection.config?.username) !== normalizeTikTokMetadataUsername(username) ||
+        normalizeTikTokMetadataUsername(tiktok.username) !== normalizeTikTokMetadataUsername(username) ||
+        (details.roomId && details.roomId !== tiktok.roomId)) return false;
+    const broadcaster = Object.prototype.hasOwnProperty.call(details, "broadcaster")
+      ? details.broadcaster : tiktok.broadcaster || null;
+    const currentViewers = Object.prototype.hasOwnProperty.call(details, "currentViewers")
+      ? details.currentViewers : tiktok.currentViewers ?? null;
+    if (JSON.stringify(broadcaster) === JSON.stringify(tiktok.broadcaster || null) &&
+        currentViewers === (tiktok.currentViewers ?? null)) return true;
+    this.store.mutateRuntime((current) => {
+      current.settings.tiktok.broadcaster = broadcaster;
+      current.settings.tiktok.currentViewers = currentViewers;
+    });
+    this.emit("tiktok-live-metadata", { connectionId, broadcaster, currentViewers });
+    return true;
+  }
+
+  #kickDisconnected(connectionId) {
+    this.store.mutateRuntime((state) => {
+      state.settings.kick = { ...(state.settings.kick || {}), live: false };
+      const connection = state.connections.find((entry) => entry.id === connectionId);
+      if (connection) connection.liveStatus = "disconnected";
+    });
+    this.emit("kick-status", { connectionId, live: false });
+  }
+
   #status(connectionId, status, error = "") {
     this.store.mutateRuntime((state) => {
       const connection = state.connections.find((item) => item.id === connectionId);
@@ -486,425 +732,6 @@ class SourceHub extends EventEmitter {
   }
 }
 
-function parseTags(value) {
-  return Object.fromEntries(
-    String(value)
-      .split(";")
-      .map((part) => {
-        const [key, ...rest] = part.split("=");
-        return [key, rest.join("=")];
-      })
-  );
-}
-
-function parseTwitchLine(line) {
-  const match = line.match(/^@([^ ]+) :([^!]+)![^ ]+ ([A-Z]+) #[^ ]+ :?(.*)$/);
-  if (!match) return null;
-  const tags = parseTags(match[1]);
-  const username = match[2];
-  const command = match[3];
-  const text = match[4];
-  const data = {
-    user: {
-      id: tags["user-id"] || username,
-      username,
-      displayName: tags["display-name"] || username,
-      subscriber: tags.subscriber === "1",
-      moderator: tags.mod === "1"
-    }
-  };
-  if (command === "PRIVMSG") {
-    return { event: "chat", data: { ...data, message: text } };
-  }
-  if (command === "USERNOTICE") {
-    const noticeType = tags["msg-id"];
-    if (noticeType === "raid") {
-      return { event: "raid", data: { ...data, message: text, tags } };
-    }
-    const subscriptionNotices = new Set([
-      "sub",
-      "resub",
-      "subgift",
-      "anonsubgift",
-      "submysterygift",
-      "giftpaidupgrade",
-      "anongiftpaidupgrade",
-      "primepaidupgrade"
-    ]);
-    if (subscriptionNotices.has(noticeType)) {
-      return { event: "subscribe", data: { ...data, message: text, tags } };
-    }
-    return null;
-  }
-  return null;
-}
-
-function parseTikTokRelayStatus(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  const data = raw.data && typeof raw.data === "object" ? raw.data : raw;
-  const kind = safeString(
-    raw.event || raw.type || raw.action || data.event || data.type,
-    80
-  )
-    .replace(/[^a-z]/gi, "")
-    .toLowerCase();
-  if (["streamend", "liveend", "offline", "disconnected"].includes(kind)) {
-    return { status: "offline", roomId: safeString(data.roomId || "", 160) };
-  }
-  const statusKinds = new Set([
-    "status",
-    "livestatus",
-    "roomstatus",
-    "roominfo",
-    "live"
-  ]);
-  if (!statusKinds.has(kind)) return null;
-  const rawLive =
-    data.live ??
-    data.isLive ??
-    data.online ??
-    data.connected ??
-    data.status ??
-    raw.live ??
-    raw.isLive;
-  if (["checking", "connecting", "pending"].includes(String(rawLive).toLowerCase())) {
-    return {
-      status: "checking",
-      roomId: safeString(data.roomId || data.room_id || raw.roomId || "", 160)
-    };
-  }
-  const live =
-    rawLive === true ||
-    rawLive === 1 ||
-    ["true", "1", "live", "online"].includes(String(rawLive).toLowerCase()) ||
-    kind === "live";
-  return {
-    status: live ? "live" : "offline",
-    roomId: safeString(data.roomId || data.room_id || raw.roomId || "", 160)
-  };
-}
-
-function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
-  const user = event.user || event.userInfo || event.sender || {};
-  const uniqueId = safeString(
-    user.uniqueId ||
-      user.username ||
-      event.uniqueId ||
-      event.username ||
-      "anonymous",
-    120
-  );
-  const nickname = safeString(
-    user.nickname ||
-      user.displayName ||
-      event.nickname ||
-      event.displayName ||
-      uniqueId,
-    160
-  );
-  const userId = safeString(
-    user.id ||
-      user.userId ||
-      event.userId ||
-      event.user_id ||
-      uniqueId,
-    120
-  );
-  const gift = {
-    ...(event.extendedGiftInfo || {}),
-    ...(event.giftDetails || {}),
-    ...(event.gift || {})
-  };
-  return {
-    id: safeString(
-      event.common?.msgId || event.msgId || event.id || "",
-      160
-    ),
-    channelUsername: safeString(channelUsername, 80),
-    userId,
-    uniqueId,
-    nickname,
-    profilePictureUrl: preferredImageUrl(
-      user.profilePictureUrl,
-      user.avatarUrl,
-      user.profilePicture,
-      user.avatarThumb,
-      event.profilePictureUrl,
-      event.profilePicture,
-      event.avatarThumb,
-      event.userDetails?.profilePictureUrls
-    ),
-    isSubscriber: Boolean(
-      user.isSubscriber || user.subscriber || event.isSubscriber
-    ),
-    isModerator: Boolean(
-      user.isModerator || user.moderator || event.isModerator
-    ),
-    giftId: safeString(
-      event.giftId || gift.giftId || gift.id || "",
-      120
-    ),
-    giftName: safeString(
-      event.giftName || gift.giftName || gift.name || "Cadeau",
-      160
-    ),
-    giftType: Math.max(
-      0,
-      Number(event.giftType || gift.giftType || gift.type || 0)
-    ),
-    giftCombo: Boolean(event.combo ?? gift.combo ?? gift.isCombo),
-    giftImageUri: safeString(
-      event.giftImageUri ||
-        gift.imageUri ||
-        gift.image?.uri ||
-        gift.icon?.uri ||
-        "",
-      1000
-    ),
-    giftPrimaryEffectId: Math.max(
-      0,
-      Number(
-        event.primaryEffectId ||
-          gift.primaryEffectId ||
-          gift.primary_effect_id ||
-          0
-      )
-    ),
-    giftIsGlobal: Boolean(
-      event.isGlobalGift ?? gift.isGlobalGift ?? gift.is_global_gift
-    ),
-    giftIsDisplayedOnPanel: Boolean(
-      event.isDisplayedOnPanel ??
-        gift.isDisplayedOnPanel ??
-        gift.is_displayed_on_panel
-    ),
-    giftImageUrl: preferredImageUrl(
-      event.giftImageUrl,
-      event.giftPictureUrl,
-      event.giftImage,
-      gift.giftImage,
-      gift.imageUrl,
-      gift.image,
-      gift.icon,
-      event.giftDetails?.giftImage,
-      event.giftDetails?.image,
-      event.extendedGiftInfo?.giftImage,
-      event.extendedGiftInfo?.image
-    ),
-    repeatCount: Math.max(
-      1,
-      Number(event.repeatCount || event.repeat_count || 1)
-    ),
-    diamondCount: Math.max(
-      0,
-      Number(
-        event.diamondCount ||
-          event.giftCost ||
-          event.cost ||
-          gift.diamondCount ||
-          gift.diamond_count ||
-          gift.cost ||
-          0
-      )
-    ),
-    likeCount: Math.max(1, Number(event.likeCount || event.count || 1)),
-    totalLikes: Math.max(
-      0,
-      Number(event.totalLikeCount || event.totalLikes || 0)
-    ),
-    comment: safeString(
-      event.comment || event.text || event.message || "",
-      1000
-    ),
-    viewerCount: Math.max(
-      0,
-      Number(event.viewerCount || event.totalUser || 0)
-    ),
-    eventType: type
-  };
-}
-
-function tiktokDirectConnectionOptions() {
-  return {
-    enableExtendedGiftInfo: true,
-    processInitialData: false,
-    requestPollingIntervalMs: TIKTOK_REQUEST_POLLING_INTERVAL_MS,
-    webClientParams: {
-      app_language: "fr",
-      browser_language: "fr-FR",
-      priority_region: "FR",
-      region: "FR",
-      tz_name: "Europe/Paris",
-      webcast_language: "fr"
-    },
-    webClientHeaders: {
-      "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.7"
-    }
-  };
-}
-
-function tiktokSocialEventType(event = {}) {
-  event = tiktokDecodedPayload(event);
-  const display = event.common?.displayText || event.displayText || {};
-  const marker = [
-    display.displayType,
-    display.defaultPattern,
-    display.key,
-    event.actionDescription,
-    event.eventType
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  if (marker.includes("follow")) return "follow";
-  if (marker.includes("share")) return "share";
-  if (Number(event.followCount || event.follow_count || 0) > 0) {
-    return "follow";
-  }
-  if (
-    Number(event.shareCount || event.share_count || 0) > 0 ||
-    event.shareType != null ||
-    event.shareTarget != null
-  ) {
-    return "share";
-  }
-  return "";
-}
-
-function tiktokDecodedPayload(decoded = {}) {
-  return decoded?.data && typeof decoded.data === "object"
-    ? decoded.data
-    : decoded || {};
-}
-
-function tiktokDecodedEventType(messageType, event = {}) {
-  const type = String(messageType || "");
-  const mapped = {
-    WebcastChatMessage: "chat",
-    WebcastGiftMessage: "gift",
-    WebcastLikeMessage: "like",
-    WebcastMemberMessage: "join",
-    WebcastSubNotifyMessage: "subscribe"
-  }[type];
-  if (mapped) return mapped;
-  return type === "WebcastSocialMessage"
-    ? tiktokSocialEventType(event)
-    : "";
-}
-
-function shouldEmitTikTokEvent(runtime = {}, type, event) {
-  if (!DEDUPLICATED_TIKTOK_EVENT_TYPES.has(type)) return true;
-
-  if (event && typeof event === "object") {
-    runtime.seenTikTokEventObjects ||= new WeakMap();
-    const types = runtime.seenTikTokEventObjects.get(event) || new Set();
-    if (types.has(type)) return false;
-    types.add(type);
-    runtime.seenTikTokEventObjects.set(event, types);
-  }
-
-  const eventId = safeString(
-    event?.common?.msgId || event?.msgId || event?.id || "",
-    160
-  );
-  if (!eventId) return true;
-  runtime.seenTikTokEventIds ||= new Set();
-  const key = `${type}:${eventId}`;
-  if (runtime.seenTikTokEventIds.has(key)) return false;
-  runtime.seenTikTokEventIds.add(key);
-  if (runtime.seenTikTokEventIds.size > MAX_TIKTOK_EVENT_IDS) {
-    runtime.seenTikTokEventIds.delete(
-      runtime.seenTikTokEventIds.values().next().value
-    );
-  }
-  return true;
-}
-
-function applyTikTokLikeDelta(runtime, payload) {
-  const eventId = safeString(payload?.id, 160);
-  if (eventId) {
-    runtime.seenLikeEventIds ||= new Set();
-    if (runtime.seenLikeEventIds.has(eventId)) return null;
-    runtime.seenLikeEventIds.add(eventId);
-    if (runtime.seenLikeEventIds.size > MAX_TIKTOK_LIKE_EVENT_IDS) {
-      runtime.seenLikeEventIds.delete(
-        runtime.seenLikeEventIds.values().next().value
-      );
-    }
-  }
-
-  const current = Math.max(1, Number(payload?.likeCount) || 1);
-  const total = Math.max(0, Number(payload?.totalLikes) || 0);
-  if (!total) return { ...payload, likeCount: current };
-
-  const previous = Math.max(0, Number(runtime?.lastTotalLikes) || 0);
-  runtime.lastTotalLikes = total;
-  if (!previous || total < previous) {
-    return { ...payload, likeCount: current };
-  }
-  return {
-    ...payload,
-    likeCount: Math.max(current, total - previous)
-  };
-}
-
-function isTikTokOfflineError(error) {
-  const text = tiktokErrorText(error);
-  return /offline|not live|isn't live|is not live|isn't online|is not online|room.*(?:missing|not found)|UserOffline|failed to (?:retrieve|extract) room[\s_-]*id/i.test(
-    text
-  );
-}
-
-async function connectTikTokWhenLive(connector) {
-  const live = await connector.fetchIsLive();
-  if (live !== true) {
-    const error = new Error("User is offline or room not found");
-    error.code = "TIKTOK_OFFLINE";
-    throw error;
-  }
-  return connector.connect();
-}
-
-function tiktokGiftIsFinal(event = {}) {
-  const gift = {
-    ...(event.extendedGiftInfo || {}),
-    ...(event.giftDetails || {}),
-    ...(event.gift || {})
-  };
-  const giftType = Number(
-    event.giftType || gift.giftType || gift.type || 0
-  );
-  return giftType !== 1 || Boolean(event.repeatEnd);
-}
-
-function friendlyTikTokError(error, username) {
-  if (isTikTokOfflineError(error)) {
-    return `@${username} est hors ligne. Surveillance automatique active.`;
-  }
-  const detail = safeString(tiktokErrorText(error) || "Connexion impossible", 300);
-  return `Détection TikTok @${username} : ${detail}`;
-}
-
-function tiktokErrorText(error) {
-  if (typeof error === "string") return error;
-  const candidates = [
-    error?.name,
-    error?.message,
-    error?.reason,
-    error?.description,
-    error?.code,
-    error?.info?.message,
-    error?.info?.description,
-    typeof error?.info === "string" ? error.info : ""
-  ].filter(Boolean);
-  if (candidates.length) return candidates.join(" ");
-  try {
-    const serialized = JSON.stringify(error);
-    return serialized === "{}" ? "" : serialized;
-  } catch {
-    return "";
-  }
-}
 
 module.exports = {
   TIKTOK_REQUEST_POLLING_INTERVAL_MS,
@@ -912,6 +739,9 @@ module.exports = {
   connectTikTokWhenLive,
   isTikTokOfflineError,
   parseTikTokRelayStatus,
+  tiktokCurrentViewerCount,
+  tiktokRelayLiveMetadata,
+  tiktokRoomLiveMetadata,
   parseTwitchLine,
   applyTikTokLikeDelta,
   shouldEmitTikTokEvent,

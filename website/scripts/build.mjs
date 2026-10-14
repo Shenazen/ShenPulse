@@ -2,9 +2,12 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { currentPublicGames, serializePublicGames } from './game-catalog.mjs'
+import { buildStyles } from './styles.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dist = path.join(root, 'dist')
+
+await buildStyles()
 
 await rm(dist, { recursive: true, force: true })
 await mkdir(dist, { recursive: true })
@@ -19,6 +22,7 @@ await writeFile(
 )
 
 await cp(path.join(root, 'public'), dist, { recursive: true })
+await cp(path.join(root, 'app'), path.join(dist, 'app'), { recursive: true })
 
 const index = await readFile(path.join(dist, 'index.html'), 'utf8')
 await writeFile(path.join(dist, '404.html'), index)

@@ -1,6 +1,7 @@
 "use strict";
 
-/** Hydratation légère pour les overlays d'alertes, de flux et de classement. */
+/** Hydratation unique : restaure les compteurs, classements et flux de la vue active. */
+
 function hydrateOverlaySession(state = {}, options = {}) {
   const runtime = state.overlaySession || state;
   if (!runtime || runtime.hasData !== true) return false;
@@ -15,6 +16,72 @@ function hydrateOverlaySession(state = {}, options = {}) {
       renderLikeGoal();
     }
     return true;
+  }
+
+  if (viewName === "coin-jar") {
+    coinJarCurrent = Math.max(
+      coinJarMinimum,
+      Number(runtime.coinJarCurrent || 0)
+    );
+    const recentEvents = Array.isArray(runtime.recentEvents)
+      ? runtime.recentEvents
+      : [];
+    recentEvents
+      .filter((event) => event.type === "gift")
+      .slice(0, 40)
+      .reverse()
+      .forEach((event) => spawnCoinJarDrop(event));
+    renderCoinJar();
+    return true;
+  }
+
+  if (viewName === "win-counter") {
+    winCounter = Number(runtime.winCounterCurrent || 0);
+  }
+  const multiplierUntil = Number(runtime.winCounterMultiplierUntil || 0);
+  const multiplierSeconds = Math.max(
+    0,
+    Math.ceil((multiplierUntil - Date.now()) / 1000)
+  );
+  winCounterMultiplier =
+    multiplierSeconds > 0
+      ? Math.max(1, Number(runtime.winCounterMultiplier || 1))
+      : 1;
+  if (viewName === "timer") {
+    const timerEndsAt = Number(runtime.timerEndsAt || 0);
+    const persistedTimerSeconds = runtime.timerPaused
+      ? Math.max(0, Number(runtime.timerSeconds || 0))
+      : timerEndsAt > 0
+        ? Math.max(0, Math.ceil((timerEndsAt - Date.now()) / 1000))
+        : Math.max(0, Number(runtime.timerSeconds || 0));
+    updateTimer({
+      operation: "set",
+      seconds: persistedTimerSeconds,
+      paused: runtime.timerPaused === true,
+      label: overlayTitle || runtime.timerLabel || "TEMPS RESTANT"
+    });
+  }
+  if (viewName === "multiplier-timer") {
+    const multiplierTimerEndsAt = Number(
+      runtime.multiplierTimerEndsAt || multiplierUntil || 0
+    );
+    const persistedMultiplierSeconds = runtime.multiplierTimerPaused
+      ? Math.max(0, Number(runtime.multiplierTimerSeconds || 0))
+      : multiplierTimerEndsAt > 0
+        ? Math.max(
+            0,
+            Math.ceil((multiplierTimerEndsAt - Date.now()) / 1000)
+          )
+        : multiplierSeconds;
+    updateMultiplierTimer({
+      operation: "set",
+      seconds: persistedMultiplierSeconds,
+      paused: runtime.multiplierTimerPaused === true,
+      multiplier:
+        runtime.multiplierTimerMultiplier || winCounterMultiplier,
+      label:
+        overlayTitle || runtime.multiplierTimerLabel || "BONUS ACTIF"
+    });
   }
 
   if (viewName === "leaderboard") {
@@ -48,6 +115,8 @@ function hydrateOverlaySession(state = {}, options = {}) {
       renderMyActions();
     }
   }
+
+  if (viewName === "win-counter") renderWinCounter();
   return true;
 }
 

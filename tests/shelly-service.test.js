@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const {
   readOverlayRuntimeSource,
   readOverlayStyles,
@@ -31,6 +33,7 @@ function ownerStore(overrides = {}) {
     refreshTokenSecretId: "secret-owner"
   };
   state.activeAccountUid = "owner-uid";
+  state.commerce.subscription = { tier: "pro", source: "own", status: "active" };
   state.settings.irl = {
     enabled: true,
     devices: [],
@@ -563,42 +566,39 @@ test("résout les hôtes Shelly annoncés dans une réponse mDNS", () => {
   ]);
 });
 
-test("raccorde l’onglet, l’action et les IPC IRL au seul espace propriétaire", () => {
+test("raccorde l’onglet, l’action et les IPC IRL à l’accès Pro public", () => {
   const root = path.join(__dirname, "..");
   const renderer = readRendererSource();
   const preload = fs.readFileSync(
     path.join(root, "src", "main", "preload.js"),
     "utf8"
   );
-  const runner = fs.readFileSync(
-    path.join(root, "src", "main", "action-runner.js"),
-    "utf8"
-  );
+  const runner = readMainSource("action-runner.js");
 
-  assert.match(renderer, /id: "irl"[\s\S]*ownerOnly: true/);
+  assert.match(renderer, /id: "irl"[\s\S]*title: "Machines IRL"/);
   assert.match(renderer, /function renderIrl\(/);
   assert.match(renderer, /function isPlugPlusIrlDevice\(/);
   assert.match(renderer, /irl\.devices\.filter\(isPlugPlusIrlDevice\)/);
   assert.match(renderer, /Mes prises PlugPlus/);
   assert.ok(
-    renderer.indexOf("irl-actions-panel") <
-      renderer.indexOf('class="studio-panel panel-cyan irl-devices-panel"')
+    renderer.indexOf('class="studio-panel panel-cyan irl-devices-panel"') <
+      renderer.indexOf("irl-actions-panel")
   );
   assert.match(
     renderer,
-    /game-interaction-card irl-interaction-card configured/
+    /className: `irl-interaction-row/
   );
-  assert.match(renderer, /game-effect-trigger">\$\{triggerPill\(rule\)\}/);
+  assert.match(renderer, /irl-interaction-trigger">\$\{triggerPill\(rule\)\}/);
   assert.match(renderer, /data-search="irl-actions"/);
   const styles = readRendererStyles();
-  assert.match(styles, /\.irl-interaction-card\s*\{/);
-  assert.match(styles, /\.irl-interaction-art svg\s*\{/);
+  assert.match(styles, /\.irl-interactions-table table\s*\{/);
+  assert.match(styles, /\.irl-interaction-target svg\s*\{/);
   assert.match(renderer, /data-action="irl-toggle"/);
   assert.match(renderer, /Mesure uniquement · aucun relais/);
   assert.match(renderer, /\["pulse", "Allumer puis éteindre"\]/);
   assert.match(renderer, /1000 ms = 1 seconde/);
   assert.match(renderer, /"irl\.shelly": "Prise PlugPlus"/);
-  assert.match(renderer, /defaultScope: id === "irl\.shelly" \? "admin"/);
+  assert.doesNotMatch(renderer, /defaultScope: id === "irl\.shelly" \? "admin"/);
   assert.match(preload, /pair: \(options\) => invoke\("irl:pair"/);
   assert.match(runner, /case "irl\.shelly"/);
 });

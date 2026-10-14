@@ -121,6 +121,7 @@
     "coin-jar": new Set(["coin-jar"]),
     "win-counter": new Set(["win-counter"]),
     match: new Set(["match"]),
+    "match-state": new Set(["match-widget"]),
     wheel: new Set(["wheel"]),
     "session-state": STATEFUL_VIEWS
   });
@@ -206,6 +207,13 @@
   } = {}) {
     const normalizedView = String(view || "alerts").trim().toLowerCase();
     const normalizedChannel = String(channel || "").trim().toLowerCase();
+    if (normalizedView === "scene") {
+      return !["match", "match-state"].includes(normalizedChannel) && Boolean(normalizedChannel);
+    }
+    if (normalizedView === "match-widget") return normalizedChannel === "match-state";
+    if (["match-media", "match-audio"].includes(normalizedChannel)) {
+      return normalizedView === "match" && String(matchName || "").toLowerCase() === "player";
+    }
     if (["audio", "tts"].includes(normalizedChannel)) {
       const targetScreen = Math.min(8, Math.max(1, Math.round(Number(payload?.screen) || 1)));
       return normalizedView === "alerts" && hasMediaScreen && Number(screen) === targetScreen;
@@ -242,6 +250,8 @@
     coinJarModels: shared.coinJarModels,
     matchVariants: matchCatalog.variants,
     matches: matchCatalog.matches,
+    animationVariants: matchCatalog.animationVariants,
+    normalizeAnimationVariant: matchCatalog.normalizeAnimationVariant,
     manifests: Object.freeze([...manifests]),
     definitions: DEFINITIONS,
     routes: ROUTES,

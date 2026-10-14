@@ -170,7 +170,7 @@ test("vérifie l’identité du serveur Stack Tower et remonte ses refus", async
 });
 
 test("branche le catalogue, l’achat et la roue Stack Tower", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   const calls = [];
   const tikLiveStackTowerBridge = {
     status: async (connector) => {
@@ -200,7 +200,7 @@ test("branche le catalogue, l’achat et la roue Stack Tower", async () => {
   assert.equal(pack.connector.url, "http://127.0.0.1:7817");
   assert.equal(pack.accessMode, "purchase");
   assert.equal(pack.price, 19.99);
-  assert.equal(pack.requiresPro, true);
+  assert.equal(pack.requiresPro, false);
   assert.equal(pack.artwork, "catalog/shenpulse-stack-tower.png");
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");
 
@@ -254,7 +254,7 @@ test("associe le paquet Backblaze et l’exécutable au lanceur ShenPulse", () =
 });
 
 test("déclenche cadeau, likes, partage et !spin pendant une session", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   state.session.profileId = "profile-1";
   state.session.game = {
     running: true,
@@ -316,7 +316,8 @@ test("déclenche cadeau, likes, partage et !spin pendant une session", async () 
   assert.equal(actions[3].config.wheelId, "wheel_tiklive_stack_tower");
 });
 
-function subscribedState() {
+function purchasedGameState() {
+  // Depuis la politique Pro, l’achat du produit s’ajoute à un accès Pro actif.
   return {
     settings: {
       account: {
@@ -329,7 +330,7 @@ function subscribedState() {
     },
     session: { activeGamePackId: "coin-pusher" },
     commerce: {
-      subscription: { tier: "pro", source: "subscription", status: "active" },
+      subscription: { tier: "pro", source: "own", status: "active" },
       gameEntitlements: ["tiklive-stack-tower"]
     },
     game: {

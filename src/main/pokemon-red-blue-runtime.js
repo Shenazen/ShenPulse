@@ -1,5 +1,9 @@
 "use strict";
 
+const { assertFile, findNamedFile } = require("./runtime-files");
+
+const { readState } = require("./state-projection");
+
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -56,7 +60,8 @@ class PokemonRedBlueRuntime {
     return importPokemonRom({ sourcePath: detected, targetPath });
   }
 
-  async selectRom() {
+  async selectRom({ assertAccess = () => {} } = {}) {
+    assertAccess();
     const installation = this.#installation();
     const result = await this.dialog.showOpenDialog(this.getWindow(), {
       title: "Sélectionnez votre copie légale de Pokémon Rouge ou Bleu",
@@ -68,11 +73,13 @@ class PokemonRedBlueRuntime {
       properties: ["openFile"]
     });
     if (result.canceled || !result.filePaths[0]) return { canceled: true };
+    assertAccess();
 
     const rom = await importPokemonRom({
       sourcePath: result.filePaths[0],
       targetPath: installation.path
     });
+    assertAccess();
     this.store.mutate((state) => {
       const current = state.game.installations?.[GAME_ID];
       if (current) Object.assign(current, rom);
@@ -80,7 +87,8 @@ class PokemonRedBlueRuntime {
     return { ok: true, gameId: GAME_ID, ...rom };
   }
 
-  async launch() {
+  async launch({ assertAccess = () => {} } = {}) {
+    assertAccess();
     const installation = this.#installation();
     const romPath = String(installation.romPath || "").trim();
     if (!installation.romReady || !(await isCompatiblePokemonRom(romPath))) {
@@ -116,8 +124,11 @@ class PokemonRedBlueRuntime {
       "Le pack Pokémon Rouge/Bleu est introuvable. Réparez l’installation."
     );
 
+    assertAccess();
     await this.client.ensureStarted(clientPath);
+    assertAccess();
     await this.client.loadPack(packPath);
+    assertAccess();
     const connector = await this.client.call("loadConnector", [
       NATIVE_CONNECTOR_ID,
       10,
@@ -129,6 +140,7 @@ class PokemonRedBlueRuntime {
       );
     }
 
+    assertAccess();
     const child = spawn(emulatorPath, [`--lua=${connectorPath}`, romPath], {
       cwd: path.dirname(emulatorPath),
       windowsHide: false,
@@ -222,7 +234,7 @@ class PokemonRedBlueRuntime {
   }
 
   #installation() {
-    const installation = this.store.getState().game.installations?.[GAME_ID];
+    const installation = readState(this.store, ["game.installations"]).game.installations?.[GAME_ID];
     if (!installation?.path) {
       throw new Error(
         "Installez d’abord BizHawk et le pack Pokémon depuis l’étape Installation."
@@ -639,32 +651,6 @@ function safeChildPath(rootPath, relativePath) {
     throw new Error("Chemin Pokémon non sûr.");
   }
   return target;
-}
-
-async function assertFile(filePath, message) {
-  const stat = filePath
-    ? await fs.promises.stat(filePath).catch(() => null)
-    : null;
-  if (!stat?.isFile()) throw new Error(message);
-}
-
-async function findNamedFile(directory, fileName, predicate = null) {
-  const root = path.resolve(String(directory || ""));
-  const stat = await fs.promises.stat(root).catch(() => null);
-  if (!stat?.isDirectory()) return "";
-  const entries = await fs.promises.readdir(root, { withFileTypes: true });
-  for (const entry of entries) {
-    const candidate = path.join(root, entry.name);
-    if (entry.isFile() && entry.name.toLowerCase() === fileName.toLowerCase()) {
-      if (!predicate || predicate(candidate)) return candidate;
-    }
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const match = await findNamedFile(path.join(root, entry.name), fileName, predicate);
-    if (match) return match;
-  }
-  return "";
 }
 
 module.exports = {

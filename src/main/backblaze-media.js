@@ -1,5 +1,7 @@
 "use strict";
 
+const { readState } = require("./state-projection");
+
 const fs = require("node:fs");
 const path = require("node:path");
 const {
@@ -36,7 +38,7 @@ class BackblazeMediaService {
   }
 
   importEnvironmentConfiguration() {
-    const current = this.store.getState().settings.backblaze || {};
+    const current = readState(this.store, ["settings.backblaze"]).settings.backblaze || {};
     if (current.keyIdSecretId && current.applicationKeySecretId) {
       return this.status();
     }
@@ -160,7 +162,7 @@ class BackblazeMediaService {
   }
 
   #configuration() {
-    const settings = this.store.getState().settings.backblaze || {};
+    const settings = readState(this.store, ["settings.backblaze"]).settings.backblaze || {};
     const bucket = validateBucket(settings.bucket);
     const endpoint = validateEndpoint(settings.endpoint);
     const region = safePathSegment(

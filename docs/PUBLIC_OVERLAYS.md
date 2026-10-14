@@ -26,6 +26,10 @@ le moteur d'actions ni OBS.
 - `firebase.json` déploie le moteur de widgets et ses ressources sur le site
   Firebase Hosting `shenpulse-overlays`.
 
+Les sept widgets de Matchs passent par un alias HTTPS dédié, sans le paramètre
+`channel` des overlays généraux ni une lecture du port local. Leur projection
+et leurs droits sont décrits dans [Sources Matchs](matches-overlays.fr.md).
+
 Les événements très rapprochés sont groupés pendant 40 ms, avec un maximum de
 250 messages par écriture. L'état persistant est condensé et publié au plus
 toutes les 350 ms. Les sources se reconnectent automatiquement et reprennent
@@ -52,6 +56,15 @@ identifiant. Toutes les anciennes sources deviennent alors inutilisables.
 ```powershell
 firebase deploy --only "database,hosting" --project shenazenoverlay
 ```
+
+Pour une correction du seul runtime hébergé, sans changement de règles :
+
+```powershell
+firebase deploy --only hosting --project shenazenoverlay
+```
+
+Incrémenter la version du loader, de l'index et de `runtime-version.json` avant
+publication pour renouveler le cache des scripts et styles immuables.
 
 Le test réel et réversible crée un compte et un canal temporaires, vérifie
 l'écriture, la lecture publique, le widget et une ressource graphique, puis

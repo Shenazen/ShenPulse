@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 92" role="img" aria-label="ShenPulse">
+  <defs><linearGradient id="ink" x2="1" y2="0"><stop stop-color="#8745bd"/><stop offset="1" stop-color="#c365ee"/></linearGradient></defs>
+  <g transform="rotate(-12 105 46)" fill="url(#ink)">
+    <text x="7" y="57" font-size="34" font-style="italic" font-family="Segoe Script, Brush Script MT, cursive" letter-spacing="-2.6">ShenPulse</text>
+    <path d="M25 68c35-12 92-7 146-14-40 12-77 13-113 13" fill="none" stroke="url(#ink)" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

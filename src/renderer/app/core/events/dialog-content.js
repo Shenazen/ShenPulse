@@ -327,10 +327,10 @@ content.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(event.target);
     const values = Object.fromEntries(data.entries());
-    const selectedGift = giftForIdentity(
+    const selectedGift = values.type === "gift" ? giftForIdentity(
       values.giftName || "Rose",
       values.giftNameGiftId
-    );
+    ) : null;
     await perform(
       () =>
         api.simulateEvent({
@@ -342,9 +342,11 @@ content.addEventListener("submit", async (event) => {
             values.type === "gift" && selectedGift
               ? Math.max(1, Number(selectedGift.cost || 1))
               : Number(values.value || 0),
-          giftId: selectedGift?.id || "",
-          giftName: values.giftName || "Rose",
-          giftImageUrl: selectedGift?.imageUrl || "",
+          ...(values.type === "gift" ? {
+            giftId: values.giftNameGiftId || selectedGift?.id || "",
+            giftName: values.giftName || "Rose",
+            giftImageUrl: selectedGift?.imageUrl || ""
+          } : {}),
           message: values.message || "!help"
         }),
       `Événement ${values.type} injecté dans les déclencheurs`
@@ -431,44 +433,77 @@ api.on("thiercelieux-host-state", (state) => {
 });
 
 function handleRendererStateChanged(value) {
+  const previous = snapshot;
+  if (!rendererVisualsActive()) {
+    creatorDeferredSnapshot ||= previous;
+    acceptSnapshot(value);
+    return;
+  }
+  acceptSnapshot(value);
+  refreshRendererStateComparison(previous, value);
+}
+
+function refreshRendererStateComparison(previous, value) {
+  if (currentPage === "commands" && typeof syncCreatorChatbotActivity === "function") {
+    // Une réponse reçue ne reconstruit ni les formulaires, ni la bannière ChatBot.
+    syncCreatorChatbotActivity();
+  }
   const overlaySessionChanged =
-    overlaySessionLifecycleSignature(snapshot) !==
-    overlaySessionLifecycleSignature(value);
+    hasOverlayRuntimePreview() && overlayPreviewSessionChanged(previous, value);
   const overlayStateHandledLocally =
     currentPage === "overlays" &&
-    consumeLocallyHandledOverlayState(snapshot, value);
+    consumeLocallyHandledOverlayState(previous, value);
   const refreshOverlayPage =
     currentPage === "overlays" &&
     !overlayStateHandledLocally &&
-    overlayPageStateSignature(snapshot) !== overlayPageStateSignature(value);
+    overlayPageStateSignature(previous) !== overlayPageStateSignature(value);
   const refreshGamePage =
     currentPage === "games" &&
-    gamePageStateSignature(snapshot) !== gamePageStateSignature(value);
-  const refreshCurrentPage =
-    currentPage === "dashboard" ||
-    currentPage === "activity" ||
-    currentPage === "connections" ||
-    currentPage === "actions" ||
-    refreshGamePage ||
-    refreshOverlayPage ||
-    currentPage === "sounds" ||
-    currentPage === "membership";
-  acceptSnapshot(value);
+    gamePageStateSignature(previous) !== gamePageStateSignature(value);
+  const pageDataChanged = creatorPageDataChanged(previous, value);
+  const matchesStructureChanged = currentPage === "matches" &&
+    JSON.stringify([previous.state?.settings?.matches, previous.state?.session?.profileId,
+      previous.state?.rules, previous.state?.commerce, previous.state?.settings?.account?.uid,
+      previous.state?.settings?.siteVisibility, previous.overlayUrls, previous.localOverlayUrls]) !==
+    JSON.stringify([value.state?.settings?.matches, value.state?.session?.profileId,
+      value.state?.rules, value.state?.commerce, value.state?.settings?.account?.uid,
+      value.state?.settings?.siteVisibility, value.overlayUrls, value.localOverlayUrls]);
+  const refreshCurrentPage = refreshGamePage || refreshOverlayPage ||
+    matchesStructureChanged ||
+    (!["dashboard", "users", "games", "overlays", "matches"].includes(currentPage) && pageDataChanged);
   if (overlaySessionChanged) {
     postOverlayPreviewEvent(
       "session-state",
       value.state?.overlaySession || {}
     );
+    const sceneFrame = content.querySelector("[data-scene-preview]");
+    if (sceneFrame && typeof hydrateSceneComposerPreview === "function") hydrateSceneComposerPreview(sceneFrame);
   }
-  if (refreshCurrentPage) render();
-  else {
-    if (currentPage === "overlays") syncPublicOverlayRelayStatus();
-    renderNavigation();
-    syncChrome();
-  }
+  scheduleRendererRefresh({
+    redraw: refreshCurrentPage,
+    dashboard: currentPage === "dashboard" && pageDataChanged,
+    users: currentPage === "users" && pageDataChanged,
+    matches: currentPage === "matches" && pageDataChanged
+  });
 }
 
 api.on("state-changed", handleRendererStateChanged);
+
+api.on("gift-catalog-updated", (gifts) => {
+  if (!Array.isArray(gifts) || !gifts.length) return;
+  rememberGifts(gifts);
+  if (rendererVisualsActive()) {
+    updateAllGiftPickerSelections();
+    refreshGiftVisuals();
+  }
+  // Le lot est limité aux cadeaux modifiés. Le regroupement existant protège
+  // les rafales et les fenêtres masquées ; les formulaires ouverts sont préservés.
+  scheduleRendererRefresh({
+    redraw: ["actions", "rules", "sounds", "voice", "music", "games", "overlays", "live"].includes(currentPage)
+      && !dialog.open && !content.querySelector("form"),
+    dashboard: currentPage === "dashboard"
+  });
+});
 
 api.on("runtime-state-changed", (patch) => {
   if (!snapshot || !patch?.state) return;
@@ -477,7 +512,12 @@ api.on("runtime-state-changed", (patch) => {
     ...patch,
     state: {
       ...snapshot.state,
-      ...patch.state
+      ...patch.state,
+      // Runtime metadata patches contain only the changing platform settings.
+      // Keep account, locale, scene and other persisted settings intact.
+      ...(patch.state.settings ? {
+        settings: { ...snapshot.state.settings, ...patch.state.settings }
+      } : {})
     }
   });
 });
@@ -485,8 +525,21 @@ api.on("runtime-state-changed", (patch) => {
 api.on("public-overlay-relay-status", (status) => {
   if (!snapshot) return;
   snapshot.publicOverlayRelay = status;
+  if (!rendererVisualsActive()) return;
   if (currentPage === "overlays") syncPublicOverlayRelayStatus(status);
   syncChrome();
+});
+
+api.on("live-directory-status", (status) => {
+  if (!snapshot || !status || typeof status !== "object") return;
+  snapshot.liveDirectory = status;
+  if (!rendererVisualsActive()) return;
+  if (currentPage === "home") syncCreatorHomeLive();
+  syncCreatorLiveDirectoryPreference();
+});
+
+api.on("chat-transport-changed", () => {
+  if (currentPage === "connections" && typeof refreshCreatorChatbotDelivery === "function") refreshCreatorChatbotDelivery(true);
 });
 
 api.on("game-round-timeout", (entry) => {
@@ -530,12 +583,13 @@ api.on("live-event", (event) => {
   );
   liveEvents.unshift(event);
   liveEvents = liveEvents.slice(0, 100);
+  rememberCreatorAudienceEvent(event);
   postOverlayPreviewEvent("event", event);
-  if (currentPage === "live") render();
-  else {
-    renderNavigation();
-    syncChrome();
-  }
+  scheduleRendererRefresh({
+    redraw: currentPage === "live",
+    dashboard: currentPage === "dashboard",
+    users: currentPage === "users"
+  });
 });
 
 api.on("game-effect", (payload) => {

@@ -1,0 +1,25 @@
+/** Traductions fr du domaine « common ». Les clés publiques restent stables. */
+export default {
+      add: 'Ajouter',
+      all: 'Tout',
+      cancel: 'Annuler',
+      close: 'Fermer',
+      copy: 'Copier',
+      delete: 'Supprimer',
+      disabled: 'Désactivé',
+      disable: 'Désactiver',
+      edit: 'Modifier',
+      enable: 'Activer',
+      enabled: 'Activé',
+      help: 'Aide',
+      notifications: 'Notifications',
+      ok: 'OK',
+      open: 'Ouvrir',
+      ready: 'Prêt',
+      save: 'Enregistrer',
+      search: 'Rechercher',
+      new: 'NOUVEAU',
+      stop: 'Arrêter',
+      test: 'Tester',
+    };
+

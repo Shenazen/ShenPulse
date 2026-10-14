@@ -38,6 +38,7 @@ function openEditor({
   dialogBody.scrollTop = 0;
   if (!dialog.open) dialog.showModal();
   syncActionEditorVisibility();
+  if (typeof applyStudioLanguage === "function") applyStudioLanguage(dialog);
   bindOverlayRuntimeFrames(dialogBody);
   requestAnimationFrame(() => {
     dialog.scrollTop = 0;
@@ -71,7 +72,7 @@ function showDialogError(message) {
 }
 
 function field(name, label, value = "", type = "text", extra = "") {
-  return `<label class="field ${extra.includes("full") ? "full" : ""}"><span>${escapeHtml(label)}</span><input name="${escapeHtml(name)}" type="${escapeHtml(type)}" value="${escapeHtml(value)}" ${extra.replace("full", "")}></label>`;
+  return inputFieldMarkup(name, label, value, type, extra);
 }
 
 function readTtsVoices() {
@@ -129,7 +130,11 @@ function refreshTtsVoiceSelects() {
 }
 
 function ttsCommentFilterFields(config = {}) {
-  return `<div class="tts-comment-filters">
+  const allowedRoles = Array.isArray(config.allowedRoles) ? config.allowedRoles : ["all"];
+  return `<div class="tts-moderation-fields full">
+    <fieldset class="tts-audience-roles"><legend>Qui peut être lu à voix haute ?</legend>${[["all", "Tout le chat"], ["viewer", "Spectateurs"], ["subscriber", "Abonnés"], ["moderator", "Modérateurs"], ["team", "Équipe TikTok"]].map(([role, label]) => `<label class="filter-check"><input type="checkbox" name="ttsAllowedRole" value="${role}" ${allowedRoles.includes(role) ? "checked" : ""}><span>${label}</span></label>`).join("")}<small>« Tout le chat » autorise tous les rôles. Les autres choix peuvent se cumuler.</small></fieldset>
+    <div class="form-grid">${field("ttsMaxCharacters", "Longueur maximale", config.maxCharacters || 300, "number", 'min="1" max="1000" step="1"')}<label class="field full"><span>Mots ou expressions bloqués</span><textarea name="ttsBlockedWords" rows="2" placeholder="Une expression par ligne">${escapeHtml((config.blockedWords || []).join("\n"))}</textarea><small>Les commentaires contenant ces expressions sont ignorés, sans distinction de majuscules ni d’accents.</small></label><label class="field full"><span>Comptes bloqués</span><textarea name="ttsBlockedUsers" rows="2" placeholder="Un @ par ligne">${escapeHtml((config.blockedUsers || []).join("\n"))}</textarea></label></div>
+    <div class="tts-comment-filters">
     ${checkRow(
       "Lire les emojis",
       "Windows prononcera le nom des emojis présents dans le commentaire.",
@@ -154,7 +159,17 @@ function ttsCommentFilterFields(config = {}) {
       "ttsAllowLinks",
       config.allowLinks === true
     )}
-  </div>`;
+  </div></div>`;
+}
+
+function readTtsModerationFields(data) {
+  const lines = (name) => [...new Set(String(data.get(name) || "").split(/\r?\n/).map((value) => value.trim()).filter(Boolean))].slice(0, 100);
+  return {
+    allowedRoles: data.getAll("ttsAllowedRole").filter((role) => ["all", "viewer", "subscriber", "moderator", "team"].includes(role)),
+    maxCharacters: Math.max(1, Math.min(1000, Math.round(Number(data.get("ttsMaxCharacters")) || 300))),
+    blockedWords: lines("ttsBlockedWords"),
+    blockedUsers: lines("ttsBlockedUsers")
+  };
 }
 
 function dialogSection(
@@ -349,17 +364,14 @@ function buildTriggerConditions(existing, data) {
     .replace(/^@+/, "");
   const message = String(data.get("messageCondition") || "").trim();
   if (giftTriggerMode === "specific" && giftName) {
-    const selectedGift = giftForIdentity(giftName, giftId);
+    const previous = (existing || []).find((condition) => condition.field === "data.giftName" && String(condition.operator || "equals") === "equals") || {};
+    const selectedGift = giftReferenceForSave(giftName, giftId, previous);
     const condition = {
+      ...selectedGift,
       field: "data.giftName",
       operator: "equals",
       value: giftName
     };
-    if (selectedGift) {
-      condition.giftId = String(selectedGift.id || "");
-      condition.giftCost = Math.max(0, Number(selectedGift.cost) || 0);
-      condition.giftImageUrl = String(selectedGift.imageUrl || "");
-    }
     conditions.push(condition);
   }
   if (

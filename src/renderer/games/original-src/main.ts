@@ -1,9 +1,7 @@
 import { createApp, h } from 'vue'
 import { createI18n } from 'vue-i18n'
-import CoinPusherGame from './components/games/CoinPusherGame.vue'
-import ConnectFourGame from './components/games/ConnectFourGame.vue'
-import DealOrNoDealGame from './components/games/DealOrNoDealGame.vue'
-import ThiercelieuxGame from './components/games/ThiercelieuxGame.vue'
+import { gameLoaders } from './host/game-loaders'
+import { createStartupEventQueue } from './host/startup-events'
 import {
   loadCoinPusherSettings,
   pushCoinPusherDrop,
@@ -44,21 +42,36 @@ const api: ShenPulseApi | undefined = window.shenPulse || (import.meta.env.DEV
   : undefined)
 const queryGameId = new URLSearchParams(window.location.search).get('gameId')
 const gameId = normalizeGameId(queryGameId)
-const components = {
-  'coin-pusher': CoinPusherGame,
-  'connect-four': ConnectFourGame,
-  'deal-or-no-deal': DealOrNoDealGame,
-  'thiercelieux': ThiercelieuxGame,
-}
 
 void boot()
 
 async function boot() {
+  const events = createStartupEventQueue<() => void>()
+  const cleanup = new Set<() => void>()
+  const stop = () => {
+    events.dispose()
+    for (const unsubscribe of cleanup) unsubscribe()
+    cleanup.clear()
+  }
+  window.addEventListener('beforeunload', stop, { once: true })
   try {
     if (!api) throw new Error('La passerelle ShenPulse est indisponible.')
     if (!gameId) throw new Error('Ce jeu intégré est introuvable.')
 
-    const snapshot = await api.getSnapshot()
+    // Écouter avant l’import dynamique : aucune interaction ne disparaît au démarrage.
+    cleanup.add(api.on('live-event', (event) => events.enqueue(() => handleLiveEvent(gameId, event))))
+    cleanup.add(api.on('game-effect', (payload) => {
+      if (payload?.packId === gameId) events.enqueue(() => handleGameEffect(gameId, payload))
+    }))
+    cleanup.add(api.on('state-changed', (payload) => events.enqueue(() => {
+      const updatedSettings = payload?.state?.game?.connectorOverrides?.[gameId]
+      if (!updatedSettings || typeof updatedSettings !== 'object') return
+      migrateDesktopSettings(gameId, updatedSettings)
+      if (gameId === 'thiercelieux') {
+        window.dispatchEvent(new CustomEvent('shenpulse:thiercelieux-settings', { detail: updatedSettings }))
+      }
+    })))
+    const [snapshot, loaded] = await Promise.all([api.getSnapshot(), gameLoaders[gameId]()])
     const storedSettings = snapshot?.state?.game?.connectorOverrides?.[gameId] || {}
     migrateDesktopSettings(gameId, storedSettings)
 
@@ -79,37 +92,24 @@ async function boot() {
 
     const app = createApp({
       name: 'OriginalShenazenGameHost',
-      render: () => h(components[gameId], gameId === 'thiercelieux'
+      render: () => h(loaded.default, gameId === 'thiercelieux'
         ? { initialSettings: storedSettings }
         : {}),
     })
     app.use(i18n)
     app.mount('#app')
-
-    api.on('live-event', (event) => handleLiveEvent(gameId, event))
-    api.on('game-effect', (payload) => {
-      if (payload?.packId !== gameId) return
-      handleGameEffect(gameId, payload)
-    })
-    api.on('state-changed', (payload) => {
-      const updatedSettings = payload?.state?.game?.connectorOverrides?.[gameId]
-      if (!updatedSettings || typeof updatedSettings !== 'object') return
-      migrateDesktopSettings(gameId, updatedSettings)
-      if (gameId === 'thiercelieux') {
-        window.dispatchEvent(new CustomEvent('shenpulse:thiercelieux-settings', {
-          detail: updatedSettings,
-        }))
-      }
-    })
+    cleanup.add(() => app.unmount())
+    events.activate((handle) => handle())
     if (gameId === 'deal-or-no-deal' && api.publishDealHostState) {
       const publishPrivateState = (state: any) => {
         if (!state) return
         void api.publishDealHostState?.(state).catch(() => {})
       }
       publishPrivateState(readDealOrNoDealHostState())
-      subscribeDealOrNoDealHostState(publishPrivateState)
+      cleanup.add(subscribeDealOrNoDealHostState(publishPrivateState))
     }
   } catch (error) {
+    stop()
     showError(error)
   }
 }

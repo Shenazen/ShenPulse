@@ -1,5 +1,7 @@
 "use strict";
 
+const { mapping } = require("./game-catalog/mapping");
+
 const GAME_ID = "cult-of-the-lamb";
 const IMAGE_ROOT = `../../resources/game-interactions/${GAME_ID}`;
 
@@ -230,22 +232,6 @@ function gift(id, effectId, title, giftName, options = {}) {
     triggerType: "gift",
     giftName
   });
-}
-
-function mapping(id, effectId, title, options = {}) {
-  return {
-    id,
-    effectId,
-    title,
-    triggerType: options.triggerType || "gift",
-    giftName: options.giftName || "",
-    threshold: Math.max(1, Number(options.threshold || 1)),
-    cooldownSeconds: Math.max(0, Number(options.cooldownSeconds || 0)),
-    duration: Math.max(0, Number(options.duration || 0)),
-    enabled: options.enabled !== false,
-    triggerEnabled: options.triggerEnabled !== false,
-    parameters: { ...(options.parameters || {}) }
-  };
 }
 
 function iconForCategory(category) {

@@ -1,91 +1,19 @@
 "use strict";
 
-const { spawn } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
 const { shell } = require("electron");
 const { clamp, safeString } = require("./utils");
 const { renderValue } = require("./template");
-const { activeGameInteractionRules } = require("./rule-engine");
+const { readState } = require("./state-projection");
+const { assertCommandContext } = require("./commands/context-guard");
+const { filterTtsChatComment, isTtsUserAllowed, claimTtsChatComment } = require("./actions/tts-policy");
+const { runActionGroup } = require("./actions/groups");
+const { WheelActionController } = require("./actions/wheel");
+const { runHttpAction, runSpotifyAction, sendKeyAction, openUrlAction } = require("./actions/network-system");
 const {
   MAX_TIMER_SECONDS,
   applyOverlayOperation
 } = require("./overlay-session-state");
-
-const TTS_EMOJI_PATTERN =
-  /(?:[#*0-9]\uFE0F?\u20E3|[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u200D\u20E3\uFE0E\uFE0F])/gu;
-const TTS_LINK_PATTERN =
-  /(?:\bhttps?:\/\/|\bwww\.)\S+|\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b|\b(?:[\w-]+\.)+(?:com|fr|net|org|gg|tv|io|co)\b/iu;
-const TTS_EVENT_DEDUPE_MS = 30 * 60 * 1000;
-const TTS_CONTENT_DEDUPE_MS = 30 * 1000;
-const TTS_DEDUPE_MAX_ENTRIES = 4000;
-const ACTION_GROUP_STACK = Symbol("shenpulse.actionGroupStack");
-const ACTION_GROUP_MAX_DEPTH = 20;
-
-function filterTtsChatComment(value, config = {}) {
-  let text = safeString(value, 1000).trim();
-  if (!text) return "";
-  if (text.startsWith("@") && config.allowMentions !== true) return "";
-  if (/^[!/]/u.test(text) && config.allowCommands !== true) return "";
-  if (TTS_LINK_PATTERN.test(text) && config.allowLinks !== true) return "";
-  if (config.readEmojis !== true) {
-    text = text
-      .replace(TTS_EMOJI_PATTERN, " ")
-      .replace(/\s{2,}/g, " ")
-      .trim();
-  }
-  return safeString(text, 1000);
-}
-
-function normalizeWheelRuntimeSettings(settings = {}, design = "classic") {
-  const referenceDefaults = {
-    font: "Kalam",
-    fontSize: 50,
-    textOrientation: "horizontal",
-    textColor: "#fff8ec",
-    textShadowColor: "#2b170c",
-    textShadowStrength: 55,
-    textRadius: 100,
-    textSegmentOffset: 0,
-    textBoxWidth: 100,
-    textBoxHeight: 240,
-    textAngleOffset: 0,
-    textAlign: "center",
-    textClamp: false,
-    textMaxLines: 4,
-    lineSpacing: 50,
-    letterSpacing: 50,
-    showBase: true,
-    soundActive: true,
-    announceDuration: 0,
-    spinDuration: 5,
-    waitDuration: 3,
-    scale: 100,
-    glow: 82,
-    showWinner: true,
-    pointerPosition: "top",
-    alwaysVisible: true,
-    entranceAnimation: "fade",
-    exitAnimation: "fade",
-    resultDuration: 4
-  };
-  const usesRegressedDefaults =
-    settings.font === "Inter" &&
-    Number(settings.fontSize) === 19 &&
-    settings.textOrientation === "radial" &&
-    Number(settings.textRadius) === 34 &&
-    Number(settings.textBoxHeight) === 42;
-  const overrides = usesRegressedDefaults
-    ? design === "royal"
-      ? {
-          font: "Georgia",
-          textColor: "#fff5cb",
-          glow: 100,
-          spinDuration: 7
-        }
-      : {}
-    : settings;
-  return { ...referenceDefaults, ...overrides, announceDuration: 0 };
-}
 
 class ActionRunner {
   constructor({
@@ -114,54 +42,8 @@ class ActionRunner {
     this.setTimeoutImpl = setTimeoutImpl;
     this.nowImpl = nowImpl;
     this.randomImpl = randomImpl;
-    this.wheelSpinActive = false;
-    this.wheelSpinQueue = [];
+    this.wheelActions = new WheelActionController({ store, overlayServer, setTimeoutImpl, runAction: (entry, context) => this.run(entry, context) });
     this.ttsReadMessages = new Map();
-  }
-
-  #claimTtsChatComment(event = {}, text = "") {
-    const now = this.nowImpl();
-    const source = safeString(event.source || "unknown", 80).toLowerCase();
-    const viewer = safeString(
-      event.user?.id || event.user?.name || "anonymous",
-      160
-    ).toLowerCase();
-    const normalizedText = safeString(text, 1000)
-      .normalize("NFKC")
-      .toLocaleLowerCase("fr")
-      .replace(/\s+/g, " ")
-      .trim();
-    const keys = [
-      event.id
-        ? {
-            key: `event:${source}:${safeString(event.id, 160)}`,
-            ttl: TTS_EVENT_DEDUPE_MS
-          }
-        : null,
-      {
-        key: `content:${source}:${viewer}:${normalizedText}`,
-        ttl: TTS_CONTENT_DEDUPE_MS
-      }
-    ].filter(Boolean);
-    const duplicate = keys.some(({ key, ttl }) => {
-      const previous = this.ttsReadMessages.get(key);
-      return Number.isFinite(previous) && now - previous < ttl;
-    });
-    for (const { key } of keys) {
-      this.ttsReadMessages.delete(key);
-      this.ttsReadMessages.set(key, now);
-    }
-    if (this.ttsReadMessages.size > TTS_DEDUPE_MAX_ENTRIES) {
-      for (const [key, timestamp] of this.ttsReadMessages) {
-        if (now - timestamp >= TTS_EVENT_DEDUPE_MS) {
-          this.ttsReadMessages.delete(key);
-        }
-      }
-      while (this.ttsReadMessages.size > TTS_DEDUPE_MAX_ENTRIES) {
-        this.ttsReadMessages.delete(this.ttsReadMessages.keys().next().value);
-      }
-    }
-    return !duplicate;
   }
 
   #applyOverlayOperation(channel, payload, metadata = {}) {
@@ -188,37 +70,53 @@ class ActionRunner {
         })
       ).catch(() => {});
     } catch {
-      // A completion hook can never invalidate the original action.
+      // Le callback de fin ne doit jamais invalider l’action d’origine.
     }
     return runtime;
   }
 
   async run(action, context = {}) {
+    // Garde injecté par les commandes ; les chemins historiques restent
+    // inchangés. Les groupes et roues transmettent ce contexte à leurs enfants.
+    assertCommandContext(context.shouldExecute);
+    context.assertActionAllowed?.(action, context);
     const config = action.config || {};
+    // Une action de compteur liée à un jeu est aussi un accès à ce pack,
+    // même si elle a été appelée depuis une règle ou un aperçu direct.
+    if (config.packId) this.gameHub?.assertAccess?.(safeString(config.packId, 160));
+    const shouldExecute = typeof context.shouldExecute === "function" || typeof context.assertActionAllowed === "function" ? () => {
+      try { assertCommandContext(context.shouldExecute); context.assertActionAllowed?.(action, context); return true; }
+      catch { return false; }
+    } : undefined;
     switch (action.type) {
       case "overlay.alert":
       case "overlay.media": {
         const payload = {
           id: action.id,
-          // "overlay.alert" is the legacy identifier of the Media action.
-          // Both paths render only the selected asset, without the obsolete
-          // alert card, text or progress bar.
+          // « overlay.alert » reste l’identifiant historique de l’action Media.
+          // Les deux chemins affichent seulement le média choisi, sans ancienne
+          // carte d’alerte, texte ou barre de progression.
           displayMode: "media-only",
           mediaUrl: this.#localMediaUrl(config.mediaUrl),
           soundUrl: this.#localMediaUrl(config.soundUrl),
           durationMs: clamp(config.durationMs || 5000, 500, 60000),
+          ...(context.overlayTarget === "match" ? { playbackId: randomUUID() } : {}),
           screen: clamp(Math.round(Number(config.screen) || 1), 1, 8),
           user: context.user
         };
-        this.overlayServer.publish("alert", payload);
-        this.notifyRenderer("playback", { type: "alert", ...payload });
+        this.overlayServer.publish(context.overlayTarget === "match" ? "match-media" : "alert", payload);
+        if (context.overlayTarget !== "match") this.notifyRenderer("playback", { type: "alert", ...payload });
         return { displayed: true };
       }
       case "tts.speak": {
-        if (!this.store.getState().settings.tts.enabled) return { skipped: true };
+        const tts = readState(this.store, ["settings.tts"]).settings.tts;
+        if (!tts.enabled) return { skipped: true };
         const isChatComment = context?.event?.type === "chat";
         if (!isChatComment) {
           return { skipped: true, reason: "chat-only" };
+        }
+        if (!isTtsUserAllowed(context.event?.user, config)) {
+          return { skipped: true, reason: "audience-filter" };
         }
         const text = filterTtsChatComment(
           context.event?.data?.message,
@@ -227,12 +125,12 @@ class ActionRunner {
         if (!text) return { skipped: true };
         if (
           isChatComment &&
-          !this.#claimTtsChatComment(context.event, text)
+          !claimTtsChatComment(this.ttsReadMessages, context.event, text, this.nowImpl())
         ) {
           return { skipped: true, reason: "duplicate" };
         }
         const payload = {
-          ...this.store.getState().settings.tts,
+          ...tts,
           ...config,
           text,
           playbackId: randomUUID(),
@@ -249,7 +147,7 @@ class ActionRunner {
         const packId = safeString(config.packId || "", 160);
         const outputDeviceId = safeString(
           config.outputDeviceId ||
-            this.store.getState().game?.connectorOverrides?.[packId]
+            readState(this.store, ["game.connectorOverrides"]).game?.connectorOverrides?.[packId]
               ?.audioOutputDeviceId ||
             "",
           512
@@ -263,7 +161,7 @@ class ActionRunner {
           screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };
         if (config.outputMode === "live") {
-          this.overlayServer.publish("audio", payload);
+          this.overlayServer.publish(context.overlayTarget === "match" ? "match-audio" : "audio", payload);
           return { queued: true, output: "live", screen: payload.screen };
         }
         this.notifyRenderer("playback", { type: "audio", ...payload });
@@ -363,153 +261,10 @@ class ActionRunner {
         this.overlayServer.publish("multiplier-timer", payload);
         return payload;
       }
-      case "wheel.spin": {
-        const wheelConfig =
-          this.store.getState().settings.overlayConfigs?.wheel || {};
-        const configuredWheels = Array.isArray(wheelConfig.wheels)
-          ? wheelConfig.wheels
-          : [];
-        const enabledWheels = configuredWheels.filter(
-          (wheel) => wheel.enabled !== false
-        );
-        const selectedWheel =
-          enabledWheels.find((wheel) => wheel.id === config.wheelId) ||
-          enabledWheels.find(
-            (wheel) => wheel.id === wheelConfig.selectedWheelId
-          ) ||
-          enabledWheels[0] ||
-          null;
-        if (configuredWheels.length && !selectedWheel) {
-          throw new Error("Aucune roue active n’est disponible.");
-        }
-        if (this.wheelSpinActive) {
-          this.wheelSpinQueue.push({ action, context });
-          return {
-            queued: true,
-            queuePosition: this.wheelSpinQueue.length,
-            wheelId: config.wheelId || selectedWheel?.id || ""
-          };
-        }
-        this.wheelSpinActive = true;
-        const overrideChoices = Array.isArray(config.choices)
-          ? config.choices.filter(Boolean).slice(0, 100)
-          : [];
-        const configuredSegments = Array.isArray(selectedWheel?.segments)
-          ? selectedWheel.segments.slice(0, 100)
-          : [];
-        const segments =
-          overrideChoices.length >= 2
-            ? overrideChoices.map((label, index) => ({
-                id: `temporary_${index}`,
-                label,
-                color:
-                  selectedWheel?.segments?.[index]?.color ||
-                  config.color ||
-                  "#ff6a00",
-                action: "none",
-                actionId: ""
-              }))
-            : configuredSegments.length >= 2
-              ? configuredSegments
-              : [
-                  { id: "bonus", label: "Bonus", color: "#ff6a00" },
-                  { id: "challenge", label: "Défi", color: "#111111" }
-                ];
-        const winnerIndex = Math.floor(Math.random() * segments.length);
-        const winnerSegment = segments[winnerIndex] || null;
-        const winnerAction =
-          winnerSegment?.action === "spin"
-            ? "spin"
-            : winnerSegment?.actionId
-              ? "action"
-              : winnerSegment?.action || "none";
-        const choices = segments.map((segment) => segment.label);
-        const payload = {
-          wheelId: selectedWheel?.id || "",
-          wheelName: selectedWheel?.name || "Roue d’actions",
-          choices,
-          colors: segments.map(
-            (segment) => segment.color || config.color || "#ff6a00"
-          ),
-          winner: winnerSegment?.label || null,
-          winnerIndex,
-          winnerAction,
-          design: selectedWheel?.design || wheelConfig.design || "classic",
-          settings: normalizeWheelRuntimeSettings(
-            {
-              ...(wheelConfig || {}),
-              ...(selectedWheel?.settings || {})
-            },
-            selectedWheel?.design || wheelConfig.design || "classic"
-          ),
-          color: config.color || "#ff6a00"
-        };
-        this.overlayServer.publish("wheel", payload);
-        const resultDelayMs =
-          (
-            Math.min(
-              30,
-              Math.max(1, Number(payload.settings.spinDuration || 6))
-            ) +
-            Math.max(0, Number(payload.settings.waitDuration || 0))
-          ) * 1000;
-        if (winnerAction === "action" && winnerSegment.actionId) {
-          const state = this.store.getState();
-          const linkedAction = [
-            ...(state.rules || []),
-            ...activeGameInteractionRules(state)
-          ]
-            .flatMap((rule) => rule.actions || [])
-            .find((item) => item.id === winnerSegment.actionId);
-          if (linkedAction && linkedAction.id !== action.id) {
-            const hydratedLinkedAction = {
-              ...linkedAction,
-              config: renderValue(linkedAction.config || {}, context)
-            };
-            const actionTimer = this.setTimeoutImpl(() => {
-              this.run(hydratedLinkedAction, context).catch(() => {});
-            }, resultDelayMs);
-            actionTimer.unref?.();
-          }
-        }
-        if (
-          winnerSegment?.action === "spin" &&
-          Number(config.reSpinDepth || 0) < 3
-        ) {
-          const reSpin = this.setTimeoutImpl(() => {
-            this.run(
-              {
-                ...action,
-                config: {
-                  ...config,
-                  wheelId: selectedWheel?.id || config.wheelId,
-                  reSpinDepth: Number(config.reSpinDepth || 0) + 1
-                }
-              },
-              context
-            ).catch(() => {});
-          }, resultDelayMs);
-          reSpin.unref?.();
-        }
-        const cycleDelayMs =
-          resultDelayMs +
-          Math.min(
-            30,
-            Math.max(1, Number(payload.settings.resultDuration || 4))
-          ) * 1000 +
-          700;
-        const queueTimer = this.setTimeoutImpl(() => {
-          this.wheelSpinActive = false;
-          const nextSpin = this.wheelSpinQueue.shift();
-          if (nextSpin) {
-            this.run(nextSpin.action, nextSpin.context).catch(() => {});
-          }
-        }, cycleDelayMs);
-        queueTimer.unref?.();
-        return payload;
-      }
+      case "wheel.spin":
+        return this.wheelActions.spin(action, config, context);
       case "action.group":
-        return this.#runActionGroup(action, config, context);
+        return runActionGroup({ store: this.store, runAction: (entry, childContext) => this.run(entry, childContext), randomImpl: this.randomImpl }, action, config, context);
       case "overlay.match":
         return this.overlayServer.playMatch({
           match: safeString(config.match, 40),
@@ -584,7 +339,7 @@ class ActionRunner {
           });
           this.overlayServer.publish(
             "session-state",
-            this.store.getState().overlaySession
+            readState(this.store, ["overlaySession"]).overlaySession
           );
           if (
             safeString(config.packId, 120) === "gtav-montchiliad" &&
@@ -620,7 +375,8 @@ class ActionRunner {
                   )}`;
             await this.gameHub.executeMinecraftCommands(
               minecraftPackId,
-              [command]
+              [command],
+              { shouldExecute }
             );
             payload.nativeSynchronized = true;
           } catch {
@@ -635,7 +391,7 @@ class ActionRunner {
           config.requestData || {}
         );
       case "http.request":
-        return this.#http(config);
+        return runHttpAction(config);
       case "websocket.send":
         return this.sourceHub.send(config.connectionId, config.payload || {});
       case "chat.reply":
@@ -643,18 +399,19 @@ class ActionRunner {
           message: safeString(config.message, 450)
         });
       case "spotify.queue":
-        return this.#spotify(config);
+        return runSpotifyAction(this.spotifyService, config, { ...context, shouldExecute });
       case "irl.shelly":
         if (!this.shellyService) {
           throw new Error("Service Interactions IRL indisponible.");
         }
         return this.shellyService.control(config, {
-          ignoreGlobalSwitch: context?.source === "manual-preview"
+          ignoreGlobalSwitch: context?.source === "manual-preview",
+          shouldExecute
         });
       case "system.keys":
-        return this.#sendKeys(config);
+        return sendKeyAction(this.store, config);
       case "system.open":
-        return this.#open(config);
+        return openUrlAction(shell, config);
       case "delay":
         await new Promise((resolve) =>
           setTimeout(resolve, clamp(config.durationMs || 1000, 0, 60000))
@@ -665,250 +422,14 @@ class ActionRunner {
     }
   }
 
-  async #runActionGroup(action, config, context) {
-    const actionIds = [
-      ...new Set(
-        (Array.isArray(config.actionIds) ? config.actionIds : [])
-          .map(String)
-          .filter(Boolean)
-      )
-    ];
-    if (!actionIds.length) {
-      throw new Error("Ce groupe d’actions ne contient aucune action.");
-    }
-
-    const stack = Array.isArray(context[ACTION_GROUP_STACK])
-      ? context[ACTION_GROUP_STACK]
-      : [];
-    const groupId = safeString(action.id || "", 160);
-    if (groupId && stack.includes(groupId)) {
-      throw new Error(
-        `Référence circulaire détectée dans les groupes d’actions : ${[
-          ...stack,
-          groupId
-        ].join(" → ")}.`
-      );
-    }
-    if (stack.length >= ACTION_GROUP_MAX_DEPTH) {
-      throw new Error(
-        `Profondeur maximale de ${ACTION_GROUP_MAX_DEPTH} groupes d’actions atteinte.`
-      );
-    }
-
-    const actionsById = new Map(
-      (this.store.getState().rules || []).flatMap((rule) =>
-        (rule.actions || [])
-          .filter((entry) => entry?.id)
-          .map((entry) => [
-            String(entry.id),
-            {
-              action: entry,
-              name: safeString(rule.name || entry.name || entry.id, 200)
-            }
-          ])
-      )
-    );
-    const missingActionIds = actionIds.filter(
-      (actionId) => !actionsById.has(actionId)
-    );
-    let selectedActions = actionIds
-      .map((actionId) => actionsById.get(actionId))
-      .filter(Boolean);
-    if (!selectedActions.length) {
-      throw new Error(
-        "Les actions liées à ce groupe sont introuvables. Modifiez sa sélection."
-      );
-    }
-
-    const mode = config.mode === "random" ? "random" : "all";
-    if (mode === "random" && selectedActions.length > 1) {
-      selectedActions = [...selectedActions];
-      for (let index = selectedActions.length - 1; index > 0; index -= 1) {
-        const sampled = Number(this.randomImpl());
-        const bounded = Number.isFinite(sampled)
-          ? Math.min(0.999999999999, Math.max(0, sampled))
-          : 0;
-        const randomIndex = Math.floor(bounded * (index + 1));
-        [selectedActions[index], selectedActions[randomIndex]] = [
-          selectedActions[randomIndex],
-          selectedActions[index]
-        ];
-      }
-      selectedActions = selectedActions.slice(
-        0,
-        Math.min(
-          selectedActions.length,
-          Math.max(1, Math.floor(Number(config.randomCount) || 1))
-        )
-      );
-    }
-
-    const nextStack = [
-      ...stack,
-      groupId || `groupe-anonyme-${stack.length + 1}`
-    ];
-    const missingFailures = missingActionIds.map((actionId) => ({
-      actionId,
-      actionName: actionId,
-      error: new Error(`Action liée introuvable : ${actionId}.`)
-    }));
-    const outcomes = await Promise.all(
-      selectedActions.map(async ({ action: linkedAction, name: actionName }) => {
-        const hydratedAction = {
-          ...linkedAction,
-          config: renderValue(linkedAction.config || {}, context)
-        };
-        try {
-          const result = await this.run(hydratedAction, {
-            ...context,
-            [ACTION_GROUP_STACK]: nextStack
-          });
-          if (result?.skipped) {
-            const reason = String(result.reason || "action-skipped");
-            const message = reason === "irl-disabled"
-              ? "Interactions IRL désactivées dans la page PlugPlus."
-              : `Action ignorée : ${reason}.`;
-            return {
-              ok: false,
-              actionId: String(linkedAction.id || ""),
-              actionName,
-              error: new Error(message)
-            };
-          }
-          return {
-            ok: true,
-            actionId: String(linkedAction.id || ""),
-            actionName,
-            result
-          };
-        } catch (error) {
-          return {
-            ok: false,
-            actionId: String(linkedAction.id || ""),
-            actionName,
-            error
-          };
-        }
-      })
-    );
-    const succeeded = outcomes.filter(({ ok }) => ok);
-    const failures = [
-      ...missingFailures,
-      ...outcomes.filter(({ ok }) => !ok)
-    ];
-    const results = outcomes.map((outcome) =>
-      outcome.ok
-        ? outcome
-        : {
-            ok: false,
-            actionId: outcome.actionId,
-            actionName: outcome.actionName,
-            message: outcome.error?.message || String(outcome.error)
-          }
-    );
-
-    if (failures.length && !succeeded.length) {
-      const firstMessage = failures[0].error?.message || "Erreur inconnue";
-      throw new AggregateError(
-        failures.map(({ error }) => error),
-        `Le groupe d’actions a rencontré ${failures.length} erreur${
-          failures.length > 1 ? "s" : ""
-        } : ${firstMessage}`
-      );
-    }
-    return {
-      mode,
-      requested: actionIds.length,
-      selected: selectedActions.length,
-      executed: succeeded.length,
-      failed: failures.length,
-      partial: failures.length > 0,
-      actionIds: selectedActions.map(({ action: entry }) => String(entry.id || "")),
-      results,
-      failures: failures.map(({ actionId, actionName, error }) => ({
-        actionId,
-        actionName,
-        message: error?.message || String(error)
-      }))
-    };
-  }
-
   #localMediaUrl(value) {
     const source = safeString(value, 2000);
     if (!source.startsWith("/overlay/media/")) return source;
     const urls = this.overlayServer.urls();
-    const token = encodeURIComponent(this.store.getState().settings.overlayToken);
+    const token = encodeURIComponent(readState(this.store, ["settings.overlayToken"]).settings.overlayToken);
     return `${urls.base}${source}?token=${token}`;
   }
 
-  async #http(config) {
-    const url = String(config.url || "");
-    if (!/^https?:\/\//i.test(url)) throw new Error("URL HTTP(S) requise.");
-    const controller = new AbortController();
-    const timeoutMs = clamp(config.timeoutMs || 10000, 500, 30000);
-    const timer = setTimeout(
-      () => controller.abort(),
-      timeoutMs
-    );
-    try {
-      const response = await fetch(url, {
-        method: config.method || "POST",
-        headers: { "Content-Type": "application/json", ...(config.headers || {}) },
-        body:
-          ["GET", "HEAD"].includes(String(config.method || "POST").toUpperCase())
-            ? undefined
-            : JSON.stringify(config.body || {}),
-        signal: controller.signal
-      });
-      const text = await response.text();
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 300)}`);
-      return { status: response.status, body: text.slice(0, 5000) };
-    } catch (error) {
-      if (controller.signal.aborted) {
-        throw new Error(
-          `Délai HTTP dépassé après ${timeoutMs} ms pour ${url}. Augmentez le délai maximal de cette action.`
-        );
-      }
-      throw error;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async #spotify(config) {
-    if (!this.spotifyService) throw new Error("Service Spotify indisponible.");
-    return this.spotifyService.control(config);
-  }
-
-  #sendKeys(config) {
-    if (!this.store.getState().settings.allowKeystrokes) {
-      throw new Error("La simulation de touches doit être autorisée dans Paramètres.");
-    }
-    const keys = safeString(config.keys, 200);
-    if (!keys) throw new Error("Séquence de touches vide.");
-    return new Promise((resolve, reject) => {
-      const script =
-        "Add-Type -AssemblyName System.Windows.Forms; " +
-        "[System.Windows.Forms.SendKeys]::SendWait($args[0])";
-      const child = spawn(
-        "powershell.exe",
-        ["-NoProfile", "-NonInteractive", "-Command", script, keys],
-        { windowsHide: true, stdio: "ignore" }
-      );
-      child.once("error", reject);
-      child.once("exit", (code) => {
-        if (code === 0) resolve({ sent: true });
-        else reject(new Error(`Simulation de touches échouée (${code}).`));
-      });
-    });
-  }
-
-  async #open(config) {
-    const url = String(config.url || "");
-    if (!/^https?:\/\//i.test(url)) throw new Error("Seules les URL HTTP(S) sont permises.");
-    await shell.openExternal(url);
-    return { opened: true };
-  }
 }
 
 module.exports = { ActionRunner, filterTtsChatComment };

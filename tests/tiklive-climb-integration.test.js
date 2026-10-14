@@ -216,7 +216,7 @@ test("remonte les refus explicites du jeu au lieu d’annoncer un faux succès",
 });
 
 test("branche le catalogue ShenPulse sur le pont Climb", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   state.game.interactionCatalogVersions["tiklive-climb"] = 20261011;
   state.game.interactionRulesByPack["tiklive-climb"] = [{
     id: "rule_tiklive-climb_tiklive-climb-souffle",
@@ -253,7 +253,7 @@ test("branche le catalogue ShenPulse sur le pont Climb", async () => {
   assert.equal(pack.connector.url, "http://127.0.0.1:7777");
   assert.equal(pack.accessMode, "purchase");
   assert.equal(pack.price, 19.99);
-  assert.equal(pack.requiresPro, true);
+  assert.equal(pack.requiresPro, false);
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");
   const initialization = hub.initializeDefaultInteractions(pack.id);
   assert.equal(initialization.added, 25);
@@ -307,7 +307,7 @@ test("associe le dossier autonome et son exécutable au lanceur ShenPulse", () =
 });
 
 test("déclenche les cadeaux, likes et !spin pendant une session Climb", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   state.session.profileId = "profile-1";
   state.session.game = {
     running: true,
@@ -367,7 +367,8 @@ test("déclenche les cadeaux, likes et !spin pendant une session Climb", async (
   assert.equal(actions[2].config.wheelId, "wheel_tiklive_climb");
 });
 
-function subscribedState() {
+function purchasedGameState() {
+  // Depuis la politique Pro, l’achat du produit s’ajoute à un accès Pro actif.
   return {
     settings: {
       account: {
@@ -381,7 +382,7 @@ function subscribedState() {
     commerce: {
       subscription: {
         tier: "pro",
-        source: "subscription",
+        source: "own",
         status: "active"
       },
       gameEntitlements: ["tiklive-climb"]

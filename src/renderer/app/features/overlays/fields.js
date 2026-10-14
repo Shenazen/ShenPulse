@@ -109,20 +109,12 @@ const OVERLAY_FIELD_HELP = {
   exitAnimation: "Animation utilisée lorsque la roue disparaît."
 };
 
-function fieldLabelWithInfo(label, help) {
-  return `<span class="field-label-with-info">
-    <span>${escapeHtml(label)}</span>
-    <button type="button" class="field-info-button" aria-label="Information : ${escapeHtml(label)}" title="${escapeHtml(help)}">i</button>
-    <span class="field-info-popover" role="tooltip">${escapeHtml(help)}</span>
-  </span>`;
-}
-
 function overlaySelect(name, label, value, options, full = false, help = OVERLAY_FIELD_HELP[name] || "") {
-  return `<label class="field ${full ? "full" : ""}">${fieldLabelWithInfo(label, help)}<select name="${escapeHtml(name)}">${options.map(([optionValue, optionLabel]) => `<option value="${escapeHtml(optionValue)}" ${String(value) === String(optionValue) ? "selected" : ""}>${escapeHtml(optionLabel)}</option>`).join("")}</select></label>`;
+  return selectFieldMarkup(name, label, value, options, { full, help, informative: true });
 }
 
 function overlayField(name, label, value = "", type = "text", extra = "", help = OVERLAY_FIELD_HELP[name] || "") {
-  return `<label class="field ${extra.includes("full") ? "full" : ""}">${fieldLabelWithInfo(label, help)}<input name="${escapeHtml(name)}" type="${escapeHtml(type)}" value="${escapeHtml(value)}" ${extra.replace("full", "")}></label>`;
+  return inputFieldMarkup(name, label, value, type, extra, { help, informative: true });
 }
 
 function timerDurationParts(totalSeconds = 0) {
@@ -444,20 +436,18 @@ function collectWheelEditorForm() {
   const triggerMode = data.get("wheelGiftTriggerMode") === "value"
     ? "value"
     : "specific";
+  const previousTriggerGift = { ...wheel.triggerGift, value: wheel.trigger };
   wheel.trigger = triggerMode === "specific"
     ? String(data.get("wheelTrigger") || "").trim()
     : "";
-  const selectedTriggerGift = giftForIdentity(
+  const selectedTriggerGift = giftReferenceForSave(
     wheel.trigger,
-    data.get("wheelTriggerGiftId")
+    data.get("wheelTriggerGiftId"),
+    previousTriggerGift
   );
   wheel.triggerGift =
     triggerMode === "specific" && selectedTriggerGift
-      ? {
-          giftId: String(selectedTriggerGift.id || ""),
-          giftCost: Math.max(0, Number(selectedTriggerGift.cost) || 0),
-          giftImageUrl: String(selectedTriggerGift.imageUrl || "")
-        }
+      ? selectedTriggerGift
       : null;
   wheel.giftValueFilter = triggerMode === "value"
     ? normalizeGiftValueFilterConfig({

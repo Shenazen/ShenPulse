@@ -256,170 +256,20 @@ const observedOverlayRuntimeFrames = new Set();
 const overlayPreviewLoadQueue = [];
 const OVERLAY_PREVIEW_LOAD_CONCURRENCY = 2;
 let activeOverlayPreviewLoads = 0;
-const overlayBackgroundPreviewCache = new Map();
-const overlayBackgroundPreviewQueue = [];
-const OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY = 2;
-const OVERLAY_BACKGROUND_PREVIEW_LIMIT = 2;
-const overlayPreviewPriorityKeys = [];
-let activeOverlayBackgroundPreviewLoads = 0;
-let overlayPreviewWarmupTimer = null;
 const overlayRuntimeFrameObserver = typeof ResizeObserver === "undefined"
   ? null
   : new ResizeObserver((entries) => {
     for (const entry of entries) updateOverlayRuntimeFrameScale(entry.target);
   });
 
-function overlayBackgroundPreviewCacheKey(key, url) {
-  return `${String(key || "")}\n${String(url || "")}`;
-}
-
-function overlayPreviewWarmupHost() {
-  let host = document.querySelector("[data-overlay-preview-warmup-host]");
-  if (host) return host;
-  host = document.createElement("div");
-  host.className = "overlay-preview-warmup-host";
-  host.dataset.overlayPreviewWarmupHost = "true";
-  host.setAttribute("aria-hidden", "true");
-  document.body.appendChild(host);
-  return host;
-}
-
-function scheduleOverlayPreviewWarmup(delayMs = 0) {
-  if (overlayPreviewWarmupTimer) clearTimeout(overlayPreviewWarmupTimer);
-  overlayPreviewWarmupTimer = setTimeout(() => {
-    overlayPreviewWarmupTimer = null;
-    warmOverlayRuntimePreviews();
-  }, Math.max(0, Number(delayMs) || 0));
-}
-
 function prioritizeOverlayRuntimePreview(key) {
-  const normalizedKey = String(key || "").trim();
-  if (!normalizedKey) return;
-  const existingIndex = overlayPreviewPriorityKeys.indexOf(normalizedKey);
-  if (existingIndex >= 0) overlayPreviewPriorityKeys.splice(existingIndex, 1);
-  overlayPreviewPriorityKeys.unshift(normalizedKey);
-  overlayPreviewPriorityKeys.splice(OVERLAY_BACKGROUND_PREVIEW_LIMIT);
-  scheduleOverlayPreviewWarmup();
-}
-
-function warmOverlayRuntimePreviews() {
-  if (!snapshot) return;
-  const availableItems = overlayDefinitions().filter(
-    (item) =>
-      canAccessOverlay(item) &&
-      !item.catalogHidden &&
-      item.key !== "coinJar" &&
-      item.previewKind !== "match"
-  );
-  const visibleKeys = [...content.querySelectorAll("[data-overlay-card]")]
-    .map((card) => card.dataset.overlayCard)
-    .filter(Boolean);
-  const priorities = [
-    ...overlayPreviewPriorityKeys,
-    ...visibleKeys,
-    "likeGoal",
-    "timer"
-  ];
-  const priorityIndex = new Map(
-    priorities.map((key, index) => [key, index])
-  );
-  const items = [...availableItems]
-    .sort((left, right) =>
-      (priorityIndex.get(left.key) ?? Number.MAX_SAFE_INTEGER) -
-      (priorityIndex.get(right.key) ?? Number.MAX_SAFE_INTEGER)
-    )
-    .slice(0, OVERLAY_BACKGROUND_PREVIEW_LIMIT);
-  const desiredCacheKeys = new Set();
-  for (const item of items) {
-    const url = overlayRuntimePreviewUrl(item, overlayConfig(item.key), {
-      context: "card"
-    });
-    if (!url) continue;
-    const cacheKey = overlayBackgroundPreviewCacheKey(item.key, url);
-    desiredCacheKeys.add(cacheKey);
-    if (overlayBackgroundPreviewCache.has(cacheKey)) continue;
-    const record = {
-      cacheKey,
-      iframe: null,
-      inUse: false,
-      item,
-      loading: false,
-      queued: true,
-      ready: false,
-      url
-    };
-    overlayBackgroundPreviewCache.set(cacheKey, record);
-    overlayBackgroundPreviewQueue.push(record);
-  }
-  for (const [cacheKey, record] of overlayBackgroundPreviewCache) {
-    if (desiredCacheKeys.has(cacheKey) || record.inUse) continue;
-    discardOverlayBackgroundPreview(record);
-  }
-  drainOverlayBackgroundPreviewQueue();
-}
-
-function discardOverlayBackgroundPreview(record) {
-  const queueIndex = overlayBackgroundPreviewQueue.indexOf(record);
-  if (queueIndex >= 0) overlayBackgroundPreviewQueue.splice(queueIndex, 1);
-  record.queued = false;
-  if (record.loading) {
-    record.loading = false;
-    activeOverlayBackgroundPreviewLoads = Math.max(
-      0,
-      activeOverlayBackgroundPreviewLoads - 1
-    );
-  }
-  record.iframe?.remove();
-  overlayBackgroundPreviewCache.delete(record.cacheKey);
-}
-
-function drainOverlayBackgroundPreviewQueue() {
-  while (
-    activeOverlayBackgroundPreviewLoads <
-      OVERLAY_BACKGROUND_PREVIEW_CONCURRENCY &&
-    overlayBackgroundPreviewQueue.length
-  ) {
-    const record = overlayBackgroundPreviewQueue.shift();
-    if (!record || !record.queued || record.iframe) continue;
-    startOverlayBackgroundPreview(record);
-  }
-}
-
-function startOverlayBackgroundPreview(record) {
-  const iframe = document.createElement("iframe");
-  record.iframe = iframe;
-  record.loading = true;
-  record.queued = false;
-  activeOverlayBackgroundPreviewLoads += 1;
-  iframe.dataset.overlayPreviewCacheKey = record.cacheKey;
-  iframe.dataset.overlayPreviewKey = record.item.key;
-  iframe.dataset.overlayPreviewWarm = "true";
-  iframe.dataset.overlayRuntimePreview = "true";
-  iframe.loading = "eager";
-  iframe.tabIndex = -1;
-  iframe.title = `Préchargement ${record.item.name}`;
-  iframe.setAttribute("aria-hidden", "true");
-  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
-  const [sourceWidth = 1920, sourceHeight = 1080] =
-    record.item.sourceSize || [];
-  iframe.style.setProperty("--overlay-warmup-width", `${sourceWidth}px`);
-  iframe.style.setProperty("--overlay-warmup-height", `${sourceHeight}px`);
-  const complete = (loaded) => {
-    if (!record.loading) return;
-    record.loading = false;
-    if (loaded) {
-      window.hydrateOverlayPreviewFrame?.(iframe);
-    }
-    activeOverlayBackgroundPreviewLoads = Math.max(
-      0,
-      activeOverlayBackgroundPreviewLoads - 1
-    );
-    drainOverlayBackgroundPreviewQueue();
-  };
-  iframe.addEventListener("load", () => complete(true), { once: true });
-  iframe.addEventListener("error", () => complete(false), { once: true });
-  iframe.src = record.url;
-  overlayPreviewWarmupHost().appendChild(iframe);
+  if (!overlayPreviewsVisible()) return;
+  const frame = [...content.querySelectorAll("[data-overlay-native-frame]")]
+    .find((item) => item.dataset.overlayPreviewKey === String(key || ""));
+  if (!frame) return;
+  restoreOverlayRuntimeFrame(frame);
+  bindOverlayRuntimeFrames(frame.parentElement);
+  queueDeferredOverlayPreview(frame);
 }
 
 function revealOverlayPreviewFrame(iframe) {
@@ -454,81 +304,120 @@ function revealOverlayPreviewFrame(iframe) {
   });
 }
 
-function adoptWarmedOverlayPreview(frame) {
-  const placeholderFrame = frame.querySelector("iframe");
-  const key = frame.dataset.overlayPreviewKey || "";
-  const url =
-    placeholderFrame?.dataset.overlaySrc ||
-    placeholderFrame?.getAttribute("src") ||
-    "";
-  const record = overlayBackgroundPreviewCache.get(
-    overlayBackgroundPreviewCacheKey(key, url)
-  );
-  if (!placeholderFrame || !record?.iframe) return placeholderFrame;
-  const iframe = record.iframe;
-  placeholderFrame.remove();
-  record.inUse = true;
-  if (placeholderFrame.hasAttribute("data-overlay-live-preview")) {
-    iframe.setAttribute("data-overlay-live-preview", "");
-    iframe.removeAttribute("data-overlay-runtime-preview");
-  } else {
-    iframe.removeAttribute("data-overlay-live-preview");
-    iframe.setAttribute("data-overlay-runtime-preview", "true");
+function overlayPreviewsVisible() {
+  return typeof rendererVisualsActive === "function"
+    ? rendererVisualsActive() : document.visibilityState !== "hidden";
+}
+
+function overlayRuntimeFrameAllowed(frame) {
+  if (!overlayPreviewsVisible()) return false;
+  const editor = frame.closest("dialog");
+  if (editor) return editor.open;
+  return typeof currentPage === "undefined" || currentPage === "overlays";
+}
+
+function overlayPreviewAttributes(iframe) {
+  return [...iframe.attributes]
+    .filter(({ name }) => !/^data-overlay-preview-(?:queued|loading|ready|load-bound|reveal-revision)$/.test(name))
+    .map(({ name, value }) => [name, value]);
+}
+
+function releaseOverlayRuntimeFrame(frame, { suspend = false } = {}) {
+  dequeueDeferredOverlayPreview(frame);
+  const iframe = frame.querySelector("iframe");
+  if (iframe) {
+    // Keep only a tiny descriptor, not a detached iframe/document/media runtime.
+    if (suspend) frame.shenPulseSuspendedPreview = overlayPreviewAttributes(iframe);
+    if (iframe.dataset.overlayPreviewLoading) {
+      delete iframe.dataset.overlayPreviewLoading;
+      activeOverlayPreviewLoads = Math.max(0, activeOverlayPreviewLoads - 1);
+    }
+    iframe.remove();
   }
-  delete iframe.dataset.overlayPreviewWarm;
-  iframe.removeAttribute("aria-hidden");
-  iframe.title = placeholderFrame.title;
+  if (!suspend) delete frame.shenPulseSuspendedPreview;
+  frame.classList.remove("overlay-runtime-frame--ready");
+}
+
+function restoreOverlayRuntimeFrame(frame) {
+  let iframe = frame.querySelector("iframe");
+  if (iframe || !frame.shenPulseSuspendedPreview || !overlayRuntimeFrameAllowed(frame)) return iframe;
+  iframe = document.createElement("iframe");
+  for (const [name, value] of frame.shenPulseSuspendedPreview) {
+    if (name !== "src") iframe.setAttribute(name, value);
+  }
+  const source = frame.shenPulseSuspendedPreview.find(([name]) => name === "src")?.[1];
+  iframe.dataset.overlaySrc = source && source !== "about:blank" ? source : iframe.dataset.overlaySrc || "";
+  if (!iframe.hasAttribute("data-overlay-live-preview")) {
+    const item = overlayDefinitions().find((entry) => entry.key === frame.dataset.overlayPreviewKey);
+    if (item) {
+      try {
+        const url = new URL(overlayRuntimePreviewUrl(item, overlayConfig(item.key)));
+        if (item.parameter) url.searchParams.set(item.parameter, selectedOverlayDesign(item));
+        iframe.dataset.overlaySrc = url.toString();
+      } catch {
+        // No local server/source yet: keep the lightweight placeholder until a usable URL is supplied.
+      }
+    }
+  }
+  iframe.src = "about:blank";
   frame.appendChild(iframe);
-  if (record.ready || iframe.dataset.overlayPreviewReady) {
-    iframe.dataset.overlayPreviewReady = "true";
-    window.hydrateOverlayPreviewFrame?.(iframe);
-    revealOverlayPreviewFrame(iframe);
-  }
+  delete frame.shenPulseSuspendedPreview;
   return iframe;
 }
 
-function preserveOverlayRuntimeFrames(root = document) {
-  const host = overlayPreviewWarmupHost();
+function suspendOverlayRuntimePreviews(root = document) {
   root.querySelectorAll("[data-overlay-native-frame]").forEach((frame) => {
-    const iframe = frame.querySelector(
-      'iframe[data-overlay-runtime-preview="true"]'
-    );
-    if (!iframe) return;
-    const key = frame.dataset.overlayPreviewKey || iframe.dataset.overlayPreviewKey;
-    const url = iframe.dataset.overlaySrc || iframe.getAttribute("src") || "";
-    if (!key || !url || url === "about:blank") return;
-    const cacheKey = overlayBackgroundPreviewCacheKey(key, url);
-    let record = overlayBackgroundPreviewCache.get(cacheKey);
-    if (!record) {
-      record = {
-        cacheKey,
-        iframe,
-        inUse: true,
-        item: { key, name: key },
-        loading: false,
-        queued: false,
-        ready: iframe.dataset.overlayPreviewReady === "true",
-        url
-      };
-      overlayBackgroundPreviewCache.set(cacheKey, record);
-    }
-    if (record.iframe !== iframe) return;
-    record.inUse = false;
-    iframe.dataset.overlayPreviewCacheKey = cacheKey;
-    iframe.dataset.overlayPreviewKey = key;
-    iframe.dataset.overlayPreviewWarm = "true";
-    iframe.setAttribute("aria-hidden", "true");
-    host.appendChild(iframe);
+    releaseOverlayRuntimeFrame(frame, { suspend: true });
+    overlayPreviewVisibilityObserver?.unobserve(frame);
+    delete frame.dataset.overlayPreviewVisible;
   });
-  scheduleOverlayPreviewWarmup();
+  root.querySelectorAll("iframe[data-scene-preview]").forEach((iframe) => {
+    const placeholder = document.createElement("span");
+    placeholder.dataset.scenePreviewResume = "true";
+    placeholder.hidden = true;
+    placeholder.shenPulsePreviewAttributes = overlayPreviewAttributes(iframe);
+    iframe.replaceWith(placeholder);
+  });
+}
+
+function resumeOverlayRuntimePreviews(root = document) {
+  if (!overlayPreviewsVisible()) return;
+  bindOverlayRuntimeFrames(root);
+  if (typeof currentPage !== "undefined" && currentPage !== "overlays") return;
+  root.querySelectorAll("[data-scene-preview-resume]").forEach((placeholder) => {
+    const iframe = document.createElement("iframe");
+    for (const [name, value] of placeholder.shenPulsePreviewAttributes || []) iframe.setAttribute(name, value);
+    iframe.addEventListener("load", () => {
+      if (typeof hydrateSceneComposerPreview === "function") hydrateSceneComposerPreview(iframe);
+    });
+    placeholder.replaceWith(iframe);
+  });
+}
+
+function disposeOverlayRuntimePreviews(root = document) {
+  root.querySelectorAll("[data-overlay-native-frame]").forEach((frame) => {
+    overlayRuntimeFrameObserver?.unobserve(frame);
+    overlayPreviewVisibilityObserver?.unobserve(frame);
+    observedOverlayRuntimeFrames.delete(frame);
+    releaseOverlayRuntimeFrame(frame);
+  });
+  root.querySelectorAll("iframe[data-scene-preview], [data-scene-preview-resume]")
+    .forEach((frame) => frame.remove());
+  drainOverlayPreviewLoadQueue();
 }
 const overlayPreviewVisibilityObserver = typeof IntersectionObserver === "undefined"
   ? null
   : new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (entry.isIntersecting) queueDeferredOverlayPreview(entry.target);
-      else dequeueDeferredOverlayPreview(entry.target);
+      const frame = entry.target;
+      frame.dataset.overlayPreviewVisible = String(entry.isIntersecting);
+      if (entry.isIntersecting && overlayRuntimeFrameAllowed(frame)) {
+        restoreOverlayRuntimeFrame(frame);
+        bindOverlayRuntimeFrameLoad(frame);
+        queueDeferredOverlayPreview(frame);
+      } else releaseOverlayRuntimeFrame(frame, { suspend: true });
     }
+    drainOverlayPreviewLoadQueue();
   }, {
     root: content,
     rootMargin: "160px 0px",
@@ -536,9 +425,11 @@ const overlayPreviewVisibilityObserver = typeof IntersectionObserver === "undefi
   });
 
 function queueDeferredOverlayPreview(frame) {
+  if (!overlayRuntimeFrameAllowed(frame)) return;
   const iframe = frame.querySelector("iframe[data-overlay-src]");
   if (
     !iframe ||
+    !iframe.dataset.overlaySrc ||
     iframe.dataset.overlayPreviewQueued ||
     iframe.dataset.overlayPreviewLoading ||
     iframe.dataset.overlayPreviewReady
@@ -560,6 +451,7 @@ function dequeueDeferredOverlayPreview(frame) {
 }
 
 function drainOverlayPreviewLoadQueue() {
+  if (!overlayPreviewsVisible()) return;
   while (
     activeOverlayPreviewLoads < OVERLAY_PREVIEW_LOAD_CONCURRENCY &&
     overlayPreviewLoadQueue.length
@@ -571,12 +463,12 @@ function drainOverlayPreviewLoadQueue() {
 }
 
 function loadDeferredOverlayPreview(frame) {
+  if (!overlayRuntimeFrameAllowed(frame)) return;
   const iframe = frame.querySelector("iframe[data-overlay-src]");
   if (!iframe || iframe.dataset.overlayPreviewLoading) return;
   delete iframe.dataset.overlayPreviewQueued;
   iframe.dataset.overlayPreviewLoading = "true";
   activeOverlayPreviewLoads += 1;
-  overlayPreviewVisibilityObserver?.unobserve(frame);
   iframe.src = iframe.dataset.overlaySrc;
 }
 
@@ -585,13 +477,6 @@ function completeDeferredOverlayPreview(iframe) {
   delete iframe.dataset.overlayPreviewLoading;
   activeOverlayPreviewLoads = Math.max(0, activeOverlayPreviewLoads - 1);
   drainOverlayPreviewLoadQueue();
-}
-
-function cancelDeferredOverlayPreview(frame) {
-  dequeueDeferredOverlayPreview(frame);
-  const iframe = frame.querySelector("iframe[data-overlay-src]");
-  if (!iframe) return;
-  completeDeferredOverlayPreview(iframe);
 }
 
 function updateOverlayRuntimeFrameScale(frame) {
@@ -610,38 +495,49 @@ function updateOverlayRuntimeFrameScale(frame) {
   frame.style.setProperty("--overlay-render-scale", String(scale));
 }
 
+function bindOverlayRuntimeFrameLoad(frame) {
+  const iframe = frame.querySelector("iframe");
+  if (!iframe || iframe.dataset.overlayPreviewLoadBound) return;
+  iframe.dataset.overlayPreviewLoadBound = "true";
+  iframe.addEventListener("load", () => {
+    if (!iframe.isConnected || !overlayRuntimeFrameAllowed(frame) || iframe.src === "about:blank") return;
+    completeDeferredOverlayPreview(iframe);
+    window.hydrateOverlayPreviewFrame?.(iframe);
+    if (iframe.hasAttribute("data-overlay-live-preview") && typeof scheduleOverlayLivePreview === "function") {
+      // Configuration edits are sent by postMessage; reapply the still-open draft after a resume.
+      scheduleOverlayLivePreview();
+    }
+  });
+  iframe.addEventListener("error", () => completeDeferredOverlayPreview(iframe));
+}
+
 function bindOverlayRuntimeFrames(root = document) {
   for (const frame of observedOverlayRuntimeFrames) {
     if (frame.isConnected) continue;
     overlayRuntimeFrameObserver?.unobserve(frame);
     overlayPreviewVisibilityObserver?.unobserve(frame);
-    cancelDeferredOverlayPreview(frame);
+    releaseOverlayRuntimeFrame(frame);
     observedOverlayRuntimeFrames.delete(frame);
   }
   root.querySelectorAll("[data-overlay-native-frame]").forEach((frame) => {
+    if (!overlayRuntimeFrameAllowed(frame)) {
+      releaseOverlayRuntimeFrame(frame, { suspend: true });
+      return;
+    }
     if (!observedOverlayRuntimeFrames.has(frame)) {
       observedOverlayRuntimeFrames.add(frame);
       overlayRuntimeFrameObserver?.observe(frame);
     }
-    const iframe = adoptWarmedOverlayPreview(frame);
-    if (iframe && !iframe.dataset.overlayPreviewLoadBound) {
-      iframe.dataset.overlayPreviewLoadBound = "true";
-      iframe.addEventListener("load", () => {
-        if (
-          iframe.dataset.overlaySrc &&
-          !iframe.dataset.overlayPreviewLoading
-        ) return;
-        completeDeferredOverlayPreview(iframe);
-        window.hydrateOverlayPreviewFrame?.(iframe);
-      });
-    }
+    const iframe = restoreOverlayRuntimeFrame(frame);
+    bindOverlayRuntimeFrameLoad(frame);
     if (iframe?.dataset.overlayPreviewReady === "true") {
       window.hydrateOverlayPreviewFrame?.(iframe);
       revealOverlayPreviewFrame(iframe);
     }
     if (iframe?.dataset.overlaySrc) {
-      if (overlayPreviewVisibilityObserver) {
+      if (overlayPreviewVisibilityObserver && !iframe.hasAttribute("data-overlay-live-preview")) {
         overlayPreviewVisibilityObserver.observe(frame);
+        if (frame.dataset.overlayPreviewVisible === "true") queueDeferredOverlayPreview(frame);
       } else {
         queueDeferredOverlayPreview(frame);
       }
@@ -662,9 +558,5 @@ window.addEventListener("message", (event) => {
   );
   if (!iframe) return;
   iframe.dataset.overlayPreviewReady = "true";
-  const record = overlayBackgroundPreviewCache.get(
-    iframe.dataset.overlayPreviewCacheKey || ""
-  );
-  if (record?.iframe === iframe) record.ready = true;
   revealOverlayPreviewFrame(iframe);
 });

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "Name": "ShenPulse",
+  "Author": "ShenPulse",
+  "Description": "Lancez vos actions et changez de profil ShenPulse depuis Stream Deck.",
+  "Version": "1.0.0.0",
+  "UUID": "com.shenpulse.control",
+  "SDKVersion": 2,
+  "CodePath": "plugin.html",
+  "Icon": "images/plugin",
+  "Category": "ShenPulse",
+  "CategoryIcon": "images/plugin",
+  "URL": "https://shenpulse.com",
+  "Software": { "MinimumVersion": "6.6" },
+  "OS": [{ "Platform": "windows", "MinimumVersion": "10" }],
+  "Actions": [
+    {
+      "Name": "Lancer une action",
+      "UUID": "com.shenpulse.control.action",
+      "Tooltip": "Lance une action ShenPulse enregistrée.",
+      "Icon": "images/action",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/action", "TitleAlignment": "bottom", "FontSize": "11" }],
+      "SupportedInMultiActions": true
+    },
+    {
+      "Name": "Changer de profil",
+      "UUID": "com.shenpulse.control.profile",
+      "Tooltip": "Sélectionne un profil ShenPulse.",
+      "Icon": "images/action",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/action", "TitleAlignment": "bottom", "FontSize": "11" }],
+      "SupportedInMultiActions": true
+    }
+  ]
+}

@@ -49,16 +49,16 @@ class IrlPythonBridge {
     return this.#request("shelly.identify", { host });
   }
 
-  provision({ host, generation, ssid, password }) {
+  provision({ host, generation, ssid, password }, { assertAccess } = {}) {
     return this.#request("shelly.provision", {
       host,
       generation,
       ssid,
       password
-    });
+    }, REQUEST_TIMEOUT_MS, { assertAccess });
   }
 
-  control(device, operation, durationMs) {
+  control(device, operation, durationMs, { assertAccess } = {}) {
     return this.#request("shelly.control", {
       device: {
         host: device?.host,
@@ -67,7 +67,7 @@ class IrlPythonBridge {
       },
       operation,
       durationMs
-    });
+    }, REQUEST_TIMEOUT_MS, { assertAccess });
   }
 
   async stop() {
@@ -87,12 +87,17 @@ class IrlPythonBridge {
     }
   }
 
-  async #request(command, params = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  async #request(command, params = {}, timeoutMs = REQUEST_TIMEOUT_MS, { assertAccess = () => {} } = {}) {
+    assertAccess();
     await this.#ensureStarted();
-    return this.#requestStarted(command, params, timeoutMs);
+    assertAccess();
+    return this.#requestStarted(command, params, timeoutMs, { assertAccess });
   }
 
-  #requestStarted(command, params, timeoutMs = REQUEST_TIMEOUT_MS) {
+  #requestStarted(command, params, timeoutMs = REQUEST_TIMEOUT_MS, { assertAccess = () => {} } = {}) {
+    // Le démarrage peut prendre plusieurs secondes. Un nouveau pilotage ou
+    // provisionnement n’hérite jamais des anciens droits après cette attente.
+    assertAccess();
     const child = this.child;
     if (!child || !this.readyInfo || !child.stdin?.writable) {
       return Promise.reject(unavailableError("Le moteur Python IRL n'est pas démarré."));

@@ -1,11 +1,48 @@
 "use strict";
 
-/**
- * Initialisation de la roue, des classements et des vidéos Match.
- *
- * Ce module est chargé comme script classique dans l'ordre déclaré par la page.
- * Il partage uniquement les contrats globaux documentés dans README.md.
+/* FICHIER GÉNÉRÉ — compatibilité anciens loaders ; sources : widgets/ et session.js. */
+
+"use strict";
+
+/** Ancien point d'entrée wheel-match : réutilise les moteurs canoniques.
+ * Téléchargements parallèles, exécution ordonnée par async=false. Le transport
+ * attend le résultat avant tout abonnement ; un échec reste explicite, borné,
+ * sans lecture de secours ni reprise artificielle d'un ancien événement.
  */
+(function loadLegacyMatchReactions() {
+  if (typeof document === "undefined" || typeof viewName !== "string" ||
+    viewName !== "match") return;
+  if (globalThis.shenPulseMatchCompatibilityReady) return;
+  const current = new URL(document.currentScript?.src || "runtime/wheel-match.js", document.baseURI);
+  const modules = [
+    ["match-compatible", typeof startMatchCompatiblePlayback === "function" && typeof finishMatchCompatiblePlayback === "function"],
+    ["match-progress", typeof globalThis.MatchVideoProgress?.watch === "function"],
+    ["match-audio", typeof playMatchVideo === "function" && typeof stopMatchVideoAudio === "function"],
+    ["match-reactions", typeof playMatchMedia === "function" && typeof playMatchAudio === "function"],
+    ["match-preview", typeof startProtectedMatchPreview === "function"],
+    ["match", typeof setupMatch === "function" && typeof enqueueMatchPlayback === "function"]
+  ].filter(([, available]) => !available).map(([name]) => name);
+  if (!modules.length) return;
+  globalThis.shenPulseMatchCompatibilityReady = Promise.all(modules.map((name) => {
+    const script = document.createElement("script");
+    const target = new URL(`widgets/${name}.js`, current);
+    target.search = current.search;
+    script.src = target.toString();
+    script.async = false;
+    const completion = new Promise((resolve) => {
+      const deadline = setTimeout(() => resolve(false), 4000);
+      script.addEventListener("load", () => { clearTimeout(deadline); resolve(true); }, { once: true });
+      script.addEventListener("error", () => { clearTimeout(deadline); resolve(false); }, { once: true });
+    });
+    document.head.appendChild(script);
+    return completion;
+  })).then((results) => {
+    const ready = results.every(Boolean);
+    if (!ready) document.documentElement.dataset.overlayLoadError = "match-runtime-unavailable";
+    return ready;
+  });
+})();
+
 
 function setupWheel() {
   const wheel = document.getElementById("wheel");
@@ -252,349 +289,4 @@ function setupLeaderboard() {
   if (icon) icon.textContent = leaderboardKind === "tappers" ? "♥" : "♛";
   seedStaticLeaderboardPreview();
   renderLeaderboard();
-}
-
-function markMatchSourceInactive() {
-  if (viewName !== "match" || isCatalogPreview) return;
-  matchSourceInactive = true;
-  document.getElementById("match-video")?.pause();
-}
-
-function reactivateMatchSource() {
-  if (
-    viewName !== "match" ||
-    isCatalogPreview ||
-    document.visibilityState === "hidden"
-  ) {
-    return;
-  }
-  matchSourceInactive = false;
-  if (performance.now() - matchLastRestartAt < 250) return;
-  restartMatchVideo();
-}
-
-function setupMatchActivationRecovery() {
-  if (
-    matchActivationRecoveryReady ||
-    viewName !== "match" ||
-    matchName === "player" ||
-    isCatalogPreview
-  ) {
-    return;
-  }
-  matchActivationRecoveryReady = true;
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      markMatchSourceInactive();
-    } else if (matchSourceInactive) {
-      reactivateMatchSource();
-    }
-  });
-  window.addEventListener("pagehide", markMatchSourceInactive);
-  window.addEventListener("pageshow", () => {
-    if (matchSourceInactive) reactivateMatchSource();
-  });
-  document.addEventListener("freeze", markMatchSourceInactive);
-  document.addEventListener("resume", reactivateMatchSource);
-
-  const monitorSourceRendering = (timestamp) => {
-    if (
-      matchActivationLastFrameAt > 0 &&
-      timestamp - matchActivationLastFrameAt > MATCH_SOURCE_SUSPEND_GAP_MS
-    ) {
-      reactivateMatchSource();
-    }
-    matchActivationLastFrameAt = timestamp;
-    requestAnimationFrame(monitorSourceRendering);
-  };
-  requestAnimationFrame(monitorSourceRendering);
-}
-
-function normalizedMatchPlayback(payload = {}) {
-  const requestedMatch = String(payload.match || "").trim().toLowerCase();
-  if (!MATCH_VIDEO_NAMES.has(requestedMatch)) return null;
-  const requestedVariant = String(payload.variant || "tikcontrol")
-    .trim()
-    .toLowerCase();
-  return {
-    requestId: String(payload.requestId || "").trim(),
-    match: requestedMatch,
-    variant:
-      requestedMatch === "enigma" || !MATCH_VIDEO_VARIANTS.has(requestedVariant)
-        ? "tikcontrol"
-        : requestedVariant,
-    fit: payload.fit === "cover" ? "cover" : "contain"
-  };
-}
-
-function matchTicketUrl(payload = {}) {
-  const query = new URLSearchParams({
-    match: String(payload.match || ""),
-    variant: String(payload.variant || "tikcontrol"),
-    fit: payload.fit === "cover" ? "cover" : "contain"
-  });
-  if (matchSourceBasePath) {
-    return `${matchSourceBasePath}/ticket?${query.toString()}`;
-  }
-  if (!isPublicMatchSource) return "";
-  const source = publicMatchRelayDocument?.matchSource || {};
-  const localPort = Number(source.localPort || 0);
-  if (
-    source.enabled !== true ||
-    source.accountNumber !== publicMatchAccountNumber ||
-    !Number.isInteger(localPort) ||
-    localPort < 1 ||
-    localPort > 65_535
-  ) {
-    return "";
-  }
-  return `http://127.0.0.1:${localPort}/match-bridge/${encodeURIComponent(
-    publicMatchAccountNumber
-  )}/${encodeURIComponent(publicMatchChannel)}/ticket?${query.toString()}`;
-}
-
-function finishMatchPlayback(playbackId = "") {
-  if (viewName !== "match" || matchName !== "player") return;
-  const video = document.getElementById("match-video");
-  if (
-    playbackId &&
-    video?.dataset.matchPlaybackId &&
-    video.dataset.matchPlaybackId !== playbackId
-  ) {
-    return;
-  }
-  const stage = video?.parentElement;
-  stage?.classList.remove("playing");
-  if (video) {
-    video.pause();
-    video.removeAttribute("src");
-    video.load();
-  }
-  matchPlaybackQueue?.complete(playbackId);
-}
-
-async function startQueuedMatchPlayback(payload = {}) {
-  const request = normalizedMatchPlayback(payload);
-  const video = document.getElementById("match-video");
-  const title = document.getElementById("match-title");
-  if (!request || !video || !title) {
-    matchPlaybackQueue?.complete(request?.requestId || "");
-    return;
-  }
-
-  const playbackId = request.requestId || `${Date.now()}-${request.match}`;
-  video.dataset.matchPlaybackId = playbackId;
-  video.dataset.matchPlaybackLoading = "true";
-  title.textContent = MATCH_VIDEO_LABELS[request.match];
-  video.loop = false;
-  video.autoplay = false;
-  video.style.objectFit = request.fit;
-  video.parentElement?.classList.add("has-video", "playing");
-  video.pause();
-  video.removeAttribute("src");
-  video.load();
-
-  let source = mediaUrl(`video/${request.match}-${request.variant}.webm`);
-  if (matchSourceBasePath || isPublicMatchSource) {
-    try {
-      const ticketUrl = matchTicketUrl(request);
-      if (!ticketUrl) throw new Error("Lecteur Match local indisponible.");
-      const response = await fetch(ticketUrl, {
-        cache: "no-store"
-      });
-      if (!response.ok) throw new Error(`Ticket Match refusé (${response.status}).`);
-      const ticket = await response.json();
-      source = new URL(String(ticket.url || ""), ticketUrl).toString();
-      if (!source) throw new Error("Ticket Match incomplet.");
-    } catch {
-      finishMatchPlayback(playbackId);
-      return;
-    }
-  }
-  if (video.dataset.matchPlaybackId !== playbackId) return;
-  video.src = source;
-  video.load();
-  delete video.dataset.matchPlaybackLoading;
-
-  const playFromStart = () => {
-    if (video.dataset.matchPlaybackId !== playbackId) return;
-    try {
-      video.currentTime = 0;
-      video.play().catch(() => finishMatchPlayback(playbackId));
-    } catch {
-      finishMatchPlayback(playbackId);
-    }
-  };
-  if (video.readyState >= 2) playFromStart();
-  else video.addEventListener("canplay", playFromStart, { once: true });
-}
-
-function enqueueMatchPlayback(payload = {}) {
-  const request = normalizedMatchPlayback(payload);
-  if (!request || viewName !== "match") return false;
-  if (matchName !== "player") {
-    if (request.match !== matchName) return false;
-    restartMatchVideo();
-    return true;
-  }
-  if (
-    request.requestId &&
-    matchPlaybackRequestIds.has(request.requestId)
-  ) {
-    return false;
-  }
-  if (request.requestId) {
-    matchPlaybackRequestIds.add(request.requestId);
-    if (matchPlaybackRequestIds.size > 500) {
-      matchPlaybackRequestIds.delete(matchPlaybackRequestIds.values().next().value);
-    }
-  }
-  matchPlaybackQueue?.enqueue(request);
-  return true;
-}
-
-function positionStaticMatchPreview(video, expectedSource = video?.dataset.previewSource) {
-  if (!isStaticPreview || !video) return;
-  const seekToRepresentativeFrame = () => {
-    if (
-      expectedSource &&
-      video.dataset.previewSource &&
-      video.dataset.previewSource !== expectedSource
-    ) {
-      return;
-    }
-    const duration = Number(video.duration || 0);
-    if (!Number.isFinite(duration) || duration <= 0) return;
-    const target = Math.min(
-      Math.max(0.25, duration * 0.45),
-      Math.max(0.25, duration - 0.1)
-    );
-    const previewKey = expectedSource || video.currentSrc || video.src;
-    if (
-      video.dataset.previewFrameSource === previewKey &&
-      ["playing", "seeking", "ready"].includes(video.dataset.previewFrameStatus)
-    ) {
-      return;
-    }
-    video.dataset.previewFrameSource = previewKey;
-    const canSeek = Array.from(
-      { length: video.seekable.length },
-      (_, index) => [
-        video.seekable.start(index),
-        video.seekable.end(index)
-      ]
-    ).some(([start, end]) => start <= target && end >= target);
-    if (canSeek) {
-      video.dataset.previewFrameStatus = "seeking";
-      video.pause();
-      video.addEventListener("seeked", () => {
-        if (video.dataset.previewFrameSource !== previewKey) return;
-        video.pause();
-        video.dataset.previewFrameStatus = "ready";
-      }, { once: true });
-      try {
-        video.currentTime = target;
-      } catch {
-        video.dataset.previewFrameStatus = "";
-      }
-      return;
-    }
-
-    // Some imported WebM files do not expose a seekable range. Fast-forwarding
-    // them muted produces a representative card image without delaying the UI.
-    video.dataset.previewFrameStatus = "playing";
-    video.muted = true;
-    video.playbackRate = 16;
-    const stopOnRepresentativeFrame = () => {
-      if (video.dataset.previewFrameSource !== previewKey) return;
-      if (video.currentTime >= target || video.ended) {
-        video.pause();
-        video.playbackRate = 1;
-        video.dataset.previewFrameStatus = "ready";
-        return;
-      }
-      if (typeof video.requestVideoFrameCallback === "function") {
-        video.requestVideoFrameCallback(stopOnRepresentativeFrame);
-      } else {
-        requestAnimationFrame(stopOnRepresentativeFrame);
-      }
-    };
-    video.play()
-      .then(() => stopOnRepresentativeFrame())
-      .catch(() => {
-        video.playbackRate = 1;
-        video.dataset.previewFrameStatus = "";
-      });
-    setTimeout(() => {
-      if (
-        video.dataset.previewFrameSource !== previewKey ||
-        video.dataset.previewFrameStatus !== "playing"
-      ) {
-        return;
-      }
-      video.pause();
-      video.playbackRate = 1;
-      video.dataset.previewFrameStatus = video.currentTime > 0 ? "ready" : "";
-    }, 1200);
-  };
-  for (const eventName of ["loadedmetadata", "loadeddata", "canplay"]) {
-    video.addEventListener(eventName, seekToRepresentativeFrame, {
-      once: true
-    });
-  }
-  requestAnimationFrame(seekToRepresentativeFrame);
-  setTimeout(seekToRepresentativeFrame, 80);
-  setTimeout(seekToRepresentativeFrame, 300);
-}
-
-function setupMatch() {
-  const video = document.getElementById("match-video");
-  const title = document.getElementById("match-title");
-  if (!video || !title) return;
-  if (matchName === "player") {
-    activeView.classList.add("match-player");
-    title.textContent = "MATCH";
-    video.loop = false;
-    video.autoplay = false;
-    if (!matchPlaybackQueue) {
-      matchPlaybackQueue = globalThis.MatchPlaybackQueue.create({
-        onStart: startQueuedMatchPlayback
-      });
-      video.addEventListener("ended", () =>
-        finishMatchPlayback(video.dataset.matchPlaybackId || "")
-      );
-      video.addEventListener("error", () => {
-        if (video.dataset.matchPlaybackLoading === "true") return;
-        finishMatchPlayback(video.dataset.matchPlaybackId || "");
-      });
-    }
-    return;
-  }
-  title.textContent = MATCH_VIDEO_LABELS[matchName] || matchName.toUpperCase();
-  const variant = matchName === "enigma" ? "tikcontrol" : matchVariant;
-  video.loop = matchLoop;
-  video.autoplay = isStaticPreview ? false : matchAutoplay;
-  video.style.objectFit = matchFit;
-  setupMatchActivationRecovery();
-  const source = mediaUrl(`video/${matchName}-${variant}.webm`);
-  video.dataset.previewSource = source;
-  video.addEventListener("canplay", () => {
-    video.parentElement?.classList.add("has-video");
-    if (isStaticPreview) positionStaticMatchPreview(video, source);
-    else if (
-      viewName === "match" &&
-      video.autoplay &&
-      document.visibilityState !== "hidden"
-    ) {
-      video.play().catch(() => {});
-    } else if (document.visibilityState === "hidden") {
-      markMatchSourceInactive();
-    }
-  }, { once: true });
-  video.addEventListener("ended", () => {
-    video.currentTime = 0;
-  });
-  video.src = source;
-  positionStaticMatchPreview(video, source);
-  video.load();
 }

@@ -86,6 +86,7 @@ test("une roue reconnaît aussi le nom localisé du cadeau LIVE", () => {
     {
       id: "singing-sax",
       name: "Saxo-chant",
+      alternateNames: ["Singing Sax"],
       cost: 399,
       imageUrl: `https://p16.example/${imageHash}~tplv-obj.webp`
     }

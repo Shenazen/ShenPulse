@@ -33,7 +33,7 @@ test("protège l'état local et accepte un événement authentifié", async () =
       apiPort,
       overlayToken: "overlay-secret",
       apiToken: "api-secret",
-      account: { uid: "account-test-1" },
+      account: { uid: "account-test-1", email: "test@example.invalid", refreshTokenSecretId: "test-auth-secret" },
       matchAccess: { accessKey: "a".repeat(32) },
       publicOverlayRelay: {
         publicBaseUrl: "https://shenpulse-overlays.web.app",
@@ -53,7 +53,7 @@ test("protège l'état local et accepte un événement authentifié", async () =
   };
   const inbound = [];
   const server = new OverlayServer({
-    store: { getState: () => structuredClone(state) },
+    store: { getState: () => structuredClone(state), getSecret: () => "test-refresh-token" },
     staticDirectory: path.join(__dirname, "..", "resources", "overlays"),
     onInboundEvent: async (event) => inbound.push(event),
     onEffectRequest: async () => ({ ok: true })
@@ -121,7 +121,7 @@ test("protège l'état local et accepte un événement authentifié", async () =
     assert.equal(importedStylesheet.status, 200);
     assert.match(importedStylesheet.headers.get("content-type"), /css/);
     const overlayFont = await fetch(
-      `http://127.0.0.1:${overlayPort}/overlay/fonts/inter-latin-wght-normal.woff2?v=1.0.16`
+      `http://127.0.0.1:${overlayPort}/overlay/fonts/inter-latin-wght-normal.woff2?v=2.0.0-overlay1`
     );
     assert.equal(overlayFont.status, 200);
     assert.match(overlayFont.headers.get("content-type"), /font\/woff2/);
@@ -195,9 +195,17 @@ test("protège l'état local et accepte un événement authentifié", async () =
     const protectedMatchVideo = await fetch(
       `http://127.0.0.1:${overlayPort}/overlay/media/video/x2-tikcontrol.webm?token=overlay-secret`
     );
-    assert.equal(protectedMatchVideo.status, 200);
-    assert.equal(protectedMatchVideo.headers.get("cache-control"), "no-store");
+    assert.equal(protectedMatchVideo.status, 403, "même Pro ne reçoit pas de fichier vidéo direct");
     await protectedMatchVideo.body.cancel();
+    const previewTicketResponse = await fetch(
+      `http://127.0.0.1:${overlayPort}/match-preview/ticket?match=x2&variant=tikcontrol&token=overlay-secret`
+    );
+    assert.equal(previewTicketResponse.status, 200);
+    const previewTicket = await previewTicketResponse.json();
+    assert.match(previewTicket.url, /^\/match-media\/[A-Za-z0-9_-]{32}$/);
+    const previewMedia = await fetch(`http://127.0.0.1:${overlayPort}${previewTicket.url}`, { headers: { Range: "bytes=0-31" } });
+    assert.equal(previewMedia.status, 206);
+    assert.equal((await previewMedia.arrayBuffer()).byteLength, 32);
     const matchDocument = await fetch(proUrls.matchPlayer);
     assert.equal(matchDocument.status, 200);
     assert.match(await matchDocument.text(), /<base href="\/overlay\/"/);

@@ -1,0 +1,883 @@
+{
+  "api": [
+    "COIN_PUSHER_CAPACITY_MODEL_VERSION",
+    "COIN_PUSHER_COMMAND_EVENT",
+    "COIN_PUSHER_COMMAND_STORAGE_KEY",
+    "COIN_PUSHER_DEFAULT_DIAMOND_TIERS",
+    "COIN_PUSHER_DEFAULT_MAX_COINS",
+    "COIN_PUSHER_DEFAULT_PLATFORM_IMAGE",
+    "COIN_PUSHER_DEFAULT_PLINKO_IMAGE",
+    "COIN_PUSHER_DEFAULT_SCORE_SLOTS",
+    "COIN_PUSHER_DEFAULT_THEME",
+    "COIN_PUSHER_DEFAULT_WINNER_PRIZE_PERCENTS",
+    "COIN_PUSHER_DROP_EVENT",
+    "COIN_PUSHER_DROP_STORAGE_KEY",
+    "COIN_PUSHER_GALACTIC_THEME",
+    "COIN_PUSHER_GAME_ID",
+    "COIN_PUSHER_MAX_COINS",
+    "COIN_PUSHER_MAX_COIN_SCALE",
+    "COIN_PUSHER_MAX_DIAMOND_TIERS",
+    "COIN_PUSHER_MAX_EFFECT_DURATION_SECONDS",
+    "COIN_PUSHER_MAX_FALLBACK_COINS",
+    "COIN_PUSHER_MAX_GIFT_RULES",
+    "COIN_PUSHER_MAX_PUSHER_SPEED",
+    "COIN_PUSHER_MAX_ROUND_DURATION_MINUTES",
+    "COIN_PUSHER_MAX_SPECIAL_CHANCE",
+    "COIN_PUSHER_MAX_TOP_N",
+    "COIN_PUSHER_MIN_COINS",
+    "COIN_PUSHER_MIN_COIN_SCALE",
+    "COIN_PUSHER_MIN_EFFECT_DURATION_SECONDS",
+    "COIN_PUSHER_MIN_PUSHER_SPEED",
+    "COIN_PUSHER_MIN_ROUND_DURATION_MINUTES",
+    "COIN_PUSHER_MIN_SPECIAL_CHANCE",
+    "COIN_PUSHER_MIN_TOP_N",
+    "COIN_PUSHER_ROUND_COMMAND_EVENT",
+    "COIN_PUSHER_ROUND_COMMAND_STORAGE_KEY",
+    "COIN_PUSHER_SETTINGS_EVENT",
+    "COIN_PUSHER_SETTINGS_STORAGE_KEY",
+    "COIN_PUSHER_TEST_AVATAR_URL",
+    "COIN_PUSHER_TEST_DISPLAY_NAME",
+    "COIN_PUSHER_TEST_USERNAME",
+    "coinCountForGiftCost",
+    "coinCountForLiveGift",
+    "coinCountForLiveGiftBatch",
+    "coinPusherDesignatedGiftMatches",
+    "coinPusherDropFromLiveGift",
+    "coinPusherPrizeDiamonds",
+    "coinPusherTotalDiamonds",
+    "createCoinPusherDropFromLiveGift",
+    "decomposeCoinPusherDiamonds",
+    "defaultCoinPusherDesignatedGift",
+    "defaultCoinPusherDiamondTiers",
+    "defaultCoinPusherGiftRules",
+    "defaultCoinPusherGuardGiftSettings",
+    "defaultCoinPusherMysteryCubeSettings",
+    "defaultCoinPusherSettings",
+    "defaultCoinPusherTicketSettings",
+    "defaultCoinPusherWinnerPrizePercents",
+    "dropFromLiveGift",
+    "findCoinPusherGiftRule",
+    "loadCoinPusherCommand",
+    "loadCoinPusherDrop",
+    "loadCoinPusherRoundCommand",
+    "loadCoinPusherSettings",
+    "normalizeCoinPusherCommand",
+    "normalizeCoinPusherDesignatedGift",
+    "normalizeCoinPusherDiamondTiers",
+    "normalizeCoinPusherDrop",
+    "normalizeCoinPusherGiftRule",
+    "normalizeCoinPusherGiftRules",
+    "normalizeCoinPusherGuardGiftSettings",
+    "normalizeCoinPusherMysteryCubeSettings",
+    "normalizeCoinPusherRoundCommand",
+    "normalizeCoinPusherSettings",
+    "normalizeCoinPusherTheme",
+    "normalizeCoinPusherTicketSettings",
+    "normalizeCoinPusherWinnerPrizePercents",
+    "pushCoinPusherCommand",
+    "pushCoinPusherDrop",
+    "pushCoinPusherRoundCommand",
+    "saveCoinPusherSettings"
+  ],
+  "defaults": {
+    "capacityModelVersion": 2,
+    "theme": "arcade",
+    "topN": 3,
+    "roundDurationMinutes": 15,
+    "pusherSpeed": 1,
+    "coinScale": 1,
+    "volume": 0.8,
+    "maxCoins": 1000,
+    "sideLossEnabled": false,
+    "guardGift": {
+      "giftId": "",
+      "name": "",
+      "image": "",
+      "cost": 0,
+      "durationSeconds": 12,
+      "includeCoinDrop": true
+    },
+    "mysteryCube": {
+      "giftId": "",
+      "name": "",
+      "image": "",
+      "cost": 0,
+      "enabled": false,
+      "spawnChance": 2,
+      "includeCoinDrop": false,
+      "pointsBonusEnabled": true,
+      "pointsBonusMin": 25,
+      "pointsBonusMax": 100,
+      "coinRainEnabled": true,
+      "coinRainMin": 15,
+      "coinRainMax": 40,
+      "multiplierEnabled": true,
+      "multiplierValue": 2,
+      "multiplierDurationSeconds": 15,
+      "barriersEnabled": true,
+      "barriersDurationSeconds": 12
+    },
+    "tickets": {
+      "giftId": "",
+      "name": "",
+      "image": "",
+      "cost": 0,
+      "enabled": false,
+      "spawnChance": 4,
+      "includeCoinDrop": false,
+      "countPerGift": 1,
+      "minPoints": 10,
+      "maxPoints": 75
+    },
+    "platformImageUrl": "/overlay-assets/coin-pusher/platform-default.webp",
+    "plinkoImageUrl": "",
+    "scoreSlots": [
+      -5,
+      0,
+      5,
+      10,
+      25,
+      10,
+      5,
+      0
+    ],
+    "diamondCoinTiers": [
+      {
+        "diamonds": 5000,
+        "coinCount": 202
+      },
+      {
+        "diamonds": 1000,
+        "coinCount": 80
+      },
+      {
+        "diamonds": 100,
+        "coinCount": 20
+      },
+      {
+        "diamonds": 10,
+        "coinCount": 5
+      },
+      {
+        "diamonds": 1,
+        "coinCount": 1
+      }
+    ],
+    "winnerPrizePercents": [
+      10,
+      5,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "giftRules": []
+  },
+  "settings": [
+    {
+      "capacityModelVersion": 2,
+      "theme": "arcade",
+      "topN": 3,
+      "roundDurationMinutes": 15,
+      "pusherSpeed": 1,
+      "coinScale": 1,
+      "volume": 0.8,
+      "maxCoins": 1000,
+      "sideLossEnabled": false,
+      "guardGift": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "durationSeconds": 12,
+        "includeCoinDrop": true
+      },
+      "mysteryCube": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 2,
+        "includeCoinDrop": false,
+        "pointsBonusEnabled": true,
+        "pointsBonusMin": 25,
+        "pointsBonusMax": 100,
+        "coinRainEnabled": true,
+        "coinRainMin": 15,
+        "coinRainMax": 40,
+        "multiplierEnabled": true,
+        "multiplierValue": 2,
+        "multiplierDurationSeconds": 15,
+        "barriersEnabled": true,
+        "barriersDurationSeconds": 12
+      },
+      "tickets": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 4,
+        "includeCoinDrop": false,
+        "countPerGift": 1,
+        "minPoints": 10,
+        "maxPoints": 75
+      },
+      "platformImageUrl": "/overlay-assets/coin-pusher/platform-default.webp",
+      "plinkoImageUrl": "",
+      "scoreSlots": [
+        -5,
+        0,
+        5,
+        10,
+        25,
+        10,
+        5,
+        0
+      ],
+      "diamondCoinTiers": [
+        {
+          "diamonds": 5000,
+          "coinCount": 202
+        },
+        {
+          "diamonds": 1000,
+          "coinCount": 80
+        },
+        {
+          "diamonds": 100,
+          "coinCount": 20
+        },
+        {
+          "diamonds": 10,
+          "coinCount": 5
+        },
+        {
+          "diamonds": 1,
+          "coinCount": 1
+        }
+      ],
+      "winnerPrizePercents": [
+        10,
+        5,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "giftRules": []
+    },
+    {
+      "capacityModelVersion": 2,
+      "theme": "arcade",
+      "topN": 10,
+      "roundDurationMinutes": 1,
+      "pusherSpeed": 1,
+      "coinScale": 2.2,
+      "volume": 0.45,
+      "maxCoins": 1000,
+      "sideLossEnabled": false,
+      "guardGift": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "durationSeconds": 12,
+        "includeCoinDrop": true
+      },
+      "mysteryCube": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 2,
+        "includeCoinDrop": false,
+        "pointsBonusEnabled": true,
+        "pointsBonusMin": 25,
+        "pointsBonusMax": 100,
+        "coinRainEnabled": true,
+        "coinRainMin": 15,
+        "coinRainMax": 40,
+        "multiplierEnabled": true,
+        "multiplierValue": 2,
+        "multiplierDurationSeconds": 15,
+        "barriersEnabled": true,
+        "barriersDurationSeconds": 12
+      },
+      "tickets": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 4,
+        "includeCoinDrop": false,
+        "countPerGift": 1,
+        "minPoints": 10,
+        "maxPoints": 75
+      },
+      "platformImageUrl": "/overlay-assets/coin-pusher/platform-default.webp",
+      "plinkoImageUrl": "",
+      "scoreSlots": [
+        -5,
+        0,
+        5,
+        10,
+        25,
+        10,
+        5,
+        0
+      ],
+      "diamondCoinTiers": [
+        {
+          "diamonds": 5000,
+          "coinCount": 202
+        },
+        {
+          "diamonds": 1000,
+          "coinCount": 80
+        },
+        {
+          "diamonds": 100,
+          "coinCount": 20
+        },
+        {
+          "diamonds": 10,
+          "coinCount": 5
+        },
+        {
+          "diamonds": 1,
+          "coinCount": 1
+        }
+      ],
+      "winnerPrizePercents": [
+        10,
+        5,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "giftRules": []
+    },
+    {
+      "capacityModelVersion": 2,
+      "theme": "galactic-palace",
+      "topN": 5,
+      "roundDurationMinutes": 15,
+      "pusherSpeed": 1,
+      "coinScale": 1,
+      "volume": 0.8,
+      "maxCoins": 400,
+      "sideLossEnabled": false,
+      "guardGift": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "durationSeconds": 12,
+        "includeCoinDrop": true
+      },
+      "mysteryCube": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 2,
+        "includeCoinDrop": false,
+        "pointsBonusEnabled": true,
+        "pointsBonusMin": 25,
+        "pointsBonusMax": 100,
+        "coinRainEnabled": true,
+        "coinRainMin": 15,
+        "coinRainMax": 40,
+        "multiplierEnabled": true,
+        "multiplierValue": 2,
+        "multiplierDurationSeconds": 15,
+        "barriersEnabled": true,
+        "barriersDurationSeconds": 12
+      },
+      "tickets": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 4,
+        "includeCoinDrop": false,
+        "countPerGift": 1,
+        "minPoints": 10,
+        "maxPoints": 75
+      },
+      "platformImageUrl": "/overlay-assets/coin-pusher/platform-default.webp",
+      "plinkoImageUrl": "",
+      "scoreSlots": [
+        -5,
+        0,
+        5,
+        10,
+        25,
+        10,
+        5,
+        0
+      ],
+      "diamondCoinTiers": [
+        {
+          "diamonds": 5000,
+          "coinCount": 202
+        },
+        {
+          "diamonds": 1000,
+          "coinCount": 80
+        },
+        {
+          "diamonds": 100,
+          "coinCount": 20
+        },
+        {
+          "diamonds": 10,
+          "coinCount": 5
+        },
+        {
+          "diamonds": 1,
+          "coinCount": 1
+        }
+      ],
+      "winnerPrizePercents": [
+        10,
+        5,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "giftRules": []
+    },
+    {
+      "capacityModelVersion": 2,
+      "theme": "arcade",
+      "topN": 3,
+      "roundDurationMinutes": 15,
+      "pusherSpeed": 1,
+      "coinScale": 1,
+      "volume": 0.8,
+      "maxCoins": 1000,
+      "sideLossEnabled": false,
+      "guardGift": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "durationSeconds": 12,
+        "includeCoinDrop": true
+      },
+      "mysteryCube": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": true,
+        "spawnChance": 2,
+        "includeCoinDrop": false,
+        "pointsBonusEnabled": true,
+        "pointsBonusMin": 1,
+        "pointsBonusMax": 100,
+        "coinRainEnabled": true,
+        "coinRainMin": 15,
+        "coinRainMax": 40,
+        "multiplierEnabled": true,
+        "multiplierValue": 2,
+        "multiplierDurationSeconds": 15,
+        "barriersEnabled": true,
+        "barriersDurationSeconds": 12
+      },
+      "tickets": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 100,
+        "includeCoinDrop": false,
+        "countPerGift": 1,
+        "minPoints": 4,
+        "maxPoints": 800
+      },
+      "platformImageUrl": "/overlay-assets/coin-pusher/platform-default.webp",
+      "plinkoImageUrl": "",
+      "scoreSlots": [
+        1,
+        -5
+      ],
+      "diamondCoinTiers": [
+        {
+          "diamonds": 5000,
+          "coinCount": 202
+        },
+        {
+          "diamonds": 1000,
+          "coinCount": 80
+        },
+        {
+          "diamonds": 100,
+          "coinCount": 20
+        },
+        {
+          "diamonds": 10,
+          "coinCount": 5
+        },
+        {
+          "diamonds": 1,
+          "coinCount": 1
+        }
+      ],
+      "winnerPrizePercents": [
+        10,
+        5,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "giftRules": []
+    },
+    {
+      "capacityModelVersion": 2,
+      "theme": "arcade",
+      "topN": 3,
+      "roundDurationMinutes": 15,
+      "pusherSpeed": 1,
+      "coinScale": 1,
+      "volume": 0.8,
+      "maxCoins": 1000,
+      "sideLossEnabled": false,
+      "guardGift": {
+        "giftId": "",
+        "name": "Test",
+        "image": "",
+        "cost": 0,
+        "durationSeconds": 300,
+        "includeCoinDrop": true
+      },
+      "mysteryCube": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 2,
+        "includeCoinDrop": false,
+        "pointsBonusEnabled": true,
+        "pointsBonusMin": 25,
+        "pointsBonusMax": 100,
+        "coinRainEnabled": true,
+        "coinRainMin": 15,
+        "coinRainMax": 40,
+        "multiplierEnabled": true,
+        "multiplierValue": 2,
+        "multiplierDurationSeconds": 15,
+        "barriersEnabled": true,
+        "barriersDurationSeconds": 12
+      },
+      "tickets": {
+        "giftId": "",
+        "name": "",
+        "image": "",
+        "cost": 0,
+        "enabled": false,
+        "spawnChance": 4,
+        "includeCoinDrop": false,
+        "countPerGift": 1,
+        "minPoints": 10,
+        "maxPoints": 75
+      },
+      "platformImageUrl": "/overlay-assets/coin-pusher/platform-default.webp",
+      "plinkoImageUrl": "",
+      "scoreSlots": [
+        -5,
+        0,
+        5,
+        10,
+        25,
+        10,
+        5,
+        0
+      ],
+      "diamondCoinTiers": [
+        {
+          "diamonds": 10,
+          "coinCount": 30
+        },
+        {
+          "diamonds": 1,
+          "coinCount": 3
+        }
+      ],
+      "winnerPrizePercents": [
+        10,
+        5,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "giftRules": [
+        {
+          "giftId": "5655",
+          "name": "Rose",
+          "image": "",
+          "cost": 0,
+          "coinCount": 25,
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "costs": [
+    {
+      "cost": 0,
+      "coins": 1,
+      "parts": []
+    },
+    {
+      "cost": 1,
+      "coins": 1,
+      "parts": [
+        {
+          "diamonds": 1,
+          "coinCount": 1,
+          "occurrences": 1,
+          "totalCoins": 1
+        }
+      ]
+    },
+    {
+      "cost": 9,
+      "coins": 9,
+      "parts": [
+        {
+          "diamonds": 1,
+          "coinCount": 1,
+          "occurrences": 9,
+          "totalCoins": 9
+        }
+      ]
+    },
+    {
+      "cost": 10,
+      "coins": 5,
+      "parts": [
+        {
+          "diamonds": 10,
+          "coinCount": 5,
+          "occurrences": 1,
+          "totalCoins": 5
+        }
+      ]
+    },
+    {
+      "cost": 999,
+      "coins": 234,
+      "parts": [
+        {
+          "diamonds": 100,
+          "coinCount": 20,
+          "occurrences": 9,
+          "totalCoins": 180
+        },
+        {
+          "diamonds": 10,
+          "coinCount": 5,
+          "occurrences": 9,
+          "totalCoins": 45
+        },
+        {
+          "diamonds": 1,
+          "coinCount": 1,
+          "occurrences": 9,
+          "totalCoins": 9
+        }
+      ]
+    },
+    {
+      "cost": 5000,
+      "coins": 202,
+      "parts": [
+        {
+          "diamonds": 5000,
+          "coinCount": 202,
+          "occurrences": 1,
+          "totalCoins": 202
+        }
+      ]
+    },
+    {
+      "cost": 9007199254740991,
+      "coins": 363890849891722,
+      "parts": [
+        {
+          "diamonds": 5000,
+          "coinCount": 202,
+          "occurrences": 1801439850948,
+          "totalCoins": 363890849891496
+        },
+        {
+          "diamonds": 100,
+          "coinCount": 20,
+          "occurrences": 9,
+          "totalCoins": 180
+        },
+        {
+          "diamonds": 10,
+          "coinCount": 5,
+          "occurrences": 9,
+          "totalCoins": 45
+        },
+        {
+          "diamonds": 1,
+          "coinCount": 1,
+          "occurrences": 1,
+          "totalCoins": 1
+        }
+      ]
+    }
+  ],
+  "totals": [
+    10,
+    495000,
+    9007199254740991
+  ],
+  "drops": [
+    {
+      "avatarUrl": "/brand/shenpulse-512.png",
+      "coinCount": 100,
+      "createdAt": 1700000000000,
+      "dedupeKey": "drop-1:1:end",
+      "displayName": "ShenPulse",
+      "eventId": "drop-1",
+      "gift": {
+        "id": "",
+        "name": "",
+        "cost": 0,
+        "imageUrl": "",
+        "source": ""
+      },
+      "id": "drop-1",
+      "repeatCount": 1,
+      "repeatEnd": true,
+      "source": "test",
+      "totalDiamonds": 0,
+      "username": "shenpulse",
+      "viewerId": "shenpulse"
+    },
+    {
+      "avatarUrl": "",
+      "coinCount": 3,
+      "createdAt": 1700000000000,
+      "dedupeKey": "drop-2:3:end",
+      "displayName": "Alice",
+      "eventId": "drop-2",
+      "gift": {
+        "id": "5655",
+        "name": "Rose",
+        "cost": 1,
+        "imageUrl": "",
+        "source": ""
+      },
+      "id": "drop-2",
+      "repeatCount": 3,
+      "repeatEnd": true,
+      "source": "manual",
+      "totalDiamonds": 3,
+      "username": "alice",
+      "viewerId": "alice"
+    },
+    {
+      "avatarUrl": "",
+      "coinCount": 1000,
+      "createdAt": 1700000000000,
+      "dedupeKey": "drop-3:1:end",
+      "displayName": "Viewer",
+      "eventId": "drop-3",
+      "gift": {
+        "id": "",
+        "name": "",
+        "cost": 0,
+        "imageUrl": "",
+        "source": ""
+      },
+      "id": "drop-3",
+      "repeatCount": 1,
+      "repeatEnd": true,
+      "source": "manual",
+      "totalDiamonds": 0,
+      "username": "",
+      "viewerId": "event:drop-3"
+    }
+  ],
+  "commands": [
+    {
+      "command": "start",
+      "createdAt": 1700000000000,
+      "id": "command-start",
+      "roundId": "round-1"
+    },
+    {
+      "command": "pause",
+      "createdAt": 1700000000000,
+      "id": "command-pause",
+      "roundId": "round-1"
+    },
+    {
+      "command": "resume",
+      "createdAt": 1700000000000,
+      "id": "command-resume",
+      "roundId": "round-1"
+    },
+    {
+      "command": "reset",
+      "createdAt": 1700000000000,
+      "id": "command-reset",
+      "roundId": "round-1"
+    },
+    {
+      "command": "start",
+      "createdAt": 1700000000000,
+      "id": "command-finish",
+      "roundId": "round-1"
+    },
+    {
+      "command": "start",
+      "createdAt": 1700000000000,
+      "id": "command-invalid",
+      "roundId": "round-1"
+    }
+  ]
+}

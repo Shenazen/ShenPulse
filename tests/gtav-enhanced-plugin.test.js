@@ -14,7 +14,8 @@ const sourcePath = path.join(
   "src",
   "ShenPulseMontChiliadEnhanced.cpp"
 );
-const source = fs.readFileSync(sourcePath, "utf8");
+const { readNativeDirectory, nativeFunctionBody } = require("./helpers/native-source-bundles");
+const source = readNativeDirectory(path.dirname(sourcePath), [".cpp", ".h"]);
 
 test("le changement aléatoire GTA répartit réellement les véhicules atypiques", () => {
   assert.match(source, /RandomChoiceIndex\(10\)/);
@@ -27,9 +28,7 @@ test("le changement aléatoire GTA répartit réellement les véhicules atypique
 });
 
 test("le remplacement de véhicule confirme que le joueur est réellement au volant", () => {
-  const spawnVehicle = source.match(
-    /Result SpawnVehicleForPlayer\(Hash model, const char\* label = nullptr\) \{([\s\S]*?)\n\}\nResult AffectNearbyVehicles/
-  )?.[1];
+  const spawnVehicle = nativeFunctionBody(source, "SpawnVehicleForPlayer");
 
   assert.ok(spawnVehicle, "la fonction de remplacement de véhicule doit exister");
   assert.match(spawnVehicle, /AI::TASK_LEAVE_VEHICLE\(ped, previousVehicle, 16\)/);
@@ -51,9 +50,7 @@ test("le remplacement de véhicule confirme que le joueur est réellement au vol
 });
 
 test("la chute du joueur est forcée puis confirmée par GTA", () => {
-  const ragdoll = source.match(
-    /Result ForcePlayerRagdoll\(Ped ped, int durationMs\) \{([\s\S]*?)\n\}\nResult SpawnVehicleForPlayer/
-  )?.[1];
+  const ragdoll = nativeFunctionBody(source, "ForcePlayerRagdoll");
 
   assert.ok(ragdoll, "la procédure de chute vérifiable doit exister");
   assert.match(ragdoll, /AI::TASK_LEAVE_VEHICLE\(ped, vehicle, 16\)/);
@@ -71,9 +68,7 @@ test("la chute du joueur est forcée puis confirmée par GTA", () => {
 });
 
 test("l'ivresse combine une démarche et un effet visuel vérifié", () => {
-  const drunkEffect = source.match(
-    /Result StartDrunkEffect\(Ped ped, int durationMs\) \{([\s\S]*?)\n\}\nResult SpawnVehicleForPlayer/
-  )?.[1];
+  const drunkEffect = nativeFunctionBody(source, "StartDrunkEffect");
 
   assert.ok(drunkEffect, "la procédure d'ivresse visible doit exister");
   assert.match(drunkEffect, /move_m@drunk@verydrunk/);
@@ -100,9 +95,7 @@ test("le super saut réutilise la propulsion verticale déjà validée", () => {
     /Result StartSuperJumpEffect[\s\S]*?ENTITY::SET_ENTITY_VELOCITY\([\s\S]*?std::max\(velocity\.z, 0\.0f\) \+ 28\.0f/
   );
   assert.doesNotMatch(
-    source.match(
-      /Result StartSuperJumpEffect\(Ped ped, int durationMs\) \{([\s\S]*?)\n\}\nResult SpawnVehicleForPlayer/
-    )?.[1] || "",
+    nativeFunctionBody(source, "StartSuperJumpEffect"),
     /TASK_JUMP/
   );
   assert.match(source, /g_nextSuperJumpBoostAt = now \+ 1200/);
@@ -116,9 +109,7 @@ test("retourner le vehicule declenche un vrai flip sans le recoller au sol", () 
   const flip = source.match(
     /if \(code == "chaos_vehicle_flip"\) \{([\s\S]*?)\n\s*\}\n\s*if \(code == "chaos_vehicle_random_color"\)/
   )?.[1];
-  const updateFlip = source.match(
-    /void UpdateVehicleFlip\(ULONGLONG now\) \{([\s\S]*?)\n\}\nvoid UpdateTimedEffects/
-  )?.[1];
+  const updateFlip = nativeFunctionBody(source, "UpdateVehicleFlip");
 
   assert.ok(flip, "l'interaction de flip du vehicule doit exister");
   assert.ok(updateFlip, "le flip doit etre anime sur plusieurs images");
@@ -147,9 +138,7 @@ test("le trou noir est visible dans le ciel et attire le monde entier, joueur co
 });
 
 test("le choc du train fait apparaître une locomotive et applique un impact brutal", () => {
-  const train = source.match(
-    /Result StartTrainHit\(Ped playerPed\) \{([\s\S]*?)\n\}\nvoid UpdateTrainHit/
-  )?.[1];
+  const train = nativeFunctionBody(source, "StartTrainHit");
   assert.ok(train, "la séquence visible de la locomotive doit exister");
   assert.match(train, /HashName\("freight"\)/);
   assert.match(train, /VEHICLE::CREATE_VEHICLE/);

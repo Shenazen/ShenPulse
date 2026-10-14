@@ -1,0 +1,577 @@
+{
+  "cpp": [
+    {
+      "name": "RandomChoiceIndex",
+      "signature": "size_t RandomChoiceIndex(size_t count)",
+      "sha256": "6e0aa23704f49240852ae369ce2360ec750db57c499363cbe8338f0dcbe99bd7"
+    },
+    {
+      "name": "GameplayCameraForward",
+      "signature": "Vector3 GameplayCameraForward()",
+      "sha256": "859806e67e9183a1c7ac6c9e774b72ce6a511e8e09542b5fa25afc363dda37bd"
+    },
+    {
+      "name": "ModuleDir",
+      "signature": "std::string ModuleDir()",
+      "sha256": "807c93c2fdac0fbd508e4756149aa6639cae17d356288f666c46d5a6ad8dc078"
+    },
+    {
+      "name": "Log",
+      "signature": "void Log(const std::string& message)",
+      "sha256": "1061bde246222130e3bfc39f7832cfad4b7609142d92d0a1d0a9a1706618eea0"
+    },
+    {
+      "name": "Escape",
+      "signature": "std::string Escape(const std::string& value)",
+      "sha256": "a6be680f44b8c573bb5d143b862c7d188b8e3604f9f953ddae102dc0d7b75cb6"
+    },
+    {
+      "name": "ReadInt",
+      "signature": "bool ReadInt(const std::string& json, const char* key, int& value)",
+      "sha256": "bcfa95b1b4b0670fec39f574ef53772cb5ab585664f8f4be1d33c3c5dcd8c012"
+    },
+    {
+      "name": "ReadString",
+      "signature": "bool ReadString(const std::string& json, const char* key, std::string& value)",
+      "sha256": "cabd64e9b86dec3b1418335c85b07ccb50d21dc44980a67a6c84115e3242c36d"
+    },
+    {
+      "name": "CloseSocket",
+      "signature": "void CloseSocket(SOCKET expected)",
+      "sha256": "7a55afa4f7aace766748368484a3f768a7972716964366d945d9cc0ea0f393e8"
+    },
+    {
+      "name": "Send",
+      "signature": "bool Send(const std::string& json)",
+      "sha256": "ac3658fad1b87c2b3bb5d6a0b8dd0350891a14980c6f278d53ff9a1e9c8d8f0c"
+    },
+    {
+      "name": "QueueFrame",
+      "signature": "void QueueFrame(const std::string& frame)",
+      "sha256": "3a9979facad1ce32c71f110ffaf022d831dd213350129eda907f17424438312c"
+    },
+    {
+      "name": "NetworkLoop",
+      "signature": "DWORD WINAPI NetworkLoop(LPVOID)",
+      "sha256": "7eb4980b8bc2059adc7527f9ae95d5cf6138728f01e45a0f0b6667122ea94837"
+    },
+    {
+      "name": "PlayerReady",
+      "signature": "bool PlayerReady(Player& player, Ped& ped)",
+      "sha256": "7efb4751799f83d2d9bb40b96ed52e04f15816c95c02c896f7180f6d1b07b788"
+    },
+    {
+      "name": "CurrentPlayerVehicle",
+      "signature": "bool CurrentPlayerVehicle(Ped ped, Vehicle& vehicle)",
+      "sha256": "96b939cd8fa9f0a33018cb42cb6c44c7ea407ce8550238342196c867c7373e3d"
+    },
+    {
+      "name": "PlayerTarget",
+      "signature": "Entity PlayerTarget(Ped ped)",
+      "sha256": "43c4e4a48362e6383d2466b8e5bea65393e5750b5063e3ab36ef3864f9911405"
+    },
+    {
+      "name": "Teleport",
+      "signature": "void Teleport(Entity target, const Vector3& p)",
+      "sha256": "7e29f19886a94c1e69f1299dbf2ee8764c231e13c4d7d6b2a83d264c8ed835d5"
+    },
+    {
+      "name": "TeleportPlayer",
+      "signature": "void TeleportPlayer(Ped ped, const Vector3& p)",
+      "sha256": "b8e8d8a3c8a6826cf62d808ab386fa4c63b536e29f4b551d35d272c8c343c24a"
+    },
+    {
+      "name": "PointInsideVictoryZone",
+      "signature": "bool PointInsideVictoryZone(const Vector3& p)",
+      "sha256": "09cc30d6d39a814f01df34f38f1df729d15f00678a8580201e3caaebeb1df558"
+    },
+    {
+      "name": "PlayerInsideVictoryZone",
+      "signature": "bool PlayerInsideVictoryZone(Ped ped, Vector3& trackedPosition)",
+      "sha256": "49288eea03dd88bc9c4268405b4047e663747b61130aa0344f37ea8ee998f9b6"
+    },
+    {
+      "name": "RegisterCounterEvent",
+      "signature": "void RegisterCounterEvent(int amount, const char* eventName)",
+      "sha256": "90ad57050a7d503e9735bb9500af72afcc880c14fc281ca5b8a4eabfc5e46670"
+    },
+    {
+      "name": "ResetVictoryZoneEntry",
+      "signature": "void ResetVictoryZoneEntry()",
+      "sha256": "482f043358905d73e48ce8acd2f1ffa192f82be471d060f74caa3ab5f0fb4ede"
+    },
+    {
+      "name": "Distance2D",
+      "signature": "float Distance2D(const Vector3& a, const Vector3& b)",
+      "sha256": "2a9b38776d72c107102ea1bfee1105ac28ce3e21121e45f18969ec2e1fffc48b"
+    },
+    {
+      "name": "DeletePrisonObjects",
+      "signature": "void DeletePrisonObjects()",
+      "sha256": "a9f3dcecfad7bf9810fa849ae34efac07fdf1e974d21b46edfacbe5ece1122bd"
+    },
+    {
+      "name": "DeleteGiftObject",
+      "signature": "void DeleteGiftObject(Entity entity)",
+      "sha256": "e395cf2501e44fffec02d956e2bc3a30d9d908d8d4acb79e1d976ffc6debad77"
+    },
+    {
+      "name": "DeleteGiftObjects",
+      "signature": "void DeleteGiftObjects()",
+      "sha256": "65df3ab1c7da3237fce79b5994f1ef53eb429475e8fcdde8d0ea1d6cb2f516f5"
+    },
+    {
+      "name": "CleanupGiftObjects",
+      "signature": "void CleanupGiftObjects(ULONGLONG)",
+      "sha256": "38d9e47bb79ac38e815e473d84f050ba77065a4b1ec4a2d6226e4372e97b2fe4"
+    },
+    {
+      "name": "EndPrison",
+      "signature": "void EndPrison()",
+      "sha256": "8a34691f98cedf2bda5b17b476a9c431dbfd2c1ef8578efb99cdcb027372932c"
+    },
+    {
+      "name": "TryCreatePrisonPanel",
+      "signature": "bool TryCreatePrisonPanel(Hash model, const Vector3& center, float x, float y, float heading)",
+      "sha256": "41ce99a563c4ad37eed9053aa0058a7a4a3188ea3b5af27a3fe9ef1b4b0889fb"
+    },
+    {
+      "name": "CreatePrisonCage",
+      "signature": "void CreatePrisonCage(const Vector3& center)",
+      "sha256": "6fec0c9ddd76be089f128787442dbd02286aba339ef199b844b2b3f96c3eefe4"
+    },
+    {
+      "name": "StartPrison",
+      "signature": "Result StartPrison(Ped ped)",
+      "sha256": "fe2e6a4b8cf6ba747830b5eb8519309b80bfa55e8093d3db60b1a6eb45ba1985"
+    },
+    {
+      "name": "DrawPrisonStatus",
+      "signature": "void DrawPrisonStatus(ULONGLONG now)",
+      "sha256": "68f4c6f1e00027a7e43cdc8dc4eb6d5ac6ce04bb4797905e0d03daab04731e4f"
+    },
+    {
+      "name": "ArmPeds",
+      "signature": "Result ArmPeds(Ped playerPed)",
+      "sha256": "1bf08c99715625485eb781df6cb8ebcec14236307d597c3963c2a21b0f1929f6"
+    },
+    {
+      "name": "CurrentVehicle",
+      "signature": "Vehicle CurrentVehicle(Ped ped)",
+      "sha256": "fd0a0b9800cc575249d79ec2718f9f640e3664d16045303b2754556d352bb832"
+    },
+    {
+      "name": "RequireVehicle",
+      "signature": "Result RequireVehicle(Ped ped, Vehicle& vehicle)",
+      "sha256": "b6fcb8a88d6bb5d00b684b7891c41ea364bf2150e341164aa8352a006d7ab7e5"
+    },
+    {
+      "name": "ForcePlayerRagdoll",
+      "signature": "Result ForcePlayerRagdoll(Ped ped, int durationMs)",
+      "sha256": "ddd93afe0280c2b19920cf4daccbc2b2954e7dc95beadb0db8394e02f67687dc"
+    },
+    {
+      "name": "StartDrunkEffect",
+      "signature": "Result StartDrunkEffect(Ped ped, int durationMs)",
+      "sha256": "58791aee5a3a7e8557d4056f59bffcfd68604d3bbfc4d069d8e4ca678f0d5af1"
+    },
+    {
+      "name": "StartSuperJumpEffect",
+      "signature": "Result StartSuperJumpEffect(Ped ped, int durationMs)",
+      "sha256": "6e024d16ee1fb706e1e4251eb6211bba864738b8776fc2305c403e9516e99514"
+    },
+    {
+      "name": "SpawnVehicleForPlayer",
+      "signature": "Result SpawnVehicleForPlayer(Hash model, const char* label)",
+      "sha256": "289d9f637c7450bc82d260aefb5f31101cdb27e27cdf367322a3041c1ea711ac"
+    },
+    {
+      "name": "AffectNearbyVehicles",
+      "signature": "Result AffectNearbyVehicles(Ped playerPed, bool explode, bool launch)",
+      "sha256": "9e9a5447ae3e5464c5bf3c90f1f15ce4c6010a7c183ddbc05c019d76dbadb4f3"
+    },
+    {
+      "name": "HashName",
+      "signature": "Hash HashName(const char* name)",
+      "sha256": "cc466196b8ff482220cb1160f2a00c48100170f2109e930f447c9e4a43689f71"
+    },
+    {
+      "name": "RandomHash",
+      "signature": "Hash RandomHash(const Hash* values, size_t count)",
+      "sha256": "3b243f2c39c4fb7978556f9d5e826b4043fcabacbd44ad69a17112caf7b30e1c"
+    },
+    {
+      "name": "LoadModel",
+      "signature": "Result LoadModel(Hash model, const char* label)",
+      "sha256": "4627f547b9ac5313d7fae48f2bb1e815254f71907bcb78358161b424371d6e42"
+    },
+    {
+      "name": "SpawnAmbientChaosVehicles",
+      "signature": "int SpawnAmbientChaosVehicles(Ped playerPed, std::vector<Vehicle>& targets, int requestedCount)",
+      "sha256": "5f1e04d27538e155e20226cd986a2feef91d3239dd1a177995fa0f93d95ba70f"
+    },
+    {
+      "name": "SpawnHostilePeds",
+      "signature": "Result SpawnHostilePeds(Ped playerPed, const Hash* models, size_t modelCount, int requestedCount, const char* label)",
+      "sha256": "e16b0e7413b7a0642e67120d6e2c58d6dfd26ba24e279b29aa899d51fd7f93cf"
+    },
+    {
+      "name": "GiftTier",
+      "signature": "int GiftTier(const std::string& code)",
+      "sha256": "3ca4847a28c2ef016805eae957b1015c6f68fcddaf3dbd43ebb1cad5349f4d60"
+    },
+    {
+      "name": "GiftCodeContainsAny",
+      "signature": "bool GiftCodeContainsAny(const std::string& code, const char* const* keywords, size_t keywordCount)",
+      "sha256": "c73adef926d1522e58ce75e878b144a3fa229711649a91335b19f99ce27192ba"
+    },
+    {
+      "name": "GiftMarkerScale",
+      "signature": "float GiftMarkerScale(int tier, float baseScale)",
+      "sha256": "74a3d7ee05333c6c9e3388cdc5ecc67453feb12057cae10ce79477ee022a3593"
+    },
+    {
+      "name": "AddGiftEntity",
+      "signature": "void AddGiftEntity(Entity entity, int red, int green, int blue, float markerScale)",
+      "sha256": "04a7ef80e8c314a3f264e6d9ac5a9c8bca96c0e7fc7e99d55daeb9d8d8509b94"
+    },
+    {
+      "name": "GiftTarget",
+      "signature": "Entity GiftTarget(Ped playerPed)",
+      "sha256": "23789a6b246983ebff80b0f24c9b32831b9433f62094ca493247c893182c8633"
+    },
+    {
+      "name": "GiftPosition",
+      "signature": "Vector3 GiftPosition(Entity target, float forward, float up, float sideStep)",
+      "sha256": "1d81ff545a13a5a9db4ef7e252b8d46f998d5a69784a6559d07a8ddb3324cea0"
+    },
+    {
+      "name": "SpawnGiftObject",
+      "signature": "Result SpawnGiftObject(Ped playerPed, const char* label, const char* const* modelNames, size_t modelCount, int red, int green, int blue, float markerScale, float forward, float up)",
+      "sha256": "020ab796015b4f32bbc42af40588b03aff1013ab0fabf5654629edf74e47d517"
+    },
+    {
+      "name": "SpawnGiftPed",
+      "signature": "Result SpawnGiftPed(Ped playerPed, const char* label, const char* const* modelNames, size_t modelCount, int red, int green, int blue, float markerScale, float forward, float up)",
+      "sha256": "59ca931e511ffcdd2bb28c9c5d46ec5e8289fee06f106aa087ad067b57e4594e"
+    },
+    {
+      "name": "SpawnGiftVehicle",
+      "signature": "Result SpawnGiftVehicle(Ped playerPed, const char* label, const char* const* modelNames, size_t modelCount, int red, int green, int blue, float markerScale, float forward, float up, bool airborne)",
+      "sha256": "dd4dc620ece1fad75a9d058c290e06cc702c0bb870c102454d8ebd60c535c04c"
+    },
+    {
+      "name": "SpawnGiftPedOrObject",
+      "signature": "Result SpawnGiftPedOrObject(Ped playerPed, const char* label, const char* const* pedModels, size_t pedModelCount, const char* const* objectModels, size_t objectModelCount, int red, int green, int blue, float markerScale, float forward, float up)",
+      "sha256": "ca49ffe940d2c4458c1e556aebcb287853fc1cf2f2e80f07161acbdf35f58129"
+    },
+    {
+      "name": "SpawnGiftVehicleOrObject",
+      "signature": "Result SpawnGiftVehicleOrObject(Ped playerPed, const char* label, const char* const* vehicleModels, size_t vehicleModelCount, const char* const* objectModels, size_t objectModelCount, int red, int green, int blue, float markerScale, float forward, float up, bool airborne)",
+      "sha256": "33ebc759513d67fce99a978ceae86098287367461534dc718b0d7cc84914ba52"
+    },
+    {
+      "name": "SpawnTikTokGiftObject",
+      "signature": "Result SpawnTikTokGiftObject(Ped playerPed, const std::string& code)",
+      "sha256": "7e67d31748c36f16965f21fc063af5a5bf68c6748bca1514d176c5bd7c84bef0"
+    },
+    {
+      "name": "SpawnFriendlyAnimal",
+      "signature": "Result SpawnFriendlyAnimal(Ped playerPed)",
+      "sha256": "1c675dd6122dd0847f921844b30869d2002d6a7129f3dbf904608f9ea4facc7a"
+    },
+    {
+      "name": "PullNearbyVehicles",
+      "signature": "Result PullNearbyVehicles(Ped playerPed, bool upward, bool ensureTargets)",
+      "sha256": "48c0905325ea2543cc3d774f7f25b84e20476a5447dfa081209e50194005b295"
+    },
+    {
+      "name": "PullEntityIntoBlackHole",
+      "signature": "bool PullEntityIntoBlackHole(Entity entity, Entity playerTarget)",
+      "sha256": "3d30eb84ce409f08ec575aab150c4d5858028c341cb6a200c94afe793ef09beb"
+    },
+    {
+      "name": "PullWorldIntoBlackHole",
+      "signature": "int PullWorldIntoBlackHole(Ped playerPed)",
+      "sha256": "e8b6fbff096bb1cfee21591b202a6f92600930366923bf81baa97f78aecdff13"
+    },
+    {
+      "name": "DrawBlackHole",
+      "signature": "void DrawBlackHole()",
+      "sha256": "5f4c748bb6628f38e0b7266b41a49272c0a24732c6ee9b027ad97066675372da"
+    },
+    {
+      "name": "DeleteTrainVehicle",
+      "signature": "void DeleteTrainVehicle()",
+      "sha256": "ce2f2422157fb0a4794f3ec2e5e28bd2a9164ccee0d41959f605f89376f74b5d"
+    },
+    {
+      "name": "StartTrainHit",
+      "signature": "Result StartTrainHit(Ped playerPed)",
+      "sha256": "0c5cc94a27482f02ffa632d0f789f239854581505fabee4a92d588ca85b6ce53"
+    },
+    {
+      "name": "UpdateTrainHit",
+      "signature": "void UpdateTrainHit(ULONGLONG now, Ped playerPed)",
+      "sha256": "fad0cda48dc1c00e0599a6670a84efe80b82ac7a7366e161965fa062822ed755"
+    },
+    {
+      "name": "SpawnVehicleAbovePlayer",
+      "signature": "Result SpawnVehicleAbovePlayer(Ped playerPed, Hash model, const char* label)",
+      "sha256": "5839794f1ffd26af38a37c6c97cb807fbd2f45483d6d8391d166ea90afc7ede5"
+    },
+    {
+      "name": "Execute",
+      "signature": "Result Execute(std::string code)",
+      "sha256": "ec2c6eb7957be6f76a085a4fbf9174c061804827cc88aa5493b3566bd200271f"
+    },
+    {
+      "name": "Reply",
+      "signature": "void Reply(int id, const Result& result)",
+      "sha256": "671cd9fbdb0ad82b4c8dbef0bc4f558cf70f2e3f949701169afaa64897334857"
+    },
+    {
+      "name": "UnixMs",
+      "signature": "long long UnixMs()",
+      "sha256": "d421ece49f07ddc786820122ba76b8215a9400a365dcbafac7ef927e392fdcc7"
+    },
+    {
+      "name": "StartRound",
+      "signature": "void StartRound(const char* eventName)",
+      "sha256": "76fa486a8fb5dd75c76151799a2efa73adb9ef70e9026eba6b2156fd29dd35b1"
+    },
+    {
+      "name": "UpdateVehicleFlip",
+      "signature": "void UpdateVehicleFlip(ULONGLONG now)",
+      "sha256": "87d7ddc049495cf6aea7e066addff61545f8f1c1f09f0b3bc0ddac44ceae2ac5"
+    },
+    {
+      "name": "UpdateTimedEffects",
+      "signature": "void UpdateTimedEffects(ULONGLONG now)",
+      "sha256": "08d350016d0f6d419993b8845352710a2118b0dc5eb6fe1e9d8a49b73a4bdce6"
+    },
+    {
+      "name": "DrawHudText",
+      "signature": "void DrawHudText(const std::string& message, int red, int green, int blue)",
+      "sha256": "9f6b9bcf326f58393179f05f1284c5d314e24dd7d6b798c8b6036bdb25c9e7a6"
+    },
+    {
+      "name": "VictorySecondsRemaining",
+      "signature": "int VictorySecondsRemaining(ULONGLONG now)",
+      "sha256": "3322fd7c6cb1b2738eefc434860ce7e9c38682bf883a0e699106aabdc8232296"
+    },
+    {
+      "name": "FormatRoundTime",
+      "signature": "std::string FormatRoundTime(int seconds)",
+      "sha256": "c54b2daa9585d75c825afd6eeb2b2bf685d58b1a058f9051565ea451d023df3b"
+    },
+    {
+      "name": "DrawVictoryZone",
+      "signature": "void DrawVictoryZone(ULONGLONG now, const Vector3& playerPosition, bool playerExists)",
+      "sha256": "d834054fc0da2f25e1c73de473d638d6a025ba9283696e304fa1aebdb9794d47"
+    },
+    {
+      "name": "UpdateVictory",
+      "signature": "void UpdateVictory(ULONGLONG now)",
+      "sha256": "0400c47b04a2b85f4f0ccefd3e207d1fd32138ed0d6137b6f54644f6357be1f3"
+    },
+    {
+      "name": "ProcessQueue",
+      "signature": "void ProcessQueue()",
+      "sha256": "cf0b81c8122ed314ad9dc15857dfaa165d9d966a5a2feec8e9f374947a0874ce"
+    },
+    {
+      "name": "ScriptMain",
+      "signature": "void ScriptMain()",
+      "sha256": "baa815f62cd79a0c8f908de0ef9bbd3e2bf1362a239bcc2369e361031e4ea011"
+    },
+    {
+      "name": "DllMain",
+      "signature": "BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)",
+      "sha256": "ff6326ff31fdb0e5a4982901a85fdaffc5b535ea3a458987cda96c8da3328c93"
+    }
+  ],
+  "cppState": "b2b17dc75240c74ef147d27d250c1dfe66410e16ddcf17f6cb47d9f1a3fc4bc3",
+  "cs": [
+    {
+      "name": "Awake",
+      "signature": "private void Awake()",
+      "sha256": "94ed9515b062601f7ead4cc6e4dd74f8e613c74269981e668a0d4744e346e621"
+    },
+    {
+      "name": "OnDestroy",
+      "signature": "private void OnDestroy()",
+      "sha256": "10617b45c717d8efa06866e30108dc264c4fe176c0ce3a956a665ccedb872c3b"
+    },
+    {
+      "name": "Update",
+      "signature": "private void Update()",
+      "sha256": "80577f9fd6072de76ab8d8970e821683d36650f28c35f7a2b60719744905144e"
+    },
+    {
+      "name": "ExecuteEffectPrefix",
+      "signature": "private static bool ExecuteEffectPrefix(\n            string rawRequest,\n            string code,\n            uint id,\n            long durationMs,\n            ref string __result\n        )",
+      "sha256": "da4d060a5758e89b912636f00fb3c3bf9212e655280f573a69acaf390c67b1a9"
+    },
+    {
+      "name": "Intercept",
+      "signature": "private bool Intercept(\n            string rawRequest,\n            string code,\n            uint id,\n            long durationMs,\n            ref string result\n        )",
+      "sha256": "984f5f641c841bc64fe9d109427713c32625abcfc19654e44319694747e97ff1"
+    },
+    {
+      "name": "ApplyTimeScale",
+      "signature": "private string ApplyTimeScale(\n            uint id,\n            long durationMs,\n            float multiplier\n        )",
+      "sha256": "997e6f2938437b235c474b8f70180d04777b357361545b32464759f88be563b6"
+    },
+    {
+      "name": "RestoreTimeScale",
+      "signature": "private void RestoreTimeScale()",
+      "sha256": "2aad599c2c043aec9cbd6ab3ca2fe76fe51a698b3933bfe73f6364dd77325311"
+    },
+    {
+      "name": "AddFollower",
+      "signature": "private static string AddFollower(uint id)",
+      "sha256": "4fb5319fad03dcb973400c07b667bda15c77060808f1d2d9a9b95fc236298a10"
+    },
+    {
+      "name": "SpawnEnemies",
+      "signature": "private static string SpawnEnemies(string rawRequest, uint id)",
+      "sha256": "2c84d6dfabb37b723b5fb4234b55f68c5279c897efdcdbe93eaab4b0d8d009dc"
+    },
+    {
+      "name": "FreezeEnemies",
+      "signature": "private string FreezeEnemies(uint id, long durationMs)",
+      "sha256": "83f31ab3e272c1e870f1f52566c03fc033661384a13d58cfe5a56fd52d82aeca"
+    },
+    {
+      "name": "FreezeCurrentEnemies",
+      "signature": "private bool FreezeCurrentEnemies()",
+      "sha256": "211569e6e514e01cabc3d04592ae705c7f27ea8a9f4deca0ca3c201b515bb1e2"
+    },
+    {
+      "name": "ClearFrozenEnemies",
+      "signature": "private void ClearFrozenEnemies()",
+      "sha256": "41cc6d61ba9957c3cc7536b2e7c48962bee9090dc80f5013059908e2c3dcae32"
+    },
+    {
+      "name": "SetWeapon",
+      "signature": "private static string SetWeapon(\n            string rawRequest,\n            string code,\n            uint id\n        )",
+      "sha256": "71d5482f232023d1e3d73829b8c15254bb193aacb5153e5b080973b390837db6"
+    },
+    {
+      "name": "GiveTarot",
+      "signature": "private static string GiveTarot(uint id)",
+      "sha256": "eb4c6fce07192d114d838ff98a0845a47153cfd1b3478b51dfe089b3a2bf8d3b"
+    },
+    {
+      "name": "KillEnemies",
+      "signature": "private static string KillEnemies(uint id)",
+      "sha256": "4f759afe2060f1e008a68028093dbf01abcb935436949dfa0f6f9e84e6f7c6c3"
+    },
+    {
+      "name": "KillPlayer",
+      "signature": "private static string KillPlayer(uint id)",
+      "sha256": "4673a8c8621014af88e1085341b0acf46697f309ceb3436a4a4f1768a9f91fd0"
+    },
+    {
+      "name": "ForceKill",
+      "signature": "private static bool ForceKill(object health, GameObject attacker)",
+      "sha256": "20f4ae1ba55926b9a64e8f5f10450a56374da22e29d5d1897b6822143b3570ac"
+    },
+    {
+      "name": "MoveToAdjacentRoom",
+      "signature": "private static string MoveToAdjacentRoom(\n            string code,\n            uint id\n        )",
+      "sha256": "cd5984c5bbc79f8fa732e0e6f21ec8f944891d4882416e7e2169df2c4b91d281"
+    },
+    {
+      "name": "PrepareTeleportTarget",
+      "signature": "private static void PrepareTeleportTarget()",
+      "sha256": "c23632f376d6ae8922f80891ee21d921d93dd8e59a3876fed3aefe3c2d0474e0"
+    },
+    {
+      "name": "PrepareBarrierExtension",
+      "signature": "private void PrepareBarrierExtension(long durationMs)",
+      "sha256": "c0a9fe594d95e4df5e74b563838b4066f81753bb44085c04ff72e37a6fb638f8"
+    },
+    {
+      "name": "ExtendSpawnedBarriers",
+      "signature": "private void ExtendSpawnedBarriers()",
+      "sha256": "0cda6bedc8d76a525d6b3a8153e4f8e0d0b6794d12c450207ce474d3e9dbcea4"
+    },
+    {
+      "name": "CurrentEnemies",
+      "signature": "private static IEnumerable<object> CurrentEnemies()",
+      "sha256": "02cc820e5dfeed70dc576bb40517c18e4a82739a4f2bd19257f5a67484009a85"
+    },
+    {
+      "name": "IsAlive",
+      "signature": "private static bool IsAlive(object health)",
+      "sha256": "71b80f837f3ee1299b09c3f39b6fcffee9b980b19fc93b0c9b14c056513c78f7"
+    },
+    {
+      "name": "IsDungeonRoomReady",
+      "signature": "private static bool IsDungeonRoomReady()",
+      "sha256": "2d26ed72ff90de6ff49ad842e4f8a498dfbbd04c1a4119638967a3812ded5886"
+    },
+    {
+      "name": "FindType",
+      "signature": "private static Type FindType(string fullName)",
+      "sha256": "8bef4e56b913768bb5f1757219460a3a3512f0e67ccc3255079d633b24e2957f"
+    },
+    {
+      "name": "ReadStaticMember",
+      "signature": "private static object ReadStaticMember(Type type, string name)",
+      "sha256": "6d3987f1eca8d31c3ac06230bef58f7aaa1602975d2455acae043d79450326f0"
+    },
+    {
+      "name": "ReadMember",
+      "signature": "private static object ReadMember(object target, string name)",
+      "sha256": "0718e2c059448bfbebdaf2fc278c5ea0e0d5b18e9c9312031871a021b24ecdbc"
+    },
+    {
+      "name": "SetMember",
+      "signature": "private static void SetMember(\n            object target,\n            string name,\n            object value\n        )",
+      "sha256": "277e2e039c749e690211df8928ff67bd2fae033c39d83aef43c47e50d804c1c0"
+    },
+    {
+      "name": "SetMemberIfPresent",
+      "signature": "private static void SetMemberIfPresent(\n            object target,\n            string name,\n            object value\n        )",
+      "sha256": "22a021df552e2c83f4c53c4d3207131bc00ba2e0943d4e6897e3af085da37dc8"
+    },
+    {
+      "name": "InvokeStatic",
+      "signature": "private static object InvokeStatic(\n            Type type,\n            string name,\n            params object[] arguments\n        )",
+      "sha256": "0326d3cc9a0fb3bbb4f78fcfd85fc802949795a3a16f48d86adeba903d58d1cc"
+    },
+    {
+      "name": "InvokeInstance",
+      "signature": "private static object InvokeInstance(\n            object target,\n            string name,\n            params object[] arguments\n        )",
+      "sha256": "54b853ad25a7b2b054adce5cebd2fa7c5b510d6ed5364e837fff970087d6fc32"
+    },
+    {
+      "name": "InvokeBest",
+      "signature": "private static object InvokeBest(\n            Type type,\n            object target,\n            string name,\n            bool isStatic,\n            object[] arguments\n        )",
+      "sha256": "7c61dc40fcf7449968be5976b12e53b2784bd5bc1ffeb771ecd64dc8007e9afa"
+    },
+    {
+      "name": "ReadLong",
+      "signature": "private static long ReadLong(\n            string json,\n            string property,\n            long fallback\n        )",
+      "sha256": "984126173077f02040dfa47c601ae0275b20d86a9d755c5f35e8a6d8fe198af2"
+    },
+    {
+      "name": "Response",
+      "signature": "private static string Response(\n            uint id,\n            int status,\n            string message,\n            long timeRemaining\n        )",
+      "sha256": "093b73a277885bf1b3ce52e14fb6ec380c828ad8177d1d12bd6671b59cacdce0"
+    },
+    {
+      "name": "JsonEscape",
+      "signature": "private static string JsonEscape(string value)",
+      "sha256": "c888a0ae05710cd4431d53c058cdf8b3a3ebfa20de321a52c05fc3d86a740074"
+    },
+    {
+      "name": "RootMessage",
+      "signature": "private static string RootMessage(Exception error)",
+      "sha256": "b83740025f9a8199b0426bf0a77f6d3123d31b576b4df0fcb10af5e237b79f87"
+    }
+  ]
+}

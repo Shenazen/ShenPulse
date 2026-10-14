@@ -41,7 +41,7 @@ class ActionTimerScheduler extends EventEmitter {
   }
 
   async tick(now = Date.now()) {
-    const state = this.store.getState();
+    const state = this.#state(["session.profileId", "timers"]);
     const profileId = safeString(state.session?.profileId || "default", 160);
     const timers = Array.isArray(state.timers) ? state.timers : [];
     const activeKeys = new Set(
@@ -87,7 +87,7 @@ class ActionTimerScheduler extends EventEmitter {
       } while (entry.nextAt <= now);
       entry.running = true;
       runtimeChanged = true;
-      const run = this.#execute(timer, state)
+      const run = this.#execute(timer)
         .catch((error) => {
           this.emit("error", { timer, error });
           return null;
@@ -103,15 +103,22 @@ class ActionTimerScheduler extends EventEmitter {
   }
 
   async run(timerId) {
-    const state = this.store.getState();
+    const state = this.#state(["timers"]);
     const timer = (state.timers || []).find(
       (item) => item.id === safeString(timerId, 160)
     );
     if (!timer) throw new Error("Timer introuvable.");
-    return this.#execute(timer, state);
+    return this.#execute(timer);
   }
 
-  async #execute(timer, state) {
+  #state(paths) {
+    return typeof this.store.getStateProjection === "function"
+      ? this.store.getStateProjection(paths) : this.store.getState();
+  }
+
+  async #execute(timer) {
+    // Rules can be large and only matter when a timer actually fires.
+    const state = this.#state(["rules"]);
     const actionIds = normalizeActionIds(timer.actionIds);
     const actions = (state.rules || [])
       .flatMap((rule) => rule.actions || [])
@@ -152,7 +159,8 @@ class ActionTimerScheduler extends EventEmitter {
     }
 
     const lastRunAt = new Date().toISOString();
-    this.store.mutate((nextState) => {
+    const mutate = this.store.mutateRuntime || this.store.mutate;
+    mutate.call(this.store, (nextState) => {
       const stored = (nextState.timers || []).find(
         (item) => item.id === timer.id
       );

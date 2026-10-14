@@ -1,0 +1,28 @@
+/** Traductions en du domaine « liveHistory ». Les clés publiques restent stables. */
+export default {
+      allLives: 'All lives',
+      donorRankStats: '{coins} coins · {gifts} gifts',
+      ended: 'Ended',
+      fullTimeline: 'Full timeline',
+      giftBreakdown: 'Gift breakdown',
+      giftBreakdownStats: '{count} received · {coins} coins',
+      gifters: 'Gifters',
+      noDonors: 'No donor during this live.',
+      noGiftInLive: 'No gift received during this live.',
+      noLives: 'No recorded lives',
+      noLivesHint: 'Connect your TikTok LIVE from the studio to automatically create a recap.',
+      noTappers: 'No tap recorded during this live.',
+      recapTitle: 'Complete recap',
+      sessionCount: '{count} lives',
+      sessionMiniStats: '{gifts} gifts · {coins} coins',
+      tapperRankStats: '{taps} taps',
+      title: 'LIVE history',
+      topDonors: 'Donor leaderboard',
+      topTappers: 'Tapper leaderboard',
+      totalCoins: 'Coins',
+      totalGifts: 'Gifts',
+      totalTaps: 'Taps',
+      uniqueGifts: 'Unique gifts',
+      unknownLive: 'live',
+    };
+

@@ -1,11 +1,6 @@
 "use strict";
 
-/**
- * Coin Jar, compteurs, timers et animation de roue.
- *
- * Ce module est chargé comme script classique dans l'ordre déclaré par la page.
- * Il partage uniquement les contrats globaux documentés dans README.md.
- */
+/* FICHIER GÉNÉRÉ — compatibilité anciens loaders ; sources : widgets/ et session.js. */
 
 function renderCoinJar() {
   const current = document.getElementById("coin-jar-current");
@@ -495,7 +490,9 @@ function restartMatchVideo() {
     matchLastRestartAt = performance.now();
     video.pause();
     video.currentTime = 0;
-    if (matchAutoplay) video.play().catch(() => {});
+    if (matchAutoplay) playMatchVideo(video, { isCurrent: () => viewName === "match" &&
+      !matchSourceInactive && document.visibilityState !== "hidden",
+      onFailure: () => setMatchPlaybackDiagnostic("autoplay-refused") });
   } catch {
     // The static fallback remains visible if the media cannot start.
   }

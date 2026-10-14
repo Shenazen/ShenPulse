@@ -137,6 +137,26 @@ test("le miroir public ne contient que les portées sans donnée propriétaire",
   assert.equal(visibility.updatedBy, undefined);
 });
 
+test("les réponses Firebase anciennes ouvrent IRL sans rétablir la restriction propriétaire", () => {
+  const old = { schemaVersion: 8, navigation: { irl: { scope: "admin" }, admin: { scope: "admin" } },
+    features: { "irl:shelly": { scope: "admin" } }, actionTypes: { "irl:shelly": { scope: "admin" } },
+    actionTypeOverrides: { "irl:shelly": false } };
+  for (const normalize of [normalizeSiteSettings, normalizePublicVisibility]) {
+    const normalized = normalize(old);
+    assert.equal(normalized.schemaVersion, 9);
+    assert.deepEqual(normalized.navigation.irl, { scope: "public" });
+    assert.deepEqual(normalized.navigation.admin, { scope: "admin" });
+    assert.deepEqual(normalized.features["irl:shelly"], { scope: "public" });
+    assert.deepEqual(normalized.actionTypes["irl:shelly"], { scope: "public" });
+    const hidden = normalize({ schemaVersion: 8, navigation: { irl: false }, features: { "irl:shelly": { scope: "hidden" } } });
+    assert.deepEqual(hidden.navigation.irl, { scope: "hidden" });
+    assert.deepEqual(hidden.features["irl:shelly"], { scope: "hidden" });
+    const modern = normalize({ ...old, schemaVersion: 9 });
+    assert.deepEqual(modern.navigation.irl, { scope: "admin" });
+  }
+  assert.equal(normalizeSiteSettings(old).actionTypeOverrides["irl:shelly"], false);
+});
+
 test("la visibilité publique reste disponible hors ligne après déconnexion", async () => {
   const cached = {
     schemaVersion: 7,

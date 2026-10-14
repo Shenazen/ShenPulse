@@ -1,6 +1,8 @@
 "use strict";
 
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
+const sceneLayout = require("../../resources/overlays/scene-layout");
+const { uniqueViewerCount } = require("./live-statistics");
 
 const PUBLIC_OVERLAY_PROTOCOL_VERSION = 2;
 const PUBLIC_OVERLAY_RELAY_PATH = "publicOverlayRelay";
@@ -199,15 +201,12 @@ function createRelayState(state, options = {}) {
         startedAt: state?.session?.startedAt || null
       },
       overlaySession: state?.overlaySession || {},
+      overlayScene: sceneLayout.stateForScene(state),
       statistics: {
         sessionEvents: Number(statistics.sessionEvents || 0),
         sessionActions: Number(statistics.sessionActions || 0),
         sessionLikes: Number(statistics.sessionLikes || 0),
-        sessionUniqueViewers: Array.isArray(
-          statistics.sessionUniqueViewers
-        )
-          ? statistics.sessionUniqueViewers.length
-          : Number(statistics.sessionUniqueViewers || 0),
+        sessionUniqueViewers: uniqueViewerCount(statistics),
         lifetimeEvents: Number(statistics.lifetimeEvents || 0),
         likes: Number(statistics.likes || 0),
         gifts: Number(statistics.gifts || 0),

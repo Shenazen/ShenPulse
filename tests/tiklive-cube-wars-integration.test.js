@@ -166,7 +166,7 @@ test("vérifie l’identité du serveur Cube Wars et remonte ses refus", async (
 });
 
 test("branche le catalogue ShenPulse, l’achat et l’overlay Cube Wars", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   const calls = [];
   const tikLiveCubeWarsBridge = {
     status: async (connector) => {
@@ -192,7 +192,7 @@ test("branche le catalogue ShenPulse, l’achat et l’overlay Cube Wars", async
   assert.equal(pack.connector.url, "http://127.0.0.1:7811");
   assert.equal(pack.accessMode, "purchase");
   assert.equal(pack.price, 19.99);
-  assert.equal(pack.requiresPro, true);
+  assert.equal(pack.requiresPro, false);
   assert.equal(pack.artwork, "catalog/shenpulse-cube-wars.png");
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");
 
@@ -234,7 +234,7 @@ test("associe le paquet Backblaze et l’exécutable au lanceur ShenPulse", () =
 });
 
 test("déclenche cadeau, H\/F, likes et !spin pendant une session Cube Wars", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   state.session.profileId = "profile-1";
   state.session.game = {
     running: true,
@@ -293,7 +293,8 @@ test("déclenche cadeau, H\/F, likes et !spin pendant une session Cube Wars", as
   assert.equal(actions[3].config.wheelId, "wheel_tiklive_cube_wars");
 });
 
-function subscribedState() {
+function purchasedGameState() {
+  // Depuis la politique Pro, l’achat du produit s’ajoute à un accès Pro actif.
   return {
     settings: {
       account: {
@@ -305,7 +306,7 @@ function subscribedState() {
     },
     session: { activeGamePackId: "coin-pusher" },
     commerce: {
-      subscription: { tier: "pro", source: "subscription", status: "active" },
+      subscription: { tier: "pro", source: "own", status: "active" },
       gameEntitlements: ["tiklive-cube-wars"]
     },
     game: {

@@ -1,0 +1,338 @@
+.launch-price.is-free {
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(49, 231, 255, 0.22)),
+    rgba(5, 8, 20, 0.66);
+  color: #eafff7;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.74rem;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.62);
+}
+
+.launch-mode-button.tone-red {
+  --launch-accent: 255, 50, 79;
+}
+
+.launch-mode-button.tone-gold {
+  --launch-accent: 255, 209, 102;
+}
+
+.launch-mode-button.tone-cyan {
+  --launch-accent: 105, 245, 201;
+}
+
+.particle {
+  position: absolute;
+  z-index: 20;
+  border-radius: 2px;
+  box-shadow: 0 0 10px currentColor;
+  animation: particlePop 1.2s cubic-bezier(0.12, 0.74, 0.24, 1) forwards;
+}
+
+@media (max-height: 790px) {
+  .score-strip {
+    top: 14px;
+  }
+
+  .score-card {
+    min-height: 47px;
+    padding: 7px 9px;
+  }
+
+  .match-panel {
+    top: 62px;
+  }
+
+  .match-objective span,
+  .match-reward span {
+    font-size: 0.52rem;
+  }
+
+  .match-objective,
+  .match-reward {
+    gap: 0;
+    padding: 0;
+  }
+
+  .match-objective strong {
+    font-size: 1.06rem;
+  }
+
+  .match-reward strong {
+    font-size: 0.72rem;
+  }
+
+  .match-reward img {
+    width: 17px;
+    min-width: 17px;
+    height: 17px;
+  }
+
+  .arena-board {
+    --connect-board-padding: 10px;
+    top: 164px;
+    gap: 6px;
+  }
+
+  .column-gates button {
+    height: 25px;
+  }
+
+  .board-frame {
+    gap: 5px;
+    padding: var(--connect-board-padding);
+  }
+
+  .launch-dialog-layer {
+    top: 164px;
+    bottom: 30%;
+  }
+
+  .end-game-button {
+    min-width: 148px;
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 0.64rem;
+  }
+
+  .launch-dialog {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .launch-dialog-head h2 {
+    font-size: 1rem;
+  }
+
+  .launch-mode-grid {
+    gap: 7px;
+  }
+
+  .launch-mode-button {
+    min-height: 68px;
+    grid-template-columns: 36px minmax(0, 1fr) minmax(74px, auto);
+    gap: 7px;
+    padding: 8px 9px;
+  }
+
+  .launch-mode-symbol {
+    width: 34px;
+    height: 34px;
+    padding: 7px;
+  }
+
+  .launch-mode-button b {
+    font-size: 0.92rem;
+  }
+
+  .launch-mode-button small {
+    font-size: 0.55rem;
+  }
+
+  .launch-price {
+    min-width: 74px;
+    min-height: 36px;
+    gap: 4px;
+    padding: 5px 6px;
+    font-size: 0.9rem;
+  }
+
+  .launch-price svg {
+    width: 14px;
+    min-width: 14px;
+    height: 14px;
+  }
+}
+
+@media (max-width: 390px) {
+  .score-strip,
+  .arena-board,
+  .launch-dialog-layer {
+    left: 13px;
+    right: 13px;
+  }
+
+  .arena-board {
+    --connect-board-padding: 9px;
+  }
+
+  .match-panel {
+    left: 15%;
+    right: 15%;
+    top: 62px;
+  }
+
+  .match-objective,
+  .match-reward {
+    gap: 0;
+    padding: 0;
+  }
+
+  .match-objective span,
+  .match-reward span,
+  .match-objective strong,
+  .match-reward strong {
+    width: calc(100% - 12px);
+  }
+
+  .match-objective span,
+  .match-reward span {
+    font-size: 0.48rem;
+  }
+
+  .match-objective strong {
+    font-size: 0.96rem;
+  }
+
+  .match-reward strong {
+    gap: 2px;
+    font-size: 0.66rem;
+  }
+
+  .match-reward img {
+    width: 15px;
+    min-width: 15px;
+    height: 15px;
+  }
+
+  .score-strip {
+    gap: 6px;
+  }
+
+  .score-card {
+    padding: 7px;
+  }
+
+  .score-card span {
+    font-size: 0.61rem;
+  }
+
+  .board-frame {
+    gap: 4px;
+    padding: var(--connect-board-padding);
+  }
+
+  .end-game-button {
+    min-width: 136px;
+    min-height: 32px;
+    padding: 6px 10px;
+    font-size: 0.58rem;
+  }
+
+  .launch-mode-button {
+    min-height: 72px;
+    grid-template-columns: 34px minmax(0, 1fr) minmax(70px, auto);
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .launch-mode-symbol {
+    width: 32px;
+    height: 32px;
+    padding: 7px;
+  }
+
+  .launch-mode-button b {
+    font-size: 0.92rem;
+  }
+
+  .launch-mode-button small {
+    font-size: 0.53rem;
+  }
+
+  .launch-price {
+    min-width: 70px;
+    min-height: 36px;
+    font-size: 0.84rem;
+  }
+
+  .launch-price.is-free {
+    font-size: 0.66rem;
+  }
+}
+
+@keyframes beamSweep {
+  from {
+    opacity: 0.52;
+    transform: rotate(-16deg) translateX(-4%);
+  }
+  to {
+    opacity: 0.9;
+    transform: rotate(12deg) translateX(4%);
+  }
+}
+
+@keyframes stageImageDrift {
+  from {
+    transform: scale(1.04) translateY(0);
+  }
+  to {
+    transform: scale(1.08) translateY(-1.2%);
+  }
+}
+
+@keyframes discDrop {
+  0% {
+    transform: translateY(var(--drop-offset)) scale(0.84);
+    filter: brightness(1.18);
+  }
+  72% {
+    transform: translateY(4%) scale(1.03);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cellImpact {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes winnerPulse {
+  from {
+    transform: scale(1);
+    filter: brightness(1) drop-shadow(0 0 10px rgba(255, 209, 102, 0.46));
+  }
+  to {
+    transform: scale(1.08);
+    filter: brightness(1.18) drop-shadow(0 0 18px rgba(255, 209, 102, 0.82));
+  }
+}
+
+@keyframes winnerBeam {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes activeRewardPulse {
+  from {
+    filter: brightness(0.98);
+  }
+  to {
+    filter: brightness(1.18);
+  }
+}
+
+@keyframes particlePop {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--tx), var(--ty), 0) rotate(var(--spin)) scale(0.62);
+  }
+}

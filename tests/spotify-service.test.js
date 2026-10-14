@@ -9,6 +9,7 @@ const {
   normalizePlayback,
   spotifyTrackUri
 } = require("../src/main/spotify-service");
+const { normalizeSongRequestSettings } = require("../src/main/spotify/song-requests");
 
 test("utilise l'application Spotify ShenPulse sans configuration utilisateur", async () => {
   const settings = {
@@ -30,7 +31,9 @@ test("utilise l'application Spotify ShenPulse sans configuration utilisateur", a
     redirectUri: "http://127.0.0.1:21215/spotify/callback",
     devices: [],
     account: null,
-    playback: null
+    playback: null,
+    songRequests: { settings: normalizeSongRequestSettings(), queue: [], history: [], lastResponse: null,
+      queueKind: "shenpulse-managed", spotifyQueueMutable: false, ownerUid: "" }
   });
 });
 

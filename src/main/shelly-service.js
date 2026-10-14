@@ -1,17 +1,17 @@
 "use strict";
 
-const dgram = require("node:dgram");
+/** Façade stable : API historique, implémentations organisées par responsabilités. */
+const { readState } = require("./state-projection");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { execFile } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
-const { assertAdminAccount } = require("./account-access");
-
-const SHELLY_AP_ADDRESS = "192.168.33.1";
-const MDNS_ADDRESS = "224.0.0.251";
-const MDNS_PORT = 5353;
-const OWNER_EMAIL = "alexandre.leuridan@gmail.com";
+const { assertProFeatureAccess, createProFeatureGuard } = require("./pro-feature-access");
+const { assertCommandContext } = require("./commands/context-guard");
+const { SHELLY_AP_ADDRESS } = require("./shelly/constants");
+const { ensureIrlSettings, normalizeIrlSettings, normalizeDevice, inferDeviceControllable, isPlugPlusDevice, isPlugPlusAccessPoint, normalizeHost, cleanIdentifier, cleanLabel, cleanWifiName, hostsFromArpOutput, normalizeOperation, isPythonUnavailable, clampNumber, escapeXml } = require("./shelly/devices");
+const { delay, waitFor, runCommand } = require("./shelly/processes");
+const { mdnsQueryPacket, parseMdnsPacket, hostsFromMdnsRecords, discoverMdnsHosts } = require("./shelly/discovery");
 
 class ShellyService {
   constructor({
@@ -36,7 +36,7 @@ class ShellyService {
   }
 
   status() {
-    this.#assertOwner();
+    this.#assertAccess();
     const irl = this.#settings();
     return {
       enabled: irl.enabled === true,
@@ -51,12 +51,13 @@ class ShellyService {
   }
 
   async scan({ timeoutMs = 1400 } = {}) {
-    this.#assertOwner();
+    const assertAccess = createProFeatureGuard(this.store, "irl");
     const [hosts, wifi] = await Promise.all([
       this.#discoverHosts(timeoutMs),
       this.#scanWifiNetworks()
     ]);
     const devices = (await this.#probeHosts(hosts)).filter(isPlugPlusDevice);
+    assertAccess();
     const onlineIds = new Set(devices.map((device) => device.id));
     this.store.mutate((state) => {
       for (const device of ensureIrlSettings(state.settings).devices) {
@@ -74,8 +75,9 @@ class ShellyService {
   }
 
   async addDevice({ host, name = "" } = {}) {
-    this.#assertOwner();
+    const assertAccess = createProFeatureGuard(this.store, "irl");
     const device = await this.#probeHost(host);
+    assertAccess();
     if (!device) {
       throw new Error(
         "Aucune prise Shelly n’a répondu à cette adresse sur le réseau local."
@@ -92,7 +94,7 @@ class ShellyService {
   }
 
   removeDevice(deviceId) {
-    this.#assertOwner();
+    this.#assertAccess();
     const targetId = cleanIdentifier(deviceId);
     this.store.mutate((state) => {
       const irl = ensureIrlSettings(state.settings);
@@ -102,7 +104,7 @@ class ShellyService {
   }
 
   renameDevice(deviceId, name) {
-    this.#assertOwner();
+    this.#assertAccess();
     const targetId = cleanIdentifier(deviceId);
     const nextName = cleanLabel(name, 80);
     if (!nextName) throw new Error("Le nom de la prise est requis.");
@@ -119,7 +121,7 @@ class ShellyService {
   }
 
   setEnabled(enabled) {
-    this.#assertOwner();
+    this.#assertAccess();
     this.store.mutate((state) => {
       ensureIrlSettings(state.settings).enabled = enabled === true;
     }, true);
@@ -127,7 +129,7 @@ class ShellyService {
   }
 
   async pair({ accessPointSsid, wifiSsid, wifiPassword = "" } = {}) {
-    this.#assertOwner();
+    const assertAccess = createProFeatureGuard(this.store, "irl");
     if (this.platform !== "win32") {
       throw new Error(
         "L’association automatique Shelly est actuellement disponible sur Windows."
@@ -141,10 +143,12 @@ class ShellyService {
     if (!targetWifi) throw new Error("Le réseau Wi-Fi de la maison est requis.");
 
     const previousNetwork = await this.#currentWifiNetwork();
+    assertAccess();
     let identified = null;
     let provisioned = false;
     try {
       await this.#connectOpenWifi(shellySsid);
+      assertAccess();
       identified = await waitFor(
         () => this.#probeHost(SHELLY_AP_ADDRESS),
         { timeoutMs: 18000, intervalMs: 650 }
@@ -157,10 +161,12 @@ class ShellyService {
       if (!isPlugPlusDevice(identified)) {
         throw new Error("Seules les prises PlugPlus peuvent être associées.");
       }
+      assertAccess();
       await this.#provisionWifi(
         identified,
         targetWifi,
-        String(wifiPassword || "")
+        String(wifiPassword || ""),
+        assertAccess
       );
       provisioned = true;
     } finally {
@@ -174,10 +180,12 @@ class ShellyService {
     }
 
     const discovered = await waitFor(async () => {
+      assertAccess();
       const hosts = await this.#discoverHosts(900);
       const devices = await this.#probeHosts(hosts);
       return devices.find((device) => device.id === identified.id) || null;
     }, { timeoutMs: 24000, intervalMs: 1300 });
+    assertAccess();
 
     const device = discovered || {
       ...identified,
@@ -194,15 +202,15 @@ class ShellyService {
   }
 
   async test(deviceId, operation = "toggle", durationMs = 3000) {
-    this.#assertOwner();
+    this.#assertAccess();
     return this.control(
       { deviceId, operation, durationMs },
       { ignoreGlobalSwitch: true }
     );
   }
 
-  async control(config = {}, { ignoreGlobalSwitch = false } = {}) {
-    this.#assertOwner();
+  async control(config = {}, { ignoreGlobalSwitch = false, shouldExecute } = {}) {
+    const assertAccess = createProFeatureGuard(this.store, "irl", { shouldExecute });
     const irl = this.#settings();
     if (!ignoreGlobalSwitch && irl.enabled !== true) {
       return { skipped: true, reason: "irl-disabled" };
@@ -215,12 +223,33 @@ class ShellyService {
         `« ${device.name || device.id} » ne possède aucun relais pilotable. Choisissez une prise Shelly dans l’action.`
       );
     }
+    const stillAllowed = () => {
+      assertAccess();
+      const fresh = this.#settings();
+      if (!ignoreGlobalSwitch && fresh.enabled !== true) {
+        const error = new Error("Les interactions IRL ont été désactivées avant l’exécution.");
+        error.code = "FEATURE_ACCESS_FORBIDDEN";
+        throw error;
+      }
+      if (!fresh.devices.some((entry) => entry.id === device.id && entry.controllable !== false)) {
+        const error = new Error("La prise IRL n’est plus disponible dans ce profil.");
+        error.code = "FEATURE_CONTEXT_CHANGED";
+        throw error;
+      }
+      return true;
+    };
     const operation = normalizeOperation(config.operation);
     const durationMs = clampNumber(config.durationMs, 500, 60000, 3000);
     return this.#enqueue(device.id, async () => {
-      const target = await this.#resolveDevice(device);
-      const result = await this.#sendControl(target, operation, durationMs);
-      this.#rememberDevice({
+      stillAllowed();
+      const target = await this.#resolveDevice(device, stillAllowed);
+      stillAllowed();
+      const result = await this.#sendControl(target, operation, durationMs, stillAllowed);
+      // Une restauration de sécurité peut finir après expiration : son résultat
+      // ne doit alors pas être enregistré dans le nouveau compte ou profil.
+      let remember = false;
+      try { remember = stillAllowed(); } catch {}
+      if (remember) this.#rememberDevice({
         ...target,
         online: true,
         lastSeenAt: new Date().toISOString()
@@ -229,18 +258,10 @@ class ShellyService {
     });
   }
 
-  #assertOwner() {
-    assertAdminAccount(this.store);
-    const email = String(
-      this.store.getState().settings.account?.email || ""
-    ).trim().toLowerCase();
-    if (email !== OWNER_EMAIL) {
-      throw new Error("Les interactions IRL sont réservées au propriétaire.");
-    }
-  }
+  #assertAccess() { return assertProFeatureAccess(this.store, "irl"); }
 
   #settings() {
-    const settings = this.store.getState().settings || {};
+    const settings = readState(this.store, ["settings.irl"]).settings || {};
     return normalizeIrlSettings(settings.irl);
   }
 
@@ -338,13 +359,16 @@ class ShellyService {
     return { controllable: relays.length > 0, channel: 0 };
   }
 
-  async #resolveDevice(device) {
+  async #resolveDevice(device, shouldExecute) {
     if (device.host) {
       const current = await this.#probeHost(device.host);
+      assertCommandContext(shouldExecute);
       if (current?.id === device.id) return { ...device, ...current };
     }
     const hosts = await this.#discoverHosts(1200);
+    assertCommandContext(shouldExecute);
     const devices = await this.#probeHosts(hosts);
+    assertCommandContext(shouldExecute);
     const current = devices.find((entry) => entry.id === device.id);
     if (!current) {
       this.#rememberDevice({ ...device, online: false });
@@ -355,16 +379,18 @@ class ShellyService {
     return { ...device, ...current };
   }
 
-  async #sendControl(device, operation, durationMs) {
+  async #sendControl(device, operation, durationMs, shouldExecute) {
     const restoreOperation = {
       cycle: "on",
       pulse: "off"
     }[operation];
     if (!restoreOperation) {
-      return this.#dispatchControl(device, operation, durationMs);
+      return this.#dispatchControl(device, operation, durationMs, shouldExecute);
     }
-    const armed = await this.#dispatchControl(device, operation, durationMs);
+    const armed = await this.#dispatchControl(device, operation, durationMs, shouldExecute);
     await this.delay(durationMs);
+    // Une impulsion déjà armée est restaurée sur sa prise capturée, même si
+    // la commande est ensuite annulée : ne jamais laisser un relais actif.
     const restored = await this.#dispatchControl(
       device,
       restoreOperation,
@@ -378,14 +404,18 @@ class ShellyService {
     };
   }
 
-  async #dispatchControl(device, operation, durationMs) {
+  async #dispatchControl(device, operation, durationMs, shouldExecute) {
+    assertCommandContext(shouldExecute);
     if (this.pythonBridge) {
       try {
-        return await this.pythonBridge.control(device, operation, durationMs);
+        return await this.pythonBridge.control(device, operation, durationMs, {
+          assertAccess: () => assertCommandContext(shouldExecute)
+        });
       } catch (error) {
         if (!isPythonUnavailable(error)) throw error;
       }
     }
+    assertCommandContext(shouldExecute);
     const channel = clampNumber(device.channel, 0, 16, 0);
     if (Number(device.generation) >= 2) {
       const method = operation === "toggle" ? "Switch.Toggle" : "Switch.Set";
@@ -425,7 +455,8 @@ class ShellyService {
     return { ok: true, result };
   }
 
-  async #provisionWifi(device, ssid, password) {
+  async #provisionWifi(device, ssid, password, assertAccess = () => {}) {
+    assertAccess();
     if (this.pythonBridge) {
       try {
         await this.pythonBridge.provision({
@@ -433,12 +464,13 @@ class ShellyService {
           generation: device.generation,
           ssid,
           password
-        });
+        }, { assertAccess });
         return;
       } catch (error) {
         if (!isPythonUnavailable(error)) throw error;
       }
     }
+    assertAccess();
     if (Number(device.generation) >= 2) {
       await this.#fetchJson(`http://${SHELLY_AP_ADDRESS}/rpc/WiFi.SetConfig`, {
         method: "POST",
@@ -622,346 +654,6 @@ class ShellyService {
       `name=${temporaryProfile}`
     ]).catch(() => {});
   }
-}
-
-function ensureIrlSettings(settings = {}) {
-  settings.irl = normalizeIrlSettings(settings.irl);
-  return settings.irl;
-}
-
-function normalizeIrlSettings(value) {
-  const source = value && typeof value === "object" ? value : {};
-  const deviceNames = normalizeDeviceNames(source.deviceNames);
-  const devices = Array.isArray(source.devices)
-    ? source.devices
-        .map(normalizeDevice)
-        .filter((device) => device.id)
-        .map((device) => {
-          const rememberedName = deviceNames[device.id] || device.name;
-          deviceNames[device.id] = rememberedName;
-          return { ...device, name: rememberedName };
-        })
-    : [];
-  return { enabled: source.enabled === true, devices, deviceNames };
-}
-
-function normalizeDeviceNames(value) {
-  const source =
-    value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  return Object.fromEntries(
-    Object.entries(source)
-      .slice(0, 200)
-      .map(([id, name]) => [cleanIdentifier(id), cleanLabel(name, 80)])
-      .filter(([id, name]) => id && name)
-  );
-}
-
-function normalizeDevice(value = {}) {
-  return {
-    id: cleanIdentifier(value.id),
-    name: cleanLabel(value.name || value.model || value.id || "Shelly", 80),
-    host: normalizeHost(value.host),
-    generation: clampNumber(value.generation, 1, 9, 1),
-    model: cleanLabel(value.model || "Shelly", 80),
-    channel: clampNumber(value.channel, 0, 16, 0),
-    controllable:
-      typeof value.controllable === "boolean"
-        ? value.controllable
-        : inferDeviceControllable(value),
-    online: value.online === true,
-    lastSeenAt: cleanLabel(value.lastSeenAt, 64)
-  };
-}
-
-function inferDeviceControllable(value = {}) {
-  const identity = `${value.id || ""} ${value.model || ""} ${value.type || ""}`;
-  return !/(?:shellypro3em|spem-003|shellyem3|shem-3)/i.test(identity);
-}
-
-function isPlugPlusDevice(value = {}) {
-  const identity = `${value.id || ""} ${value.model || ""} ${value.type || ""} ${value.app || ""}`;
-  return /(?:shellyplusplugs|plusplugs|snpl-00112eu|shelly\s+plus\s+plug\s+s)/i.test(
-    identity
-  );
-}
-
-function isPlugPlusAccessPoint(value) {
-  return /^shellyplusplugs(?:-|$)/i.test(cleanWifiName(value));
-}
-
-function normalizeHost(value) {
-  const host = String(value || "").trim().toLowerCase();
-  if (!host || host.length > 253) return "";
-  if (!/^[a-z0-9.-]+$/i.test(host)) return "";
-  if (host === "localhost" || host.endsWith(".local")) return host;
-  const parts = host.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => part < 0 || part > 255)) {
-    return "";
-  }
-  if (
-    parts[0] === 10 ||
-    parts[0] === 127 ||
-    (parts[0] === 169 && parts[1] === 254) ||
-    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
-    (parts[0] === 192 && parts[1] === 168)
-  ) {
-    return host;
-  }
-  return "";
-}
-
-function cleanIdentifier(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .slice(0, 160);
-}
-
-function cleanLabel(value, maxLength = 120) {
-  return String(value || "").trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, maxLength);
-}
-
-function cleanWifiName(value) {
-  return cleanLabel(value, 32);
-}
-
-function hostsFromArpOutput(output) {
-  const hosts = [];
-  for (const match of String(output || "").matchAll(
-    /^\s*((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f]{2}(?:[:-][0-9a-f]{2}){5})\s+/gim
-  )) {
-    const host = normalizeHost(match[1]);
-    const mac = match[2].replaceAll("-", ":").toLowerCase();
-    if (
-      host &&
-      !host.endsWith(".0") &&
-      !host.endsWith(".255") &&
-      mac !== "ff:ff:ff:ff:ff:ff" &&
-      !hosts.includes(host)
-    ) {
-      hosts.push(host);
-    }
-  }
-  return hosts;
-}
-
-function normalizeOperation(value) {
-  const operation = String(value || "toggle").toLowerCase();
-  if (!["on", "off", "toggle", "cycle", "pulse"].includes(operation)) {
-    throw new Error("Commande Shelly invalide.");
-  }
-  return operation;
-}
-
-function isPythonUnavailable(error) {
-  return error?.code === "IRL_PYTHON_UNAVAILABLE";
-}
-
-function clampNumber(value, minimum, maximum, fallback) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.min(maximum, Math.max(minimum, number));
-}
-
-function escapeXml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
-
-function delay(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-async function waitFor(task, { timeoutMs, intervalMs }) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const value = await task().catch(() => null);
-    if (value) return value;
-    await delay(intervalMs);
-  }
-  return null;
-}
-
-function runCommand(command, args) {
-  return new Promise((resolve, reject) => {
-    execFile(
-      command,
-      args,
-      { windowsHide: true, timeout: 15000, maxBuffer: 1024 * 1024 },
-      (error, stdout) => (error ? reject(error) : resolve(stdout || ""))
-    );
-  });
-}
-
-function encodeDnsName(name) {
-  const labels = String(name).split(".").filter(Boolean);
-  return Buffer.concat([
-    ...labels.map((label) => {
-      const content = Buffer.from(label, "utf8");
-      return Buffer.concat([Buffer.from([content.length]), content]);
-    }),
-    Buffer.from([0])
-  ]);
-}
-
-function mdnsQueryPacket() {
-  const header = Buffer.alloc(12);
-  header.writeUInt16BE(2, 4);
-  const question = (name) => {
-    const suffix = Buffer.alloc(4);
-    suffix.writeUInt16BE(12, 0);
-    suffix.writeUInt16BE(0x8001, 2);
-    return Buffer.concat([encodeDnsName(name), suffix]);
-  };
-  return Buffer.concat([
-    header,
-    question("_shelly._tcp.local"),
-    question("_http._tcp.local")
-  ]);
-}
-
-function readDnsName(buffer, offset) {
-  const labels = [];
-  let cursor = offset;
-  let nextOffset = offset;
-  let jumped = false;
-  let steps = 0;
-  while (cursor < buffer.length && steps < 80) {
-    steps += 1;
-    const length = buffer[cursor];
-    if (length === 0) {
-      if (!jumped) nextOffset = cursor + 1;
-      break;
-    }
-    if ((length & 0xc0) === 0xc0) {
-      if (cursor + 1 >= buffer.length) throw new Error("Pointeur DNS incomplet.");
-      const pointer = ((length & 0x3f) << 8) | buffer[cursor + 1];
-      if (!jumped) nextOffset = cursor + 2;
-      cursor = pointer;
-      jumped = true;
-      continue;
-    }
-    const start = cursor + 1;
-    const end = start + length;
-    if (end > buffer.length) throw new Error("Nom DNS incomplet.");
-    labels.push(buffer.toString("utf8", start, end));
-    cursor = end;
-    if (!jumped) nextOffset = cursor;
-  }
-  return { name: labels.join(".").toLowerCase(), nextOffset };
-}
-
-function parseMdnsPacket(buffer) {
-  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return [];
-  let offset = 12;
-  const questions = buffer.readUInt16BE(4);
-  const recordsCount =
-    buffer.readUInt16BE(6) +
-    buffer.readUInt16BE(8) +
-    buffer.readUInt16BE(10);
-  for (let index = 0; index < questions; index += 1) {
-    const name = readDnsName(buffer, offset);
-    offset = name.nextOffset + 4;
-    if (offset > buffer.length) return [];
-  }
-  const records = [];
-  for (let index = 0; index < recordsCount; index += 1) {
-    const owner = readDnsName(buffer, offset);
-    offset = owner.nextOffset;
-    if (offset + 10 > buffer.length) break;
-    const type = buffer.readUInt16BE(offset);
-    const length = buffer.readUInt16BE(offset + 8);
-    const dataOffset = offset + 10;
-    const end = dataOffset + length;
-    if (end > buffer.length) break;
-    const record = { name: owner.name, type };
-    if (type === 1 && length === 4) {
-      record.address = [...buffer.subarray(dataOffset, end)].join(".");
-    } else if (type === 12) {
-      record.target = readDnsName(buffer, dataOffset).name;
-    } else if (type === 33 && length >= 6) {
-      record.port = buffer.readUInt16BE(dataOffset + 4);
-      record.target = readDnsName(buffer, dataOffset + 6).name;
-    }
-    records.push(record);
-    offset = end;
-  }
-  return records;
-}
-
-function hostsFromMdnsRecords(records) {
-  const serviceInstances = new Set(
-    records
-      .filter(
-        (record) =>
-          record.type === 12 &&
-          ["_shelly._tcp.local", "_http._tcp.local"].includes(record.name)
-      )
-      .map((record) => record.target)
-      .filter(Boolean)
-  );
-  const serviceHosts = new Set(
-    records
-      .filter(
-        (record) =>
-          record.type === 33 &&
-          (serviceInstances.has(record.name) || record.name.includes("shelly"))
-      )
-      .map((record) => record.target)
-      .filter(Boolean)
-  );
-  const result = [];
-  for (const record of records) {
-    if (record.type !== 1 || !record.address) continue;
-    if (serviceHosts.has(record.name) || record.name.includes("shelly")) {
-      result.push(record.address);
-    }
-  }
-  for (const host of serviceHosts) result.push(host);
-  return [...new Set(result.map(normalizeHost).filter(Boolean))];
-}
-
-function discoverMdnsHosts({ timeoutMs = 1400 } = {}) {
-  return new Promise((resolve) => {
-    const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
-    const records = [];
-    let finished = false;
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      try {
-        socket.close();
-      } catch {
-        // The socket may already have closed after a network change.
-      }
-      resolve(hostsFromMdnsRecords(records));
-    };
-    const timer = setTimeout(finish, clampNumber(timeoutMs, 300, 5000, 1400));
-    socket.on("message", (message) => {
-      try {
-        records.push(...parseMdnsPacket(message));
-      } catch {
-        // Ignore malformed packets from unrelated multicast services.
-      }
-    });
-    socket.once("error", () => {
-      clearTimeout(timer);
-      finish();
-    });
-    socket.bind(0, () => {
-      socket.send(mdnsQueryPacket(), MDNS_PORT, MDNS_ADDRESS, (error) => {
-        if (error) {
-          clearTimeout(timer);
-          finish();
-        }
-      });
-    });
-  });
 }
 
 module.exports = {

@@ -1,0 +1,211 @@
+{
+  "initial": {
+    "tree": "0a656b4add097ab52b49de81672f531cec125e03956d4ac8bd8e331df99c5e43",
+    "resources": "86d5d845f61b9cb2c25306a144a9f6c9750fe0cc95dd9deca770de4673975d9c",
+    "counts": {
+      "geometries": 254,
+      "materials": 55,
+      "textures": 7
+    },
+    "canvas": "48cfcbfcb82ca57c9ff595c9fe8c7f2384103e580b65261bfad74329e5363869",
+    "events": [
+      [
+        "pixelRatio",
+        1.75
+      ],
+      [
+        "rendererSize",
+        540,
+        960
+      ],
+      [
+        "composerRatio",
+        1.75
+      ],
+      [
+        "composerSize",
+        540,
+        960
+      ]
+    ]
+  },
+  "arcade": {
+    "tree": "92e2980f09bc092d1df35d598c910a002092d889debfdddfec733000649698ac",
+    "resources": "271d4125aa3c32a9633e0ec40d29e2262ab88b3c8a5c097a087502683a2271a3",
+    "counts": {
+      "geometries": 306,
+      "materials": 81,
+      "textures": 16
+    },
+    "canvas": "12b533f359ad91514fe77dad1465620a2eca842889bb01a78b13c67cbb936899",
+    "events": [
+      [
+        "pixelRatio",
+        1.75
+      ],
+      [
+        "rendererSize",
+        540,
+        960
+      ],
+      [
+        "composerRatio",
+        1.75
+      ],
+      [
+        "composerSize",
+        540,
+        960
+      ],
+      [
+        "render",
+        0.016
+      ]
+    ]
+  },
+  "galactic": {
+    "tree": "679f06b370b09115bf1d2758f5cb1f425a989257bff78158a7aa9c4f6fe2784f",
+    "resources": "2c488781aac52c16fea5d134ed3b9bf8f37ceccda04cc9c89d2cf166132a2c0c",
+    "counts": {
+      "geometries": 341,
+      "materials": 81,
+      "textures": 16
+    },
+    "canvas": "eb778d44ac9cb71d2219e2307cc508d6c1331f0b6ed0863104a8547c63817593",
+    "events": [
+      [
+        "pixelRatio",
+        1.75
+      ],
+      [
+        "rendererSize",
+        540,
+        960
+      ],
+      [
+        "composerRatio",
+        1.75
+      ],
+      [
+        "composerSize",
+        540,
+        960
+      ],
+      [
+        "render",
+        0.016
+      ],
+      [
+        "render",
+        0.016
+      ]
+    ]
+  },
+  "empty": {
+    "tree": "41c064fd3b2b258c925fa8af3bba0aa010b4f0008a0f91ca4a773da01724894c",
+    "resources": "2c8999dadcfceb381d13754946d215e77be568f5504f1f807473e39e71b53e15",
+    "counts": {
+      "geometries": 341,
+      "materials": 80,
+      "textures": 15
+    },
+    "canvas": "eb778d44ac9cb71d2219e2307cc508d6c1331f0b6ed0863104a8547c63817593",
+    "events": [
+      [
+        "pixelRatio",
+        1.75
+      ],
+      [
+        "rendererSize",
+        540,
+        960
+      ],
+      [
+        "composerRatio",
+        1.75
+      ],
+      [
+        "composerSize",
+        540,
+        960
+      ],
+      [
+        "render",
+        0.016
+      ],
+      [
+        "render",
+        0.016
+      ],
+      [
+        "render",
+        0.016
+      ]
+    ]
+  },
+  "disposal": {
+    "geometries": 392,
+    "materials": 132,
+    "textures": 24,
+    "instances": 4,
+    "events": [
+      [
+        "pixelRatio",
+        1.75
+      ],
+      [
+        "rendererSize",
+        540,
+        960
+      ],
+      [
+        "composerRatio",
+        1.75
+      ],
+      [
+        "composerSize",
+        540,
+        960
+      ],
+      [
+        "render",
+        0.016
+      ],
+      [
+        "render",
+        0.016
+      ],
+      [
+        "render",
+        0.016
+      ],
+      [
+        "RenderPass",
+        "dispose"
+      ],
+      [
+        "UnrealBloomPass",
+        "dispose"
+      ],
+      [
+        "FXAAPass",
+        "dispose"
+      ],
+      [
+        "OutputPass",
+        "dispose"
+      ],
+      [
+        "composerDispose"
+      ],
+      [
+        "rendererDispose"
+      ],
+      [
+        "contextLoss"
+      ]
+    ],
+    "listeners": 0,
+    "children": 8
+  }
+}

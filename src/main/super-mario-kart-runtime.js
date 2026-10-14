@@ -1,5 +1,9 @@
 "use strict";
 
+const { assertFile, findNamedFile } = require("./runtime-files");
+
+const { readState } = require("./state-projection");
+
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -56,7 +60,8 @@ class SuperMarioKartRuntime {
     return superMarioKartRomState(detected, await md5File(detected));
   }
 
-  async launch() {
+  async launch({ assertAccess = () => {} } = {}) {
+    assertAccess();
     const installation = this.#installation();
     const romPath = String(installation.romPath || "").trim();
     if (!installation.romReady || !(await isCompatibleSuperMarioKartRom(romPath))) {
@@ -92,8 +97,11 @@ class SuperMarioKartRuntime {
       "Le pack Super Mario Kart est introuvable. Réparez l’installation."
     );
 
+    assertAccess();
     await this.client.ensureStarted(clientPath);
+    assertAccess();
     await this.client.loadPack(packPath);
+    assertAccess();
     const connector = await this.client.call(
       "loadConnector",
       [NATIVE_CONNECTOR_ID, 10, 1],
@@ -105,6 +113,7 @@ class SuperMarioKartRuntime {
       );
     }
 
+    assertAccess();
     const child = this.spawnProcess(
       emulatorPath,
       [`--lua=${connectorPath}`, romPath],
@@ -204,7 +213,7 @@ class SuperMarioKartRuntime {
   }
 
   #installation() {
-    const installation = this.store.getState().game.installations?.[GAME_ID];
+    const installation = readState(this.store, ["game.installations"]).game.installations?.[GAME_ID];
     if (!installation?.path) {
       throw new Error(
         "Installez d’abord BizHawk et le pack Super Mario Kart depuis l’étape Installation."
@@ -262,32 +271,6 @@ async function findCompatibleSuperMarioKartRom(rootDirectory, limit = 5_000) {
         return candidate;
       }
     }
-  }
-  return "";
-}
-
-async function assertFile(filePath, message) {
-  const stat = filePath
-    ? await fs.promises.stat(filePath).catch(() => null)
-    : null;
-  if (!stat?.isFile()) throw new Error(message);
-}
-
-async function findNamedFile(directory, fileName, predicate = null) {
-  const root = path.resolve(String(directory || ""));
-  const stat = await fs.promises.stat(root).catch(() => null);
-  if (!stat?.isDirectory()) return "";
-  const entries = await fs.promises.readdir(root, { withFileTypes: true });
-  for (const entry of entries) {
-    const candidate = path.join(root, entry.name);
-    if (entry.isFile() && entry.name.toLowerCase() === fileName.toLowerCase()) {
-      if (!predicate || predicate(candidate)) return candidate;
-    }
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const match = await findNamedFile(path.join(root, entry.name), fileName, predicate);
-    if (match) return match;
   }
   return "";
 }

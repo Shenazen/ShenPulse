@@ -1,91 +1,89 @@
-# Rapport de validation — ShenPulse 1.0.16
+# Rapport de validation — ShenPulse 2.0.0
 
-Date : 13 octobre 2026
+Date : 14 octobre 2026.
 Environnement : Windows 11 Famille x64 10.0.26200, Node.js 24.14.0,
-npm 11.9.0, Electron 43.2.0, electron-builder 26.15.3 et WACK
-10.0.26100.7705.
+npm 11.9.0, Electron 43.2.0 et electron-builder 26.15.3.
 
-## Notes de version
+Le rapport historique est conservé dans [1.0.16](validation/1.0.16.fr.md).
+Les changements sont décrits dans [les notes 2.0.0](RELEASE_2.0.0.md).
 
-- Color Strike, Climb, ShenPulse Cube Wars, ShenPulse Stack Tower et Clash Of
-  ShenPulse disposent désormais d'une installation guidée, d'une passerelle
-  locale, de catalogues d'effets et d'interactions LIVE préconfigurées ;
-- Rocket League, Demonologist, Euro Truck Simulator 2, Resident Evil 3,
-  Minecraft Survival, Pokémon Rouge/Bleu et Super Mario Kart enrichissent les
-  parcours de jeux, les contrôles ciblés et les installations gérées ;
-- le catalogue de cadeaux TikTok apprend et regroupe mieux les identifiants et
-  variantes localisées, avec des valeurs et images cohérentes dans les jeux ;
-- les overlays gagnent un préchargement plus fiable, une session résiliente,
-  de nouveaux thèmes, une Coin Jar stabilisée et des commandes de timer,
-  roue et compteurs WINS mieux synchronisées ;
-- les bibliothèques d'actions et de médias, l'administration, les parcours
-  d'achat et la fiche Thiercelieux ont été clarifiés ; Brumelune et CAPTCHA
-  ont été retirés du produit.
+## Contrôles de construction
 
-## Résultats automatisés
+- `npm ci` réussi ; versions verrouillées conservées.
+- `npm audit --omit=dev` : aucune vulnérabilité connue dans les dépendances distribuées.
+- Audit complet de l'outillage : 19 vulnérabilités (8 modérées, 11 élevées), sans mise à jour forcée de dépendances pendant la release.
+- Lint : 653 fichiers JavaScript et 972 sources inventoriées, imports sans cycle.
+- Suite complète finale : 1 794 tests réussis, aucun échec ; le build installateur avait également validé les 1 786 tests alors présents. Les tests ajoutés qualifient les outils de release et la comparaison du pont natif, sans modification du code applicatif construit.
+- Builds jeux, overlays, pont natif Store, AppX, AppXUpload et EXE réussis.
+- Manifeste Store : `ShenPulse.ShenPulse`, version `2.0.0.0`, éditeur réservé et architecture x64 vérifiés.
+- AppXUpload : un seul fichier, l'AppX x64 attendu.
+- Audit du package : 1 800 fichiers vérifiés, 21 vidéos Match chiffrées, aucune vidéo Match brute ni ressource privée décompressée.
+- Pont Store PE32+ AMD64 : code, données et exports N-API identiques ; seuls les timestamps COFF/debug et le GUID RSDS issus de deux compilations MSVC diffèrent. La comparaison ne neutralise aucun autre octet.
 
-- installation reproductible avec `npm ci` réussie ;
-- audit des dépendances distribuées avec `npm audit --omit=dev` :
-  0 vulnérabilité connue ;
-- structure, syntaxe, bundles et imports contrôlés sur 270 fichiers
-  JavaScript ;
-- 694 tests réussis, 0 échec ;
-- compilation Vite des jeux réussie ;
-- création AppX, AppXUpload et installateur EXE réussie ;
-- identité `ShenPulse.ShenPulse`, version technique `1.0.16.0`, éditeur
-  Store, architecture x64 et capacité `runFullTrust` contrôlés dans le
-  manifeste ;
-- pont natif WinRT de détection Microsoft Store présent dans
-  `app.asar.unpacked` ;
-- AppXUpload ouvert : il contient uniquement l'AppX x64 attendu ;
-- installation, lancement et désinstallation silencieux de la 1.0.16 réussis ;
-- mise à jour isolée de la 1.0.14 vers la 1.0.16 réussie avec conservation
-  des données utilisateur ;
-- le site public passe ses 18 contrôles de build et de routes.
-
-L'audit complet de l'outillage de développement signale 19 vulnérabilités
-(8 modérées et 11 élevées). Elles ne sont pas présentes dans les
-dépendances distribuées et devront être résorbées lors d'une mise à jour
-séparée de l'outillage.
-
-Les parcours jeux, catalogues TikTok, overlays, timers, compteurs, installation
-et mise à niveau sont couverts par les tests automatisés ou les smoke tests.
-Les connexions LIVE, OBS, paiements et droits commerciaux n'ont pas déclenché
-d'opération réelle pendant cette construction.
+Deux courses dans les outils de validation ont été identifiées : fermeture du
+JSDOM avant la fin du chargement d'une iframe, puis arrêt d'un processus de
+smoke déjà terminé. Les corrections ne masquent pas les erreurs de production.
+L'installation, le lancement et la désinstallation isolés de la 2.0.0 sont
+validés. Le site passe ses 19 contrôles et le smoke du relais public Firebase
+réussit. La mise à jour isolée de 1.0.16 vers 2.0.0 est validée avec
+conservation du marqueur de données utilisateur. Les migrations de profils et
+de configurations sont couvertes séparément par les tests automatisés.
+L'état utilisateur réel est resté identique à sa sauvegarde pendant les smokes.
 
 ## Artefacts
 
-| Fichier | Taille | SHA-256 |
+| Fichier | Taille en octets | SHA-256 |
 |---|---:|---|
-| `ShenPulseSetup-1.0.16-x64.exe` | 534 326 912 octets | `724EB81D05F485D2B4F77BDECD0A0AE687E1744621DCDA8840F2380D278ED52F` |
-| `ShenPulseSetup-1.0.16.exe` | 534 326 912 octets | `724EB81D05F485D2B4F77BDECD0A0AE687E1744621DCDA8840F2380D278ED52F` |
-| `ShenPulse-1.0.16-x64.appx` | 586 662 289 octets | `A10746BD3AF851DCE938CCA75ECE86246D508BE6F02B3DC680E8135475175A0D` |
-| `ShenPulse-1.0.16-x64.appxupload` | 586 497 628 octets | `F146B48B2C0184969B706DD951DD36D9920F583E6EAC2B2334769C2E5397E326` |
+| `ShenPulseSetup-2.0.0-x64.exe` | 512 536 436 | `796905867F4B5C639EEE0A248CF715A77EE9905C7811B3C21C89CD0994CB9F18` |
+| `ShenPulseSetup-2.0.0.exe` | 512 536 436 | `796905867F4B5C639EEE0A248CF715A77EE9905C7811B3C21C89CD0994CB9F18` |
+| `ShenPulse-2.0.0-x64.appx` | 565 716 667 | `D93EA7BD9EE810A7C9432B0707241948D3D0B6802B9D34426AA2FE3A62B094E0` |
+| `ShenPulse-2.0.0-x64.appxupload` | 565 553 360 | `3CA8192CABEB652F765CA09732466D702CAC2F577CF603E779DF8C5E2A9726AB` |
 
-Le fichier EXE sans suffixe d'architecture est une copie binaire identique à
-publier sous `/downloads/ShenPulseSetup-1.0.16.exe`. La version 1.0.14 doit
-rester disponible publiquement comme solution de retour arrière.
+Les deux EXE sont identiques. L'installateur précédent 1.0.16 et une copie du
+package local précédent sont conservés pour retour arrière. Les artefacts,
+rapports bruts et sources vidéo privées ne sont pas commités dans Git.
 
-## Signature, WACK et Store
+## Signature et Microsoft Store
 
-Le package Store est volontairement non signé : Partner Center le signe après
-certification. Aucun certificat Authenticode public n'est configuré pour
-l'installateur direct `.exe` ; Windows peut donc afficher un avertissement
-SmartScreen.
+L'EXE et l'exécutable applicatif sont `NotSigned` : aucun certificat
+Authenticode public n'est configuré. Un avertissement SmartScreen reste possible.
+L'AppX est destiné à Partner Center, qui le signe après certification.
 
-Le Windows App Certification Kit 10.0.26100.7705 a contrôlé le package
-1.0.16.0 avec un résultat global `PASS`. Le rapport complet est conservé dans
-`.artifacts/wack/ShenPulse-1.0.16-WACK-20261013.xml`. Son unique échec
-individuel concerne le contrôle facultatif `Fichiers exécutables bloqués`,
-déclenché par des chaînes fortuites dans des médias WebM/WebP ; il n'invalide
-pas le résultat global, comme pour la version 1.0.14.
+WACK 10.0.26100.7705 a terminé avec un résultat global `PASS`, une exécution
+complète (`PARTIAL_RUN=FALSE`) et la version `2.0.0.0` attendue. Les 24 tests
+comprennent 23 `PASS` et un `FAIL` facultatif, « Fichiers exécutables bloqués ».
+Ce dernier relève `CreateProcessW` dans l'exécutable et des références textuelles
+à des exécutables dans les composants Chromium, DLL et `app.asar` ; ce signalement
+n'est pas une preuve de leur exécution. Aucun test obligatoire n'est en échec.
+Rapport : `.artifacts/wack/ShenPulse-2.0.0-WACK-20261014.xml`.
 
-Le fichier `.appxupload` est prêt pour le produit Partner Center
-`9NDR71Z41ZJG`. Le vol privé, son installation et son smoke test restent
-obligatoires avant la soumission Store en production.
+Le package `.appxupload` est prêt pour Partner Center `9NDR71Z41ZJG`, mais il
+n'a pas été envoyé : aucune session Partner Center utilisable n'est connectée
+aux outils de publication. Le vol privé, son installation et son smoke test
+restent obligatoires avant une soumission publique Store. La certification
+locale WACK ne vaut pas publication ni certification par Microsoft.
 
-## Déploiements
+## Revue Git
 
-L'installateur public, le site, le runtime overlay et les règles Firebase sont
-prêts pour le déploiement. Les anciens installateurs versionnés doivent être
-conservés.
+Le périmètre indexé exclut les secrets, données privées, rapports bruts, vidéos
+sources privées et artefacts de distribution. Aucun marqueur de conflit n'est
+présent. Le contrôle de présentation Git signale encore des espaces de fin de
+ligne, lignes vides finales et indentations mixtes dans des modules extraits et
+des bundles générés (notamment les shaders). Ces avertissements non fonctionnels
+ne sont pas corrigés après qualification des binaires ; le lint applicatif et
+les tests restent les contrôles obligatoires de code de cette release.
+
+## Services de production
+
+Les contrôles en lecture seule confirment : serveur en ligne, PayPal live prêt
+pour les offres configurées, Firebase et stockage média configurés, callback
+Spotify PKCE de production présent. Les API privées refusent les accès anonymes
+et les droits sans identité restent gratuits. Aucun achat, paiement, upload
+personnel, consentement OAuth ni effet réel sur un LIVE n'a été déclenché.
+
+## Publications
+
+Le Git, le site/EXE et Firebase restent à publier après réussite des contrôles.
+Le site sera déployé sans remplacement du backend ni suppression des jeux et
+anciens installateurs, avec sauvegarde de ses fichiers statiques. Les clips
+Match et leurs clés ne sont jamais envoyés sur Firebase Hosting ni la vitrine.

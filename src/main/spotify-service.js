@@ -1,9 +1,15 @@
 "use strict";
+const { assertCommandContext } = require("./commands/context-guard");
+
+const { readState } = require("./state-projection");
 
 const crypto = require("node:crypto");
 const http = require("node:http");
 const { shell } = require("electron");
 const { safeString } = require("./utils");
+const { SongRequestsService } = require("./spotify/song-requests");
+const { runLibraryControl } = require("./spotify/library-controls");
+const { spotifyCapabilities } = require("../shared/spotify-capabilities");
 
 const ACCOUNTS_BASE = "https://accounts.spotify.com";
 const API_BASE = "https://api.spotify.com/v1";
@@ -13,7 +19,10 @@ const SHENPULSE_SPOTIFY_CLIENT_ID = "996de28fa8b542f4958f4d49051d9406";
 const SCOPES = [
   "user-read-playback-state",
   "user-read-currently-playing",
-  "user-modify-playback-state"
+  "user-modify-playback-state",
+  "user-read-private",
+  "playlist-read-private",
+  "playlist-read-collaborative"
 ];
 
 class SpotifyService {
@@ -21,6 +30,9 @@ class SpotifyService {
     this.store = store;
     this.notifyRenderer = notifyRenderer;
     this.pendingServer = null;
+    this.refreshPromise = null;
+    this.authorizationEpoch = 0;
+    this.songRequests = new SongRequestsService({ store, spotify: this, notifyRenderer });
   }
 
   async connect() {
@@ -34,6 +46,8 @@ class SpotifyService {
     if (this.pendingServer) {
       throw new Error("Une connexion Spotify est déjà en cours.");
     }
+    this.authorizationEpoch += 1;
+    const owner = this.#ownerKey();
 
     const verifier = crypto.randomBytes(64).toString("base64url");
     const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
@@ -42,6 +56,8 @@ class SpotifyService {
     const redirectUri = `http://127.0.0.1:${port}/spotify/callback`;
 
     const resultPromise = this.#waitForCallback({ port, state });
+    const pendingServer = this.pendingServer;
+    resultPromise.catch(() => {}); // Une ouverture de navigateur refusée ne laisse pas de rejet non géré.
     const authorizationUrl = new URL("/authorize", ACCOUNTS_BASE);
     authorizationUrl.searchParams.set("client_id", clientId);
     authorizationUrl.searchParams.set("response_type", "code");
@@ -55,6 +71,7 @@ class SpotifyService {
     try {
       await shell.openExternal(authorizationUrl.toString());
       const code = await resultPromise;
+      if (owner !== this.#ownerKey()) throw new Error("Le compte ShenPulse a changé pendant la connexion Spotify. Réessayez depuis votre compte.");
       const tokens = await this.#tokenRequest({
         client_id: clientId,
         code,
@@ -62,15 +79,17 @@ class SpotifyService {
         grant_type: "authorization_code",
         redirect_uri: redirectUri
       });
+      if (owner !== this.#ownerKey()) throw new Error("Le compte ShenPulse a changé pendant la connexion Spotify. Réessayez depuis votre compte.");
       await this.#saveTokens(tokens);
       return this.status();
     } catch (error) {
-      this.#closePendingServer();
+      this.#closePendingServer(pendingServer);
       throw error;
     }
   }
 
   async disconnect() {
+    this.authorizationEpoch += 1;
     const settings = this.#settings();
     if (settings.accessTokenSecretId) {
       this.store.setSecret(settings.accessTokenSecretId, "");
@@ -91,6 +110,7 @@ class SpotifyService {
   async status() {
     const configured = Boolean(this.#clientId());
     const settings = this.#settings();
+    const owner = this.#ownerKey();
     if (!configured || !settings.refreshTokenSecretId) {
       return {
         configured,
@@ -98,7 +118,8 @@ class SpotifyService {
         redirectUri: this.redirectUri(),
         devices: [],
         account: settings.account || null,
-        playback: null
+        playback: null,
+        songRequests: this.songRequests.status()
       };
     }
     try {
@@ -110,19 +131,30 @@ class SpotifyService {
         devicesResult.status === "fulfilled" && Array.isArray(devicesResult.value?.devices)
           ? devicesResult.value.devices.map(normalizeDevice)
           : [];
-      return {
+      const errors = [devicesResult, playbackResult].filter((result) => result.status === "rejected");
+      const authError = errors.find((result) => Number(result.reason?.statusCode) === 401 || result.reason?.oauthError === "invalid_grant");
+      const currentSettings = this.#settings();
+      const sameOwner = owner === this.#ownerKey();
+      const status = {
         configured,
-        connected: true,
+        connected: sameOwner && Boolean(currentSettings.refreshTokenSecretId) && !authError,
         redirectUri: this.redirectUri(),
-        account: settings.account || null,
-        devices,
-        activeDevice: devices.find((device) => device.isActive) || null,
+        account: currentSettings.account || null,
+        devices: sameOwner ? devices : [],
+        activeDevice: sameOwner ? devices.find((device) => device.isActive) || null : null,
         playback:
-          playbackResult.status === "fulfilled"
+          sameOwner && playbackResult.status === "fulfilled"
             ? normalizePlayback(playbackResult.value)
             : null,
-        premiumRequired: true
+        premiumRequired: true,
+        songRequests: this.songRequests.status(),
+        scopes: currentSettings.scopes || [],
+        scopesKnown: currentSettings.scopesKnown === true,
+        devicesKnown: sameOwner && devicesResult.status === "fulfilled",
+        ...(errors.length ? { message: errors.map((result) => result.reason?.message).filter(Boolean).join(" · ") } : {})
       };
+      status.capabilities = spotifyCapabilities(status);
+      return status;
     } catch (error) {
       if (Number(error.statusCode) === 401) {
         return {
@@ -132,7 +164,8 @@ class SpotifyService {
           devices: [],
           account: settings.account || null,
           playback: null,
-          message: error.message
+          message: error.message,
+          songRequests: this.songRequests.status()
         };
       }
       throw error;
@@ -147,27 +180,49 @@ class SpotifyService {
     return `http://127.0.0.1:${port}/spotify/callback`;
   }
 
-  async control(config = {}) {
+  async control(config = {}, { shouldExecute } = {}) {
+    assertCommandContext(shouldExecute);
+    const owner = this.#ownerKey();
     const operation = String(config.operation || config.action || "queue")
       .trim()
       .toLowerCase()
       .replace(/[-\s]+/g, "_");
+    if (["next", "skip", "pause", "play", "resume", "previous", "volume", "volume_up", "volume_down", "seek", "queue", "request", "play_track", "play_tracks", "play_playlist", "requests_play_next", "requests_skip"].includes(operation)) {
+      const settings = this.#settings();
+      const capabilities = spotifyCapabilities({ connected: Boolean(settings.refreshTokenSecretId), account: settings.account,
+        scopes: settings.scopes, scopesKnown: settings.scopesKnown });
+      if (!capabilities.canControlPlayback) throw new Error(capabilities.reason);
+    }
+    if (operation.startsWith("requests_")) {
+      if (operation === "requests_status") return this.songRequests.status();
+      if (operation === "requests_settings") return this.songRequests.configure(config.settings || {});
+      if (operation === "requests_add") return this.songRequests.add({ query: config.query, uri: config.uri, user: config.user, creator: true });
+      if (operation === "requests_remove") return this.songRequests.remove(config.id);
+      if (operation === "requests_clear") return this.songRequests.clear();
+      if (operation === "requests_play_next") return this.songRequests.playNext();
+      if (operation === "requests_skip") return this.songRequests.skip();
+      throw new Error("Opération de demandes musicales inconnue.");
+    }
+    const library = await runLibraryControl({ operation, config,
+      request: (path, options) => this.#request(path, options, false, owner, shouldExecute),
+      ensureDevice: () => this.#ensurePlaybackDevice({ volume: operation === "volume", owner, shouldExecute }), normalizeTrack });
+    if (library !== undefined) return library;
     if (operation === "queue" || operation === "request") {
-      return this.#requestTrack(config);
+      return this.#requestTrack(config, owner, shouldExecute);
     }
     if (operation === "next" || operation === "skip") {
-      await this.#ensurePlaybackDevice();
-      await this.#request("/me/player/next", { method: "POST" });
+      await this.#ensurePlaybackDevice({ owner, shouldExecute });
+      await this.#request("/me/player/next", { method: "POST" }, false, owner, shouldExecute);
       return { ok: true, operation: "next" };
     }
     if (operation === "pause") {
-      await this.#ensurePlaybackDevice();
-      await this.#request("/me/player/pause", { method: "PUT" });
+      await this.#ensurePlaybackDevice({ owner, shouldExecute });
+      await this.#request("/me/player/pause", { method: "PUT" }, false, owner, shouldExecute);
       return { ok: true, operation };
     }
     if (operation === "play" || operation === "resume") {
-      await this.#ensurePlaybackDevice();
-      await this.#request("/me/player/play", { method: "PUT" });
+      await this.#ensurePlaybackDevice({ owner, shouldExecute });
+      await this.#request("/me/player/play", { method: "PUT" }, false, owner, shouldExecute);
       return { ok: true, operation: "play" };
     }
     if (operation === "now_playing") {
@@ -175,102 +230,117 @@ class SpotifyService {
         ok: true,
         operation,
         playback: normalizePlayback(
-          await this.#request("/me/player/currently-playing")
+          await this.#request("/me/player/currently-playing", {}, false, owner)
         )
       };
     }
     if (operation === "volume_up" || operation === "volume_down") {
-      return this.#changeVolume(operation === "volume_up" ? 10 : -10);
+      return this.#changeVolume(operation === "volume_up" ? 10 : -10, owner, shouldExecute);
     }
     throw new Error("Opération Spotify inconnue.");
   }
 
-  async #requestTrack(config) {
+  async #requestTrack(config, owner, shouldExecute) {
+    const track = await this.resolveTrack(config, owner, shouldExecute);
+    if (config.allowExplicit === false && track.explicit === true) {
+      throw new Error("Ce titre est explicite et le filtre est actif.");
+    }
+    const maxMinutes = Math.max(0, Number(config.maxDurationMinutes) || 0);
+    if (maxMinutes && track.durationMs > maxMinutes * 60000) {
+      throw new Error("Ce titre dépasse la durée maximale configurée.");
+    }
+    await this.#ensurePlaybackDevice({ owner, shouldExecute });
+    if (config.mode === "play" || config.playNow === true) {
+      await this.#request("/me/player/play", { method: "PUT", body: { uris: [track.uri] } }, false, owner, shouldExecute);
+      return { ok: true, operation: "play", track };
+    }
+    await this.#request(`/me/player/queue?uri=${encodeURIComponent(track.uri)}`, { method: "POST" }, false, owner, shouldExecute);
+    return { ok: true, operation: "queue", track };
+  }
+
+  /** Résolution sans lecture : les demandes sont validées avant toute action Spotify. */
+  async resolveTrack(config = {}, owner = this.#ownerKey(), shouldExecute) {
     const raw = safeString(config.uri || config.query || config.track, 300).trim();
     if (!raw) throw new Error("Indiquez un titre, une URL ou un URI Spotify.");
     let track = null;
     const uri = spotifyTrackUri(raw);
     if (uri) {
-      track = await this.#request(`/tracks/${encodeURIComponent(uri.split(":").pop())}`);
+      track = await this.#request(`/tracks/${encodeURIComponent(uri.split(":").pop())}`, {}, false, owner, shouldExecute);
     } else {
       const payload = await this.#request(
-        `/search?type=track&limit=1&q=${encodeURIComponent(raw)}`
+        `/search?type=track&limit=1&q=${encodeURIComponent(raw)}`, {}, false, owner, shouldExecute
       );
       track = payload?.tracks?.items?.[0] || null;
     }
     if (!track?.uri) throw new Error("Aucun titre Spotify trouvé.");
-    if (config.allowExplicit === false && track.explicit === true) {
-      throw new Error("Ce titre est explicite et le filtre est actif.");
-    }
-    const maxMinutes = Math.max(0, Number(config.maxDurationMinutes) || 0);
-    if (maxMinutes && Number(track.duration_ms) > maxMinutes * 60000) {
-      throw new Error("Ce titre dépasse la durée maximale configurée.");
-    }
-    await this.#ensurePlaybackDevice();
-    if (config.mode === "play" || config.playNow === true) {
-      await this.#request("/me/player/play", {
-        method: "PUT",
-        body: { uris: [track.uri] }
-      });
-      return { ok: true, operation: "play", track: normalizeTrack(track) };
-    }
-    await this.#request(
-      `/me/player/queue?uri=${encodeURIComponent(track.uri)}`,
-      { method: "POST" }
-    );
-    return { ok: true, operation: "queue", track: normalizeTrack(track) };
+    return normalizeTrack(track);
   }
 
-  async #changeVolume(delta) {
-    await this.#ensurePlaybackDevice();
-    const playback = await this.#request("/me/player");
+  async #changeVolume(delta, owner, shouldExecute) {
+    await this.#ensurePlaybackDevice({ volume: true, owner, shouldExecute });
+    const playback = await this.#request("/me/player", {}, false, owner, shouldExecute);
     const volume = Math.min(
       100,
       Math.max(0, Number(playback?.device?.volume_percent ?? 50) + delta)
     );
     await this.#request(`/me/player/volume?volume_percent=${volume}`, {
       method: "PUT"
-    });
+    }, false, owner, shouldExecute);
     return { ok: true, operation: delta > 0 ? "volume_up" : "volume_down", volume };
   }
 
-  async #ensurePlaybackDevice() {
-    const payload = await this.#request("/me/player/devices");
+  async #ensurePlaybackDevice({ volume = false, owner = this.#ownerKey(), shouldExecute } = {}) {
+    const payload = await this.#request("/me/player/devices", {}, false, owner, shouldExecute);
     const devices = Array.isArray(payload?.devices) ? payload.devices : [];
-    if (devices.some((device) => device?.is_active)) return;
-    const target = devices.find((device) => device?.id);
+    const active = devices.find((device) => device?.is_active);
+    if (active && !active.is_restricted) {
+      if (volume && active.supports_volume === false) throw new Error("Le volume de cet appareil ne peut pas être modifié par l’API Spotify.");
+      return;
+    }
+    const target = devices.find((device) => device?.id && !device.is_restricted);
     if (!target) {
       throw new Error(
         "Ouvrez Spotify sur votre PC ou téléphone, lancez une musique, puis réessayez."
       );
     }
+    if (volume && target.supports_volume === false) throw new Error("Le volume de cet appareil ne peut pas être modifié par l’API Spotify.");
     await this.#request("/me/player", {
       method: "PUT",
       body: { device_ids: [target.id], play: false }
-    });
+    }, false, owner, shouldExecute);
   }
 
-  async #request(apiPath, options = {}, retried = false) {
+  async #request(apiPath, options = {}, retried = false, owner = this.#ownerKey(), shouldExecute) {
+    assertCommandContext(shouldExecute);
+    if (owner !== this.#ownerKey()) throw new Error("Le compte Spotify a changé pendant la requête. Réessayez.");
     const token = await this.#accessToken();
+    assertCommandContext(shouldExecute);
+    if (owner !== this.#ownerKey()) throw new Error("Le compte Spotify a changé pendant la requête. Réessayez.");
     const response = await fetch(`${API_BASE}${apiPath}`, {
       method: options.method || "GET",
       headers: {
         Authorization: `Bearer ${token}`,
         ...(options.body === undefined ? {} : { "Content-Type": "application/json" })
       },
-      body:
-        options.body === undefined ? undefined : JSON.stringify(options.body)
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: AbortSignal.timeout(15_000)
     });
+    assertCommandContext(shouldExecute);
+    if (owner !== this.#ownerKey()) throw new Error("Le compte Spotify a changé pendant la requête. Réessayez.");
     if (response.status === 204) return null;
     const text = await response.text();
+    if (owner !== this.#ownerKey()) throw new Error("Le compte Spotify a changé pendant la requête. Réessayez.");
     const payload = parseJson(text, null);
     if (response.status === 401 && !retried) {
       await this.#refresh();
-      return this.#request(apiPath, options, true);
+      if (owner !== this.#ownerKey()) throw new Error("Le compte Spotify a changé pendant la requête. Réessayez.");
+      return this.#request(apiPath, options, true, owner, shouldExecute);
     }
     if (!response.ok) {
       const error = new Error(spotifyError(payload, text, response.statusText));
       error.statusCode = response.status;
+      if (response.status === 403) error.message = `Spotify refuse cette opération (Premium, permissions ou accès de l’application). ${error.message}`;
+      if (response.status === 429) error.message = `Spotify limite temporairement les requêtes. Réessayez plus tard. ${error.message}`;
       throw error;
     }
     return payload;
@@ -279,43 +349,56 @@ class SpotifyService {
   async #accessToken() {
     const settings = this.#settings();
     if (!settings.refreshTokenSecretId) {
-      throw new Error("Spotify n’est pas connecté.");
+      const error = new Error("Spotify n’est pas connecté.");
+      error.statusCode = 401;
+      throw error;
     }
     if (Number(settings.expiresAt || 0) <= Date.now() + 60000) {
       await this.#refresh();
     }
     const token = this.store.getSecret(this.#settings().accessTokenSecretId);
-    if (!token) throw new Error("Jeton Spotify introuvable.");
+    if (!token) {
+      const error = new Error("Jeton Spotify introuvable. Reconnectez votre compte Spotify.");
+      error.statusCode = 401;
+      throw error;
+    }
     return token;
   }
 
   async #refresh() {
+    const owner = this.#ownerKey();
+    if (this.refreshPromise?.owner === owner) return this.refreshPromise.promise;
+    const pending = { owner, promise: this.#performRefresh() };
+    this.refreshPromise = pending;
+    try { return await pending.promise; } finally { if (this.refreshPromise === pending) this.refreshPromise = null; }
+  }
+
+  async #performRefresh() {
     const settings = this.#settings();
+    const owner = this.#ownerKey();
     const refreshToken = this.store.getSecret(settings.refreshTokenSecretId);
-    if (!refreshToken) throw new Error("Reconnectez votre compte Spotify.");
+    if (!refreshToken) {
+      const error = new Error("Reconnectez votre compte Spotify.");
+      error.statusCode = 401;
+      throw error;
+    }
     const tokens = await this.#tokenRequest({
       client_id: this.#clientId(),
       grant_type: "refresh_token",
       refresh_token: refreshToken
     });
+    if (owner !== this.#ownerKey()) throw new Error("Le compte Spotify actif a changé pendant le renouvellement. Réessayez.");
     await this.#saveTokens(tokens, refreshToken);
   }
 
   async #saveTokens(tokens, fallbackRefreshToken = "") {
     const settings = this.#settings();
+    const owner = this.#ownerKey();
     const accessToken = safeString(tokens.access_token, 5000);
     const refreshToken = safeString(tokens.refresh_token || fallbackRefreshToken, 5000);
     if (!accessToken || !refreshToken) {
       throw new Error("Spotify n’a pas renvoyé les jetons attendus.");
     }
-    const accessTokenSecretId = this.store.setSecret(
-      settings.accessTokenSecretId,
-      accessToken
-    );
-    const refreshTokenSecretId = this.store.setSecret(
-      settings.refreshTokenSecretId,
-      refreshToken
-    );
     let account = settings.account || null;
     try {
       account = normalizeAccount(
@@ -324,13 +407,21 @@ class SpotifyService {
     } catch {
       // A token can remain usable even if the profile endpoint is momentarily down.
     }
+    if (owner !== this.#ownerKey()) throw new Error("Le compte ShenPulse a changé pendant la connexion Spotify. Réessayez depuis votre compte.");
+    // La réponse /me peut être lente : conserver les demandes/réglages modifiés
+    // entre-temps et ne fusionner que le résultat de cette autorisation.
+    const currentSettings = this.#settings();
+    const accessTokenSecretId = this.store.setSecret(currentSettings.accessTokenSecretId, accessToken);
+    const refreshTokenSecretId = this.store.setSecret(currentSettings.refreshTokenSecretId, refreshToken);
     this.store.set("settings.spotify", {
-      ...settings,
+      ...currentSettings,
       accessTokenSecretId,
       refreshTokenSecretId,
       expiresAt:
         Date.now() + Math.max(1, Number(tokens.expires_in || 3600)) * 1000,
-      account
+      account,
+      scopes: Object.hasOwn(tokens, "scope") ? String(tokens.scope || "").split(/\s+/).filter(Boolean) : currentSettings.scopes || [],
+      scopesKnown: Object.hasOwn(tokens, "scope") || currentSettings.scopesKnown === true
     });
   }
 
@@ -342,12 +433,17 @@ class SpotifyService {
     const response = await fetch(`${ACCOUNTS_BASE}/api/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body
+      body,
+      signal: AbortSignal.timeout(15_000)
     });
     const text = await response.text();
     const payload = parseJson(text, {});
     if (!response.ok) {
-      throw new Error(spotifyError(payload, text, response.statusText));
+      const error = new Error(spotifyError(payload, text, response.statusText));
+      error.statusCode = response.status;
+      error.oauthError = typeof payload.error === "string" ? payload.error : "";
+      if (error.oauthError === "invalid_grant") error.message = "L’autorisation Spotify a expiré ou a été révoquée. Reconnectez votre compte Spotify.";
+      throw error;
     }
     return payload;
   }
@@ -359,7 +455,7 @@ class SpotifyService {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
-        this.#closePendingServer();
+        this.#closePendingServer(server);
         handler(value);
       };
       const server = http.createServer((request, response) => {
@@ -406,14 +502,16 @@ class SpotifyService {
     });
   }
 
-  #closePendingServer() {
-    if (!this.pendingServer) return;
+  #closePendingServer(server = this.pendingServer) {
+    if (!server) return;
     try {
-      this.pendingServer.close();
+      server.close();
     } catch {
       // Best effort.
     }
-    this.pendingServer = null;
+    // Une ancienne réponse OAuth ne doit pas fermer/effacer le serveur
+    // d'une autorisation plus récente (autre compte ou nouvelle tentative).
+    if (this.pendingServer === server) this.pendingServer = null;
   }
 
   #clientId() {
@@ -424,14 +522,22 @@ class SpotifyService {
   }
 
   #settings() {
-    return this.store.getState().settings.spotify || {};
+    return readState(this.store, ["settings.spotify"]).settings.spotify || {};
+  }
+
+  #ownerKey() {
+    const account = readState(this.store, ["settings.account.uid"]).settings?.account || {};
+    return JSON.stringify([this.store.getActiveAccountUid?.() ?? account.uid ?? "", account.uid || "",
+      this.#settings().refreshTokenSecretId || "", this.#clientId(), Number(this.#settings().redirectPort) || 21215,
+      this.authorizationEpoch]);
   }
 }
 
 async function spotifyFetch(apiPath, accessToken, options = {}) {
   const response = await fetch(`${API_BASE}${apiPath}`, {
     method: options.method || "GET",
-    headers: { Authorization: `Bearer ${accessToken}` }
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(15_000)
   });
   if (response.status === 204) return null;
   const text = await response.text();
@@ -466,7 +572,8 @@ function normalizeDevice(value = {}) {
     type: safeString(value.type, 100),
     isActive: value.is_active === true,
     isRestricted: value.is_restricted === true,
-    volume: Number(value.volume_percent || 0)
+    volume: Number(value.volume_percent || 0),
+    ...(typeof value.supports_volume === "boolean" ? { supportsVolume: value.supports_volume } : {})
   };
 }
 
@@ -487,6 +594,7 @@ function normalizeTrack(value = {}) {
       .map((artist) => safeString(artist?.name, 200))
       .filter(Boolean),
     album: safeString(value.album?.name, 300),
+    imageUrl: safeString(value.album?.images?.[0]?.url, 2000),
     durationMs: Number(value.duration_ms || 0),
     explicit: value.explicit === true,
     uri: safeString(value.uri, 300),

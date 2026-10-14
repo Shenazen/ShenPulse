@@ -1,0 +1,31 @@
+/** Traductions en du domaine « overlaysPage ». Les clés publiques restent stables. */
+export default {
+      intro1: 'Here you can find the general overlays for OBS (Browser Source) and LIVE Studio (Link).',
+      intro2: 'Every feature is split into an independent widget so you can place, resize and configure each element freely.',
+      note: 'Note: to change colors, fonts, animations or behavior, use the Customize button on each overlay.',
+      setupWarning: 'Run Setup and enter your TikTok username to enable URLs and live detection.',
+      title: 'Overlay Gallery',
+      myActions: {
+        title: 'My Actions',
+        subtitle: 'The output screen for visual actions.',
+        description: 'My Actions shows animations, pictures, videos and alerts triggered from Actions & Events in OBS or TikTok LIVE Studio.',
+        screenHelp: 'Each screen has its own URL. Select the screen, copy its link, then add it as a browser source in OBS or LIVE Studio.',
+        screenSelectLabel: 'Screen',
+        queueLabel: 'Max queue {count}',
+        previewAria: 'My Actions sample preview',
+        previewLabel: 'Example Data',
+        sampleUser: 'ShenPulse',
+        sampleMessage: 'thanks {viewer} for following!',
+        howTitle: 'What is it for?',
+        how1: 'This overlay is the output screen for visual actions: when an event, command, timer or test runs an action, the My Actions source receives the command and displays the configured media.',
+        how2: 'Each screen has its own URL. Pick the screen in the action settings, then add that matching URL in OBS or TikTok LIVE Studio.',
+        how3: 'Sounds, TTS, webhooks and local effects can run without a visual source, but animations, pictures, videos and alerts need this overlay to be visible live.',
+        footnote: 'Pick the same screen inside the action settings to decide where the animation appears. Screen names and queue length are configured in Actions & Events.',
+        noVisualAction: 'Create an action with animation, picture, video or alert to test My Actions.',
+        openActions: 'Configure',
+        statusOffline: 'No source open',
+        statusOnline: '{count}/{total} source(s) open',
+        testAction: 'Test {name}',
+      },
+    };
+

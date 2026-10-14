@@ -18,6 +18,13 @@ function Resolve-WorkspacePath {
 $sourcePath = Resolve-WorkspacePath (
   "native\cult-of-the-lamb-reliability\ShenPulseCultReliability.cs"
 )
+# Les partials constituent le même plugin ; aucun assemblage de domaine séparé.
+$domainPaths = @(
+  Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot "Domains") -Filter "*.cs" -File |
+    Sort-Object -Property Name |
+    Select-Object -ExpandProperty FullName
+)
+$sourcePaths = @($sourcePath) + $domainPaths
 $output = Resolve-WorkspacePath $OutputPath
 $bepInEx = Join-Path $GamePath "BepInEx\core\BepInEx.dll"
 $harmony = Join-Path $GamePath "BepInEx\core\0Harmony.dll"
@@ -65,7 +72,7 @@ New-Item -ItemType Directory -Force -Path (
   "/reference:$unity" `
   "/reference:$unityCore" `
   "/reference:$netstandard" `
-  $sourcePath
+  @sourcePaths
 
 if ($LASTEXITCODE -ne 0) {
   throw "Compilation de ShenPulseCultReliability.dll echouee."

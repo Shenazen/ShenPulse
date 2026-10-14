@@ -1,0 +1,31 @@
+/** Traductions en du domaine « featureRequest ». Les clés publiques restent stables. */
+export default {
+      benefit: 'Why does this matter?',
+      benefitPlaceholder: 'Explain what it would change in your live, workflow or overlays.',
+      category: 'Category',
+      details: 'Detailed description',
+      detailsPlaceholder: 'Describe the need, expected behavior, examples, constraints and anything that helps explain the request.',
+      email: 'Contact email',
+      error: 'Unable to send the request right now.',
+      eyebrow: 'Roadmap',
+      intro: 'Describe exactly what you want to see in ShenPulse. The clearer the request, the easier it is to review and prioritize.',
+      optional: 'Optional',
+      sectionLabel: 'Request',
+      send: 'Send request',
+      sending: 'Sending...',
+      success: 'Request sent. Thank you, it is now recorded.',
+      summary: 'Short summary',
+      summaryPlaceholder: 'Example: Add a shared countdown overlay',
+      tiktokUsername: 'TikTok username',
+      title: 'Feature request',
+      trailLabel: 'New idea',
+      categories: {
+        actions: 'Triggers / actions',
+        app: 'Windows app',
+        live: 'LIVE connection',
+        overlays: 'Overlays',
+        payments: 'Subscription / payment',
+        other: 'Other',
+      },
+    };
+

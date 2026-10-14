@@ -47,8 +47,17 @@ function rendererSource() {
     path.join(rendererDirectory, "index.html"),
     (source) =>
       source.startsWith("../../resources/overlays/catalog/") ||
+      source === "../shared/pro-access.js" ||
+      source === "../shared/matches-contract.js" ||
       source === "../../resources/overlays/overlay-catalog.js" ||
       source.startsWith("app/")
+  );
+}
+
+function rendererScriptGroup(prefix) {
+  return scriptSources(
+    path.join(rendererDirectory, "index.html"),
+    (source) => source.startsWith(prefix)
   );
 }
 
@@ -79,9 +88,19 @@ function overlayRuntimeSource() {
     "match-playback-queue.js",
     "runtime/configuration.js",
     "runtime/design.js",
-    "runtime/wheel-match.js",
+    "runtime/widgets/wheel-design.js",
+    "runtime/widgets/match-compatible.js",
+    "runtime/widgets/match-audio.js",
+    "runtime/widgets/match-reactions.js",
+    "runtime/widgets/match-progress.js",
+    "runtime/widgets/match-preview.js",
+    "runtime/widgets/match.js",
     "runtime/alerts-feed.js",
-    "runtime/widgets.js",
+    "runtime/widgets/coin-jar.js",
+    "runtime/widgets/win-counter.js",
+    "runtime/widgets/timers.js",
+    "runtime/widgets/wheel-animation.js",
+    "runtime/widgets/game.js",
     "runtime/session.js",
     "runtime/transport.js"
   ];
@@ -98,5 +117,6 @@ module.exports = {
   readOverlayRuntimeSource: overlayRuntimeSource,
   readOverlayStyles: overlayStyles,
   readRendererSource: rendererSource,
+  readRendererScriptGroup: rendererScriptGroup,
   readRendererStyles: rendererStyles
 };

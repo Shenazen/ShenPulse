@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { inventorySources, parseScripts, analyzeScript, importCycles } = require("./lib/source-analysis");
 
 const roots = ["src", "scripts", "tests", path.join("resources", "overlays")];
 const files = [];
@@ -32,6 +33,17 @@ for (const file of files) {
     failed = true;
     errors.push(`${file}\n${error.stack}`);
   }
+}
+
+// Les anciens contrôles JS restent stricts. Ces contrôles couvrent aussi TS, Vue, ESM et le site.
+const authoredSources = inventorySources().files.filter((file) => !file.generated);
+const importGraph = {};
+for (const file of authoredSources) {
+  errors.push(...parseScripts(file).errors);
+  importGraph[file.path] = analyzeScript(file).imports;
+}
+for (const cycle of importCycles(importGraph)) {
+  errors.push(`Cycle d’import local : ${cycle.join(" → ")}`);
 }
 
 function htmlAssetPaths(htmlFile, expression) {
@@ -101,6 +113,7 @@ function filesBelow(directory, extension, maximumLines) {
 }
 
 validateHtmlAssets(path.join("src", "renderer", "index.html"));
+validateHtmlAssets(path.join("src", "renderer", "games", "host.html"));
 validateHtmlAssets(path.join("resources", "overlays", "index.html"));
 validateCssImports(path.join("src", "renderer", "styles.css"));
 validateCssImports(path.join("resources", "overlays", "overlay.css"));
@@ -110,11 +123,19 @@ filesBelow(path.join("resources", "overlays", "runtime"), ".js", 800);
 filesBelow(path.join("src", "renderer", "styles"), ".css", 1200);
 filesBelow(path.join("resources", "overlays", "styles"), ".css", 1200);
 
+// Budgets des domaines extraits : un nouveau module ne doit pas recréer un monolithe.
+filesBelow(path.join("src", "main"), ".js", 800);
+filesBelow(path.join("src", "renderer", "game-overlays"), ".mjs", 800);
+filesBelow(path.join("src", "renderer", "games", "game-host"), ".js", 800);
+for (const extension of [".ts", ".mjs", ".vue"]) {
+  filesBelow(path.join("src", "renderer", "games", "original-src"), extension, 800);
+}
+
 if (errors.length) {
   failed = true;
   process.stderr.write(`${errors.join("\n\n")}\n`);
 }
 if (failed) process.exit(1);
 process.stdout.write(
-  `Structure et syntaxe valides : ${files.length} fichiers JavaScript, bundles et imports contrôlés.\n`
+  `Structure et syntaxe valides : ${files.length} fichiers JavaScript et ${authoredSources.length} sources inventoriées (TS/Vue/ESM inclus), imports sans cycle.\n`
 );

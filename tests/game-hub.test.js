@@ -12,6 +12,7 @@ const {
 } = require("../src/main/game-hub");
 const net = require("node:net");
 const path = require("node:path");
+const { authenticatedFixtureStore } = require("./helpers/authenticated-store");
 
 test("construit et relit un paquet RCON", () => {
   const packet = rconPacket(7, 2, "list");
@@ -137,7 +138,7 @@ test("initialise une seule fois les interactions GTA prévues pour le profil", (
   };
   const resourcesDirectory = path.join(__dirname, "..", "resources");
   const hub = new GameHub({
-    store,
+    store: authenticatedFixtureStore(store),
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs")
   });
@@ -212,7 +213,7 @@ test("initialise les six actions Coin Pusher en mode manuel sans doubler les cad
   };
   const resourcesDirectory = path.join(__dirname, "..", "resources");
   const hub = new GameHub({
-    store,
+    store: authenticatedFixtureStore(store),
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs")
   });
@@ -262,7 +263,7 @@ test("initialise les associations TikTok Bedrock Box et SandBox", () => {
   };
   const resourcesDirectory = path.join(__dirname, "..", "resources");
   const hub = new GameHub({
-    store,
+    store: authenticatedFixtureStore(store),
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs")
   });
@@ -389,7 +390,7 @@ test("initialise le catalogue Cult of the Lamb et parle au bridge BepInEx", asyn
   };
   const resourcesDirectory = path.join(__dirname, "..", "resources");
   const hub = new GameHub({
-    store,
+    store: authenticatedFixtureStore(store),
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs")
   });
@@ -502,7 +503,7 @@ test("initialise et exécute les catalogues Stardew Valley et Terraria", async (
   };
   const resourcesDirectory = path.join(__dirname, "..", "resources");
   const hub = new GameHub({
-    store,
+    store: authenticatedFixtureStore(store),
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs")
   });
@@ -628,7 +629,7 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
   };
   const resourcesDirectory = path.join(__dirname, "..", "resources");
   const hub = new GameHub({
-    store,
+    store: authenticatedFixtureStore(store),
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs"),
     windowsInputService: {
@@ -751,7 +752,7 @@ test("envoie les commandes Minecraft au serveur géré par ShenPulse", async () 
   };
   const resourcesDirectory = path.join(__dirname, "..", "resources");
   const hub = new GameHub({
-    store,
+    store: authenticatedFixtureStore(store),
     resourcesDirectory,
     packsDirectory: path.join(resourcesDirectory, "packs")
   });

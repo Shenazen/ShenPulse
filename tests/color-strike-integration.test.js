@@ -187,7 +187,7 @@ test("remonte les refus explicites du jeu au lieu d’annoncer un faux succès",
 });
 
 test("branche le catalogue ShenPulse sur le pont Color Strike", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   state.game.interactionCatalogVersions["color-strike"] = 20261012;
   state.game.interactionRulesByPack["color-strike"] = [{
     id: "rule_color-strike_color-strike-bombe",
@@ -224,7 +224,7 @@ test("branche le catalogue ShenPulse sur le pont Color Strike", async () => {
   assert.equal(pack.connector.url, "http://127.0.0.1:7444");
   assert.equal(pack.accessMode, "purchase");
   assert.equal(pack.price, 19.99);
-  assert.equal(pack.requiresPro, true);
+  assert.equal(pack.requiresPro, false);
   assert.equal(pack.installerVersion, "1.0.9-shenpulse2");
   const initialization = hub.initializeDefaultInteractions(pack.id);
   assert.equal(initialization.added, 35);
@@ -277,7 +277,7 @@ test("associe le dossier autonome et son exécutable au lanceur ShenPulse", () =
 });
 
 test("déclenche les cadeaux, likes et !spin pendant une session Color Strike", async () => {
-  const state = subscribedState();
+  const state = purchasedGameState();
   state.session.profileId = "profile-1";
   state.session.game = {
     running: true,
@@ -337,7 +337,8 @@ test("déclenche les cadeaux, likes et !spin pendant une session Color Strike", 
   assert.equal(actions[2].config.wheelId, "wheel_color_strike");
 });
 
-function subscribedState() {
+function purchasedGameState() {
+  // Depuis la politique Pro, l’achat du produit s’ajoute à un accès Pro actif.
   return {
     settings: {
       account: {
@@ -351,7 +352,7 @@ function subscribedState() {
     commerce: {
       subscription: {
         tier: "pro",
-        source: "subscription",
+        source: "own",
         status: "active"
       },
       gameEntitlements: ["color-strike"]

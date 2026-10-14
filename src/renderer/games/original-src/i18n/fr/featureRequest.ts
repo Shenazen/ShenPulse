@@ -1,0 +1,31 @@
+/** Traductions fr du domaine « featureRequest ». Les clés publiques restent stables. */
+export default {
+      benefit: 'Pourquoi cette demande est importante ?',
+      benefitPlaceholder: 'Explique ce que ça changerait dans ton live, ton workflow ou tes overlays.',
+      category: 'Catégorie',
+      details: 'Description détaillée',
+      detailsPlaceholder: 'Décris le besoin, le comportement attendu, les exemples, les contraintes et tout ce qui peut aider à comprendre la demande.',
+      email: 'E-mail de contact',
+      error: "Impossible d'envoyer la demande pour le moment.",
+      eyebrow: 'Roadmap',
+      intro: "Décris précisément ce que tu veux voir arriver dans ShenPulse. Plus la demande est claire, plus elle peut être étudiée et priorisée facilement.",
+      optional: 'Optionnel',
+      sectionLabel: 'Demande',
+      send: 'Envoyer la demande',
+      sending: 'Envoi...',
+      success: 'Demande envoyée. Merci, elle est maintenant enregistrée.',
+      summary: 'Résumé court',
+      summaryPlaceholder: 'Exemple : Ajouter un overlay de compte à rebours partagé',
+      tiktokUsername: 'Pseudo TikTok',
+      title: 'Demande de fonctionnalité',
+      trailLabel: 'Nouvelle idée',
+      categories: {
+        actions: 'Déclencheurs / actions',
+        app: 'Application Windows',
+        live: 'Connexion LIVE',
+        overlays: 'Overlays',
+        payments: 'Abonnement / paiement',
+        other: 'Autre',
+      },
+    };
+

@@ -1,0 +1,3 @@
+#scene-view { inset: 0; padding: 0; overflow: hidden; }
+#scene-canvas { position: absolute; top: 0; left: 0; transform-origin: top left; background: transparent; overflow: hidden; }
+#scene-canvas iframe { position: absolute; display: block; border: 0; background: transparent; pointer-events: none; }

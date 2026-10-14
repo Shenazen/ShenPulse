@@ -11,6 +11,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 const {
   hasGameAccess
 } = require("../src/main/game-access");
@@ -68,17 +69,28 @@ test("le thème classique retire complètement l'ancien cadre de classement", ()
 });
 
 test("les journaux masquent aussi l'ancien bruit TikTok hors LIVE", () => {
-  const renderer = readRendererSource();
-  assert.match(
-    renderer,
-    /function visibleActivityEntries\(state = \{\}\)[\s\S]*\["connection", "tiktok"\]\.includes\(category\)[\s\S]*seenOfflineErrors/
-  );
-  assert.match(
-    renderer,
-    /const recent = visibleActivityEntries\(state\)\.slice\(0, 6\);/
-  );
-  assert.match(
-    renderer,
-    /const entries = visibleActivityEntries\(snapshot\.state\);/
-  );
+  const activity = [
+    { category: "tiktok", level: "info", title: "Recherche TikTok" },
+    { category: "connection", level: "warning", title: "Reconnexion bruyante" },
+    { category: "tiktok", level: "error", title: "Vraie erreur", detail: "Connexion refusée" },
+    { category: "tiktok", level: "error", title: "Vraie erreur", detail: "Connexion refusée" },
+    ...Array.from({ length: 8 }, (_, index) => ({ category: "action", level: "success", title: `Action ${index}`, detail: "Exécutée" }))
+  ];
+  const context = vm.createContext({
+    snapshot: { state: { session: { running: false }, activity } },
+    isAccountAuthenticated: () => true,
+    escapeHtml: String,
+    formatTime: () => "12:00",
+    eventIcons: {}
+  });
+  const features = path.join(root, "src", "renderer", "app", "features");
+  vm.runInContext(`${fs.readFileSync(path.join(features, "dashboard.js"), "utf8")}\n${fs.readFileSync(path.join(features, "auxiliary-pages.js"), "utf8")}`, context);
+  const entries = context.visibleActivityEntries(context.snapshot.state);
+  assert.equal(entries.length, 9);
+  const journal = context.renderActivity();
+  assert.doesNotMatch(journal, /Recherche TikTok|Reconnexion bruyante/);
+  assert.equal((journal.match(/Vraie erreur/g) || []).length, 1);
+  assert.match(journal, /Action 7/);
+  context.snapshot.state.session.running = true;
+  assert.equal(context.visibleActivityEntries(context.snapshot.state).length, activity.length);
 });

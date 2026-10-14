@@ -1,0 +1,336 @@
+@keyframes header-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes copy-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.985);
+  }
+}
+
+@keyframes ambient-glow {
+  from {
+    opacity: 0.55;
+    transform: translate3d(-2%, 1%, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(4%, -3%, 0) scale(1.08);
+  }
+}
+
+@keyframes note-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1100px) {
+  .hero {
+    min-height: 0;
+    padding: 72px 0 84px;
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+
+  .hero-copy {
+    max-width: 700px;
+  }
+
+  .hero-visual {
+    max-width: 860px;
+  }
+
+  .feature-grid,
+  .security-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .showcase {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 840px) {
+  .site-header {
+    width: min(calc(100% - 24px), var(--max));
+    margin-top: 10px;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    padding: 0 14px;
+    align-items: center;
+  }
+
+  .site-nav {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    display: none;
+    padding: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(7, 8, 21, 0.98);
+  }
+
+  .site-nav.is-open {
+    display: flex;
+  }
+
+  .button--download {
+    margin-left: 0;
+  }
+
+  .hero,
+  .section,
+  .trust-strip,
+  .final-cta,
+  .site-footer,
+  .docs-page,
+  .legal-page,
+  .message-page {
+    width: min(calc(100% - 24px), var(--max));
+  }
+
+  .hero {
+    min-height: 0;
+    padding: 58px 0 70px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .floating-note {
+    display: none;
+  }
+
+  .trust-strip {
+    overflow-x: auto;
+    justify-content: start;
+  }
+
+  .trust-strip span {
+    flex: none;
+  }
+
+  .workflow-grid,
+  .split-showcase {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .showcase,
+  .privacy-callout {
+    padding: 34px;
+    grid-template-columns: 1fr;
+    gap: 38px;
+  }
+
+  .site-footer {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer-main {
+    grid-column: 1 / -1;
+  }
+
+  .docs-shell,
+  .legal-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-sidebar,
+  .legal-layout > aside {
+    position: static;
+  }
+
+  .docs-sidebar nav,
+  .legal-layout > aside {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .docs-sidebar > strong,
+  .docs-sidebar > .button {
+    grid-column: 1 / -1;
+  }
+
+  .docs-card-grid,
+  .docs-gallery,
+  .troubleshooting-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-gallery figure:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    font-size: 14px;
+  }
+
+  .brand img {
+    width: 170px;
+  }
+
+  .hero {
+    padding-top: 48px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.55rem, 11.8vw, 3.55rem);
+    line-height: 1.01;
+  }
+
+  .hero-actions,
+  .hero-actions .button {
+    width: 100%;
+  }
+
+  .hero-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .hero-facts div + div::before {
+    display: none;
+  }
+
+  .hero-visual {
+    padding: 14px;
+  }
+
+  .section {
+    padding: 76px 0;
+  }
+
+  .feature-grid,
+  .security-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-grid article > span,
+  .feature-icon {
+    margin-bottom: 30px;
+  }
+
+  .showcase,
+  .privacy-callout,
+  .split-showcase > article,
+  .final-cta {
+    padding: 26px 20px;
+  }
+
+  .final-cta > div,
+  .message-page > div,
+  .legal-contact {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .site-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-main,
+  .footer-bottom {
+    grid-column: 1;
+  }
+
+  .footer-bottom {
+    gap: 8px;
+    flex-direction: column;
+  }
+
+  .docs-hero,
+  .legal-hero {
+    padding-top: 70px;
+  }
+
+  .docs-search kbd {
+    display: none;
+  }
+
+  .docs-sidebar nav,
+  .legal-layout > aside {
+    grid-template-columns: 1fr;
+  }
+
+  .field-table > div {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .accordion-list summary {
+    grid-template-columns: 30px minmax(0, 1fr) 18px;
+  }
+
+  .game-doc summary {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .game-status {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .game-detail {
+    padding-left: 22px;
+  }
+
+  .game-guide-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .game-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .legal-layout > article > section {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

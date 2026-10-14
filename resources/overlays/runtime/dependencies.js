@@ -37,6 +37,7 @@ function readEarlyPublicRelayCache(channel) {
 function startEarlyPublicRelayBootstrap() {
   const query = new URLSearchParams(location.search);
   if (["static", "animated"].includes(query.get("preview"))) return;
+  if (query.get("embedded") === "scene") return;
   const matchRoute = /^\/m\/\d{12}\/([A-Za-z0-9_-]{24,128})\/?$/i.exec(
     location.pathname
   );
@@ -71,6 +72,7 @@ async function checkOverlayRuntimeVersion() {
 }
 
 function startOverlayRuntimeVersionMonitor() {
+  if (new URLSearchParams(location.search).get("embedded") === "scene") return;
   if (
     location.protocol !== "https:" ||
     location.hostname !== "shenpulse-overlays.web.app" ||
@@ -149,12 +151,13 @@ function overlayNativeSourceSize(viewName, catalog) {
   const definition = catalog?.definitions?.find(
     (item) => item?.route?.view === viewName && Array.isArray(item.sourceSize)
   );
-  const [width, height] = definition?.sourceSize || [1920, 1080];
+  const route = catalog?.routes?.find((item) => item.view === viewName && Array.isArray(item.sourceSize));
+  const [width, height] = definition?.sourceSize || route?.sourceSize || [1920, 1080];
   return [Math.max(1, Number(width) || 1920), Math.max(1, Number(height) || 1080)];
 }
 
 (function loadOverlayDependencies() {
-  const view = /^(?:\/match\/\d{12}\/[A-Za-z0-9_-]{32,128}|\/m\/\d{12}\/[A-Za-z0-9_-]{24,128})\/?$/i.test(
+  const view = /^(?:\/match\/\d{12}\/[A-Za-z0-9_-]{32,128}|\/(?:m|match-bridge)\/\d{12}\/[A-Za-z0-9_-]{24,128})\/?$/i.test(
     location.pathname
   )
     ? "match"

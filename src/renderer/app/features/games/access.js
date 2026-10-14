@@ -21,27 +21,11 @@ function currentSubscription() {
 }
 
 function commerceExpiryMs(entry) {
-  const numeric = Number(entry?.expiresAtMs || 0);
-  if (numeric > 0) return numeric;
-  const parsed = Date.parse(
-    String(entry?.expiresAt || entry?.renewalDate || "")
-  );
-  return Number.isFinite(parsed) ? parsed : 0;
+  return ShenPulseProAccess.commerceExpiryMs(entry);
 }
 
 function hasProAccess() {
-  const subscription = currentSubscription();
-  if (!["pro", "premium"].includes(subscription.tier)) return false;
-  if (
-    subscription.source === "trial" ||
-    subscription.status === "trial"
-  ) {
-    return (
-      ["active", "trial"].includes(subscription.status) &&
-      commerceExpiryMs(subscription) > Date.now()
-    );
-  }
-  return ["active", "paid"].includes(subscription.status);
+  return ShenPulseProAccess.hasProAccess(snapshot?.state);
 }
 
 function hasActivePaidPremium() {
@@ -175,12 +159,12 @@ function gamePlatformLogos(pack) {
 }
 
 const GAME_CATALOG_PLATFORM_EXPLANATIONS = Object.freeze({
-  shenpulse: "Jeu et interactions inclus dans ShenPulse.",
-  steam: "Jeu à télécharger sur Steam · interactions incluses dans ShenPulse.",
-  "epic-games": "Jeu à télécharger sur Epic Games · interactions incluses dans ShenPulse.",
-  "rockstar-games": "Jeu à télécharger via Rockstar Games · interactions incluses dans ShenPulse.",
-  "microsoft-store": "Jeu à télécharger sur Microsoft Store · interactions incluses dans ShenPulse.",
-  nintendo: "Jeu Nintendo original requis · interactions incluses dans ShenPulse."
+  shenpulse: "Jeu et interactions accessibles avec Pro · achat supplémentaire si indiqué.",
+  steam: "Jeu à télécharger sur Steam · accès Pro requis pour les interactions.",
+  "epic-games": "Jeu à télécharger sur Epic Games · accès Pro requis pour les interactions.",
+  "rockstar-games": "Jeu à télécharger via Rockstar Games · accès Pro requis pour les interactions.",
+  "microsoft-store": "Jeu à télécharger sur Microsoft Store · accès Pro requis pour les interactions.",
+  nintendo: "Jeu Nintendo original requis · accès Pro requis pour les interactions."
 });
 
 function gameCatalogPlatformLegend(packs) {
@@ -201,7 +185,7 @@ function gameCatalogPlatformLegend(packs) {
 }
 
 function gamePrice(pack) {
-  if (pack.accessMode === "included") return "Inclus avec abonnement";
+  if (pack.accessMode === "included") return "Inclus avec Pro";
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: pack.currency || "EUR"
@@ -212,6 +196,7 @@ function gameTileActionLabel(pack) {
   if (isGameUnlocked(pack)) {
     return pack.modeSelector ? "Choisir le mode" : "Entrer dans le jeu";
   }
+  if (!hasProAccess()) return "Voir l’abonnement";
   if (pack.accessMode === "purchase" && !hasGameEntitlement(pack)) {
     return "Acheter le jeu";
   }
@@ -219,7 +204,7 @@ function gameTileActionLabel(pack) {
 }
 
 function gameAccessLabel(pack) {
-  if (!hasProAccess()) return "ABONNEMENT REQUIS";
+  if (!hasProAccess()) return "ACCÈS PRO REQUIS";
   if (!hasGameEntitlement(pack)) return "ACHAT REQUIS";
   const entitlement = gameEntitlement(pack);
   if (
@@ -229,7 +214,7 @@ function gameAccessLabel(pack) {
     return "ESSAI ACTIF";
   }
   return pack.accessMode === "included"
-    ? "INCLUS AVEC ABONNEMENT"
+    ? "INCLUS AVEC PRO"
     : "ACHETÉ";
 }
 
@@ -240,7 +225,7 @@ function gameAccessReason(pack) {
     return "Un abonnement ShenPulse Pro ou Premium actif et le droit d’accès à ce jeu (achat ou essai) sont requis.";
   }
   if (missingGame) {
-    return "Votre abonnement est actif. Achetez ce jeu ou activez un essai de jeu pour y accéder.";
+    return "Votre accès Pro est actif. Achetez ce jeu ou activez un essai produit pour y accéder.";
   }
   return "Activez un abonnement ShenPulse Pro ou Premium pour entrer dans ce jeu.";
 }
@@ -289,7 +274,7 @@ function openGamePurchaseDialog(pack) {
           </div>
           <ul class="game-purchase-facts">
             <li><span>✓</span><div><strong>Conservé sur votre compte</strong><small>L’achat est resynchronisé automatiquement après votre retour de PayPal.</small></div></li>
-            <li><span>✓</span><div><strong>${hasProAccess() ? "Abonnement actif" : "Abonnement requis pour jouer"}</strong><small>${escapeHtml(subscriptionMessage)}</small></div></li>
+            <li><span>✓</span><div><strong>${hasProAccess() ? "Accès Pro actif" : "Accès Pro requis pour jouer"}</strong><small>${escapeHtml(subscriptionMessage)}</small></div></li>
             <li><span>✓</span><div><strong>Paiement sécurisé par PayPal</strong><small>Votre navigateur s’ouvrira après confirmation.</small></div></li>
           </ul>
         </div>
@@ -485,14 +470,12 @@ function renderGamesV2() {
   });
   return `
     <div class="reference-page games-gallery-page">
-      <section class="page-hero compact games-heading">
-        <div class="games-heading-content"><span class="hero-chip">JEUX INTERACTIFS</span><h2>Galerie des jeux</h2><p>Parcourez tous les jeux disponibles. Un abonnement ShenPulse actif est requis pour entrer dans un jeu.</p>${gameCatalogPlatformLegend(availablePacks)}</div>
-        <span class="hero-count">${availablePacks.length}</span>
-      </section>
-      ${hasProAccess() ? "" : `<section class="game-access-warning game-catalog-access-warning"><span aria-hidden="true">🔒</span><div><strong>Le catalogue reste accessible</strong><p>Vous pouvez consulter tous les jeux. Activez un abonnement Pro ou Premium pour ouvrir un jeu, l’installer, le configurer et lancer ses interactions.</p></div><button class="button primary" data-navigate="membership">Voir les abonnements</button></section>`}
+      ${renderStudioHero("games", "Jeux vidéo compatibles", "Vos spectateurs agissent dans votre jeu avec Pro ou Premium. Jeu original et pack adapté nécessaires ; achat supplémentaire si indiqué.")}
+      <div class="games-heading-content">${gameCatalogPlatformLegend(availablePacks)}</div>
+      ${hasProAccess() ? "" : `<section class="game-access-warning game-catalog-access-warning"><span aria-hidden="true">◇</span><div><strong>Jeux vidéo : accès Pro requis</strong><p>Un accès Pro ou Premium actif est nécessaire, y compris pour les packs déjà achetés. Le jeu original et son pack compatible restent requis ; les modules vendus séparément exigent aussi leur achat ou un essai produit actif.</p></div><button class="button small primary" type="button" data-navigate="membership">Découvrir Pro</button></section>`}
       <section class="catalog-toolbar games-toolbar">
         <label class="search-control"><span>⌕</span><input data-search="games" type="search" value="${escapeHtml(gameSearch)}" placeholder="Rechercher un jeu, un connecteur ou un effet"></label>
-        <div class="filter-pills"><button class="${gameFilter === "all" ? "active" : ""}" data-action="set-game-filter" data-value="all">Tous</button><button class="${gameFilter === "included" ? "active" : ""}" data-action="set-game-filter" data-value="included">Inclus avec abonnement</button><button class="${gameFilter === "purchase" ? "active" : ""}" data-action="set-game-filter" data-value="purchase">Achat + abonnement</button></div>
+        <div class="filter-pills"><button class="${gameFilter === "all" ? "active" : ""}" data-action="set-game-filter" data-value="all">Tous</button><button class="${gameFilter === "included" ? "active" : ""}" data-action="set-game-filter" data-value="included">Inclus avec Pro</button><button class="${gameFilter === "purchase" ? "active" : ""}" data-action="set-game-filter" data-value="purchase">Achat + accès Pro</button></div>
         <span class="result-count">${packs.length} résultat${packs.length > 1 ? "s" : ""}</span>
       </section>
       <section class="games-tile-grid">

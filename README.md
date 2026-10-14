@@ -1,5 +1,37 @@
 # ShenPulse
 
+## Capacités et autorisations des plateformes
+
+La réception d'un LIVE n'autorise pas automatiquement l'envoi de commentaires.
+L'onglet **Commandes** permet de piloter la musique, les actions et les overlays
+avec des messages commençant par `!`, sans autorisation d'envoi TikTok. Les
+anciennes auto-réponses, réponses texte et messages programmés sont conservés
+dans les données pour compatibilité, mais ne sont plus affichés ni exécutés.
+L'onglet se trouve après **Interactions IRL**, sans séparer Voix & sons et Musique. Voir
+[les écarts fonctionnels vérifiés](docs/parite-fonctionnelle.fr.md),
+[les transports du ChatBot](docs/chatbot-transports.fr.md) et
+[les prérequis Spotify/Kick](docs/autorisations-spotify-kick.fr.md).
+
+Jeux vidéo, Interactions IRL, Commandes et Matchs portent un badge **PRO** et nécessitent
+un accès Pro/Premium actif (essai valide ou accès offert inclus). Les interactions
+IRL sont ouvertes à tous ces abonnés, sur leurs propres appareils ; les achats
+de jeux restent séparés et conservés. Voir [les droits et leur migration](docs/acces-pro-irl.fr.md).
+
+## Performances locales
+
+Les traitements LIVE utilisent des projections d'état ciblées plutôt que des
+copies complètes des catalogues, profils et journaux. Les événements et actions
+restent immédiats ; seuls le rendu et les envois d'état sont regroupés. Le relais
+public ne republie pas un état identique et conserve ses événements ordonnés,
+ses contrôles d'accès et son heartbeat.
+
+Les changements runtime sont sauvegardés avec une échéance fixe de 5 secondes.
+Une fermeture normale force la sauvegarde finale ; un arrêt brutal peut perdre
+jusqu'aux 5 dernières secondes de compteurs runtime. Les réglages gardent leur
+sauvegarde rapide et les générations de sauvegarde atomiques sont conservées.
+La réduction de fenêtre suspend uniquement les visuels et aperçus inutiles,
+jamais les connecteurs LIVE, les actions, l'audio ou le TTS.
+
 ShenPulse est une application Windows locale qui transforme les événements d'un
 livestream en alertes, overlays, commandes et effets de jeu. Elle est conçue pour
 être distribuée par le Microsoft Store sous l'identité
@@ -62,7 +94,7 @@ identifiants nécessaires.
 
 ## Connexion Spotify
 
-Ouvrez **Sons & voix > Connecter Spotify**, puis autorisez l'application
+Ouvrez **Musique > Connecter Spotify**, puis autorisez l'application
 ShenPulse avec votre compte Spotify. L'autorisation utilise PKCE : aucun Client
 Secret n'est embarqué. Les jetons reçus sont chiffrés localement avec le
 coffre-fort Windows. Le contrôle de lecture nécessite un compte Spotify Premium
@@ -83,7 +115,19 @@ et un appareil Spotify actif. L'application Spotify ShenPulse doit déclarer
 L'architecture et les procédures du relais sont détaillées dans
 [`docs/PUBLIC_OVERLAYS.md`](docs/PUBLIC_OVERLAYS.md).
 
+Les vidéos Matchs sont distribuées chiffrées dans ASAR, sans export de WebM en
+clair ni nouvel hébergement vidéo. Le catalogue inclut six variantes Cyber,
+sans Coffre Cyber non fourni. La lecture locale protégée ne constitue pas un
+DRM inviolable ; voir [les médias Matchs protégés](docs/matches-medias-proteges.fr.md)
+pour la génération, les droits, le cache mémoire et les limites de copie.
+
 ## Maintenance
+
+La carte complète se trouve dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+avec les guides par domaine. Le [bilan de refonte](docs/optimisation-et-refonte.md)
+explique les gains mesurés, les contrôles de compatibilité et leurs limites.
+`npm run architecture:audit` fournit un inventaire reproductible en lecture
+seule ; `npm run benchmark:live` mesure un scénario synthétique sans live réel.
 
 Le renderer et le runtime des overlays sont découpés par domaine. Le guide
 [`docs/MAINTENANCE.md`](docs/MAINTENANCE.md) décrit les frontières, les limites

@@ -1,32 +1,29 @@
 "use strict";
 
-const dgram = require("node:dgram");
-const net = require("node:net");
 const path = require("node:path");
 const { EventEmitter } = require("node:events");
-const { id, safeString } = require("./utils");
 const { loadShenazenGameCatalog } = require("./game-catalog");
 const { assertGameAccess } = require("./game-access");
 const { assertAdminAccount } = require("./account-access");
-const { findCatalogGift } = require("../shared/gift-identity");
-const { SimpleTcpServerBridge } = require("./simple-tcp-server-bridge");
-const {
-  releaseCrowdControlPort
-} = require("./crowd-control-port");
-const {
-  WindowsInputService,
-  normalizeWindowsInputSequence
-} = require("./windows-input-service");
+const { readState } = require("./state-projection");
+const { releaseCrowdControlPort } = require("./crowd-control-port");
+const { WindowsInputService } = require("./windows-input-service");
 const { ColorStrikeBridge } = require("./color-strike-bridge");
 const { TikLiveClimbBridge } = require("./tiklive-climb-bridge");
-const {
-  TikLiveCubeWarsBridge
-} = require("./tiklive-cube-wars-bridge");
-const {
-  TikLiveStackTowerBridge
-} = require("./tiklive-stack-tower-bridge");
+const { TikLiveCubeWarsBridge } = require("./tiklive-cube-wars-bridge");
+const { TikLiveStackTowerBridge } = require("./tiklive-stack-tower-bridge");
 const { ClashOfLiveBridge } = require("./clash-of-live-bridge");
+const interactions = require("./game-hub/interaction-management");
+const { validatePack, interpolateCommand, resolveEffectCode } = require("./game-hub/commands");
+const { rconPacket, readRconPacket, rconRequest } = require("./game-hub/rcon");
+const { createEffectPayload } = require("./game-hub/effect-payload");
+const { GameTransports } = require("./game-hub/transports");
+const { httpBridgeFor } = require("./game-hub/http-bridges");
+const { assertProFeatureAccess, createProFeatureGuard } = require("./pro-feature-access");
+const visibility = require("../shared/visibility-catalog");
+const { ADMIN_OWNER_EMAIL } = require("./account-access");
 
+/** Façade compatible des jeux : accès, catalogue, connexions, exécution et événements. */
 class GameHub extends EventEmitter {
   constructor({
     store,
@@ -63,20 +60,23 @@ class GameHub extends EventEmitter {
       tikLiveStackTowerBridge || new TikLiveStackTowerBridge();
     this.clashOfLiveBridge = clashOfLiveBridge || new ClashOfLiveBridge();
     this.giftCatalog = giftCatalog || null;
+    this.transports = new GameTransports(this);
   }
 
+  /** Injecte le runtime géré, aussi utilisé par les passerelles Pokémon et Mario Kart. */
   setMinecraftRuntime(runtime) {
     this.gameRuntime = runtime || null;
     this.minecraftRuntime = runtime || null;
   }
 
+  /** Valide les catalogues, garde une sélection valide et désactive les effets indisponibles. */
   loadPacks() {
     const catalogPacks = loadShenazenGameCatalog(this.resourcesDirectory);
     for (const pack of catalogPacks) validatePack(pack);
     this.packs = catalogPacks.sort((first, second) =>
       first.name.localeCompare(second.name)
     );
-    const activePackId = this.store.getState().session.activeGamePackId;
+    const activePackId = readState(this.store, ["session.activeGamePackId"]).session.activeGamePackId;
     if (!this.packs.some((pack) => pack.id === activePackId)) {
       this.store.mutate((state) => {
         state.session.activeGamePackId = "coin-pusher";
@@ -87,210 +87,36 @@ class GameHub extends EventEmitter {
     return this.listPacks();
   }
 
+  /** Copie isolée du catalogue pour les consommateurs externes. */
   listPacks() {
     return structuredClone(this.packs);
   }
 
-  disableUnavailableInteractions() {
-    const lockedEffectIdsByPack = new Map(
-      this.packs.map((pack) => [
-        pack.id,
-        new Set(
-          (pack.effects || [])
-            .filter((effect) => effect.available === false)
-            .map((effect) => effect.id)
-        )
-      ])
-    );
-    let disabled = 0;
-    this.store.mutate((state) => {
-      const rulesByPack = state.game?.interactionRulesByPack || {};
-      for (const [packId, rules] of Object.entries(rulesByPack)) {
-        const lockedEffectIds = lockedEffectIdsByPack.get(packId);
-        if (!lockedEffectIds?.size || !Array.isArray(rules)) continue;
-        for (const rule of rules) {
-          const usesLockedEffect = (rule.actions || []).some((action) =>
-            lockedEffectIds.has(String(action.config?.effectId || ""))
-          );
-          if (usesLockedEffect && rule.enabled !== false) {
-            rule.enabled = false;
-            disabled += 1;
-          }
-        }
-      }
-    }, true);
-    return { disabled };
-  }
+  /** Désactive les règles d'effets explicitement indisponibles. */
+  disableUnavailableInteractions() { return interactions.disableUnavailableInteractions(this); }
 
-  repairMinecraftWinCounterInteractions() {
-    let repaired = 0;
-    this.store.mutate((state) => {
-      const rulesByPack = state.game?.interactionRulesByPack || {};
-      for (const packId of [
-        "minecraft-bedrock-box",
-        "minecraft-sandbox-3"
-      ]) {
-        const pack = this.packs.find((entry) => entry.id === packId);
-        const mappings = Array.isArray(pack?.defaultMappings)
-          ? pack.defaultMappings
-          : [];
-        const rules = rulesByPack[packId];
-        if (!pack || !mappings.length || !Array.isArray(rules)) continue;
+  /** Répare les WINS hérités sans écraser les réglages personnalisés. */
+  repairMinecraftWinCounterInteractions() { return interactions.repairMinecraftWinCounterInteractions(this); }
 
-        const existingRulesById = new Map(
-          rules.map((rule) => [rule.id, rule])
-        );
-        for (const mapping of mappings) {
-          const effect = pack.effects.find(
-            (entry) => entry.id === mapping.effectId
-          );
-          if (!effect?.winCounter) continue;
-          const expectedRule = defaultGameInteractionRule(
-            pack,
-            effect,
-            mapping,
-            Number(pack.interactionCatalogVersion || 0),
-            this.giftCatalog
-          );
-          const existingRule = existingRulesById.get(expectedRule.id);
-          if (
-            existingRule &&
-            repairDefaultWinCounterInteraction(
-              packId,
-              existingRule,
-              effect,
-              mapping
-            )
-          ) {
-            repaired += 1;
-          }
-        }
-      }
-    }, true);
-    return { repaired };
-  }
-
+  /** Valide propriétaire, abonnement et droit de jeu avant toute exécution. */
   assertAccess(packId) {
     const pack = this.#pack(packId);
-    if (pack.ownerOnly === true) assertAdminAccount(this.store);
-    return assertGameAccess(this.store.getState(), pack);
-  }
-
-  initializeDefaultInteractions(packId) {
-    const pack = this.assertAccess(packId);
-    const mappings = Array.isArray(pack.defaultMappings)
-      ? pack.defaultMappings
-      : [];
-    const wheelPresets = Array.isArray(pack.wheelPresets)
-      ? pack.wheelPresets
-      : [];
-    const version = Math.max(
-      0,
-      Number(pack.interactionCatalogVersion || 0)
-    );
-    if (!mappings.length || !version) {
-      return { added: 0, version: 0 };
+    const state = assertProFeatureAccess(this.store, "games");
+    const account = state.settings?.account || {};
+    const admin = account.emailVerified === true && String(account.email || "").trim().toLowerCase() === ADMIN_OWNER_EMAIL;
+    if (!visibility.canAccessScope(visibility.scopeFor(state.settings?.siteVisibility, "games", pack.id), admin)) {
+      const error = new Error("Ce jeu est désactivé ou réservé par l’administrateur.");
+      error.code = "FEATURE_ACCESS_FORBIDDEN";
+      throw error;
     }
-
-    let added = 0;
-    let repaired = 0;
-    let removed = 0;
-    this.store.mutate((state) => {
-      state.game.interactionCatalogVersions ||= {};
-      const currentVersion = Number(
-        state.game.interactionCatalogVersions[pack.id] || 0
-      );
-      const canAddDefaults = currentVersion < version;
-
-      state.game.interactionRulesByPack ||= {};
-      const interactionRules =
-        state.game.interactionRulesByPack[pack.id] ||= [];
-      const deprecatedPresetIds = new Set(
-        Array.isArray(pack.deprecatedDefaultMappingIds)
-          ? pack.deprecatedDefaultMappingIds
-          : []
-      );
-      const currentPresetIds = new Set(
-        mappings.map((mapping) => String(mapping.id || "")).filter(Boolean)
-      );
-      for (let index = interactionRules.length - 1; index >= 0; index -= 1) {
-        const rule = interactionRules[index];
-        if (
-          rule?.gameInteraction?.default === true &&
-          deprecatedPresetIds.has(rule.gameInteraction.presetId) &&
-          !currentPresetIds.has(rule.gameInteraction.presetId) &&
-          Number(rule.gameInteraction.catalogVersion || 0) < version
-        ) {
-          interactionRules.splice(index, 1);
-          removed += 1;
-        }
-      }
-      const existingRulesById = new Map(
-        interactionRules.map((rule) => [rule.id, rule])
-      );
-      for (const mapping of mappings) {
-        const effect = pack.effects.find(
-          (entry) => entry.id === mapping.effectId
-        );
-        if (!effect) continue;
-        const rule = defaultGameInteractionRule(
-          pack,
-          effect,
-          mapping,
-          version,
-          this.giftCatalog
-        );
-        const existingRule = existingRulesById.get(rule.id);
-        if (existingRule) {
-          if (
-            repairDefaultGiftInteraction(
-              existingRule,
-              rule,
-              mapping,
-              version
-            )
-          ) {
-            repaired += 1;
-            continue;
-          }
-          if (
-            repairDefaultWinCounterInteraction(
-              pack.id,
-              existingRule,
-              effect,
-              mapping
-            )
-          ) {
-            repaired += 1;
-          }
-          continue;
-        }
-        if (!canAddDefaults) continue;
-        interactionRules.push(rule);
-        existingRulesById.set(rule.id, rule);
-        added += 1;
-      }
-      if (wheelPresets.length) {
-        state.settings ||= {};
-        state.settings.overlayConfigs ||= {};
-        const wheelConfig = state.settings.overlayConfigs.wheel ||= {};
-        const wheels = Array.isArray(wheelConfig.wheels)
-          ? wheelConfig.wheels
-          : (wheelConfig.wheels = []);
-        const wheelIds = new Set(wheels.map((wheel) => wheel.id));
-        for (const wheelPreset of wheelPresets) {
-          if (!wheelPreset?.id || wheelIds.has(wheelPreset.id)) continue;
-          wheels.push(structuredClone(wheelPreset));
-          wheelIds.add(wheelPreset.id);
-        }
-      }
-      if (canAddDefaults) {
-        state.game.interactionCatalogVersions[pack.id] = version;
-      }
-    }, true);
-    return { added, removed, repaired, version };
+    if (pack.ownerOnly === true) assertAdminAccount(this.store);
+    return assertGameAccess(readState(this.store, ["commerce.subscription", "commerce.gameEntitlements"]), pack);
   }
 
+  /** Initialisation ou réparation versionnée des associations et roues. */
+  initializeDefaultInteractions(packId) { return interactions.initializeDefaultInteractions(this, packId); }
+
+  /** Diagnostic d'une connexion autorisée, sans déclencher d'effet. */
   async testConnection(packId) {
     const pack = this.assertAccess(packId);
     const connector = this.#connector(pack);
@@ -303,21 +129,8 @@ class GameHub extends EventEmitter {
           : "Fiche de référence chargée ; pack natif non disponible."
       };
     }
-    if (connector.type === "color-strike-http") {
-      return this.colorStrikeBridge.status(connector);
-    }
-    if (connector.type === "tiklive-climb-http") {
-      return this.tikLiveClimbBridge.status(connector);
-    }
-    if (connector.type === "tiklive-cube-wars-http") {
-      return this.tikLiveCubeWarsBridge.status(connector);
-    }
-    if (connector.type === "tiklive-stack-tower-http") {
-      return this.tikLiveStackTowerBridge.status(connector);
-    }
-    if (connector.type === "clash-of-live-http") {
-      return this.clashOfLiveBridge.status(connector);
-    }
+    const nativeHttpBridge = httpBridgeFor(this, connector.type);
+    if (nativeHttpBridge) return nativeHttpBridge.status(connector);
     if (connector.type === "http") {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 5000);
@@ -374,6 +187,7 @@ class GameHub extends EventEmitter {
     return { ok: Boolean(socket), type: connector.type };
   }
 
+  /** Prépare le serveur TCP après validation de l'accès. */
   async prepareConnection(packId) {
     const pack = this.assertAccess(packId);
     const connector = this.#connector(pack);
@@ -384,8 +198,10 @@ class GameHub extends EventEmitter {
     return { ...bridge.status(), type: connector.type };
   }
 
-  async executeMinecraftCommands(packId, commands) {
+  /** Transmet les commandes au runtime Minecraft géré du pack. */
+  async executeMinecraftCommands(packId, commands, { shouldExecute } = {}) {
     const pack = this.assertAccess(packId);
+    const assertAccess = createProFeatureGuard(this.store, "games", { shouldExecute, assertAdditional: () => this.assertAccess(packId) });
     const connector = this.#connector(pack);
     if (connector.type !== "minecraft-runtime") {
       throw new Error(`${pack.name} n’utilise pas le serveur Minecraft géré par ShenPulse.`);
@@ -393,9 +209,11 @@ class GameHub extends EventEmitter {
     if (!this.minecraftRuntime) {
       throw new Error("Le serveur Minecraft ShenPulse n’est pas initialisé.");
     }
-    return this.minecraftRuntime.executeMinecraftCommands(pack.id, commands);
+    assertAccess();
+    return this.minecraftRuntime.executeMinecraftCommands(pack.id, commands, { assertAccess });
   }
 
+  /** Arrête le runtime demandé sans fermer les autres connecteurs. */
   async stopRuntime(packId) {
     const pack = this.#pack(packId);
     if (!this.minecraftRuntime?.stop) {
@@ -404,124 +222,54 @@ class GameHub extends EventEmitter {
     return this.minecraftRuntime.stop(pack.id);
   }
 
+  /** Valide accès et effet, construit la charge utile puis émet début et résultat dans l'ordre. */
   async trigger(effectId, context = {}, options = {}) {
-    const state = this.store.getState();
-    const packId = options.packId || state.session.activeGamePackId;
+    const packId = options.packId || readState(this.store, ["session.activeGamePackId"]).session.activeGamePackId;
     const pack = this.assertAccess(packId);
+    const assertAccess = createProFeatureGuard(this.store, "games", {
+      shouldExecute: context.shouldExecute, assertAdditional: () => this.assertAccess(packId)
+    });
     const effect = pack.effects.find((item) => item.id === effectId);
     if (!effect) throw new Error(`Effet introuvable : ${effectId}`);
     if (effect.available === false) {
       throw new Error("Cet effet est une référence visuelle : aucun pack natif exécutable n’est encore disponible.");
     }
     const connector = this.#connector(pack);
-    const requestId = id("effect");
-    const defaultParameters = Object.fromEntries(
-      (effect.parameters || []).map((parameter) => [
-        parameter.id,
-        Number(parameter.defaultValue || 0)
-      ])
-    );
-    const parameters = {
-      ...defaultParameters,
-      ...(options.parameters || {})
-    };
-    const configuredDuration =
-      effect.durationParameter &&
-      Object.prototype.hasOwnProperty.call(
-        parameters,
-        effect.durationParameter
-      )
-        ? parameters[effect.durationParameter]
-        : options.duration ?? effect.duration ?? 0;
-    const configuredQuantity =
-      effect.quantityParameter &&
-      Object.prototype.hasOwnProperty.call(
-        parameters,
-        effect.quantityParameter
-      )
-        ? parameters[effect.quantityParameter]
-        : options.quantity ?? effect.quantity ?? 1;
-    const payload = {
-      requestId,
-      type: 1,
-      effect: {
-        code: "",
-        viewer: safeString(context.user?.displayName || context.user?.name || "Viewer", 120),
-        viewerId: safeString(context.user?.id || "anonymous", 120),
-        quantity: Math.max(1, Number(configuredQuantity || 1)),
-        duration: Number(configuredDuration || 0),
-        parameters
-      }
-    };
-    const commandTemplates = Array.isArray(effect.commands)
-      ? effect.commands
-      : [effect.command || effect.code || effect.id];
-    payload.effect.commands = commandTemplates.map((command) =>
-      interpolateCommand(command, payload.effect)
-    );
-    payload.effect.command = payload.effect.commands[0];
-    payload.effect.code = interpolateCommand(
-      resolveEffectCode(effect, payload.effect),
-      payload.effect
-    );
+    const payload = createEffectPayload(effect, context, options);
     this.emit("effect-start", { pack, effect, payload, context });
     if (
       connector.focusProcessOnManualTrigger &&
       String(context.source || "").startsWith("manual")
     ) {
       await this.windowsInputService.activate(
-        connector.focusProcessOnManualTrigger
+        connector.focusProcessOnManualTrigger,
+        { assertAccess }
       );
     }
+    assertAccess();
+    const nativeHttpBridge = httpBridgeFor(this, connector.type);
     let result;
     if (connector.type === "demo") {
       result = { status: "success", message: "Effet simulé." };
     } else if (connector.type === "tcp-server") {
-      result = await this.#sendTcpServer(pack, connector, payload);
+      result = await this.#sendTcpServer(pack, connector, payload, { assertAccess });
     } else if (connector.type === "tcp") {
-      result = await this.#sendTcp(pack, connector, payload);
+      result = await this.#sendTcp(pack, connector, payload, { assertAccess });
     } else if (connector.type === "websocket") {
-      result = await this.#sendWebSocket(pack, connector, payload);
-    } else if (connector.type === "color-strike-http") {
-      result = await this.colorStrikeBridge.trigger(
-        connector,
-        payload,
-        context
-      );
-    } else if (connector.type === "tiklive-climb-http") {
-      result = await this.tikLiveClimbBridge.trigger(
-        connector,
-        payload,
-        context
-      );
-    } else if (connector.type === "tiklive-cube-wars-http") {
-      result = await this.tikLiveCubeWarsBridge.trigger(
-        connector,
-        payload,
-        context
-      );
-    } else if (connector.type === "tiklive-stack-tower-http") {
-      result = await this.tikLiveStackTowerBridge.trigger(
-        connector,
-        payload,
-        context
-      );
-    } else if (connector.type === "clash-of-live-http") {
-      result = await this.clashOfLiveBridge.trigger(
-        connector,
-        payload,
-        context
-      );
+      result = await this.#sendWebSocket(pack, connector, payload, { assertAccess });
+    } else if (nativeHttpBridge) {
+      result = await nativeHttpBridge.trigger(connector, payload, { ...context, assertGameAccess: assertAccess });
     } else if (connector.type === "http") {
-      result = await this.#sendHttp(connector, payload);
+      result = await this.#sendHttp(connector, payload, { assertAccess });
     } else if (connector.type === "udp") {
-      result = await this.#sendUdp(connector, payload);
+      result = await this.#sendUdp(connector, payload, { assertAccess });
     } else if (connector.type === "rcon") {
       const command = interpolateCommand(effect.command, payload.effect);
       result = await rconRequest(
         connector,
         this.#connectorSecret(pack, connector),
-        command
+        command,
+        { assertAccess }
       );
     } else if (connector.type === "minecraft-runtime") {
       if (!this.minecraftRuntime) {
@@ -529,7 +277,8 @@ class GameHub extends EventEmitter {
       }
       result = await this.minecraftRuntime.executeMinecraftCommands(
         pack.id,
-        payload.effect.commands
+        payload.effect.commands,
+        { assertAccess }
       );
     } else if (connector.type === "pokemon-runtime") {
       if (!this.gameRuntime) {
@@ -558,7 +307,8 @@ class GameHub extends EventEmitter {
           connector.processName,
           effect.inputSequence,
           connector.keyLayout,
-          effect.keyboardInputMode || connector.keyboardInputMode
+          effect.keyboardInputMode || connector.keyboardInputMode,
+          { assertAccess }
         ))
       };
     } else {
@@ -568,6 +318,7 @@ class GameHub extends EventEmitter {
     return result;
   }
 
+  /** Libère sockets et ponts serveur, puis vide les caches. */
   async disconnectAll() {
     for (const socket of this.sockets.values()) {
       socket.close?.();
@@ -587,7 +338,7 @@ class GameHub extends EventEmitter {
   }
 
   #connector(pack) {
-    const override = this.store.getState().game.connectorOverrides?.[pack.id] || {};
+    const override = readState(this.store, ["game.connectorOverrides"]).game.connectorOverrides?.[pack.id] || {};
     if (pack.connector?.type === "windows-input") {
       return {
         ...pack.connector,
@@ -603,540 +354,23 @@ class GameHub extends EventEmitter {
   #connectorSecret(pack, connector) {
     const secretId =
       connector.secretId ||
-      this.store.getState().game.connectorOverrides?.[pack.id]?.secretId;
+      readState(this.store, ["game.connectorOverrides"]).game.connectorOverrides?.[pack.id]?.secretId;
     return secretId ? this.store.getSecret(secretId) : connector.password || "";
   }
 
-  async #getServerBridge(pack, connector) {
-    const cacheKey = `${pack.id}:${connector.type}`;
-    let bridge = this.serverBridges.get(cacheKey);
-    if (!bridge) {
-      if (connector.closeCrowdControlOnConflict === true) {
-        await this.crowdControlPortReleaser(connector.port);
-      }
-      bridge = new SimpleTcpServerBridge({
-        host: connector.host || "127.0.0.1",
-        port: Number(connector.port),
-        timeoutMs: Number(connector.timeoutMs || 12000),
-        label: pack.name
-      });
-      bridge.on("message", (message) =>
-        this.emit("bridge-message", { pack, message })
-      );
-      bridge.on("error", (error) =>
-        this.emit("bridge-error", { pack, error })
-      );
-      this.serverBridges.set(cacheKey, bridge);
-    }
-    try {
-      await bridge.start();
-    } catch (error) {
-      this.serverBridges.delete(cacheKey);
-      await bridge.close().catch(() => {});
-      throw error;
-    }
-    return bridge;
-  }
+  #getServerBridge(pack, connector, payload) { return this.transports.getServerBridge(pack, connector, payload); }
 
-  #getSocket(pack, connector) {
-    const cacheKey = `${pack.id}:${connector.type}`;
-    const current = this.sockets.get(cacheKey);
-    if (current && !current.destroyed && current.readyState !== 3) {
-      return Promise.resolve(current);
-    }
-    if (connector.type === "tcp") {
-      return new Promise((resolve, reject) => {
-        const socket = net.createConnection(
-          {
-            host: connector.host || "127.0.0.1",
-            port: Number(connector.port),
-            timeout: 5000
-          },
-          () => {
-            socket.setTimeout(0);
-            this.sockets.set(cacheKey, socket);
-            resolve(socket);
-          }
-        );
-        socket.once("error", reject);
-        socket.once("timeout", () => reject(new Error("Connexion au jeu expirée.")));
-        socket.once("close", () => this.sockets.delete(cacheKey));
-      });
-    }
-    if (connector.type === "websocket") {
-      return new Promise((resolve, reject) => {
-        const socket = new WebSocket(connector.url);
-        const timeout = setTimeout(
-          () => reject(new Error("Connexion WebSocket au jeu expirée.")),
-          5000
-        );
-        socket.addEventListener("open", () => {
-          clearTimeout(timeout);
-          this.sockets.set(cacheKey, socket);
-          resolve(socket);
-        });
-        socket.addEventListener("error", () => {
-          clearTimeout(timeout);
-          reject(new Error("Connexion WebSocket au jeu impossible."));
-        });
-        socket.addEventListener("close", () => this.sockets.delete(cacheKey));
-      });
-    }
-    throw new Error("Ce connecteur ne maintient pas de socket.");
-  }
+  #getSocket(pack, connector, payload) { return this.transports.getSocket(pack, connector, payload); }
 
-  async #sendTcp(pack, connector, payload) {
-    const socket = await this.#getSocket(pack, connector);
-    const message = Buffer.from(`${JSON.stringify(payload)}\0`, "utf8");
-    if (connector.expectResponse === false) {
-      socket.write(message);
-      return { status: "success", sent: true };
-    }
-    return new Promise((resolve, reject) => {
-      let buffer = "";
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Le jeu n'a pas répondu dans le délai imparti."));
-      }, Number(connector.timeoutMs || 5000));
-      const onData = (chunk) => {
-        buffer += chunk.toString("utf8");
-        const separator = buffer.indexOf("\0");
-        if (separator < 0) return;
-        const raw = buffer.slice(0, separator);
-        try {
-          const response = JSON.parse(raw);
-          if (response.requestId && response.requestId !== payload.requestId) return;
-          cleanup();
-          resolve(response);
-        } catch {
-          cleanup();
-          resolve({ status: "success", message: raw });
-        }
-      };
-      const onError = (error) => {
-        cleanup();
-        reject(error);
-      };
-      const cleanup = () => {
-        clearTimeout(timeout);
-        socket.off("data", onData);
-        socket.off("error", onError);
-      };
-      socket.on("data", onData);
-      socket.on("error", onError);
-      socket.write(message);
-    });
-  }
+  #sendTcp(pack, connector, payload, options) { return this.transports.sendTcp(pack, connector, payload, options); }
 
-  async #sendTcpServer(pack, connector, payload) {
-    const bridge = await this.#getServerBridge(pack, connector);
-    const durationMultiplier = Math.max(
-      1,
-      Number(connector.durationMultiplier || 1)
-    );
-    const request = {
-      ...payload.effect,
-      duration: Math.round(
-        Number(payload.effect.duration || 0) * durationMultiplier
-      )
-    };
-    const retryWindowMs = Math.max(
-      0,
-      Number(connector.temporaryFailureRetryMs || 0)
-    );
-    const retryIntervalMs = Math.max(
-      50,
-      Number(connector.temporaryFailureRetryIntervalMs || 500)
-    );
-    const retryDeadline = Date.now() + retryWindowMs;
-    while (true) {
-      try {
-        return await bridge.send(payload.effect.code, request);
-      } catch (error) {
-        if (Number(error?.status) !== 3 || Date.now() >= retryDeadline) {
-          if (
-            Number(error?.status) === 3 &&
-            connector.temporaryFailureMessage
-          ) {
-            throw new Error(connector.temporaryFailureMessage, {
-              cause: error
-            });
-          }
-          throw error;
-        }
-        await new Promise((resolve) =>
-          setTimeout(
-            resolve,
-            Math.min(retryIntervalMs, retryDeadline - Date.now())
-          )
-        );
-      }
-    }
-  }
+  #sendTcpServer(pack, connector, payload, options) { return this.transports.sendTcpServer(pack, connector, payload, options); }
 
-  async #sendWebSocket(pack, connector, payload) {
-    const socket = await this.#getSocket(pack, connector);
-    socket.send(JSON.stringify(payload));
-    return { status: "success", sent: true };
-  }
+  #sendWebSocket(pack, connector, payload, options) { return this.transports.sendWebSocket(pack, connector, payload, options); }
 
-  async #sendHttp(connector, payload) {
-    const controller = new AbortController();
-    const timer = setTimeout(
-      () => controller.abort(),
-      Number(connector.timeoutMs || 5000)
-    );
-    try {
-      const response = await fetch(connector.url, {
-        method: connector.method || "POST",
-        headers: { "Content-Type": "application/json", ...(connector.headers || {}) },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
-      const text = await response.text();
-      if (!response.ok) throw new Error(`Jeu HTTP : ${response.status} ${text}`);
-      try {
-        return JSON.parse(text);
-      } catch {
-        return { status: "success", message: text };
-      }
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+  #sendHttp(connector, payload, options) { return this.transports.sendHttp(connector, payload, options); }
 
-  #sendUdp(connector, payload) {
-    return new Promise((resolve, reject) => {
-      const socket = dgram.createSocket("udp4");
-      const message = Buffer.from(JSON.stringify(payload), "utf8");
-      socket.send(
-        message,
-        Number(connector.port),
-        connector.host || "127.0.0.1",
-        (error) => {
-          socket.close();
-          if (error) reject(error);
-          else resolve({ status: "success", sent: true });
-        }
-      );
-    });
-  }
-}
-
-function defaultGameInteractionRule(
-  pack,
-  effect,
-  mapping,
-  version,
-  giftCatalog = null
-) {
-  const triggerEnabled = mapping.triggerEnabled !== false;
-  const giftName = String(mapping.giftName || "").trim();
-  const giftCondition = giftName
-    ? defaultGiftCondition(mapping, giftCatalog?.gifts || [])
-    : null;
-  const title = String(mapping.title || effect.name).trim();
-  const safePresetId = String(mapping.id || effect.id)
-    .replace(/[^a-z0-9_-]+/gi, "-")
-    .replace(/^-+|-+$/g, "");
-  return {
-    id: `rule_${pack.id}_${safePresetId}`,
-    name: `${pack.name} · ${title}`,
-    enabled: mapping.enabled !== false,
-    priority: 50,
-    trigger: {
-      enabled: triggerEnabled,
-      type: mapping.triggerType || "gift",
-      source: "*",
-      threshold: Math.max(1, Number(mapping.threshold || 1))
-    },
-    conditions: triggerEnabled
-      ? Array.isArray(mapping.conditions)
-        ? structuredClone(mapping.conditions)
-        : giftCondition
-          ? [giftCondition]
-          : []
-      : [],
-    cooldown: {
-      globalMs: Math.max(
-        0,
-        Number(mapping.cooldownSeconds || 0) * 1000
-      ),
-      perUserMs: 0
-    },
-    chance: 1,
-    gameInteraction: {
-      catalogVersion: version,
-      default: true,
-      presetId: mapping.id,
-      title
-    },
-    actions: [
-      {
-        id: `action_${pack.id}_${safePresetId}`,
-        type: mapping.actionType || effect.actionType || "game.effect",
-        config: {
-          packId: pack.id,
-          effectId: effect.id,
-          quantity: Number(mapping.quantity || effect.quantity || 1),
-          duration: Number(
-            mapping.duration ?? effect.duration ?? 0
-          ),
-          parameters: {
-            ...Object.fromEntries(
-              (effect.parameters || []).map((parameter) => [
-                parameter.id,
-                Number(parameter.defaultValue || 0)
-              ])
-            ),
-            ...(mapping.parameters || {})
-          },
-          ...(effect.winCounter
-            ? {
-                amount: Number(
-                  mapping.amount ?? effect.winCounter.amount ?? 0
-                ),
-                operation:
-                  mapping.operation ||
-                  effect.winCounter.operation ||
-                  "adjust"
-              }
-            : {}),
-          ...(mapping.actionConfig || {})
-        }
-      }
-    ]
-  };
-}
-
-function defaultGiftCondition(mapping, gifts = []) {
-  const configuredIds = [
-    String(mapping.giftId || "").trim(),
-    ...(Array.isArray(mapping.giftIds) ? mapping.giftIds : [])
-  ].filter(Boolean);
-  const catalogGift = findCatalogGift(gifts, {
-    id: configuredIds[0] || "",
-    giftIds: configuredIds.slice(1),
-    name: mapping.giftName,
-    cost: mapping.giftCost
-  });
-  const resolvedIds = [
-    ...configuredIds,
-    String(catalogGift?.id || "").trim(),
-    ...(Array.isArray(catalogGift?.alternateIds)
-      ? catalogGift.alternateIds
-      : [])
-  ].filter(Boolean);
-  const giftId = resolvedIds[0] || "";
-  const giftIds = [...new Set(resolvedIds)].filter((id) => id !== giftId);
-  const giftImageUrl = String(catalogGift?.imageUrl || "").trim();
-  const giftCost = Math.max(
-    0,
-    Number(mapping.giftCost ?? catalogGift?.cost) || 0
-  );
-  const giftFamily = String(
-    mapping.giftFamily || catalogGift?.giftFamily || ""
-  ).trim();
-  return {
-    field: "data.giftName",
-    operator: "equals",
-    value: String(mapping.giftName || catalogGift?.name || "").trim(),
-    ...(giftId ? { giftId } : {}),
-    ...(giftIds.length ? { giftIds } : {}),
-    ...(giftCost ? { giftCost } : {}),
-    ...(giftFamily ? { giftFamily } : {}),
-    ...(giftImageUrl ? { giftImageUrl } : {})
-  };
-}
-
-function repairDefaultGiftInteraction(rule, expectedRule, mapping, version) {
-  if (
-    !mapping.giftId ||
-    rule?.gameInteraction?.default !== true ||
-    String(rule.gameInteraction.presetId || "") !== String(mapping.id || "") ||
-    Number(rule.gameInteraction.catalogVersion || 0) >= version
-  ) {
-    return false;
-  }
-  const enabled = rule.enabled !== false;
-  const triggerEnabled = rule.trigger?.enabled !== false;
-  const replacement = structuredClone(expectedRule);
-  for (const key of Object.keys(rule)) delete rule[key];
-  Object.assign(rule, replacement);
-  rule.enabled = enabled;
-  rule.trigger.enabled = triggerEnabled;
-  return true;
-}
-
-function repairDefaultWinCounterInteraction(
-  packId,
-  rule,
-  effect,
-  mapping
-) {
-  if (
-    !["minecraft-bedrock-box", "minecraft-sandbox-3"].includes(packId) ||
-    !effect.winCounter ||
-    rule?.gameInteraction?.default !== true ||
-    String(rule.gameInteraction.presetId || "") !== String(mapping.id || "")
-  ) {
-    return false;
-  }
-  const action = (rule.actions || []).find(
-    (entry) =>
-      entry?.type === "overlay.win-counter" &&
-      entry.config?.effectId === effect.id
-  );
-  if (!action?.config) return false;
-
-  const expectedAmount = Number(
-    mapping.amount ?? effect.winCounter.amount ?? 0
-  );
-  const genericAmount = Number(effect.winCounter.amount ?? 0);
-  const currentAmount = Number(action.config.amount);
-  if (
-    !Number.isFinite(expectedAmount) ||
-    expectedAmount === genericAmount ||
-    (Number.isFinite(currentAmount) && currentAmount !== genericAmount)
-  ) {
-    return false;
-  }
-
-  action.config.amount = expectedAmount;
-  action.config.operation =
-    mapping.operation || effect.winCounter.operation || "adjust";
-  return true;
-}
-
-function validatePack(pack) {
-  if (!pack?.id || !pack?.name || !Array.isArray(pack.effects) || !pack.connector) {
-    throw new Error("Pack de jeu invalide.");
-  }
-  const ids = new Set();
-  for (const effect of pack.effects) {
-    if (!effect.id || ids.has(effect.id)) throw new Error(`Effet invalide dans ${pack.id}`);
-    ids.add(effect.id);
-    if (pack.connector.type === "windows-input") {
-      normalizeWindowsInputSequence(effect.inputSequence);
-    }
-  }
-}
-
-function interpolateCommand(template, effect) {
-  return String(template || "").replace(
-    /\{\{([a-zA-Z][a-zA-Z0-9_]*)\}\}/g,
-    (placeholder, key) => {
-      if (Object.prototype.hasOwnProperty.call(effect.parameters || {}, key)) {
-        const value = Number(effect.parameters[key]);
-        return Number.isFinite(value) ? String(value) : "0";
-      }
-      if (key === "quantity") return String(effect.quantity);
-      if (key === "duration") return String(effect.duration);
-      if (key === "viewer") {
-        return safeString(effect.viewer, 40).replace(/[^\w-]/g, "_");
-      }
-      return placeholder;
-    }
-  );
-}
-
-function resolveEffectCode(effect, runtimeEffect) {
-  const variant = effect?.codeByParameter;
-  const parameterId = String(variant?.parameter || "");
-  if (parameterId) {
-    const rawValue = runtimeEffect?.parameters?.[parameterId];
-    const numericValue = Number(rawValue);
-    const key = Number.isFinite(numericValue)
-      ? String(Math.round(numericValue))
-      : String(rawValue || "");
-    const mapped = variant.values?.[key];
-    if (mapped) return String(mapped);
-    if (variant.mode === "nearest" && Number.isFinite(numericValue)) {
-      const nearest = Object.entries(variant.values || {})
-        .map(([value, code]) => ({
-          value: Number(value),
-          code: String(code || "")
-        }))
-        .filter(
-          (entry) =>
-            Number.isFinite(entry.value) &&
-            entry.code
-        )
-        .sort(
-          (left, right) =>
-            Math.abs(left.value - numericValue) -
-              Math.abs(right.value - numericValue) ||
-            left.value - right.value
-        )[0];
-      if (nearest) return nearest.code;
-    }
-  }
-  return String(effect?.code || effect?.id || "");
-}
-
-function rconPacket(requestId, type, body) {
-  const payload = Buffer.from(`${body}\0\0`, "utf8");
-  const packet = Buffer.alloc(12 + Buffer.byteLength(body, "utf8") + 2);
-  packet.writeInt32LE(payload.length + 8, 0);
-  packet.writeInt32LE(requestId, 4);
-  packet.writeInt32LE(type, 8);
-  payload.copy(packet, 12);
-  return packet;
-}
-
-function readRconPacket(buffer) {
-  if (buffer.length < 4) return null;
-  const length = buffer.readInt32LE(0);
-  if (buffer.length < length + 4) return null;
-  return {
-    length,
-    requestId: buffer.readInt32LE(4),
-    type: buffer.readInt32LE(8),
-    body: buffer.subarray(12, length + 2).toString("utf8"),
-    remainder: buffer.subarray(length + 4)
-  };
-}
-
-function rconRequest(connector, password, command) {
-  if (!password) return Promise.reject(new Error("Mot de passe RCON requis."));
-  return new Promise((resolve, reject) => {
-    const socket = net.createConnection({
-      host: connector.host || "127.0.0.1",
-      port: Number(connector.port || 25575),
-      timeout: Number(connector.timeoutMs || 5000)
-    });
-    let phase = "auth";
-    let buffer = Buffer.alloc(0);
-    const cleanup = () => socket.destroy();
-    socket.on("connect", () => socket.write(rconPacket(1, 3, password)));
-    socket.on("data", (chunk) => {
-      buffer = Buffer.concat([buffer, chunk]);
-      let packet;
-      while ((packet = readRconPacket(buffer))) {
-        buffer = packet.remainder;
-        if (phase === "auth") {
-          if (packet.requestId === -1) {
-            cleanup();
-            reject(new Error("Authentification RCON refusée."));
-            return;
-          }
-          if (packet.requestId === 1) {
-            phase = "command";
-            socket.write(rconPacket(2, 2, command));
-          }
-        } else if (packet.requestId === 2) {
-          cleanup();
-          resolve({ status: "success", message: packet.body });
-          return;
-        }
-      }
-    });
-    socket.on("timeout", () => {
-      cleanup();
-      reject(new Error("Délai RCON dépassé."));
-    });
-    socket.on("error", reject);
-  });
+  #sendUdp(connector, payload, options) { return this.transports.sendUdp(connector, payload, options); }
 }
 
 module.exports = {

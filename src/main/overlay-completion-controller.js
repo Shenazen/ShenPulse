@@ -1,6 +1,7 @@
 "use strict";
 
 const { renderValue } = require("./template");
+const { readState } = require("./state-projection");
 const { safeString } = require("./utils");
 
 class OverlayCompletionController {
@@ -27,7 +28,7 @@ class OverlayCompletionController {
   }
 
   async initialize() {
-    const runtime = this.store.getState().overlaySession || {};
+    const runtime = readState(this.store, ["overlaySession"]).overlaySession || {};
     const endsAt = Math.max(0, Number(runtime.timerEndsAt || 0));
     if (
       endsAt > this.now() &&
@@ -94,7 +95,7 @@ class OverlayCompletionController {
     originActionId = ""
   ) {
     const config =
-      this.store.getState().settings?.overlayConfigs?.likeGoal || {};
+      readState(this.store, ["settings.overlayConfigs.likeGoal"]).settings?.overlayConfigs?.likeGoal || {};
     if (!likeGoalThresholdCrossed(previousCurrent, current, config)) {
       return false;
     }
@@ -112,12 +113,12 @@ class OverlayCompletionController {
 
   async startConfiguredTimer(reason = "manual") {
     const config =
-      this.store.getState().settings?.overlayConfigs?.timer || {};
+      readState(this.store, ["settings.overlayConfigs.timer"]).settings?.overlayConfigs?.timer || {};
     if (
       config.timerAutoStart !== true ||
       Math.max(0, Number(config.seconds || 0)) <= 0
     ) {
-      this.#synchronizeTimer(this.store.getState().overlaySession || {});
+      this.#synchronizeTimer(readState(this.store, ["overlaySession"]).overlaySession || {});
       return false;
     }
     await this.actionRunner.run(
@@ -148,12 +149,12 @@ class OverlayCompletionController {
     if (shouldRestart) {
       return this.startConfiguredTimer("settings-change");
     }
-    this.#synchronizeTimer(this.store.getState().overlaySession || {});
+    this.#synchronizeTimer(readState(this.store, ["overlaySession"]).overlaySession || {});
     return false;
   }
 
   async checkTimerCompletion(expectedEndsAt = this.timerEndsAt) {
-    const runtime = this.store.getState().overlaySession || {};
+    const runtime = readState(this.store, ["overlaySession"]).overlaySession || {};
     const actualEndsAt = Math.max(0, Number(runtime.timerEndsAt || 0));
     if (
       !expectedEndsAt ||
@@ -169,7 +170,7 @@ class OverlayCompletionController {
 
     this.stop();
     this.#clearExpiredTimer(actualEndsAt);
-    const nextRuntime = this.store.getState().overlaySession || {};
+    const nextRuntime = readState(this.store, ["overlaySession"]).overlaySession || {};
     this.overlayServer.publish("timer", {
       operation: "set",
       seconds: 0,
@@ -234,7 +235,7 @@ class OverlayCompletionController {
     originActionId,
     completion
   ) {
-    const state = this.store.getState();
+    const state = readState(this.store, ["settings.overlayConfigs", "rules"]);
     const config = state.settings?.overlayConfigs?.[kind] || {};
     const actionId = safeString(config.completionActionId, 160);
     if (!actionId || actionId === originActionId) return false;

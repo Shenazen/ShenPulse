@@ -44,9 +44,10 @@ function liveEventRow(event) {
   const detail = event.type === "chat" ? event.data.message : event.type === "gift" ? `${event.data.giftName} ×${event.data.count}` : event.type;
   return `<div class="list-row">
     <span class="event-icon">${eventIconMarkup(event.type, {
+      ...event.data,
       giftName: event.data?.giftName
     })}</span>
-    <div><h4>${escapeHtml(event.user?.displayName || "Viewer")}</h4><p>${escapeHtml(detail)} · ${escapeHtml(event.source)}</p></div>
+    <div data-studio-user-content><h4>${escapeHtml(event.user?.displayName || "Viewer")}</h4><p>${escapeHtml(detail)} · ${escapeHtml(event.source)}</p></div>
     <span class="event-time">${formatTime(event.timestamp)}</span>
   </div>`;
 }
@@ -364,12 +365,33 @@ function renderTriggerActionChips(rule) {
   const actionIds = triggerActionIds(rule);
   const rows = triggerActionRows(rule);
   const missingCount = Math.max(0, actionIds.length - rows.length);
-  return `<div class="timer-action-chips trigger-action-chips">
-    ${rows.slice(0, 3).map(({ rule: ownerRule, action }) => `<span title="${escapeHtml(`${actionTypeLabel(action.type)} · ${actionDescription(action)}`)}">${escapeHtml(ownerRule.name)}</span>`).join("")}
+  return `<div class="automation-effect-chips trigger-action-chips">
+    ${rows.slice(0, 3).map(({ rule: ownerRule, action }) => renderAutomationActionChip(action, ownerRule.name)).join("")}
     ${rows.length > 3 ? `<span>＋ ${rows.length - 3}</span>` : ""}
     ${missingCount ? `<em>${missingCount} action${missingCount > 1 ? "s" : ""} manquante${missingCount > 1 ? "s" : ""}</em>` : ""}
     ${actionIds.length ? "" : "<em>Aucune action</em>"}
   </div>`;
+}
+
+/** Couleurs et libellés partagés entre les actions et leurs déclencheurs. */
+function renderAutomationActionChip(action, name = "") {
+  const type = canonicalActionType(action.type);
+  const audio = ["audio.play", "tts.speak"].includes(type);
+  const media = type === "overlay.media";
+  return renderAutomationEffectChip({
+    label: audio || media ? `${type === "tts.speak" ? "Lire" : "Play"} ${actionDescription(action)}` : name || actionDescription(action),
+    kind: type === "audio.play" ? "sound" : type === "tts.speak" ? "voice" : media ? "video" : actionTypeLabel(type),
+    tone: audio || media ? "amber" : type.startsWith("irl.") ? "green" : type.startsWith("game.") ? "cyan" : "violet",
+    icon: audio ? type === "tts.speak" ? "voice" : "sound" : media ? "play" : type.startsWith("overlay.") ? "overlay" : "action"
+  });
+}
+
+function automationActionCommands(rule, action, actionIndex) {
+  const attributes = `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
+  return `${renderAutomationIconButton({ action: "test-action", label: `Tester ${actionTypeLabel(action.type)} · ${rule.name}`, attributes, icon: "play", tone: "play" })}
+    ${renderAutomationIconButton({ action: "edit-action", label: "Modifier l’action", attributes, icon: "edit" })}
+    ${renderAutomationIconButton({ action: "duplicate-action", label: "Dupliquer l’action", attributes, icon: "copy", tone: "copy" })}
+    ${actionContextMenu(rule, action, actionIndex)}`;
 }
 
 function groupActionRows(rows) {
@@ -408,49 +430,17 @@ function renderActionWorkflows(groups) {
   if (!groups.length) {
     return `<div class="automation-empty">${emptyInline("Aucune action ne correspond à cette recherche.")}</div>`;
   }
-  return `<div class="automation-list actions-automation-list">
-    <div class="automation-list-head" aria-hidden="true"><span>ACTION</span><span>AUTOMATISATION</span><span>ÉTAT</span><span>COMMANDES</span></div>
-    ${groups.map(({ rule, rows }) => {
-      const cooldown = Math.round(Number(rule.cooldown?.globalMs || 0) / 1000);
-      if (rows.length === 1) {
-        const [{ action, actionIndex }] = rows;
-        const description = actionDescription(action);
-        return `<article class="action-workflow-card single-action-row">
-          <div class="action-workflow-identity"><strong>${escapeHtml(rule.name)}</strong><small><span class="type-pill">${escapeHtml(actionTypeLabel(action.type))}</span> ${escapeHtml(description)}</small></div>
-          <div class="action-workflow-automation">${triggerPill(rule)}<small>${cooldown ? `Cooldown · ${cooldown}s` : "Sans cooldown"}</small></div>
-          <label class="workflow-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
-          <div class="action-step-commands">
-            <button class="button small" title="Tester" data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶ Tester</button>
-            ${actionContextMenu(rule, action, actionIndex)}
-          </div>
-        </article>`;
-      }
-      return `<article class="action-workflow-card">
-        <header class="action-workflow-header">
-          <div class="action-workflow-identity"><strong>${escapeHtml(rule.name)}</strong><small>${rows.length} action${rows.length > 1 ? "s" : ""} dans ce scénario</small></div>
-          <div class="action-workflow-automation">${triggerPill(rule)}<small>${cooldown ? `Cooldown · ${cooldown}s` : "Sans cooldown"}</small></div>
-          <label class="workflow-state"><span class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></span><small>${rule.enabled ? "Actif" : "Inactif"}</small></label>
-          <span class="workflow-command-hint">${rows.length > 1 ? "Commandes par action" : "Commande"}</span>
-        </header>
-        <div class="action-workflow-steps">
-          ${rows.map(({ action, actionIndex }, index) => {
-            const description = actionDescription(action);
-            return `<div class="action-workflow-step">
-              <span class="action-step-index">${index + 1}</span>
-              <details class="action-step-details">
-                <summary><span class="type-pill">${escapeHtml(actionTypeLabel(action.type))}</span><strong>${escapeHtml(description)}</strong><span aria-hidden="true">⌄</span></summary>
-                <div><span>Type complet</span><strong>${escapeHtml(actionTypeLabel(action.type))}</strong><span>Détail</span><strong>${escapeHtml(description)}</strong><span>Déclenchement</span><strong>${escapeHtml(triggerLabel(rule))}</strong></div>
-              </details>
-              <div class="action-step-commands">
-                <button class="button small" title="Tester" data-action="test-action" data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}">▶ Tester</button>
-                ${actionContextMenu(rule, action, actionIndex)}
-              </div>
-            </div>`;
-          }).join("")}
-        </div>
-      </article>`;
-    }).join("")}
-  </div>`;
+  return renderAutomationTable({ key: "actions", label: "Actions du profil actif", className: "actions-automation-list", rows: groups.map(({ rule, rows }) => ({
+    id: rule.id,
+    name: rule.name,
+    trigger: `<div title="Cooldown · ${Math.round(Number(rule.cooldown?.globalMs || 0) / 1000)}s">${triggerPill(rule, { compact: true })}</div>`,
+    effects: rows.map(({ action }) => renderAutomationActionChip(action)).join(""),
+    status: renderAutomationStatus(rule),
+    date: rule.createdAt || "",
+    detail: rows.length > 1 ? `${rows.length} actions dans ce scénario` : "",
+    commands: rows.length === 1 ? automationActionCommands(rule, rows[0].action, rows[0].actionIndex)
+      : `<details class="automation-row-settings automation-scenario-tools"><summary>${automationTableIcon("play")} Outils des ${rows.length} actions</summary><div class="automation-row-settings-body">${rows.map(({ action, actionIndex }) => `<div class="automation-scenario-action"><strong data-studio-user-content>${escapeHtml(actionTypeLabel(action.type))}</strong><div class="automation-row-controls">${automationActionCommands(rule, action, actionIndex)}</div></div>`).join("")}</div></details>`
+  })) });
 }
 
 function renderTriggersPanel() {
@@ -464,21 +454,18 @@ function renderTriggersPanel() {
       <button class="button primary" data-action="add-trigger" ${flattenActions().length ? "" : "disabled"}>＋ Créer un déclencheur</button>
       <span class="table-subline">En mode aléatoire, ShenPulse tire obligatoirement le nombre indiqué parmi les actions sélectionnées.</span>
     </div>
-    ${rules.length ? `<div class="trigger-card-list">${rules.map((rule) => `
-      <article class="trigger-card">
-        <div class="trigger-card-state"><label class="switch"><input type="checkbox" data-action="toggle-rule" data-id="${escapeHtml(rule.id)}" ${rule.enabled ? "checked" : ""}><span></span></label></div>
-        <div class="trigger-card-copy"><strong>${escapeHtml(rule.name)}</strong><small>${Math.round(Number(rule.cooldown?.globalMs || 0) / 1000)}s de cooldown</small></div>
-        <div class="trigger-card-event">${triggerPill(rule)}</div>
-        <div><span class="trigger-execution-pill ${rule.actionSelection?.mode === "random" ? "random" : "all"}">${escapeHtml(triggerExecutionLabel(rule))}</span>${renderTriggerActionChips(rule)}</div>
-        <div class="trigger-card-commands">
-          <button class="button small" title="Tester le déclencheur" data-action="run-rule" data-id="${escapeHtml(rule.id)}">▶ Tester</button>
-          ${triggerContextMenu(rule)}
-        </div>
-      </article>`).join("")}</div>` : `<div class="automation-empty">${emptyInline("Aucun déclencheur. Sélectionnez plusieurs actions existantes pour créer votre premier scénario.")}</div>`}
+    ${rules.length ? renderAutomationTable({ key: "triggers", label: "Déclencheurs du profil actif", rows: rules.map((rule) => ({
+      id: rule.id, name: rule.name, trigger: triggerPill(rule, { compact: true }),
+      detail: `${Math.round(Number(rule.cooldown?.globalMs || 0) / 1000)}s de cooldown`,
+      effects: `${renderTriggerActionChips(rule)}<small class="automation-row-note">${escapeHtml(triggerExecutionLabel(rule))}</small>`,
+      status: renderAutomationStatus(rule), date: rule.createdAt || "",
+      commands: `${renderAutomationIconButton({ action: "run-rule", label: "Tester le déclencheur", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "play", tone: "play" })}${renderAutomationIconButton({ action: "edit-trigger", label: "Modifier le déclencheur", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "edit" })}${triggerContextMenu(rule)}`
+    })) }) : `<div class="automation-empty">${emptyInline("Aucun déclencheur. Sélectionnez plusieurs actions existantes pour créer votre premier scénario.")}</div>`}
   </section>`;
 }
 
 function renderActions() {
+  if (!["actions", "triggers", "timers", "advanced"].includes(actionsSection)) actionsSection = "actions";
   const allRows = flattenActions();
   const rows = allRows.filter(
     ({ action }) =>
@@ -500,17 +487,12 @@ function renderActions() {
     ["actions", "Actions", rows.length],
     ["triggers", "Déclencheurs", automaticTriggerRules().length],
     ["timers", "Timers", scheduledTimers().length],
-    ["simulator", "Simulateur", 8]
+    ["advanced", "Automatisations avancées", snapshot.state.rules.length]
   ];
   return `
     <div class="reference-page actions-workspace">
-      <section class="page-hero compact">
-        <div>
-          <span class="hero-chip">WORKFLOW SHENPULSE</span>
-          <h2>Actions & déclencheurs</h2>
-          <p>Créez vos actions, puis associez-les seules ou par groupes à un événement depuis l’onglet Déclencheurs.</p>
-        </div>
-      </section>
+      ${renderStudioHero("actions", "Actions & déclencheurs", "Un événement, une ou plusieurs réactions. Créez, associez et testez votre workflow au même endroit.")}
+      ${renderCreatorCapacity()}
       <nav class="module-tabs" aria-label="Sections des actions">
         ${tabs.map(([id, label, count]) => `<button class="${actionsSection === id ? "active" : ""}" data-action="set-actions-section" data-value="${id}">${label}<span>${count}</span></button>`).join("")}
       </nav>
@@ -529,33 +511,7 @@ function renderActions() {
         </section>
         ${renderMediaScreensPanel(allRows)}` : ""}
       ${actionsSection === "triggers" ? renderTriggersPanel() : ""}
-      ${actionsSection === "simulator" ? `
-        <section class="studio-panel panel-pink">
-          <header class="studio-panel-heading"><div><span class="panel-accent"></span><div><h3>Simulateur</h3><p>Injectez des déclencheurs de test dans le même pipeline que le live.</p></div></div><span class="badge success">LOCAL</span></header>
-          <div class="simulator-grid">
-            ${["gift","like","follow","chat","share","subscribe","join"].map((type) => `<button class="simulator-card ${simulatorType === type ? "active" : ""}" data-action="select-simulator-type" data-type="${type}">${eventIconMarkup(type)}<strong>${escapeHtml(EVENT_LABELS[type] || type)}</strong><small>${simulatorType === type ? "Sélectionné" : "Choisir"}</small></button>`).join("")}
-          </div>
-          <form id="simulator-form" class="simulator-form">
-            <input type="hidden" name="type" value="${escapeHtml(simulatorType)}">
-            <div>
-              <label class="field"><span>@ du viewer test</span><input name="username" value="test_viewer" required></label>
-              <label class="field"><span>Nom affiché</span><input name="nickname" value="Spectateur test" required></label>
-              <label class="field"><span>${simulatorType === "like" ? "Nombre de likes" : simulatorType === "gift" ? "Nombre de cadeaux" : "Quantité"}</span><input name="count" type="number" min="1" value="${simulatorType === "like" ? 25 : 1}" ${["gift", "like"].includes(simulatorType) ? "" : "disabled"}></label>
-              <label class="field"><span>Valeur (hors cadeau)</span><input name="value" type="number" min="0" value="5" ${simulatorType === "gift" ? "disabled" : ""}></label>
-              ${giftPickerField("giftName", "Cadeau", "Rose", simulatorType === "gift" ? "" : "disabled")}
-              <label class="field"><span>Message</span><input name="message" value="!help" ${simulatorType === "chat" ? "" : "disabled"}></label>
-            </div>
-            <div class="simulator-submit">
-              <span>Compte cible : <strong>${snapshot.state.settings.tiktok?.username ? `@${escapeHtml(snapshot.state.settings.tiktok.username)}` : "non configuré"}</strong></span>
-              <button class="button primary" type="submit">▶ Simuler le déclencheur ${escapeHtml(simulatorType)}</button>
-            </div>
-          </form>
-          <div class="simulator-presets">
-            <button class="button" data-action="preview-overlay" data-id="timer">＋ 30 secondes</button>
-            <button class="button" data-action="preview-overlay" data-id="wheel">Lancer la roue</button>
-            <button class="button" data-action="preview-sound" data-id="kenney:confirmation_001">Tester un son</button>
-          </div>
-        </section>` : ""}
       ${actionsSection === "timers" ? renderTimersPanel() : ""}
+      ${actionsSection === "advanced" ? `<p class="automation-advanced-note">Les automatisations avancées combinent plusieurs conditions et actions. Elles complètent les interactions IRL, qui pilotent vos appareils connectés.</p>${renderRules()}` : ""}
     </div>`;
 }

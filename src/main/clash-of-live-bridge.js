@@ -41,6 +41,9 @@ class ClashOfLiveBridge {
     let lastBody = null;
 
     for (let index = 0; index < quantity; index += 1) {
+      // Une quantité est un lot de requêtes, pas un droit permanent : les
+      // effets restants sont annulés après expiration ou changement de profil.
+      if (typeof context.assertGameAccess === "function") context.assertGameAccess();
       lastResponse = await this.#get(
         buildClashOfLiveActionUrl(connector, payload, context),
         connector

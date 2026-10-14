@@ -1,28 +1,6 @@
 "use strict";
 
-function commerceExpiryMs(entry) {
-  const numeric = Number(entry?.expiresAtMs || 0);
-  if (numeric > 0) return numeric;
-  const parsed = Date.parse(
-    String(entry?.expiresAt || entry?.renewalDate || "")
-  );
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function hasActiveGameSubscription(state, nowMs = Date.now()) {
-  const subscription = state?.commerce?.subscription || {};
-  if (!["pro", "premium"].includes(subscription.tier)) return false;
-  if (
-    subscription.source === "trial" ||
-    subscription.status === "trial"
-  ) {
-    return (
-      ["active", "trial"].includes(subscription.status) &&
-      commerceExpiryMs(subscription) > nowMs
-    );
-  }
-  return ["active", "paid"].includes(subscription.status);
-}
+const { commerceExpiryMs, hasProAccess: hasActiveGameSubscription } = require("../shared/pro-access");
 
 function gameEntitlement(state, pack, nowMs = Date.now()) {
   if (!pack) return null;

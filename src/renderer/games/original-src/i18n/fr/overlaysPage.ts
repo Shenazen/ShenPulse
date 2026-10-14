@@ -1,0 +1,31 @@
+/** Traductions fr du domaine « overlaysPage ». Les clés publiques restent stables. */
+export default {
+      intro1: 'Ici tu retrouves les overlays généraux pour OBS (source navigateur) et LIVE Studio (lien).',
+      intro2: 'Chaque fonctionnalité est séparée en widget indépendant pour pouvoir placer, redimensionner et régler chaque élément librement.',
+      note: 'Note : pour changer les couleurs, les polices, les animations ou le comportement, utilise le bouton Personnaliser de chaque overlay.',
+      setupWarning: 'Lance le Setup et renseigne ton pseudo TikTok pour activer les URLs et la détection live.',
+      title: "Galerie d'overlays",
+      myActions: {
+        title: 'My Actions',
+        subtitle: 'L’écran de sortie des actions visuelles.',
+        description: 'My Actions affiche dans OBS ou TikTok LIVE Studio les animations, images, vidéos et alertes lancées depuis Déclencheurs / actions.',
+        screenHelp: 'Chaque écran possède sa propre URL. Sélectionne l’écran voulu, copie son lien, puis ajoute-le comme source navigateur dans OBS ou LIVE Studio.',
+        screenSelectLabel: 'Écran',
+        queueLabel: 'File max. {count}',
+        previewAria: 'Aperçu exemple de My Actions',
+        previewLabel: 'Données exemple',
+        sampleUser: 'ShenPulse',
+        sampleMessage: 'merci {viewer} pour le follow !',
+        howTitle: 'À quoi ça sert ?',
+        how1: 'Cet overlay est l’écran de sortie des actions visuelles : quand un event, une commande, un timer ou un test lance une action, la source My Actions reçoit l’ordre et affiche le média prévu.',
+        how2: 'Chaque écran possède sa propre URL. Choisis l’écran dans le réglage de l’action, puis ajoute l’URL correspondante dans OBS ou TikTok LIVE Studio.',
+        how3: 'Les sons, TTS, webhooks et effets locaux partent même sans affichage visuel, mais les animations, images, vidéos et alertes ont besoin de cet overlay pour être visibles en live.',
+        footnote: 'Choisis le même écran dans le réglage de ton action pour décider où l’animation apparaîtra. Les noms d’écrans et la taille de file se règlent dans Déclencheurs / actions.',
+        noVisualAction: 'Crée une action avec animation, image, vidéo ou alerte pour tester My Actions.',
+        openActions: 'Configurer',
+        statusOffline: 'Aucune source ouverte',
+        statusOnline: '{count}/{total} source(s) ouverte(s)',
+        testAction: 'Tester {name}',
+      },
+    };
+

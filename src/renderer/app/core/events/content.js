@@ -9,7 +9,7 @@ async function updateToggle(collection, id, enabled) {
   acceptSnapshot(await api.getSnapshot());
   if (
     collection === "rules" &&
-    ["actions", "sounds"].includes(currentPage) &&
+    ["actions", "sounds", "voice", "music"].includes(currentPage) &&
     !(currentPage === "actions" && onlyEnabledActions && !enabled)
   ) {
     content
@@ -36,17 +36,7 @@ async function updateGameInteractionToggle(packId, rule, enabled) {
 }
 
 async function toggleTikTok() {
-  const tiktok = tiktokMeta();
-  if (!tiktok.username) {
-    openTikTokEditor();
-    return;
-  }
-  await perform(async () => {
-    snapshot = tiktok.connected
-      ? await api.stopTikTok()
-      : await api.startTikTok();
-    render();
-  }, tiktok.connected ? "Détection TikTok arrêtée" : "Surveillance LIVE démarrée");
+  return handleCreatorTikTokConnection();
 }
 
 async function toggleSession() {
@@ -63,6 +53,10 @@ async function toggleSession() {
 }
 
 content.addEventListener("input", (event) => {
+  if (event.target.matches("[data-creator-user-search]")) {
+    filterCreatorUsers(event.target);
+    return;
+  }
   const soundVolume = event.target.closest("[data-sound-volume]");
   if (soundVolume) {
     const value = Math.round(
@@ -133,6 +127,8 @@ content.addEventListener("input", (event) => {
 });
 
 content.addEventListener("change", (event) => {
+  if (handleCreatorAudienceChange(event.target)) return;
+  if (handleCreatorMusicChange(event.target)) return;
   if (
     event.target.matches(
       "[data-admin-trial-game-option], [data-admin-trial-games-toggle]"
@@ -319,7 +315,10 @@ dialogBody.addEventListener("change", (event) => {
     );
   }
   if (event.target.matches('[name="liveScreen"]')) {
-    syncLiveAudioScreenDialog();
+    syncActiveAudioScreenDialog();
+  }
+  if (event.target.matches("[data-action-match-name]")) {
+    syncActionMatchVariants();
   }
   if (
     event.target.matches('[name="wheelSegmentActionId"]') &&
@@ -384,8 +383,14 @@ dialogBody.addEventListener("change", (event) => {
 });
 
 content.addEventListener("click", (event) => {
+  if (event.target.closest("[data-automation-sort]")) {
+    handleAutomationTableSort(event);
+    return;
+  }
+  if (handleDashboardChartClick(event)) return;
   const navigate = event.target.closest("[data-navigate]");
   if (navigate) {
+    if (showProNavigationOffers(navigate.dataset.navigate)) return;
     if (!canNavigateTo(navigate.dataset.navigate)) {
       return toast(
         "Page indisponible",
@@ -396,7 +401,7 @@ content.addEventListener("click", (event) => {
     currentPage = navigate.dataset.navigate;
     render();
     content.scrollTop = 0;
-    if (currentPage === "sounds" && isAccountAuthenticated()) {
+    if (["sounds", "music"].includes(currentPage) && isAccountAuthenticated()) {
       refreshSpotifyStatus();
     }
     if (currentPage === "admin" && !adminDashboard) {
@@ -409,8 +414,9 @@ content.addEventListener("click", (event) => {
   }
   const action = event.target.closest("[data-action]");
   if (
+    (action?.dataset.action?.startsWith("matches-automation-") && action.matches('select, input[type="checkbox"]')) ||
     (
-      ["set-audio-output", "irl-toggle"].includes(action?.dataset.action) &&
+      ["set-audio-output", "irl-toggle", "toggle-rule"].includes(action?.dataset.action) &&
       action.matches('input[type="checkbox"]')
     ) ||
     (
@@ -424,6 +430,10 @@ content.addEventListener("click", (event) => {
 });
 
 content.addEventListener("change", (event) => {
+  if (event.target.matches("[data-automation-select], [data-automation-select-all]")) {
+    handleAutomationTableSelection(event);
+    return;
+  }
   const action = event.target.closest("[data-action]");
   if (action) handleAction(action).catch(() => {});
 });
@@ -478,6 +488,7 @@ document.body.addEventListener("click", (event) => {
   }
   const navigate = event.target.closest("[data-navigate]");
   if (navigate && !content.contains(navigate)) {
+    if (showProNavigationOffers(navigate.dataset.navigate)) return;
     if (!canNavigateTo(navigate.dataset.navigate)) {
       return toast(
         "Page indisponible",
@@ -488,7 +499,7 @@ document.body.addEventListener("click", (event) => {
     currentPage = navigate.dataset.navigate;
     render();
     content.scrollTop = 0;
-    if (currentPage === "sounds" && isAccountAuthenticated()) {
+    if (["sounds", "music"].includes(currentPage) && isAccountAuthenticated()) {
       refreshSpotifyStatus();
     }
     if (currentPage === "admin" && !adminDashboard) {

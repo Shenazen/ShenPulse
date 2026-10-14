@@ -1,0 +1,37 @@
+"use strict";
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const path = require("node:path");
+const { createHash } = require("node:crypto");
+const { loadRendererModule } = require("./helpers/three-renderer-traces");
+const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
+const minecraft = require("../src/main/minecraft-game-catalog");
+const { GAME_INSTALLERS, installerForGame } = require("../src/main/game-installer-manifest");
+const digest = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+
+// Références capturées avant extraction ; une évolution volontaire demande une revue de leur mise à jour.
+test("le découpage garde exactement les catalogues de jeux et Minecraft", () => {
+  const catalog = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
+  assert.equal(catalog.length, 49);
+  assert.equal(digest(catalog), "321abf4ad034de1611c0811daafadc082da990d4ca2f37766bc9eb40d216aba1");
+  assert.equal(digest(minecraft), "2e91e74d5a5c4715d75052353ab3ceb1d395ed7c263981995581b3bc6aa63315");
+  const next = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
+  catalog[0].name = "test isolé";
+  assert.notEqual(next[0].name, catalog[0].name);
+});
+
+test("le manifeste garde versions, URLs, empreintes, ordre et gel de son API", () => {
+  assert.equal(digest(require("../src/main/game-installer-manifest")), "599221e57439434c9502c6ea512329aea4eebca3e603412957b770b6cc868092");
+  assert.ok(Object.isFrozen(GAME_INSTALLERS));
+  for (const [id, manifest] of Object.entries(GAME_INSTALLERS)) assert.equal(installerForGame(id), manifest);
+  assert.equal(installerForGame("inconnu"), null);
+});
+
+test("les dictionnaires FR/EN gardent toutes leurs clés et valeurs après extraction", () => {
+  const file = path.join(__dirname, "..", "src/renderer/games/original-src/i18n/messages.ts");
+  const { messages } = loadRendererModule(file).api;
+  assert.equal(digest(messages), "e1548879664a116085c306c3719fe1682263e1edeaccce4e370203c64abac06d");
+  assert.deepEqual(Object.keys(messages), ["fr", "en"]);
+  assert.equal(Object.keys(messages.fr).length, 30);
+});

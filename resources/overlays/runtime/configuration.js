@@ -8,16 +8,25 @@
 
 const parameters = new URLSearchParams(location.search);
 const matchSourceRoute = /^\/match\/(\d{12})\/([A-Za-z0-9_-]{32,128})\/?$/i.exec(location.pathname);
+const localMatchBridgeRoute = /^\/match-bridge\/(\d{12})\/([A-Za-z0-9_-]{24,128})\/?$/i.exec(location.pathname);
 const publicMatchSourceRoute = /^\/m\/(\d{12})\/([A-Za-z0-9_-]{24,128})\/?$/i.exec(location.pathname);
-const matchSourceBasePath = matchSourceRoute ? `/match/${matchSourceRoute[1]}/${matchSourceRoute[2]}` : "";
+const matchSourceBasePath = localMatchBridgeRoute
+  ? `/match-bridge/${localMatchBridgeRoute[1]}/${localMatchBridgeRoute[2]}`
+  : matchSourceRoute ? `/match/${matchSourceRoute[1]}/${matchSourceRoute[2]}` : "";
 const publicMatchAccountNumber = publicMatchSourceRoute?.[1] || "";
 const publicMatchChannel = publicMatchSourceRoute?.[2] || "";
 const isPublicMatchSource = Boolean(publicMatchSourceRoute);
+const publicMatchWidgetRequested = isPublicMatchSource && parameters.has("widget");
+const isPublicMatchWidgetSource = publicMatchWidgetRequested &&
+  parameters.getAll("widget").length === 1 &&
+  ["wins", "starDonor", "topDonor", "donors", "timer", "victory", "scoreboard"]
+    .includes(parameters.get("widget"));
 const overlayCatalog = globalThis.ShenPulseOverlayCatalog;
 if (!overlayCatalog) {
   throw new Error("Le catalogue commun des overlays n'est pas chargé.");
 }
-const viewName = matchSourceRoute || isPublicMatchSource ? "match"
+const viewName = publicMatchWidgetRequested ? "match-widget"
+  : matchSourceRoute || localMatchBridgeRoute || isPublicMatchSource ? "match"
   : parameters.get("view") || "alerts";
 const token = parameters.get("token") || "";
 const relayChannel = publicMatchChannel || parameters.get("channel") || "";
@@ -32,11 +41,12 @@ const previewMode = parameters.get("preview") || "";
 const isStaticPreview = previewMode === "static";
 const isCatalogPreview =
   isStaticPreview || previewMode === "animated";
+const isSceneChild = parameters.get("embedded") === "scene" && window.parent !== window;
 let themeName = parameters.get("theme") || "classic";
 let jarModel = parameters.get("model") || "fantasy";
 let wheelDesign = parameters.get("design") || "classic";
 const leaderboardKind = parameters.get("kind") === "tappers" ? "tappers" : "donors";
-const matchName = matchSourceRoute || isPublicMatchSource
+const matchName = matchSourceRoute || localMatchBridgeRoute || isPublicMatchSource
   ? "player"
   : parameters.get("match") || "x2";
 let matchVariant = parameters.get("variant") || "tikcontrol";
@@ -128,7 +138,9 @@ let wheelRuntimeSettings = {
   resultDuration: Number(parameters.get("resultDuration") || 4)
 };
 const activeView = document.getElementById(`${viewName}-view`) || document.getElementById("alerts-view");
-activeView.classList.add("active"); configureNativeOverlayCanvas(viewName, activeView, overlayCatalog); configureLikeGoalViewport(viewName, activeView);
+activeView.classList.add("active");
+if (viewName !== "scene") configureNativeOverlayCanvas(viewName, activeView, overlayCatalog);
+configureLikeGoalViewport(viewName, activeView);
 document.documentElement.dataset.theme = themeName;
 document.documentElement.dataset.jarModel = jarModel;
 document.documentElement.dataset.wheelDesign = wheelDesign;
@@ -254,7 +266,6 @@ const MATCH_VIDEO_LABELS = Object.freeze(
   )
 );
 const MATCH_VIDEO_NAMES = new Set(Object.keys(MATCH_VIDEO_LABELS));
-const MATCH_VIDEO_VARIANTS = new Set(["tikcontrol", "gladiador"]);
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -665,6 +676,10 @@ function updateOverlayConfiguration(
 }
 
 function applyRelayConfiguration(configurations = {}) {
+  if (viewName === "scene" && typeof synchronizeSceneConfigurations === "function") {
+    synchronizeSceneConfigurations(configurations);
+    return;
+  }
   const overlayKey = activeOverlayConfigKey();
   const configuration = configurations?.[overlayKey];
   if (!overlayKey || !configuration || typeof configuration !== "object") {

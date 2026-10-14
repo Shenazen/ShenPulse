@@ -1,5 +1,7 @@
 "use strict";
 
+const { readState } = require("./state-projection");
+
 const crypto = require("node:crypto");
 const { id } = require("./utils");
 
@@ -17,7 +19,7 @@ class ObsClient {
 
   async connect() {
     await this.disconnect();
-    const settings = this.store.getState().settings.obs;
+    const settings = readState(this.store, ["settings.obs"]).settings.obs;
     const password = settings.passwordSecretId
       ? this.store.getSecret(settings.passwordSecretId)
       : "";

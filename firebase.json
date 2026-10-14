@@ -9,7 +9,8 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "media/video/**"
+      "media/video/**/*.webm",
+      "media/video/**/*.mp4"
     ],
     "headers": [
       {

@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -10,7 +12,7 @@ const packageJson = JSON.parse(
 );
 
 test("embarque l'identité Microsoft Store réservée", () => {
-  assert.equal(packageJson.version, "1.0.16");
+  assert.equal(packageJson.version, "2.0.0");
   assert.equal(packageJson.build.buildVersion, undefined);
   assert.equal(packageJson.build.buildNumber, undefined);
   assert.equal(packageJson.build.appx.setBuildNumber, false);
@@ -50,10 +52,7 @@ test("fabrique un véritable installateur Windows versionné", () => {
 });
 
 test("marque aussi l’exécutable de développement avec l’icône ShenPulse", () => {
-  const main = fs.readFileSync(
-    path.join(__dirname, "..", "src", "main", "main.js"),
-    "utf8"
-  );
+  const main = readMainSource("main.js");
   const branding = fs.readFileSync(
     path.join(
       __dirname,
@@ -78,10 +77,7 @@ test("marque aussi l’exécutable de développement avec l’icône ShenPulse",
 });
 
 test("conserve un renderer Electron isolé", () => {
-  const main = fs.readFileSync(
-    path.join(__dirname, "..", "src", "main", "main.js"),
-    "utf8"
-  );
+  const main = readMainSource("main.js");
   assert.match(main, /contextIsolation:\s*true/);
   assert.match(main, /nodeIntegration:\s*false/);
   assert.match(main, /sandbox:\s*true/);

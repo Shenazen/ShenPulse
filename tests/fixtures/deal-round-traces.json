@@ -1,0 +1,699 @@
+{
+  "stages": [
+    {
+      "phase": "select",
+      "round": 0,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          false,
+          false
+        ],
+        [
+          2,
+          50,
+          false,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "opening",
+      "round": 0,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          false,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "opening",
+      "round": 0,
+      "target": 1,
+      "busy": true,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          false,
+          false,
+          true
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "bankerCall",
+      "round": 0,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          true,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "banker",
+      "round": 0,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          true,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "opening",
+      "round": 1,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          true,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "finalChoice",
+      "round": 1,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          true,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          true,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "result",
+      "round": 1,
+      "target": 1,
+      "busy": false,
+      "final": 500,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          true,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          true,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          true,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          true,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "lobby",
+      "round": 1,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 0,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          false,
+          false
+        ],
+        [
+          2,
+          50,
+          false,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "result",
+      "round": 0,
+      "target": 1,
+      "busy": false,
+      "final": 10,
+      "accepted": 615,
+      "bonus": 15,
+      "boxes": [
+        [
+          1,
+          10,
+          true,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          true,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          true,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          true,
+          false,
+          false
+        ]
+      ]
+    },
+    {
+      "phase": "opening",
+      "round": 1,
+      "target": 1,
+      "busy": false,
+      "final": null,
+      "accepted": null,
+      "bonus": 75,
+      "boxes": [
+        [
+          1,
+          10,
+          false,
+          true,
+          false
+        ],
+        [
+          2,
+          50,
+          true,
+          false,
+          false
+        ],
+        [
+          3,
+          100,
+          false,
+          false,
+          false
+        ],
+        [
+          4,
+          500,
+          false,
+          false,
+          false
+        ]
+      ]
+    }
+  ],
+  "calls": [
+    "activate-music",
+    [
+      "sound",
+      "startPlayer"
+    ],
+    "reset-music",
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.playerJoins:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":1}\"}",
+      "join"
+    ],
+    [
+      "burst",
+      "cyan"
+    ],
+    "activate-music",
+    [
+      "sound",
+      "selectBox"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.keepBox:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":1}\",\"box\":1}",
+      "host"
+    ],
+    [
+      "gift",
+      "playableGames.dealOrNoDeal.feed.box:{\"box\":1}",
+      "gold"
+    ],
+    "activate-music",
+    [
+      "sound",
+      "caseOpening"
+    ],
+    [
+      "sound",
+      "caseLow"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.boxOpened:{\"box\":2,\"amount\":\"reward:100\"}",
+      "open"
+    ],
+    [
+      "gift",
+      "reward:100",
+      "open"
+    ],
+    [
+      "burst",
+      "gold"
+    ],
+    [
+      "sound",
+      "bankerCall"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.bankerCall:{}",
+      "offer"
+    ],
+    [
+      "gift",
+      "playableGames.dealOrNoDeal.banker:{}",
+      "offer"
+    ],
+    "activate-music",
+    [
+      "feed",
+      "bank-offer",
+      "offer"
+    ],
+    [
+      "gift",
+      "playableGames.dealOrNoDeal.banker:{}",
+      "offer"
+    ],
+    [
+      "sound",
+      "offerReveal"
+    ],
+    "activate-music",
+    [
+      "sound",
+      "rejectDeal"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.playerLeavesOffer:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":1}\"}",
+      "host"
+    ],
+    [
+      "burst",
+      "cyan",
+      18
+    ],
+    "activate-music",
+    [
+      "sound",
+      "caseOpening"
+    ],
+    [
+      "sound",
+      "caseHigh"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.boxOpened:{\"box\":3,\"amount\":\"reward:200\"}",
+      "danger"
+    ],
+    [
+      "gift",
+      "reward:200",
+      "danger"
+    ],
+    [
+      "burst",
+      "red"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.finalDecision:{}",
+      "host"
+    ],
+    "activate-music",
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.playerName:{\"count\":1}: 1000",
+      "join"
+    ],
+    [
+      "music",
+      "heroicTension",
+      12000
+    ],
+    [
+      "sound",
+      "finalReveal",
+      true
+    ],
+    [
+      "burst",
+      "gold",
+      60
+    ],
+    "activate-music",
+    [
+      "sound",
+      "back"
+    ],
+    "reset-music",
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.backToWaiting:{}",
+      "host"
+    ],
+    "activate-music",
+    [
+      "sound",
+      "startPlayer"
+    ],
+    "reset-music",
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.playerJoins:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":2}\"}",
+      "join"
+    ],
+    [
+      "burst",
+      "cyan"
+    ],
+    [
+      "sound",
+      "selectBox"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.keepBox:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":2}\",\"box\":1}",
+      "host"
+    ],
+    [
+      "gift",
+      "playableGames.dealOrNoDeal.feed.box:{\"box\":1}",
+      "gold"
+    ],
+    "activate-music",
+    [
+      "sound",
+      "acceptDeal"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.playerTakes:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":2}\",\"amount\":\"615\"}",
+      "offer"
+    ],
+    [
+      "burst",
+      "gold",
+      44
+    ],
+    "activate-music",
+    [
+      "sound",
+      "startPlayer"
+    ],
+    "reset-music",
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.playerJoins:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":3}\"}",
+      "join"
+    ],
+    [
+      "burst",
+      "cyan"
+    ],
+    [
+      "sound",
+      "selectBox"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.keepBox:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":3}\",\"box\":1}",
+      "host"
+    ],
+    [
+      "gift",
+      "playableGames.dealOrNoDeal.feed.box:{\"box\":1}",
+      "gold"
+    ],
+    [
+      "sound",
+      "acceptDeal"
+    ],
+    [
+      "sound",
+      "caseLow"
+    ],
+    [
+      "feed",
+      "playableGames.dealOrNoDeal.feed.playerBuysBox:{\"player\":\"playableGames.dealOrNoDeal.feed.playerName:{\\\"count\\\":3}\",\"box\":2,\"amount\":\"reward:100\",\"price\":\"25\"}",
+      "open"
+    ],
+    [
+      "gift",
+      "reward:100",
+      "open"
+    ],
+    [
+      "burst",
+      "gold"
+    ],
+    [
+      "burst",
+      "cyan",
+      18
+    ]
+  ],
+  "player": {
+    "id": 9,
+    "name": "playableGames.dealOrNoDeal.feed.playerName:{\"count\":3}",
+    "diamonds": 25,
+    "payoutMultiplier": 2
+  },
+  "payout": 75
+}

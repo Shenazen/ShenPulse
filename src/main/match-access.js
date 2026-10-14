@@ -12,7 +12,7 @@ const MATCH_PUBLIC_SOURCE_PATH_PATTERN = new RegExp(
   `^/m/(\\d{${MATCH_ACCOUNT_DIGITS}})/([A-Za-z0-9_-]{24,128})/?$`
 );
 const MATCH_BRIDGE_PATH_PATTERN = new RegExp(
-  `^/match-bridge/(\\d{${MATCH_ACCOUNT_DIGITS}})/([A-Za-z0-9_-]{24,128})/(ticket)/?$`
+  `^/match-bridge/(\\d{${MATCH_ACCOUNT_DIGITS}})/([A-Za-z0-9_-]{24,128})(?:/(state|events|ticket))?/?$`
 );
 
 /**
@@ -90,7 +90,7 @@ function parseMatchBridgePath(pathname) {
   return {
     accountNumber: match[1],
     channelId: match[2],
-    resource: match[3]
+    resource: match[3] || "document"
   };
 }
 

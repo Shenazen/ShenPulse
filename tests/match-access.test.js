@@ -41,6 +41,14 @@ test("la source Match publique reste courte et sépare le compte du canal", () =
     { accountNumber, channelId, resource: "ticket" }
   );
   assert.equal(parseMatchPublicSourcePath("/m/invalide"), null);
+  for (const resource of ["document", "state", "events", "ticket"]) {
+    const suffix = resource === "document" ? "" : `/${resource}`;
+    assert.deepEqual(parseMatchBridgePath(`/match-bridge/${accountNumber}/${channelId}${suffix}`), {
+      accountNumber, channelId, resource
+    });
+  }
+  assert.equal(parseMatchBridgePath(`/match-bridge/${accountNumber}/${channelId}/private`), null);
+  assert.equal(parseMatchBridgePath(`/match-bridge/${accountNumber}/${channelId}/ticket/extra`), null);
 });
 
 test("la source Match combine numéro public et clé révocable", () => {

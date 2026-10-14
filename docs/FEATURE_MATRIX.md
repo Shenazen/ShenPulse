@@ -15,7 +15,9 @@ compatibilité théorique comme une intégration testée.
 | Voix | Règles TTS pour cadeau, like, follow, chat, partage, abonnement, raid et arrivée ; langue, voix, vitesse, hauteur, volume |
 | Catalogues | 122 sons locaux partagés et plus de 3 000 cadeaux TikTok dédupliqués, recherchables depuis le simulateur et les éditeurs |
 | Overlays | Alertes, objectifs, activité, effets de jeu, timer, roue ; URLs OBS/LIVE Studio |
-| Chatbot | Commandes, réponses, abonnés uniquement, cooldown |
+| Commandes | Commandes `!` : musique, actions existantes et overlays ; rôles et cooldowns ; anciens messages conservés uniquement dans les données, masqués et inactifs |
+| Accès Pro | Jeux vidéo, Interactions IRL, Commandes et Matchs : Pro/Premium actif, essai valide ou accès offert ; IRL non réservé au propriétaire, appareils/configurations isolés par compte |
+| Matchs TikTok | Tableau de bord des batailles reçues, manches, contributions, widgets locaux protégés et réactions configurables ; aucune réaction active par défaut, cartes de match uniquement en test manuel avec le connecteur actuel |
 | Streaming | OBS WebSocket 5, webhooks HTTP, relais WebSocket |
 | Musique | Connexion Spotify OAuth PKCE, état du compte/appareil, lecture, pause, suivant, volume, recherche et mise en file depuis les actions |
 | Jeux | Packs JSON, test manuel, TCP JSON/NUL, WebSocket, HTTP, UDP, Minecraft RCON |

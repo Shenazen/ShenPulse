@@ -7,6 +7,49 @@ const listeners = new Map();
 
 contextBridge.exposeInMainWorld("shenPulse", {
   getSnapshot: () => invoke("snapshot:get"),
+  liveDirectoryConfigure: (options) => invoke("live-directory:configure", options),
+  chatbot: {
+    transportStatus: () => invoke("chatbot:transport-status"),
+    configureTransport: (options) => invoke("chatbot:transport-configure", options)
+  },
+  matches: {
+    status: () => invoke("matches:status"),
+    saveConfig: (config, scope) => invoke("matches:config-save", config, scope),
+    saveAutomation: (automation, scope) => invoke("matches:automation-save", automation, scope),
+    removeAutomation: (id, scope) => invoke("matches:automation-remove", id, scope),
+    testAutomation: (id, scope) => invoke("matches:automation-test", id, scope),
+    testWidget: (key, scope) => invoke("matches:widget-test", key, scope),
+    adjustWins: (options, scope) => invoke("matches:wins-adjust", options, scope),
+    resetWins: (scope) => invoke("matches:wins-reset", scope),
+    resetContributors: (scope) => invoke("matches:contributors-reset", scope)
+  },
+  users: {
+    snapshot: (options) => invoke("users:snapshot", options),
+    setBlocked: (id, blocked) => invoke("users:block", id, blocked),
+    setBlockedList: (usernames, options) => invoke("users:block-list", usernames, options),
+    unblock: (options, expectedUid) => invoke("users:unblock", options, expectedUid),
+    remove: (id) => invoke("users:remove", id),
+    cleanup: (options) => invoke("users:cleanup", options),
+    clear: (options) => invoke("users:clear", options),
+    import: (data) => invoke("users:import", data),
+    export: (options) => invoke("users:export", options),
+    merge: (options) => invoke("users:merge", options)
+  },
+  kick: {
+    status: () => invoke("kick:status"),
+    configure: (options) => invoke("kick:configure", options),
+    connect: () => invoke("kick:connect"),
+    disconnect: () => invoke("kick:disconnect")
+  },
+  controllers: {
+    status: () => invoke("controllers:status"),
+    pair: () => invoke("controllers:pair"),
+    install: () => invoke("controllers:install"),
+    revoke: (id) => invoke("controllers:revoke", id),
+    saveMapping: (mapping) => invoke("controllers:mapping-save", mapping),
+    removeMapping: (id) => invoke("controllers:mapping-remove", id),
+    execute: (options) => invoke("controllers:execute", options)
+  },
   updates: {
     check: (options) => invoke("updates:check", options),
     install: () => invoke("updates:install")
@@ -71,8 +114,6 @@ contextBridge.exposeInMainWorld("shenPulse", {
   restartServers: () => invoke("server:restart"),
   rotatePublicOverlayUrls: () => invoke("overlay:public-urls-rotate"),
   rotateMatchOverlayUrl: () => invoke("overlay:match-url-rotate"),
-  prepareMatchVideo: (options) =>
-    invoke("overlay:match-video-prepare", options),
   upsert: (collection, item) => invoke("entity:upsert", collection, item),
   remove: (collection, id) => invoke("entity:remove", collection, id),
   saveConnection: (connection) => invoke("connection:save", connection),
@@ -134,6 +175,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
       "state-changed",
       "runtime-state-changed",
       "live-event",
+      "users-changed",
+      "song-requests-changed",
       "playback",
       "game-effect",
       "deal-host-state",
@@ -142,7 +185,10 @@ contextBridge.exposeInMainWorld("shenPulse", {
       "game-install-progress",
       "game-round-timeout",
       "overlay-completion-fired",
-      "public-overlay-relay-status"
+      "public-overlay-relay-status",
+      "live-directory-status",
+      "chat-transport-changed",
+      "renderer-visibility"
     ]);
     if (!allowed.has(channel) || typeof callback !== "function") return () => {};
     const key = `${channel}:${Math.random()}`;

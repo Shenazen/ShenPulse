@@ -488,32 +488,37 @@ class WindowsInputService {
     return this.execute("status", normalizedProcess, []);
   }
 
-  async activate(processName) {
+  async activate(processName, { assertAccess = () => {} } = {}) {
     const normalizedProcess = normalizeProcessName(processName);
-    return this.#enqueue(normalizedProcess, () =>
-      this.execute("activate", normalizedProcess, [])
-    );
+    assertAccess();
+    return this.#enqueue(normalizedProcess, () => {
+      assertAccess();
+      return this.execute("activate", normalizedProcess, []);
+    });
   }
 
   async play(
     processName,
     sequence,
     keyLayout = "wasd",
-    keyboardInputMode = "virtual-key"
+    keyboardInputMode = "virtual-key",
+    { assertAccess = () => {} } = {}
   ) {
     const normalizedProcess = normalizeProcessName(processName);
     const events = applyKeyboardLayout(
       normalizeWindowsInputSequence(sequence),
       keyLayout
     );
-    return this.#enqueue(normalizedProcess, () =>
-      this.execute(
+    assertAccess();
+    return this.#enqueue(normalizedProcess, () => {
+      assertAccess();
+      return this.execute(
         "play",
         normalizedProcess,
         events,
         normalizeKeyboardInputMode(keyboardInputMode)
-      )
-    );
+      );
+    });
   }
 
   async #enqueue(normalizedProcess, operation) {

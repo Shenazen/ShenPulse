@@ -1,0 +1,88 @@
+@media (max-width: 360px) {
+  .theme-galactic-palace .game-hud {
+    right: 6px;
+    left: 6px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .theme-galactic-palace .brand-lockup {
+    max-width: 118px;
+    padding-right: 6px;
+  }
+
+  .theme-galactic-palace .brand-gem {
+    width: 24px;
+    height: 24px;
+  }
+
+  .theme-galactic-palace .brand-lockup small {
+    font-size: 4px;
+  }
+
+  .theme-galactic-palace .brand-lockup strong {
+    font-size: 8px;
+  }
+
+  .theme-galactic-palace .host-controls button {
+    width: 22px;
+    height: 22px;
+  }
+
+  .theme-galactic-palace .leaderboard-identity small {
+    display: none;
+  }
+
+  .theme-galactic-palace .leaderboard-panel {
+    width: clamp(180px, 54vw, 194px);
+  }
+
+  .theme-galactic-palace .leaderboard-panel.is-empty {
+    width: clamp(170px, 51vw, 184px);
+  }
+
+  .theme-galactic-palace .leaderboard-row {
+    grid-template-columns: 14px 25px minmax(0, 1fr) minmax(64px, 70px);
+    gap: 4px;
+    min-height: 36px;
+    padding-inline: 4px;
+  }
+
+  .theme-galactic-palace .leaderboard-avatar {
+    width: 23px;
+    height: 23px;
+  }
+
+  .theme-galactic-palace .gift-toast {
+    width: 115px;
+    grid-template-columns: 25px minmax(0, 1fr) auto;
+    padding-inline: 4px;
+  }
+
+  .theme-galactic-palace .gift-avatar {
+    width: 23px;
+    height: 23px;
+  }
+
+  .theme-galactic-palace .machine-status {
+    right: 8%;
+    left: 8%;
+    gap: 6px;
+    padding-inline: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .round-timer span i,
+  .leaderboard-row.pulse,
+  .render-signature i,
+  .stage-aurora,
+  .stage-reflection,
+  .gift-toast::after { animation: none; }
+  .rank-move,
+  .rank-enter-active,
+  .rank-leave-active,
+  .gift-enter-active,
+  .gift-leave-active,
+  .podium-enter-active,
+  .podium-leave-active { transition-duration: 1ms; }
+}

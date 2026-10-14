@@ -1,7 +1,22 @@
+let creatorSpotifyStatusRequest = 0;
+
+/** Vide immédiatement les métadonnées musicales privées et invalide les lectures en vol. */
+function clearCreatorSpotifyStatus() {
+  creatorSpotifyStatusRequest += 1;
+  spotifyStatus = { configured: true, connected: false, account: null, devices: [], activeDevice: null, playback: null, songRequests: null, message: "" };
+}
+
 async function refreshSpotifyStatus({ redraw = true } = {}) {
+  const owner = captureCreatorPrivateOperation();
+  if (!creatorPrivateOperationActive(owner)) return null;
+  const request = ++creatorSpotifyStatusRequest;
+  const active = () => request === creatorSpotifyStatusRequest && creatorPrivateOperationActive(owner);
   try {
-    spotifyStatus = await api.getSpotifyStatus();
+    const status = await api.getSpotifyStatus();
+    if (!active()) return null;
+    spotifyStatus = status;
   } catch (error) {
+    if (!active()) return null;
     spotifyStatus = {
       configured: true,
       connected: false,
@@ -10,7 +25,7 @@ async function refreshSpotifyStatus({ redraw = true } = {}) {
       message: error.message
     };
   }
-  if (redraw && currentPage === "sounds") render();
+  if (active() && redraw && ["sounds", "music"].includes(currentPage)) render();
   return spotifyStatus;
 }
 

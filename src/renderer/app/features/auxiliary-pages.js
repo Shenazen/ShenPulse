@@ -90,19 +90,8 @@ function renderGoals() {
 }
 
 function renderCommands() {
-  const commands = snapshot.state.commands;
-  return `
-    <div class="section-toolbar"><div><h2>Commandes du chat</h2><p>Réponses via la source quand elle l’autorise, sinon affichage dans l’overlay.</p></div><button class="button primary" data-action="add-command">＋ Nouvelle commande</button></div>
-    <section class="card">
-      <div class="card-body list">
-        ${commands.length ? commands.map((command) => `
-          <div class="list-row">
-            <span class="event-icon">⌘</span>
-            <div><h4>${escapeHtml(command.command)} · ${escapeHtml(command.response)}</h4><p>${command.subscriberOnly ? "Abonnés uniquement" : "Tout le monde"} · cooldown ${Math.round(Number(command.cooldownMs || 0) / 1000)}s</p></div>
-            <div class="toolbar-actions"><label class="switch"><input type="checkbox" data-action="toggle-command" data-id="${escapeHtml(command.id)}" ${command.enabled ? "checked" : ""}><span></span></label><button class="button small" data-action="edit-command" data-id="${escapeHtml(command.id)}">Modifier</button><button class="button small ghost" data-action="delete-entity" data-collection="commands" data-id="${escapeHtml(command.id)}">Supprimer</button></div>
-          </div>`).join("") : emptyInline("Ajoutez votre première commande.")}
-      </div>
-    </section>`;
+  // Route conservée pour les liens enregistrés, les profils et les droits existants.
+  return renderCreatorChatbot();
 }
 
 function renderConnections() {
@@ -114,7 +103,9 @@ function renderConnections() {
   }
   const connections = snapshot.state.connections;
   return `
-    <div class="section-toolbar"><div><h2>Sources d’événements</h2><p>Chaque connexion indique comment ShenPulse reçoit les interactions de votre audience.</p></div></div>
+    ${renderStudioHero("connections", "Connexions", "Reliez vos plateformes de live et vos outils. Vos identifiants restent protégés sur cet appareil.")}
+    ${renderKickConnectionCard()}
+    ${typeof renderCreatorChatbotDelivery === "function" ? renderCreatorChatbotDelivery() : ""}
     <section class="connection-help-grid" aria-label="À quoi servent les connexions">
       <article class="card connection-help-card">
         <span class="connector-icon">♪</span>

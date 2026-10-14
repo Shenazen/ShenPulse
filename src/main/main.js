@@ -10,24 +10,23 @@ const {
   safeStorage,
   session,
   shell,
-  screen
+  screen,
+  dialog
 } = require("electron");
 const { ShenPulseCore } = require("./core");
+const { appPermissionAllowed } = require("./app-permissions");
 const { BackblazeMediaService } = require("./backblaze-media");
 const { AccountService } = require("./account-service");
 const { AdminService } = require("./admin-service");
 const { GameRuntimeService } = require("./game-runtime");
 const { runOriginalGamesSmoke } = require("./original-games-smoke");
-const {
-  orderInteractionAuditEffects
-} = require("./interaction-audit-plan");
+const { createInteractionAuditRunner } = require("./bootstrap/interaction-audit");
 const { registerIpc } = require("./ipc");
-const { MatchVideoCache } = require("./match-video-export");
-const { hasProOverlayAccess } = require("./overlay-server");
 const { StateStore } = require("./store");
 const { StoreUpdateService } = require("./store-update-service");
 const {
   shouldSuppressRendererChannel,
+  hasAuthenticatedAccount,
   snapshotForRenderer
 } = require("./account-access");
 
@@ -38,9 +37,16 @@ let store = null;
 let accountService = null;
 let storeUpdateService = null;
 let ipcController = null;
-let matchVideoCache = null;
-let activeInteractionAudit = null;
 let quitting = false;
+const interactionAudit = createInteractionAuditRunner({
+  getCore: () => core,
+  getGameRuntime: () => gameRuntime,
+  getIpcController: () => ipcController,
+  getWindow: () => mainWindow,
+  getUserDataDirectory: () => app.getPath("userData"),
+  dialog
+});
+const startInteractionAuditFromArgs = (args) => interactionAudit.startInteractionAuditFromArgs(args);
 
 function getApplicationVersion() {
   return String(app.getVersion()).trim();
@@ -116,6 +122,14 @@ function createWindow() {
   };
   mainWindow.once("ready-to-show", showWindow);
   mainWindow.webContents.once("did-finish-load", showWindow);
+  const notifyVisibility = () => {
+    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return;
+    mainWindow.webContents.send("renderer-visibility", {
+      visible: mainWindow.isVisible() && !mainWindow.isMinimized()
+    });
+  };
+  for (const eventName of ["hide", "minimize", "show", "restore"]) mainWindow.on(eventName, notifyVisibility);
+  mainWindow.webContents.on("did-finish-load", notifyVisibility);
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) require("electron").shell.openExternal(url);
@@ -148,6 +162,17 @@ function notifyRenderer(channel, value) {
 
 async function bootstrap() {
   Menu.setApplicationMenu(null);
+  const permissionAllowed = (webContents, permission, details = {}) => appPermissionAllowed({
+    permission,
+    requestingUrl: details.requestingUrl || "",
+    contentsUrl: webContents?.getURL() || "",
+    isMainFrame: details.isMainFrame === true,
+    authenticated: hasAuthenticatedAccount(store),
+    rendererDirectory: path.join(__dirname, "..", "renderer"),
+    overlayPort: store?.getState().settings.overlayPort
+  });
+  session.defaultSession.setPermissionCheckHandler((contents, permission, _origin, details) => permissionAllowed(contents, permission, details));
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) => callback(permissionAllowed(contents, permission, details)));
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
@@ -204,23 +229,13 @@ async function bootstrap() {
   storeUpdateService = new StoreUpdateService({ app, shell });
   const adminService = new AdminService({ store, accountService });
   const resourcesDirectory = path.join(__dirname, "..", "..", "resources");
-  matchVideoCache = new MatchVideoCache({
-    resourcesDirectory,
-    cacheDirectory: path.join(
-      app.getPath("temp"),
-      "ShenPulse",
-      "match-videos"
-    ),
-    hasAccess: () => hasProOverlayAccess(store.getState())
-  });
-  await matchVideoCache.reconcile();
-  matchVideoCache.startMonitoring();
   createWindow();
   core = new ShenPulseCore({
     store,
     resourcesDirectory,
     notifyRenderer,
-    appVersion: getApplicationVersion()
+    appVersion: getApplicationVersion(),
+    liveDirectoryIdentityProvider: () => accountService.identityForLiveDirectory()
   });
   gameRuntime = new GameRuntimeService({
     app,
@@ -240,7 +255,6 @@ async function bootstrap() {
     adminService,
     gameRuntime,
     storeUpdateService,
-    matchVideoCache,
     getWindow: () => mainWindow
   });
   await core.initialize();
@@ -319,7 +333,6 @@ app.on("before-quit", (event) => {
   ])
     .catch(() => {})
     .finally(() => {
-      matchVideoCache?.dispose();
       app.quit();
     });
 });
@@ -333,333 +346,3 @@ app.on("window-all-closed", () => {
   }
   app.quit();
 });
-
-async function startInteractionAuditFromArgs(args = []) {
-  const gameArgument = args.find((entry) =>
-    String(entry).startsWith("--audit-game=")
-  );
-  if (!gameArgument || !core || !ipcController) return null;
-  const gameId = String(gameArgument)
-    .slice("--audit-game=".length)
-    .trim();
-  if (!/^[a-z0-9-]{1,160}$/.test(gameId)) return null;
-  const startArgument = args.find((entry) =>
-    String(entry).startsWith("--audit-start=")
-  );
-  const startIndex = Math.max(
-    0,
-    Number.parseInt(
-      String(startArgument || "").slice("--audit-start=".length),
-      10
-    ) || 0
-  );
-  const failedOnly = args.some(
-    (entry) => String(entry) === "--audit-failed-only"
-  );
-  return runInteractionAudit(gameId, startIndex, { failedOnly });
-}
-
-async function runInteractionAudit(
-  gameId,
-  startIndex = 0,
-  { failedOnly = false } = {}
-) {
-  if (activeInteractionAudit) {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-    return activeInteractionAudit;
-  }
-  activeInteractionAudit = (async () => {
-    const pack = core.gameHub
-      .listPacks()
-      .find((entry) => entry.id === gameId);
-    if (!pack) throw new Error(`Jeu introuvable : ${gameId}`);
-    const allEffects = orderInteractionAuditEffects(
-      gameId,
-      pack.effects.filter((effect) => effect.available !== false)
-    );
-    const previousStatus = readInteractionAuditStatus();
-    let failures = rememberedInteractionAuditFailures(
-      previousStatus,
-      gameId
-    );
-    const failedIds = new Set(
-      failures.map((failure) => failure.effectId)
-    );
-    const effects = allEffects
-      .map((step, originalIndex) => ({ ...step, originalIndex }))
-      .filter(({ effect, originalIndex }) =>
-        failedOnly
-          ? failedIds.has(effect.id)
-          : originalIndex >= startIndex
-      );
-    if (!effects.length) {
-      throw new Error(
-        failedOnly
-          ? "Aucune interaction refusée n’est en attente de nouveau test."
-          : "Aucune interaction n’est disponible pour cette campagne."
-      );
-    }
-    await core.gameHub.prepareConnection(gameId);
-    await core.startGameSession(gameId);
-    const runtimeStatus = gameRuntime.status(gameId);
-    if (runtimeStatus.automated && !runtimeStatus.serverRunning) {
-      await gameRuntime.launch(gameId);
-    }
-    await waitForInteractionAuditConnection(gameId);
-    for (let index = 0; index < effects.length; index += 1) {
-      const { effect, preparation, originalIndex } = effects[index];
-      const current = failedOnly ? index + 1 : originalIndex + 1;
-      const total = failedOnly ? effects.length : allEffects.length;
-      writeInteractionAuditStatus({
-        status: "waiting",
-        phase: failedOnly ? "retest" : "initial",
-        gameId,
-        gameName: pack.name,
-        current,
-        total,
-        effectId: effect.id,
-        effectName: effect.name,
-        expectation: effect.description || "",
-        preparation,
-        failures,
-        updatedAt: new Date().toISOString()
-      });
-      let result;
-      try {
-        result = await ipcController.auditGameInteraction(
-          gameId,
-          effect.id,
-          {
-            current,
-            total,
-            expectation: effect.description || "",
-            preparation,
-            observationDelayMs: interactionAuditDelay(effect)
-          }
-        );
-      } catch (error) {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          if (mainWindow.isMinimized()) mainWindow.restore();
-          mainWindow.show();
-          mainWindow.focus();
-        }
-        const executionError = String(error?.message || error);
-        const decision = await require("electron").dialog.showMessageBox(
-          mainWindow,
-          {
-            type: "error",
-            title: `Interaction en échec — ${current}/${total}`,
-            message: `${effect.name} n’a pas pu être exécutée.`,
-            detail: [
-              "Erreur renvoyée par le jeu :",
-              executionError,
-              "",
-              "L’échec est mémorisé. Continuez pour tester automatiquement l’interaction suivante."
-            ].join("\n"),
-            buttons: [
-              "Mémoriser et continuer",
-              "Arrêter la campagne"
-            ],
-            defaultId: 0,
-            cancelId: 1,
-            noLink: true
-          }
-        );
-        result = {
-          answer: decision.response === 0 ? "no" : "cancel",
-          packId: gameId,
-          packName: pack.name,
-          effectId: effect.id,
-          effectName: effect.name,
-          description: effect.description || "",
-          expectation: effect.description || "",
-          executionError,
-          current,
-          total
-        };
-      }
-      if (result.answer === "no") {
-        failures = [
-          ...failures.filter(
-            (failure) => failure.effectId !== result.effectId
-          ),
-          {
-            effectId: result.effectId,
-            effectName: result.effectName,
-            description: result.description,
-            expectation: result.expectation,
-            originalIndex,
-            firstRejectedAt:
-              failures.find(
-                (failure) => failure.effectId === result.effectId
-              )?.firstRejectedAt || new Date().toISOString(),
-            lastRejectedAt: new Date().toISOString()
-          }
-        ].sort((left, right) => left.originalIndex - right.originalIndex);
-      } else if (result.answer === "yes" && failedOnly) {
-        failures = failures.filter(
-          (failure) => failure.effectId !== result.effectId
-        );
-      }
-      writeInteractionAuditStatus({
-        status:
-          result.answer === "yes"
-            ? "validated"
-            : result.answer === "no"
-              ? "failed"
-              : "canceled",
-        phase: failedOnly ? "retest" : "initial",
-        ...result,
-        failures,
-        nextIndex: originalIndex + 1,
-        updatedAt: new Date().toISOString()
-      });
-      if (result.answer === "cancel") return result;
-    }
-    const completed = {
-      status: failures.length ? "repair-needed" : "completed",
-      phase: failedOnly ? "retest" : "initial",
-      answer: failures.length ? "failures-recorded" : "complete",
-      gameId,
-      gameName: pack.name,
-      current: failedOnly ? effects.length : allEffects.length,
-      total: failedOnly ? effects.length : allEffects.length,
-      failures,
-      updatedAt: new Date().toISOString()
-    };
-    writeInteractionAuditStatus(completed);
-    await require("electron").dialog.showMessageBox(mainWindow, {
-      type: failures.length ? "warning" : "info",
-      title: "Campagne terminée",
-      message: failures.length
-        ? `${failures.length} interaction(s) à réparer`
-        : `${completed.total}/${completed.total} interactions validées`,
-      detail: failures.length
-        ? `Les refus ont été mémorisés. ShenPulse peut maintenant les réparer puis ne rejouer que ces ${failures.length} test(s).`
-        : `Toutes les interactions de ${pack.name} ont été confirmées.`,
-      buttons: ["Fermer"],
-      defaultId: 0,
-      noLink: true
-    });
-    return completed;
-  })();
-  try {
-    return await activeInteractionAudit;
-  } catch (error) {
-    writeInteractionAuditStatus({
-      status: "error",
-      gameId,
-      error: String(error?.message || error),
-      updatedAt: new Date().toISOString()
-    });
-    await require("electron").dialog.showMessageBox(mainWindow, {
-      type: "error",
-      title: "Campagne de test interrompue",
-      message: "Impossible de lancer l’interaction.",
-      detail: String(error?.message || error),
-      buttons: ["Fermer"],
-      defaultId: 0,
-      noLink: true
-    });
-    throw error;
-  } finally {
-    activeInteractionAudit = null;
-  }
-}
-
-async function waitForInteractionAuditConnection(
-  gameId,
-  timeoutMs = 10 * 60 * 1000
-) {
-  const deadline = Date.now() + Math.max(10_000, Number(timeoutMs || 0));
-  let lastError = null;
-  while (Date.now() < deadline) {
-    try {
-      return await core.gameHub.testConnection(gameId);
-    } catch (error) {
-      lastError = error;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  throw (
-    lastError ||
-    new Error(
-      "Le jeu ne sâ€™est pas connectÃ© Ã  ShenPulse dans le dÃ©lai prÃ©vu."
-    )
-  );
-}
-
-function interactionAuditDelay(effect) {
-  if (
-    [
-      "bedrock-blackhole",
-      "bedrock-comets",
-      "bedrock-longhands",
-      "bedrock-glass-prison"
-    ].includes(effect.id)
-  ) {
-    return 12_000;
-  }
-  if (
-    [
-      "bedrock-tnt-step",
-      "bedrock-tnt-rocket",
-      "bedrock-meteor",
-      "bedrock-tnt-ring"
-    ].includes(effect.id)
-  ) {
-    return 6_000;
-  }
-  return 3_500;
-}
-
-function writeInteractionAuditStatus(value) {
-  try {
-    fs.writeFileSync(
-      path.join(app.getPath("userData"), "interaction-audit-status.json"),
-      JSON.stringify(value, null, 2),
-      "utf8"
-    );
-  } catch {
-    // La campagne reste utilisable même si son état de reprise ne peut pas être écrit.
-  }
-}
-
-function readInteractionAuditStatus() {
-  try {
-    return JSON.parse(
-      fs.readFileSync(
-        path.join(app.getPath("userData"), "interaction-audit-status.json"),
-        "utf8"
-      )
-    );
-  } catch {
-    return {};
-  }
-}
-
-function rememberedInteractionAuditFailures(status, gameId) {
-  if (!status || (status.gameId || status.packId) !== gameId) return [];
-  const failures = Array.isArray(status.failures)
-    ? status.failures.filter((failure) => failure?.effectId)
-    : [];
-  if (status.answer !== "no" || !status.effectId) return failures;
-  if (failures.some((failure) => failure.effectId === status.effectId)) {
-    return failures;
-  }
-  return [
-    ...failures,
-    {
-      effectId: status.effectId,
-      effectName: status.effectName || status.effectId,
-      description: status.description || "",
-      expectation: status.expectation || "",
-      originalIndex: Math.max(0, Number(status.current || 1) - 1),
-      firstRejectedAt: status.updatedAt || new Date().toISOString(),
-      lastRejectedAt: status.updatedAt || new Date().toISOString()
-    }
-  ];
-}

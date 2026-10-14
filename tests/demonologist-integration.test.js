@@ -113,7 +113,7 @@ test("compile le pont Windows clavier et souris utilisé par Demonologist", () =
 });
 
 test("branche Demonologist sur son processus Windows sans modifier le jeu", async () => {
-  const state = subscribedState();
+  const state = proAccountState();
   state.game.connectorOverrides.demonologist = { keyLayout: "azerty" };
   const calls = [];
   const windowsInputService = {
@@ -144,7 +144,7 @@ test("branche Demonologist sur son processus Windows sans modifier le jeu", asyn
   assert.equal(pack.guide.mode, "input");
   assert.equal(pack.installerVersion, "1.0.0");
   assert.equal(pack.included, true);
-  assert.equal(pack.requiresPro, true);
+  assert.equal(pack.requiresPro, false);
   assert.equal(hub.initializeDefaultInteractions(pack.id).added, 31);
 
   await hub.testConnection(pack.id);
@@ -184,7 +184,8 @@ test("le démarrage de Demonologist lance le jeu avant d’activer sa session", 
   assert.match(renderer, /demonologistAutoLaunch && ready[\s\S]*?data-action="launch-game"/);
 });
 
-function subscribedState() {
+function proAccountState() {
+  // Ce jeu est inclus ; l’accès à ses interactions exige désormais Pro.
   return {
     settings: {
       account: {
@@ -198,7 +199,7 @@ function subscribedState() {
     commerce: {
       subscription: {
         tier: "pro",
-        source: "subscription",
+        source: "own",
         status: "active"
       },
       gameEntitlements: []

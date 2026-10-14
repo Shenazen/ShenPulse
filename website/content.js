@@ -1,16 +1,51 @@
+export const CLIENT_RELEASE = {
+  version: '2.0.0',
+  title: 'Un espace créateur repensé, du chat au match.',
+  summary: 'Une interface plus compacte et un code réorganisé, tout en conservant les profils et les configurations existantes.',
+  highlights: [
+    ['Pilote ton live', 'Accueil, tableau de bord et utilisateurs revus ; listes compactes pour les actions, les sons, les commandes et les Machines IRL.'],
+    ['Donne les commandes au chat', 'Crée des commandes ! pour la musique, les actions et les overlays, avec permissions et cooldowns, sans réponse automatique publiée dans le chat.'],
+    ['Anime tes matchs', 'Suivi des événements TikTok reçus, widgets, automatisations et six animations Cyber avec son intégré. Les vidéos sont chiffrées dans l’application, sans bouton d’export.']
+  ]
+}
+
 export const APP_TABS = [
+  {
+    id: 'accueil',
+    group: 'Pilotage',
+    title: 'Accueil',
+    summary: 'Un point de départ pour préparer le live et retrouver les espaces de création.',
+    parts: [
+      ['Raccourcis', 'Ouvre les actions, jeux, overlays ou statistiques sans modifier leur configuration.'],
+      ['En direct', 'Présente les créateurs qui ont choisi de rendre leur LIVE visible dans l’annuaire.'],
+      ['Premiers pas', 'Connecte la plateforme, choisis les interactions et prépare les sources de diffusion.']
+    ],
+    tips: ['La publication dans l’annuaire est facultative.', 'La barre du haut reste disponible dans tous les espaces.']
+  },
   {
     id: 'vue-ensemble',
     group: 'Pilotage',
-    title: 'Vue d’ensemble',
+    title: 'Tableau de bord',
     summary: 'Le tableau de bord résume la session et donne accès aux commandes les plus utilisées.',
     parts: [
-      ['Statistiques de session', 'Événements reçus, actions exécutées, likes et viewers uniques depuis le démarrage de la session.'],
+      ['Statistiques de session', 'Viewers, likes, cadeaux, diamants et followers du LIVE en cours, ou du dernier LIVE lorsque tu es déconnecté.'],
       ['Démarrer la session', 'Active les sources et automatismes du profil courant. Vérifie le profil, le compte TikTok et le jeu actif avant de cliquer.'],
-      ['Tester un cadeau', 'Simule un événement sans attendre un vrai cadeau. Utilise-le avant chaque live pour contrôler toute la chaîne.'],
+      ['Simulateur', 'Simule un cadeau, des likes, un follow, un message, un partage, un abonnement ou une arrivée. Le sélecteur de cadeau apparaît uniquement pour les cadeaux. Les actions configurées peuvent réellement être exécutées.'],
       ['Activité récente', 'Affiche les derniers événements, actions, avertissements et erreurs. Le bouton Journal ouvre l’historique complet.']
     ],
-    tips: ['Un compteur à zéro avant le démarrage est normal.', 'Une session de jeu et une session live sont deux états distincts.']
+    tips: ['Le bilan conservé ne représente pas tous tes lives cumulés.', 'Une session de jeu et une session live sont deux états distincts.']
+  },
+  {
+    id: 'utilisateurs',
+    group: 'Pilotage',
+    title: 'Utilisateurs',
+    summary: 'Retrouve les participants et leurs contributions, avec classements, rangs et blocages.',
+    parts: [
+      ['Liste et classements', 'Recherche les viewers et compare leurs likes, cadeaux ou participations selon la vue choisie.'],
+      ['Rangs', 'Les icônes accompagnent les rangs calculés à partir des données disponibles dans ShenPulse.'],
+      ['Utilisateurs bloqués', 'Le bouton dédié ouvre la liste des blocages et permet de débloquer un utilisateur.']
+    ],
+    tips: ['Un blocage dans ShenPulse ne remplace pas la modération de la plateforme.', 'Les contributions affichées dépendent des événements effectivement reçus.']
   },
   {
     id: 'session-direct',
@@ -34,7 +69,7 @@ export const APP_TABS = [
       ['Sous-onglet Actions', 'Crée, modifie, duplique, teste ou supprime les actions du profil.'],
       ['Sous-onglet Déclencheurs', 'Associe les événements du live à une ou plusieurs actions existantes.'],
       ['Sous-onglet Timers', 'Planifie une ou plusieurs actions à intervalle régulier.'],
-      ['Sous-onglet Simulateur', 'Envoie des cadeaux, likes, messages et autres événements fictifs pour tester le profil.'],
+      ['Simulateur du tableau de bord', 'Les événements fictifs se testent dans le tableau de bord ; les Actions conservent leurs tests manuels.'],
       ['Écrans Media', 'Fournit huit files indépendantes et huit URL de sources navigateur pour afficher images, GIF ou vidéos.']
     ],
     tips: ['Teste chaque action avant de lui associer un déclencheur.', 'Plusieurs actions peuvent appartenir à la même règle.']
@@ -42,31 +77,29 @@ export const APP_TABS = [
   {
     id: 'sons',
     group: 'Création',
-    title: 'Sons',
+    title: 'Voix & sons',
     summary: 'Cette page centralise les alertes audio et la lecture des commentaires.',
     parts: [
       ['Bibliothèque', 'Recherche les sons inclus, écoute un aperçu et sélectionne une piste.'],
       ['Alertes sonores', 'Associe un son, un volume et un déclencheur à une règle.'],
       ['Synthèse vocale', 'Choisit une voix, une vitesse, une hauteur et un volume.'],
       ['Filtres TTS', 'Autorise ou bloque emojis, mentions, commandes et liens avant lecture.'],
-      ['Spotify', 'Après configuration dans Paramètres, ajoute un titre à la file, lance une recherche ou contrôle la lecture.']
+      ['Actions de ligne', 'Teste, modifie, duplique ou supprime une alerte à l’aide des boutons directs. Une confirmation précède la suppression.']
     ],
     tips: ['Commence avec un volume inférieur à 1.', 'Teste la voix et le périphérique de sortie avant le live.']
   },
   {
-    id: 'automatisations',
+    id: 'musique',
     group: 'Création',
-    title: 'Automatisations',
-    summary: 'Le moteur de règles relie les événements reçus aux actions du profil.',
+    title: 'Musique',
+    summary: 'Prépare la lecture musicale, les demandes de titres et les règles Spotify.',
     parts: [
-      ['Interrupteur', 'Active ou met en pause une règle sans supprimer sa configuration.'],
-      ['Type', 'Cadeau, like, message, follow, partage, abonnement, arrivée, raid ou test.'],
-      ['Seuil', 'Nombre d’événements ou quantité nécessaire avant exécution.'],
-      ['Conditions', 'Cadeau, contenu du message ou viewer précis.'],
-      ['Cooldowns', 'Temps minimal global et par viewer entre deux exécutions.'],
-      ['Priorité et probabilité', 'Départage les règles et permet un déclenchement aléatoire lorsque ces options sont utilisées.']
+      ['Lecture', 'Après autorisation Spotify, recherche, mets en file, lis, mets en pause ou passe au titre suivant.'],
+      ['Demandes du chat', 'Configure les commandes de demande et de passage, puis consulte la file des titres acceptés.'],
+      ['Limites', 'Règle les cooldowns, la taille de la file, la durée des titres, le contenu explicite et les artistes bloqués.'],
+      ['Règles', 'Associe les événements du live aux contrôles de lecture existants.']
     ],
-    tips: ['Utilise un cooldown par viewer pour éviter le spam.', 'Le bouton Tester exécute la règle sans attendre le live.']
+    tips: ['Spotify et certaines commandes de lecture peuvent nécessiter un compte Spotify Premium.', 'Les résultats de commandes sont consultables dans ShenPulse ; aucun envoi automatique au chat n’est promis.']
   },
   {
     id: 'overlays',
@@ -85,7 +118,7 @@ export const APP_TABS = [
   {
     id: 'jeux-effets',
     group: 'Création',
-    title: 'Jeux & effets',
+    title: 'Jeux vidéo',
     summary: 'La galerie rassemble uniquement les jeux actuellement publiés dans l’application.',
     parts: [
       ['Recherche et filtres', 'Trouve un jeu, un connecteur ou un effet, puis filtre par niveau d’accès.'],
@@ -96,7 +129,7 @@ export const APP_TABS = [
       ['Overlays liés', 'Prépare l’image d’interactions et les compteurs utiles au gameplay.'],
       ['Session de jeu', 'Démarre une seule passerelle à la fois. Arrête-la avant de changer de jeu.']
     ],
-    tips: ['Ferme toujours le jeu avant une installation ou une réparation.', 'Teste plusieurs effets sur une sauvegarde non critique.']
+    tips: ['Un accès ShenPulse Pro ou Premium actif est requis ; certains modules nécessitent aussi leur achat.', 'Ferme toujours le jeu avant une installation ou une réparation.', 'Teste plusieurs effets sur une sauvegarde non critique.']
   },
   {
     id: 'objectifs',
@@ -113,18 +146,46 @@ export const APP_TABS = [
     tips: ['Vérifie la valeur de départ avant le live.', 'Le Like Goal possède aussi ses réglages détaillés dans Overlays.']
   },
   {
-    id: 'chatbot',
+    id: 'machines-irl',
     group: 'Création',
-    title: 'Chatbot',
-    summary: 'Le chatbot répond à des commandes simples dans une source compatible.',
+    title: 'Machines IRL',
+    summary: 'Associe les prises PlugPlus et tes interactions physiques aux événements du live.',
     parts: [
-      ['Commande', 'Texte saisi par le viewer, généralement précédé de “!”.'],
-      ['Réponse', 'Message renvoyé par le bot.'],
-      ['Accès', 'Autorise tout le monde ou uniquement les abonnés.'],
-      ['Cooldown', 'Temps minimal entre deux réponses pour limiter le spam.'],
-      ['Activation', 'Met la commande en pause sans la supprimer.']
+      ['Mes prises', 'Détecte une prise, ajoute son IP ou associe un appareil neuf. La liste compacte conserve le nom, la connexion et les commandes de test.'],
+      ['Mes interactions', 'Crée des actions PlugPlus, relie leurs déclencheurs et règle les durées.'],
+      ['Contrôles directs', 'Allumer, éteindre, basculer et impulsions temporisées agissent réellement sur les appareils.'],
+      ['Gestion', 'Renomme ou retire un appareil après vérification de la cible.']
     ],
-    tips: ['Utilise des commandes courtes et non ambiguës.', 'Vérifie que la connexion choisie autorise l’envoi de réponses.']
+    tips: ['Un accès Pro ou Premium actif est requis.', 'Teste avec une installation sans risque ; ne connecte pas de dispositif dangereux.']
+  },
+  {
+    id: 'commandes',
+    group: 'Création',
+    title: 'Commandes',
+    summary: 'Une commande ! reçue dans le chat peut piloter la musique, une action ou un overlay.',
+    parts: [
+      ['Commande et alias', 'Choisis un nom commençant par ! et, si nécessaire, des alias.'],
+      ['Effet', 'Sélectionne une commande musicale, une action active du profil ou une cible overlay compatible.'],
+      ['Permissions et plateformes', 'Limite l’accès aux rôles autorisés et aux plateformes choisies.'],
+      ['Cooldowns', 'Configure les pauses globales et par viewer pour éviter les répétitions.'],
+      ['Gestion et aperçu', 'Active, modifie ou supprime une commande. L’aperçu reste local ; les résultats d’exécution apparaissent dans l’historique récent.']
+    ],
+    tips: ['Un accès Pro ou Premium actif est requis.', 'Il ne s’agit pas d’un chatbot de réponses texte ; aucun service d’envoi de messages n’est nécessaire.', 'Une commande reçue peut lancer une action réelle : vérifie ses permissions avant le live.']
+  },
+  {
+    id: 'matchs',
+    group: 'Création',
+    title: 'Matchs',
+    summary: 'Suis les matchs TikTok et prépare leurs widgets et automatisations dans le profil actif.',
+    parts: [
+      ['Tableau de bord', 'Affiche les matchs et scores dès réception des événements TikTok ; la plateforme reste la source des données.'],
+      ['Widgets', 'Configure les compteurs, donateurs, temps restants et rendus associés, puis copie leurs sources navigateur.'],
+      ['Automatisations', 'Relie les moments du match aux animations disponibles, aux vidéos personnelles et aux sons.'],
+      ['Pack Cyber', 'Six animations : Gant de boxe, x2, x3, Tap Tap, Merci pour ton cœur et Snipe. Aucun Coffre Cyber n’est proposé.'],
+      ['Source Studio', 'Copie la source prévue pour TikTok LIVE Studio ; ShenPulse doit rester ouvert sur le même PC. Les vidéos du catalogue sont chiffrées et lues en mémoire, sans export.'],
+      ['Audio', 'Le son intégré des vidéos est activé pendant leur lecture sur la source de diffusion ; les aperçus restent muets.']
+    ],
+    tips: ['Un accès Pro ou Premium actif est requis.', 'Le chiffrement limite la copie directe, mais ne peut empêcher toute extraction experte ou capture vidéo.', 'Les tests de diffusion peuvent produire des images et du son sur le live ; vérifie la scène avant de les lancer.']
   },
   {
     id: 'abonnement',
@@ -152,6 +213,18 @@ export const APP_TABS = [
       ['Démarrage automatique', 'Reconnecte la source au lancement de ShenPulse.']
     ],
     tips: ['N’utilise que des services et identifiants que tu es autorisé à connecter.', 'Les secrets sont chiffrés localement lorsqu’ils sont enregistrés.']
+  },
+  {
+    id: 'controleurs',
+    group: 'Système',
+    title: 'Contrôleurs',
+    summary: 'Pilote tes actions et la musique depuis Stream Deck ou un contrôleur MIDI compatible.',
+    parts: [
+      ['Stream Deck', 'Prépare le contrôleur et associe ses boutons aux cibles du profil actif.'],
+      ['MIDI', 'Configure les commandes provenant des périphériques disponibles.'],
+      ['Cibles', 'Choisis les actions et contrôles pris en charge, puis vérifie leur association.']
+    ],
+    tips: ['Une commande physique peut exécuter une action réelle.', 'Le périphérique et son logiciel doivent être installés et disponibles.']
   },
   {
     id: 'journal',

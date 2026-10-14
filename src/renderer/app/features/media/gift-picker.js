@@ -4,10 +4,18 @@ function giftPickerField(
   value = "",
   extra = "",
   help = "",
-  giftId = ""
+  giftId = "",
+  savedReference = {}
 ) {
-  const selectedGift = giftForIdentity(value, giftId);
-  return `<div class="field gift-picker ${extra.includes("full") ? "full" : ""}" data-gift-picker-root>
+  const selectedGift = giftForSavedReference(value, giftId, savedReference);
+  const reference = {
+    ...savedReference,
+    giftName: value,
+    giftId: String(giftId || selectedGift?.id || ""),
+    giftImageUrl: String(selectedGift?.imageUrl || ""),
+    giftCost: Math.max(0, Number(savedReference.giftCost ?? savedReference.cost ?? selectedGift?.cost) || 0)
+  };
+  return `<div class="field gift-picker ${extra.includes("full") ? "full" : ""}" data-gift-picker-root data-gift-reference="${escapeHtml(JSON.stringify(reference))}">
     ${help ? fieldLabelWithInfo(label, help) : `<span>${escapeHtml(label)}</span>`}
     <div class="gift-picker-input">
       <input name="${escapeHtml(name)}" value="${escapeHtml(value)}" data-gift-picker autocomplete="off" placeholder="Rechercher un cadeau TikTok…" ${extra.replace("full", "")}>
@@ -28,6 +36,7 @@ function giftTriggerConditionFields(
     giftName = "giftNameCondition",
     giftLabel = "Cadeau TikTok",
     giftId = "",
+    savedReference = null,
     giftValue,
     modeName = "giftTriggerMode",
     operatorName = "giftValueOperator",
@@ -71,7 +80,8 @@ function giftTriggerConditionFields(
         selectedGiftValue,
         currentMode === "specific" ? "" : "disabled",
         "",
-        giftId || selectedGiftCondition?.giftId || ""
+        giftId || selectedGiftCondition?.giftId || "",
+        savedReference || selectedGiftCondition || {}
       )}
     </div>
     <div class="gift-trigger-panel gift-value-condition" data-gift-trigger-panel="value" ${currentMode === "value" ? "" : "hidden"}>
@@ -114,7 +124,8 @@ async function hydrateGiftCatalog(query = "", input = null) {
   const requestId = String(++giftRequestSequence);
   if (input) input.dataset.giftRequestId = requestId;
   try {
-    const result = await api.searchGifts(query, 1000);
+    // Chargement complet une fois au démarrage ; les recherches restent bornées.
+    const result = await api.searchGifts(query, String(query || "").trim() ? 1000 : 10000);
     if (input && input.dataset.giftRequestId !== requestId) return;
     rememberGifts(result.gifts || []);
     list.innerHTML = (result.gifts || [])
@@ -155,11 +166,33 @@ function updateGiftPickerSelection(root, gift = null) {
   const idInput = root?.querySelector("[data-gift-id-input]");
   const selected = root?.querySelector("[data-gift-selected]");
   if (!input || !selected) return;
-  const exactGift = gift || giftForIdentity(input.value, idInput?.value);
+  if (gift) {
+    root.dataset.giftReference = JSON.stringify({
+      giftName: input.value,
+      giftId: idInput?.value || gift.id || "",
+      giftImageUrl: gift.imageUrl || "",
+      giftCost: Number(gift.cost || giftForIdentity(input.value, idInput?.value)?.cost || 0)
+    });
+  }
+  const exactGift = gift || giftForSavedReference(input.value, idInput?.value, giftPickerSavedReference(root));
   selected.title = exactGift?.name || "Cadeau TikTok";
   selected.innerHTML = exactGift?.imageUrl
     ? `<img src="${escapeHtml(exactGift.imageUrl)}" alt="">`
     : eventIconMarkup("gift");
+}
+
+function giftPickerSavedReference(root) {
+  const input = root?.querySelector("[data-gift-picker]");
+  const idInput = root?.querySelector("[data-gift-id-input]");
+  try {
+    const saved = JSON.parse(root?.dataset.giftReference || "{}");
+    const same = saved.giftId && idInput?.value
+      ? String(saved.giftId) === idInput.value
+      : normalizeGiftName(saved.giftName) === normalizeGiftName(input?.value);
+    return same ? saved : {};
+  } catch {
+    return {};
+  }
 }
 
 function updateAllGiftPickerSelections() {
@@ -196,11 +229,10 @@ function positionGiftResults(root) {
 function scheduleGiftCatalog(input) {
   const root = input?.closest("[data-gift-picker-root]");
   const idInput = root?.querySelector("[data-gift-id-input]");
-  const selectedById = giftCatalogById.get(String(idInput?.value || ""));
+  const saved = giftPickerSavedReference(root);
   if (
     idInput &&
-    selectedById &&
-    normalizeGiftName(selectedById.name) !== normalizeGiftName(input?.value)
+    normalizeGiftName(saved.giftName) !== normalizeGiftName(input?.value)
   ) {
     idInput.value = "";
   }

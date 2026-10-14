@@ -142,7 +142,7 @@ test("normalise les images et GIF du catalogue web Wikimedia Commons", () => {
   assert.match(media[0].detail, /CC BY-SA 4\.0/);
 });
 
-test("fusionne les catalogues embarqués sans doublon visible", () => {
+test("fusionne les catalogues embarqués sans doublon d'ID ni perte de cadeaux homonymes", () => {
   const catalog = new GiftCatalog(resourcesDirectory);
   const tikLivePayload = JSON.parse(
     fs.readFileSync(
@@ -163,7 +163,11 @@ test("fusionne les catalogues embarqués sans doublon visible", () => {
   );
   assert.equal(catalog.search("Heart Me", 10).gifts[0].name, "Cœur sur moi");
   assert.equal(catalog.search("Coeur sur moi", 10).gifts[0].name, "Cœur sur moi");
-  assert.equal(new Set(all.map((gift) => `${gift.name}|${gift.cost}`)).size, all.length);
+  // Plusieurs cadeaux techniques peuvent légitimement porter le même nom et
+  // le même prix. Les fusionner rendrait leurs déclencheurs interchangeables.
+  const cats = all.filter((gift) => gift.name === "Chat" && gift.cost === 222);
+  assert.equal(cats.length, 15);
+  assert.equal(new Set(cats.map((gift) => gift.id)).size, 15);
   const allIds = all.flatMap((gift) => [gift.id, ...(gift.alternateIds || [])]);
   assert.equal(new Set(allIds).size, allIds.length);
   for (let index = 1; index < all.length; index += 1) {
@@ -243,7 +247,7 @@ test("complète le catalogue embarqué avec les cadeaux propres au LIVE", async 
   assert.equal(catalog.search("987654321", 10).gifts[0].name, "Cadeau exclusif au LIVE");
 });
 
-test("regroupe les variantes visibles et conserve tous leurs ID", () => {
+test("conserve les ID localisés distincts même quand leur nom et leur prix sont identiques", () => {
   const gifts = dedupeLocalizedGifts([
     {
       id: 17667,
@@ -304,18 +308,13 @@ test("regroupe les variantes visibles et conserve tous leurs ID", () => {
 
   assert.deepEqual(
     gifts.map((gift) => gift.name),
-    ["Le bisou", "Rose", "Côte à côte"]
+    ["Le bisou", "Le bisou", "Rose", "Côte à côte", "Côte à côte"]
   );
-  const kiss = gifts.find((gift) => gift.name === "Le bisou");
-  assert.deepEqual(
-    new Set([kiss.id, ...kiss.alternateIds]),
-    new Set(["10716", "7832"])
-  );
-  const sideBySide = gifts.find((gift) => gift.name === "Côte à côte");
-  assert.deepEqual(
-    new Set([sideBySide.id, ...sideBySide.alternateIds]),
-    new Set(["17667", "17589"])
-  );
+  for (const id of ["10716", "7832", "17667", "17589"]) {
+    const gift = gifts.find((entry) => entry.id === id);
+    assert.ok(gift, id);
+    assert.equal(gift.alternateIds.length, 0, "pas d'alias numérique inventé");
+  }
 });
 
 test("donne la priorité aux données de la salle et garde les anciens ID", () => {
@@ -392,11 +391,9 @@ test("apprend en direct un cadeau manquant sans créer de doublon", () => {
     }),
     true
   );
-  assert.equal(catalog.gifts.length, 1);
-  assert.deepEqual(
-    new Set([catalog.gifts[0].id, ...catalog.gifts[0].alternateIds]),
-    new Set(["5655", "9999"])
-  );
+  assert.equal(catalog.gifts.length, 2);
+  assert.deepEqual(new Set(catalog.gifts.map((gift) => gift.id)), new Set(["5655", "9999"]));
+  assert.ok(catalog.gifts.every((gift) => gift.alternateIds.length === 0));
 });
 
 test("classe le cœur de communauté personnalisé sans utiliser son visuel", () => {

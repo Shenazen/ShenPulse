@@ -7,6 +7,22 @@
  * Il partage uniquement les contrats globaux documentés dans README.md.
  */
 
+/** Versions réellement livrées pour l’animation choisie, sans variante fictive. */
+function actionMatchVariantOptions(match, current = "tikcontrol") {
+  const options = overlayCatalog.animationVariants(match);
+  const selected = options.some(([value]) => value === current) ? current : "tikcontrol";
+  return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${selected === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+}
+
+function syncActionMatchVariants() {
+  const match = dialogBody.querySelector("[data-action-match-name]");
+  const variant = dialogBody.querySelector('[name="matchVariant"]');
+  if (!match || !variant) return;
+  // Un changement dans la fenêtre reste un brouillon : aucune action ni
+  // configuration de profil n’est enregistrée avant la soumission explicite.
+  variant.innerHTML = actionMatchVariantOptions(match.value, variant.value);
+}
+
 function openActionEditor(row) {
   const preset = arguments[1] || {};
   const currentRule = row?.rule || preset.rule || {
@@ -197,8 +213,8 @@ function openActionEditor(row) {
     conditionalFields(
       "overlay.match",
       `<div class="form-grid">
-        <label class="field full"><span>Animation à lire</span><select name="matchName">${MATCH_OVERLAYS.map(([_key, label, value]) => `<option value="${escapeHtml(value)}" ${(config.match || "x2") === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select><small>Le lecteur Match est exclusif : cette animation arrête la précédente et recommence immédiatement à zéro.</small></label>
-        <label class="field"><span>Version</span><select name="matchVariant">${MATCH_VARIANTS.map(([value, label]) => `<option value="${escapeHtml(value)}" ${(config.variant || "tikcontrol") === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select></label>
+        <label class="field full"><span>Animation à lire</span><select name="matchName" data-action-match-name>${MATCH_OVERLAYS.map(([_key, label, value]) => `<option value="${escapeHtml(value)}" ${(config.match || "x2") === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select><small>Le lecteur Match est exclusif : cette animation arrête la précédente et recommence immédiatement à zéro.</small></label>
+        <label class="field"><span>Version</span><select name="matchVariant">${actionMatchVariantOptions(config.match || "x2", config.variant || "tikcontrol")}</select></label>
         <label class="field"><span>Ajustement</span><select name="matchFit"><option value="contain" ${config.fit !== "cover" ? "selected" : ""}>Vidéo entière</option><option value="cover" ${config.fit === "cover" ? "selected" : ""}>Remplir la source</option></select></label>
       </div>`
     ),
@@ -234,6 +250,9 @@ function openActionEditor(row) {
         <label class="field"><span>Commande Spotify</span><select name="spotifyOperation">${["request","queue","play","pause","next","now_playing","volume_up","volume_down"].map((operation) => `<option value="${operation}" ${(config.operation || "request") === operation ? "selected" : ""}>${operation}</option>`).join("")}</select></label>
         <label class="field"><span>Mode de demande</span><select name="spotifyMode"><option value="queue" ${config.mode !== "play" ? "selected" : ""}>Ajouter à la file</option><option value="play" ${config.mode === "play" ? "selected" : ""}>Lire immédiatement</option></select></label>
         ${field("spotifyQuery", "Titre, URL ou URI", config.query || config.uri || "{{data.message}}", "text", "full")}
+        ${field("spotifyChatCommand", "Commande du chat (optionnelle)", config.chatCommand || "", "text", 'placeholder="!song"')}
+        ${field("spotifyMaxDurationMinutes", "Durée maximale du titre (minutes)", config.maxDurationMinutes || 0, "number", 'min="0" max="120" step="1"')}
+        <small class="full">Avec une commande, ShenPulse recherche le titre placé après celle-ci. Exemple : !song Daft Punk One More Time. Une durée de 0 autorise toutes les durées.</small>
         <label class="field"><span>Contenu explicite</span><select name="spotifyExplicit"><option value="true" ${config.allowExplicit !== false ? "selected" : ""}>Autorisé</option><option value="false" ${config.allowExplicit === false ? "selected" : ""}>Refusé</option></select></label>
       </div>`
     ),
@@ -355,6 +374,7 @@ function openActionEditor(row) {
         });
       } else if (type === "tts.speak") {
         Object.assign(nextConfig, {
+          ...readTtsModerationFields(data),
           text: data.get("text"),
           voice: data.get("ttsVoice"),
           rate: Number(data.get("ttsRate")),
@@ -418,9 +438,12 @@ function openActionEditor(row) {
               : actionIds.length
         });
       } else if (type === "overlay.match") {
+        const match = data.get("matchName") || "x2";
+        const variant = overlayCatalog.normalizeAnimationVariant(match, data.get("matchVariant") || "tikcontrol");
+        if (!variant) throw new Error("Cette variante d’animation Match est indisponible.");
         Object.assign(nextConfig, {
-          match: data.get("matchName") || "x2",
-          variant: data.get("matchVariant") || "tikcontrol",
+          match,
+          variant,
           fit: data.get("matchFit") === "cover" ? "cover" : "contain"
         });
       } else if (type === "game.effect") {
@@ -443,6 +466,8 @@ function openActionEditor(row) {
           operation: data.get("spotifyOperation"),
           query: data.get("spotifyQuery"),
           uri: data.get("spotifyQuery"),
+          chatCommand: String(data.get("spotifyChatCommand") || "").trim(),
+          maxDurationMinutes: Math.max(0, Math.min(120, Number(data.get("spotifyMaxDurationMinutes")) || 0)),
           mode: data.get("spotifyMode"),
           allowExplicit: data.get("spotifyExplicit") !== "false"
         });

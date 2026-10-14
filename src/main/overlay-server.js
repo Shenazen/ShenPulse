@@ -7,15 +7,29 @@ const { randomUUID } = require("node:crypto");
 const { URL } = require("node:url");
 const { LocalWebSocketServer } = require("./local-websocket");
 const { MatchSourceService } = require("./match-source-service");
+const { readState } = require("./state-projection");
+const { assertProFeatureAccess } = require("./pro-feature-access");
+const { MATCH_OVERLAY_STATE_PATHS, projectMatchesOverlayState, projectMatchesOverlayPayload } = require("./matches-overlay-state");
 const { safeString, timingSafeToken } = require("./utils");
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
+const sceneLayout = require("../../resources/overlays/scene-layout");
+
+const PRO_ACCESS_STATE_PATHS = ["commerce.subscription"];
+const OVERLAY_BOOTSTRAP_STATE_PATHS = [
+  "goals", "session", "overlaySession", "statistics",
+  "settings.overlayScene", "settings.overlayConfigs", "commerce.subscription"
+];
+const MATCH_WIDGET_URL_KEYS = ["matchesWins", "matchesStarDonor", "matchesTopDonor", "matchesDonors", "matchesTimer", "matchesVictory", "matchesScoreboard"];
+const isMatchWidgetView = (view) => String(view || "").trim().toLowerCase() === "match-widget";
+const matchWidgetIdentity = (state) => JSON.stringify([state?.settings?.account?.uid || "", state?.session?.profileId || ""]);
 
 function overlayViewAcceptsChannel(
   view,
   channel,
   payload = {},
   screen = 0,
-  leaderboardKind = ""
+  leaderboardKind = "",
+  matchName = ""
 ) {
   return overlayCatalog.acceptsChannel({
     view,
@@ -23,32 +37,13 @@ function overlayViewAcceptsChannel(
     payload,
     screen,
     leaderboardKind,
+    matchName,
     hasMediaScreen: Number(screen) >= 1 && Number(screen) <= 8
   });
 }
 
-function commerceExpiryMs(entry) {
-  const numeric = Number(entry?.expiresAtMs || 0);
-  if (numeric > 0) return numeric;
-  const parsed = Date.parse(
-    String(entry?.expiresAt || entry?.renewalDate || "")
-  );
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function hasProOverlayAccess(state, nowMs = Date.now()) {
-  const subscription = state?.commerce?.subscription || {};
-  if (!["pro", "premium"].includes(subscription.tier)) return false;
-  if (
-    subscription.source === "trial" ||
-    subscription.status === "trial"
-  ) {
-    return (
-      ["active", "trial"].includes(subscription.status) &&
-      commerceExpiryMs(subscription) > nowMs
-    );
-  }
-  return ["active", "paid"].includes(subscription.status);
+  return sceneLayout.activeProAccess(state, nowMs);
 }
 
 function normalizeMatchPlaybackRequest(incoming = {}) {
@@ -59,16 +54,12 @@ function normalizeMatchPlaybackRequest(incoming = {}) {
   if (!allowedMatches.has(match)) {
     throw new Error("Animation Match invalide.");
   }
-  const requestedVariant = safeString(incoming.variant, 40)
-    .trim()
-    .toLowerCase();
+  const variant = overlayCatalog.normalizeAnimationVariant(match, safeString(incoming.variant, 40));
+  if (!variant) throw new Error("Cette variante d’animation Match est indisponible.");
   return {
     requestId: randomUUID(),
     match,
-    variant:
-      match === "enigma" || !["tikcontrol", "gladiador"].includes(requestedVariant)
-        ? "tikcontrol"
-        : requestedVariant,
+    variant,
     fit: incoming.fit === "cover" ? "cover" : "contain"
   };
 }
@@ -101,7 +92,8 @@ class OverlayServer {
     staticDirectory,
     onInboundEvent,
     onEffectRequest,
-    publicRelay = null
+    publicRelay = null,
+    matchMedia
   }) {
     this.store = store;
     this.staticDirectory = staticDirectory;
@@ -117,14 +109,18 @@ class OverlayServer {
     this.matchSource = new MatchSourceService({
       store,
       staticDirectory,
-      hasAccess: () => hasProOverlayAccess(this.store.getState()),
-      normalizePlayback: normalizeMatchPlaybackRequest
+      hasAccess: () => hasProOverlayAccess(readState(this.store, PRO_ACCESS_STATE_PATHS)),
+      hasBridgeAccess: () => Boolean(this.#matchesAccessState()),
+      normalizePlayback: normalizeMatchPlaybackRequest,
+      protectedMedia: matchMedia
     });
   }
 
   async start() {
     await this.stop();
-    const settings = this.store.getState().settings;
+    const { settings } = readState(this.store, [
+      "settings.overlayToken", "settings.overlayPort", "settings.apiToken", "settings.apiPort"
+    ]);
     this.webSockets = new LocalWebSocketServer({
       authorize: (request) => this.#authorized(request, settings.overlayToken)
     });
@@ -203,7 +199,10 @@ class OverlayServer {
   }
 
   urls({ includeRestricted = false } = {}) {
-    const state = this.store.getState();
+    const state = readState(this.store, [
+      "settings.overlayPort", "settings.overlayToken", "settings.apiPort",
+      "settings.apiToken", "commerce.subscription"
+    ]);
     const settings = state.settings;
     const base = `http://127.0.0.1:${settings.overlayPort}`;
     const overlayUrls = overlayCatalog.buildUrls({
@@ -216,6 +215,7 @@ class OverlayServer {
     overlayUrls.matchPlayer = this.matchSource.sourceUrl(base, {
       includeRestricted
     });
+    if (!this.#matchesAccessState()) for (const key of MATCH_WIDGET_URL_KEYS) overlayUrls[key] = "";
     return {
       ...overlayUrls,
       api: `ws://127.0.0.1:${settings.apiPort}/?token=${encodeURIComponent(
@@ -226,7 +226,19 @@ class OverlayServer {
   }
 
   publish(channel, payload) {
-    this.#enforceOverlayAccess();
+    const hasProAccess = this.#enforceOverlayAccess();
+    // SSE local seulement ici : le relais publie une projection bornée dans
+    // l'alias Match dédié via publishState(), jamais dans le canal générique.
+    if (String(channel || "").trim().toLowerCase() === "match-state") {
+      channel = "match-state";
+      const clients = [...this.sseClients].filter((client) => isMatchWidgetView(client.view));
+      if (!clients.length) return;
+      const encoded = `event: match-state\ndata: ${JSON.stringify({ channel, payload: projectMatchesOverlayPayload(payload), timestamp: new Date().toISOString() })}\n\n`;
+      for (const client of clients) {
+        try { client.response.write(encoded); } catch { this.sseClients.delete(client); }
+      }
+      return;
+    }
     const message = {
       channel,
       payload,
@@ -234,13 +246,20 @@ class OverlayServer {
     };
     const encoded = `event: ${channel}\ndata: ${JSON.stringify(message)}\n\n`;
     for (const client of this.sseClients) {
+      // Le lecteur Studio à capacité publique ne reçoit jamais les sons,
+      // configurations et événements génériques des autres sources.
+      if (client.matchBridgeAccess && !["match", "match-media", "match-audio"].includes(channel)) continue;
+      if (client.view === "scene" && !sceneLayout.acceptsSceneChannel(
+        channel, hasProAccess
+      )) continue;
       if (
         !overlayViewAcceptsChannel(
           client.view,
           channel,
           payload,
           client.screen,
-          client.leaderboardKind
+          client.leaderboardKind,
+          client.matchName
         )
       ) {
         continue;
@@ -256,7 +275,7 @@ class OverlayServer {
   }
 
   playMatch(incoming = {}) {
-    if (!hasProOverlayAccess(this.store.getState())) {
+    if (!hasProOverlayAccess(readState(this.store, PRO_ACCESS_STATE_PATHS))) {
       throw new Error("Un abonnement Pro actif est requis pour lire les Matchs.");
     }
     const payload = normalizeMatchPlaybackRequest(incoming);
@@ -283,12 +302,15 @@ class OverlayServer {
   }
 
   async #handleRequest(request, response) {
-    const settings = this.store.getState().settings;
+    const { settings } = readState(this.store, ["settings.overlayToken"]);
     const url = new URL(request.url, `http://${request.headers.host || "127.0.0.1"}`);
     this.#securityHeaders(response);
 
     if (url.pathname === "/health") {
       return this.#json(response, 200, { ok: true, service: "ShenPulse Overlay" });
+    }
+    if (url.pathname === "/match-preview/ticket") {
+      return this.matchSource.handlePreviewTicket(url, request, response);
     }
     const matchBridge = this.matchSource.parseBridge(url.pathname);
     if (matchBridge) {
@@ -296,7 +318,16 @@ class OverlayServer {
         credentials: matchBridge,
         url,
         request,
-        response
+        response,
+        registerEventClient: (client) => {
+          if (isMatchWidgetView(client.view)) {
+            const matchesAccess = this.#matchesAccessState();
+            if (!matchesAccess) return response.end();
+            client.matchesIdentity = matchWidgetIdentity(matchesAccess);
+          }
+          this.sseClients.add(client);
+          request.on("close", () => this.sseClients.delete(client));
+        }
       });
     }
     const matchSource = this.matchSource.parse(url.pathname);
@@ -318,7 +349,7 @@ class OverlayServer {
     const isOverlayDocument =
       url.pathname === "/" ||
       url.pathname === "/overlay" ||
-      url.pathname === "/overlay/";
+      url.pathname === "/overlay/" || /\.html$/i.test(url.pathname);
     if (isOverlayDocument) {
       const previewMode = url.searchParams.get("preview");
       const isCatalogPreview =
@@ -326,10 +357,11 @@ class OverlayServer {
       if (!this.#authorized(request, settings.overlayToken)) {
         return this.#json(response, 401, { error: "Jeton local invalide." });
       }
+      if (isMatchWidgetView(url.searchParams.get("view")) && !this.#matchesAccessState()) return this.#overlayAccessDenied(response);
       if (
         overlayViewRequiresPro(url.searchParams.get("view")) &&
         !isCatalogPreview &&
-        !hasProOverlayAccess(this.store.getState())
+        !hasProOverlayAccess(readState(this.store, PRO_ACCESS_STATE_PATHS))
       ) {
         return this.#overlayAccessDenied(response);
       }
@@ -342,12 +374,15 @@ class OverlayServer {
       return this.#serveStatic(url.pathname, request, response);
     }
     if (url.pathname.startsWith("/overlay/media/")) {
+      if (/^\/overlay\/media\/video\/.*\.(?:webm|mp4)$/i.test(url.pathname)) {
+        return this.#json(response, 403, { error: "Les vidéos Match sont disponibles uniquement par ticket de lecture." });
+      }
       if (!this.#authorized(request, settings.overlayToken)) {
         return this.#json(response, 401, { error: "Jeton local invalide." });
       }
       if (
         url.pathname.startsWith("/overlay/media/video/") &&
-        !hasProOverlayAccess(this.store.getState())
+        !hasProOverlayAccess(readState(this.store, PRO_ACCESS_STATE_PATHS))
       ) {
         return this.#overlayAccessDenied(response);
       }
@@ -364,19 +399,27 @@ class OverlayServer {
       return this.#json(response, 401, { error: "Jeton local invalide." });
     }
     if (url.pathname === "/api/state") {
-      const state = this.store.getState();
+      if (isMatchWidgetView(url.searchParams.get("view"))) {
+        if (!this.#matchesAccessState()) return this.#overlayAccessDenied(response);
+        return this.#json(response, 200, { matches: projectMatchesOverlayState(readState(this.store, MATCH_OVERLAY_STATE_PATHS)) });
+      }
+      const state = readState(this.store, OVERLAY_BOOTSTRAP_STATE_PATHS);
       return this.#json(response, 200, {
         goals: state.goals,
         session: state.session,
         overlaySession: state.overlaySession,
+        overlayScene: sceneLayout.stateForScene(state),
+        configurations: state.settings?.overlayConfigs || {},
         statistics: state.statistics
       });
     }
     if (url.pathname === "/events") {
       const view = String(url.searchParams.get("view") || "alerts");
+      const matchesAccess = isMatchWidgetView(view) ? this.#matchesAccessState() : null;
+      if (isMatchWidgetView(view) && !matchesAccess) return this.#overlayAccessDenied(response);
       if (
         overlayViewRequiresPro(view) &&
-        !hasProOverlayAccess(this.store.getState())
+        !hasProOverlayAccess(readState(this.store, PRO_ACCESS_STATE_PATHS))
       ) {
         return this.#overlayAccessDenied(response);
       }
@@ -386,31 +429,32 @@ class OverlayServer {
         Connection: "keep-alive"
       });
       response.write(": ShenPulse connected\n\n");
-      const state = this.store.getState();
+      const state = isMatchWidgetView(view) ? null : readState(this.store, OVERLAY_BOOTSTRAP_STATE_PATHS);
+      const bootstrapPayload = isMatchWidgetView(view)
+        ? { matches: projectMatchesOverlayState(readState(this.store, MATCH_OVERLAY_STATE_PATHS)) }
+        : { goals: state.goals, session: state.session, overlaySession: state.overlaySession,
+          overlayScene: sceneLayout.stateForScene(state), configurations: state.settings?.overlayConfigs || {}, statistics: state.statistics };
       response.write(
         `event: bootstrap\ndata: ${JSON.stringify({
           channel: "bootstrap",
-          payload: {
-            goals: state.goals,
-            session: state.session,
-            overlaySession: state.overlaySession,
-            statistics: state.statistics
-          },
+          payload: bootstrapPayload,
           timestamp: new Date().toISOString()
         })}\n\n`
       );
       const screen = Math.round(Number(url.searchParams.get("screen")) || 0);
       const leaderboardKind = String(url.searchParams.get("kind") || "");
-      const client = { response, view, screen, leaderboardKind };
+      const client = { response, view, screen, leaderboardKind,
+        sceneProAccess: hasProOverlayAccess(state),
+        ...(matchesAccess ? { matchesIdentity: matchWidgetIdentity(matchesAccess) } : {}) };
       this.sseClients.add(client);
       request.on("close", () => this.sseClients.delete(client));
       return;
     }
-    return this.#serveStatic(url.pathname, response);
+    return this.#serveStatic(url.pathname, request, response);
   }
 
   async #handleApiRequest(request, response) {
-    const settings = this.store.getState().settings;
+    const { settings } = readState(this.store, ["settings.apiToken"]);
     const url = new URL(request.url, `http://${request.headers.host || "127.0.0.1"}`);
     this.#securityHeaders(response);
     if (url.pathname === "/health") {
@@ -495,10 +539,15 @@ class OverlayServer {
         : requestPath.replace(/^\/overlay\/?/, "");
     const normalized = path.normalize(relative).replace(/^(\.\.[/\\])+/, "");
     const fullPath = path.resolve(this.staticDirectory, normalized);
-    if (!fullPath.startsWith(path.resolve(this.staticDirectory))) {
+    const staticRoot = path.resolve(this.staticDirectory);
+    if (fullPath !== staticRoot && !fullPath.startsWith(`${staticRoot}${path.sep}`)) {
       return this.#json(response, 403, { error: "Chemin interdit." });
     }
     let target = fullPath;
+    const rawVideoRoot = path.resolve(this.staticDirectory, "media", "video");
+    if (target.startsWith(`${rawVideoRoot}${path.sep}`) && /\.(?:webm|mp4)$/i.test(target)) {
+      return this.#json(response, 403, { error: "Export de vidéo Match indisponible." });
+    }
     if (fs.existsSync(target) && fs.statSync(target).isDirectory()) {
       target = path.join(target, "index.html");
     }
@@ -547,18 +596,36 @@ class OverlayServer {
   }
 
   #enforceOverlayAccess() {
-    const hasProAccess = hasProOverlayAccess(this.store.getState());
+    this.matchSource.reconcile();
+    // Access enforcement has no side effects outside registered SSE clients.
+    // A LIVE event must not copy state solely for an absent OBS/browser source.
+    if (!this.sseClients.size) return;
+    const hasProAccess = hasProOverlayAccess(readState(this.store, PRO_ACCESS_STATE_PATHS));
+    const matchesAccess = [...this.sseClients].some((client) => isMatchWidgetView(client.view) || client.matchBridgeAccess) ? this.#matchesAccessState() : null;
+    let sceneState;
     for (const client of [...this.sseClients]) {
+      if (client.view === "scene" && client.sceneProAccess !== hasProAccess) {
+        client.sceneProAccess = hasProAccess;
+        sceneState ||= sceneLayout.stateForScene(readState(this.store, [
+          "settings.overlayScene", "commerce.subscription"
+        ]));
+        client.response.write(`event: scene\ndata: ${JSON.stringify({
+          channel: "scene", payload: sceneState
+        })}\n\n`);
+      }
       if (!overlayViewRequiresPro(client.view)) continue;
       const matchUrlStillValid =
-        !client.matchAccess ||
-        this.matchSource.isAuthorized(client.matchAccess);
-      if (hasProAccess && matchUrlStillValid) continue;
+        (!client.matchAccess || this.matchSource.isAuthorized(client.matchAccess)) &&
+        (!client.matchBridgeAccess || this.matchSource.isBridgeAuthorized(client.matchBridgeAccess));
+      const matchBridgeContextValid = !client.matchBridgeIdentity || client.matchBridgeIdentity === this.matchSource.bridgeIdentity();
+      const matchesStillAllowed = (!isMatchWidgetView(client.view) || Boolean(matchesAccess && client.matchesIdentity === matchWidgetIdentity(matchesAccess))) &&
+        (!client.matchBridgeAccess || Boolean(matchesAccess));
+      if (hasProAccess && matchUrlStillValid && matchesStillAllowed && matchBridgeContextValid) continue;
       try {
         client.response.write(
           `event: access-revoked\ndata: ${JSON.stringify({
             reason: hasProAccess
-              ? "match-url-regenerated"
+              ? !matchUrlStillValid ? "match-url-regenerated" : !matchesStillAllowed ? "matches-access-revoked" : "match-context-changed"
               : "subscription-required"
           })}\n\n`
         );
@@ -568,6 +635,13 @@ class OverlayServer {
       }
       this.sseClients.delete(client);
     }
+    return hasProAccess;
+  }
+
+  /** Authentification forte, abonnement et visibilité relus avant toute diffusion. */
+  #matchesAccessState() {
+    try { return assertProFeatureAccess(this.store, "matches"); }
+    catch { return null; }
   }
 
   #overlayAccessDenied(response) {

@@ -21,6 +21,8 @@ async function testActionRow(row) {
         : row.rule.trigger?.type || "gift",
     ...(row.action.type === "tts.speak"
       ? { testMessage: "Ceci est un test de lecture ShenPulse." }
+      : row.action.type === "spotify.queue" && row.action.config?.chatCommand
+        ? { testEventType: "chat", testMessage: `${row.action.config.chatCommand} Daft Punk One More Time` }
       : {})
   });
 }
@@ -113,7 +115,7 @@ async function updateAudioOutput(row, outputMode, liveScreen = 1) {
   acceptSnapshot(await api.getSnapshot());
 }
 
-function syncLiveAudioScreenDialog() {
+function syncActiveAudioScreenDialog() {
   const picker = dialogBody.querySelector('[name="liveScreen"]');
   const urlNode = dialogBody.querySelector("[data-live-output-url]");
   const copyButton = dialogBody.querySelector("[data-live-output-copy]");
@@ -162,7 +164,7 @@ function openLiveAudioOutputEditor(row) {
       await updateAudioOutput(row, "live", data.get("liveScreen"));
     }
   });
-  syncLiveAudioScreenDialog();
+  syncActiveAudioScreenDialog();
 }
 
 function likeGoalTestAmount() {

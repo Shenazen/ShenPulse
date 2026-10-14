@@ -45,12 +45,34 @@ et `acceptsChannel` du catalogue.
 ## Modules runtime
 
 - `configuration.js` : paramètres, état commun et configuration à chaud ;
-- `wheel-match.js` : roue, classements et lecteur Match ;
+- `widgets/wheel-design.js` et `wheel-animation.js` : dessin et rotation de roue ;
+- `widgets/match.js` : lecture Match, file et récupération après inactivité ;
+- `widgets/match-widgets.js` : six widgets locaux Matchs et scores complémentaires,
+  sans démo automatique, ni relais public ; contrat et contrôles dans
+  `docs/matches-overlays.fr.md` ;
 - `alerts-feed.js` : alertes, audio, objectifs et flux ;
-- `widgets.js` : Coin Jar, timers, compteurs et animation de roue ;
+- `widgets/coin-jar.js`, `timers.js`, `win-counter.js` et `game.js` : moteurs
+  indépendants chargés uniquement par la vue concernée ;
+- `session.js` : hydratation unique des compteurs, classements et flux ;
 - `transport.js` : canaux, SSE, messages d'aperçu et relais Firebase.
+- `scene.js` : composition transparente de widgets avec un seul transport. Le
+  contrat `../scene-layout.js` borne et filtre la composition par droits. Les
+  widgets incorporés (`embedded=scene`) reçoivent uniquement les messages de
+  leur parent de même origine et n'ouvrent ni SSE ni relais supplémentaires.
 - `dependencies.js` : chargement à la demande des bibliothèques lourdes ; le
   lecteur Lottie reste limité à la source Alertes qui sait l'utiliser.
+
+`loader.js` conserve l’ordre d’exécution des scripts classiques et télécharge
+en parallèle uniquement les moteurs utiles. Un Timer ne compile plus le moteur
+physique du Coin Jar, les dessins de roue ou le lecteur Match. Les cartes statiques,
+sources locales, relais Firebase et scènes composites gardent les mêmes canaux.
+
+Les chemins historiques `widgets.js` et `wheel-match.js` restent disponibles pour
+les anciens loaders. Ce sont des fichiers générés depuis les mêmes modules par
+`scripts/build-overlay-runtime.js`, appelé par `npm run overlays:build`. Il ne faut
+jamais les modifier à la main. Les tests vérifient leur génération exacte, les
+modules effectivement choisis par chaque vue et le comportement DOM de chaque
+widget. Aucun déploiement du runtime public n’est effectué par la génération.
 
 Les cartes de la galerie utilisent `preview=static` ou `preview=animated`.
 Elles ne doivent jamais ouvrir le flux SSE, le relais Firebase ou charger

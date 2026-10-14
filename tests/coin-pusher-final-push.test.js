@@ -4,9 +4,15 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { readVueGameSource, readTypeScriptSourceGraph } = require("./helpers/original-game-sources");
 
 const root = path.join(__dirname, "..");
-const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
+const read = (...parts) => {
+  const file = path.join(root, ...parts);
+  if (file.endsWith(".vue")) return readVueGameSource(file);
+  if (file.endsWith("coinPusher3dRenderer.ts") || file.endsWith("coinPusherSettings.ts")) return readTypeScriptSourceGraph(file);
+  return fs.readFileSync(file, "utf8");
+};
 
 test("la page Coin Pusher expose la poussée complète et la route vers le plateau", () => {
   const launchPage = read(

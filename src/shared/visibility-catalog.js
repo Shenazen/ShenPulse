@@ -8,6 +8,7 @@
   if (root) root.ShenPulseVisibility = catalog;
 })(typeof globalThis === "object" ? globalThis : this, () => {
   const SCOPES = new Set(["public", "admin", "hidden"]);
+  const VISIBILITY_SCHEMA_VERSION = 9;
 
   const FEATURE_ITEMS = Object.freeze([
     {
@@ -63,8 +64,7 @@
       label: "Interactions IRL Shelly",
       detail: "Association et pilotage local des prises PlugPlus depuis les interactions LIVE",
       icon: "⚡",
-      defaultScope: "admin",
-      ownerOnly: true
+      defaultScope: "public"
     },
     {
       id: "data.management",
@@ -76,8 +76,12 @@
 
   const LEGACY_ALIASES = Object.freeze({
     navigation: {
+      // Accueil is a new public page; it never inherits a saved dashboard scope.
+      home: [],
       live: ["navigation.lives"],
       rules: ["navigation.interactions"],
+      voice: ["navigation.sounds"],
+      music: ["navigation.song"],
       overlays: ["navigation.studio"],
       games: ["navigation.interactive-games"],
       goals: ["navigation.points"],
@@ -159,6 +163,42 @@
       );
   }
 
+  /** En version 8 et avant, les trois portées IRL étaient forcées propriétaire.
+   * L'ouverture aux abonnés ne remplace jamais une interdiction explicite.
+   * Une restriction admin ajoutée en version 9 reste pleinement autoritative.
+   */
+  function migratedIrlScope(source, section, id, value) {
+    const irl = (section === "navigation" && id === "irl") ||
+      (["features", "actionTypes"].includes(section) && id === "irl.shelly");
+    const normalized = normalizeScope(value);
+    return irl && Number(source?.schemaVersion || 0) < VISIBILITY_SCHEMA_VERSION && normalized === "admin"
+      ? "public" : normalized;
+  }
+
+  /** Migration pure du cache local et des configurations Firebase distantes.
+   * Ne touche ni aux autres pages, ni aux profils, ni aux restrictions de jeux.
+   */
+  function migrateVisibility(source) {
+    const candidate = source && typeof source === "object" ? JSON.parse(JSON.stringify(source)) : {};
+    // En v7, Studio désignait les overlays. Préserver ce droit avant de
+    // relever le schéma, sinon scopeFor ne reconnaîtrait plus cet alias.
+    if (Number(candidate.schemaVersion || 0) < 8 && candidate.navigation?.studio !== undefined) {
+      if (candidate.navigation.overlays === undefined) candidate.navigation.overlays = candidate.navigation.studio;
+      delete candidate.navigation.studio;
+    }
+    if (Number(candidate.schemaVersion || 0) < VISIBILITY_SCHEMA_VERSION) {
+      for (const [section, id] of [["navigation", "irl"], ["features", "irl.shelly"], ["actionTypes", "irl.shelly"]]) {
+        for (const key of new Set([id, storageKey(id)])) {
+          const entry = candidate[section]?.[key];
+          if (entry === undefined || normalizeScope(entry) !== "admin") continue;
+          candidate[section][key] = entry && typeof entry === "object" ? { ...entry, scope: "public" } : "public";
+        }
+      }
+    }
+    candidate.schemaVersion = Math.max(VISIBILITY_SCHEMA_VERSION, Number(candidate.schemaVersion) || VISIBILITY_SCHEMA_VERSION);
+    return candidate;
+  }
+
   function scopeFor(
     source,
     section,
@@ -166,14 +206,21 @@
     aliases = LEGACY_ALIASES,
     fallback = "public"
   ) {
+    // Before version 8, "studio" named the overlays gallery. It must not
+    // become a scope for the new community-games Studio Live page.
+    if (section === "navigation" && id === "studio" && Number(source?.schemaVersion || 0) < 8) {
+      return normalizeScope(fallback);
+    }
     const direct =
       source?.[section]?.[storageKey(id)] ?? source?.[section]?.[id];
-    if (direct !== undefined) return normalizeScope(direct);
+    if (direct !== undefined) return migratedIrlScope(source, section, id, direct);
     for (const path of aliases?.[section]?.[id] || []) {
+      if (section === "navigation" && id === "overlays" && path === "navigation.studio" &&
+        Number(source?.schemaVersion || 0) >= 8) continue;
       const legacy = valueAtPath(source, path);
-      if (legacy !== undefined) return normalizeScope(legacy);
+      if (legacy !== undefined) return migratedIrlScope(source, section, id, legacy);
     }
-    return normalizeScope(fallback);
+    return migratedIrlScope(source, section, id, fallback);
   }
 
   function canonicalizeVisibility(
@@ -181,13 +228,11 @@
     catalogBySection,
     aliases = LEGACY_ALIASES
   ) {
-    const candidate =
-      source && typeof source === "object"
-        ? JSON.parse(JSON.stringify(source))
-        : {};
+    // Résoudre les aliases Studio sur le schéma original avant de le relever :
+    // un ancien navigation.studio doit toujours rester l'accès aux overlays.
+    const candidate = source && typeof source === "object" ? source : {};
     const result = {
-      ...candidate,
-      schemaVersion: Math.max(7, Number(candidate.schemaVersion) || 7)
+      ...migrateVisibility(candidate)
     };
     delete result.setupFeatures;
     delete result.maintenanceFeatures;
@@ -259,12 +304,14 @@
   }
 
   return Object.freeze({
+    VISIBILITY_SCHEMA_VERSION,
     FEATURE_ITEMS,
     LEGACY_ALIASES,
     auditVisibility,
     canAccessScope,
     canonicalizeVisibility,
     normalizeScope,
+    migrateVisibility,
     scopeFor,
     storageKey
   });

@@ -1,8 +1,27 @@
 "use strict";
 
 const { EventEmitter } = require("node:events");
-const path = require("node:path");
+const { synchronizeSessionWithTikTok, liveKickConnection, synchronizeSessionWithKick, clearSessionState } = require("./core/session-state");
+const { resetSessionStatistics, recordEventStatistics, finishLiveStatistics, recordLiveAudience } = require("./core/event-statistics");
+const { wheelGiftTriggerMatches, defaultTestEventCount, resolveLikeGoalCompletionChange, shouldRecordActivity } = require("./core/trigger-policy");
+const { readMontChiliadCounterEvent } = require("./core/game-counter-events");
+const { readState } = require("./state-projection");
+const { isRealLiveEvent } = require("../shared/live-statistics");
+const { bindCoreEvents } = require("./core/event-bindings");
+const { GameSessionService } = require("./core/game-sessions");
+const { createTestEvent } = require("./core/test-events");
+const { LiveEventActionService } = require("./core/live-event-actions");
+const { createCoreMatches } = require("./matches/core-integration");
+const { ingestCreatorEvent } = require("./core/ingestion");
+const { reconcileGiftReferencesSafely } = require("./core/gift-recovery");
 const { normalizeEvent } = require("./event-normalizer");
+const { ViewerService } = require("./viewer-service");
+const { createCoreRuntimeSnapshot } = require("./core/runtime-snapshot");
+const path = require("node:path");
+const { shell } = require("electron");
+const { KickService } = require("./kick-service");
+const { ControllerService } = require("./controller-service");
+const { hasAuthenticatedAccount } = require("./account-access");
 const { ActionRunner } = require("./action-runner");
 const { ActionTimerScheduler } = require("./action-timer-scheduler");
 const { GameHub } = require("./game-hub");
@@ -15,12 +34,14 @@ const { ObsClient } = require("./obs-client");
 const { OverlayServer } = require("./overlay-server");
 const { createMatchAccessKey } = require("./match-access");
 const { PublicOverlayRelay } = require("./public-overlay-relay");
+const { LiveDirectoryService } = require("./live-directory-service");
 const {
   RuleEngine,
   giftEventCount,
   giftExecutionEvent
 } = require("./rule-engine");
 const { SourceHub } = require("./source-hub");
+const { commandActivityMetadata } = require("./core/command-activity");
 const {
   GiftCatalog,
   SOUND_CATALOG,
@@ -34,15 +55,7 @@ const {
   OverlayCompletionController
 } = require("./overlay-completion-controller");
 const { renderValue } = require("./template");
-const { preferredImageUrl, safeString, serializeError } = require("./utils");
-const {
-  giftValueFilterMatches,
-  normalizeGiftValueFilter
-} = require("../shared/gift-value-filter");
-const {
-  enrichGiftEvent,
-  giftConditionMatches
-} = require("../shared/gift-identity");
+const { safeString, serializeError } = require("./utils");
 const {
   finishOverlaySession,
   recordOverlayEvent,
@@ -50,19 +63,25 @@ const {
 } = require("./overlay-session-state");
 
 class ShenPulseCore extends EventEmitter {
-  constructor({ store, resourcesDirectory, notifyRenderer, appVersion = "" }) {
+  constructor({ store, resourcesDirectory, notifyRenderer, appVersion = "", liveDirectoryIdentityProvider }) {
     super();
     this.store = store;
     this.notifyRenderer = notifyRenderer;
     this.appVersion = String(appVersion || "");
     this.giftCatalog = new GiftCatalog(resourcesDirectory);
+    this.viewerService = new ViewerService({ store });
+    this.ingestionHooks = { recordEvent: (event) => this.#recordEvent(event),
+      handleCommand: (event) => this.#handleCommand(event), handleWheelGiftTriggers: (event) => this.#handleWheelGiftTriggers(event),
+      changed: (deferred) => this.#changed(deferred), activity: (...args) => this.#activity(...args),
+      catalogChanged: () => reconcileGiftReferencesSafely(this, { immediate: false }) };
     this.gameHub = new GameHub({
       store,
       packsDirectory: path.join(resourcesDirectory, "packs"),
       resourcesDirectory,
       giftCatalog: this.giftCatalog
     });
-    this.sourceHub = new SourceHub({ store });
+    this.kickService = new KickService({ store, openExternal: (url) => shell.openExternal(url) });
+    this.sourceHub = new SourceHub({ store, kickService: this.kickService });
     this.obsClient = new ObsClient({ store });
     this.soundCatalog = SOUND_CATALOG;
     this.mediaCatalog = createMediaCatalog(resourcesDirectory);
@@ -82,6 +101,11 @@ class ShenPulseCore extends EventEmitter {
       store,
       appVersion
     });
+    this.liveDirectory = typeof liveDirectoryIdentityProvider === "function"
+      ? new LiveDirectoryService({ store, identityProvider: liveDirectoryIdentityProvider,
+        canPublish: () => hasAuthenticatedAccount(store) })
+      : null;
+    this.liveDirectory?.on("changed", (status) => this.notifyRenderer("live-directory-status", status));
     this.overlayServer = new OverlayServer({
       store,
       staticDirectory: path.join(resourcesDirectory, "overlays"),
@@ -155,8 +179,51 @@ class ShenPulseCore extends EventEmitter {
       actionRunner: this.actionRunner
     });
     this.commandCooldowns = new Map();
+    this.controllerService = new ControllerService({
+      store,
+      pluginDirectory: path.join(resourcesDirectory, "controllers", "com.shenpulse.control.sdPlugin"),
+      executeAction: async (actionId) => {
+        const row = readState(store, ["rules"]).rules.flatMap((rule) => (rule.actions || []).map((action) => ({ rule, action })))
+          .find(({ action }) => action.id === actionId);
+        if (!row || !row.rule.enabled || row.action.enabled === false) throw new Error("Cette action est désactivée ou introuvable.");
+        return this.previewAction(row.action, { username: "ShenPulse", nickname: "Contrôleur" });
+      },
+      selectProfile: async (profileId) => {
+        this.liveEventActions?.chatbot.reset();
+        await this.stopGameSession({ notify: false });
+        store.selectProfile(profileId);
+        this.ruleEngine.resetProfileState();
+        this.liveEventActions?.chatbot.syncTimers();
+        this.notifyRenderer("state-changed", this.snapshot());
+      }
+    });
+    this.cachedCatalogSource = null;
+    this.cachedCatalogPacks = null;
     this.gameCounterCursors = new Map();
+    this.liveEventActions = new LiveEventActionService({
+      store: this.store,
+      sourceHub: this.sourceHub,
+      overlayServer: this.overlayServer,
+      actionRunner: this.actionRunner,
+      giftCatalog: this.giftCatalog,
+      commandCooldowns: this.commandCooldowns,
+      gameCounterCursors: this.gameCounterCursors,
+      onActivity: (...args) => this.#activity(...args),
+      onChanged: (deferred) => this.#changed(deferred)
+    });
     this.followSessionGuard = new FollowSessionGuard();
+    this.matches = createCoreMatches(this, (...args) => this.#activity(...args), (deferred) => this.#changed(deferred));
+    this.gameSessions = new GameSessionService({
+      store: this.store,
+      gameHub: this.gameHub,
+      minecraftRoundTimer: this.minecraftRoundTimer,
+      ruleEngine: this.ruleEngine,
+      actionRunner: this.actionRunner,
+      notifyRenderer: this.notifyRenderer,
+      onActivity: (...args) => this.#activity(...args),
+      onChanged: (deferred) => this.#changed(deferred),
+      getSnapshot: () => this.snapshot()
+    });
     this.deferredChangeTimer = null;
     this.publicOverlayRelay.on("status", (status) => {
       this.notifyRenderer("public-overlay-relay-status", status);
@@ -165,6 +232,7 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async initialize() {
+    reconcileGiftReferencesSafely(this);
     this.store.mutate((state) => {
       clearSessionState(state);
       const tiktokConnection = state.connections.find(
@@ -182,6 +250,8 @@ class ShenPulseCore extends EventEmitter {
             ? "disconnected"
             : "unconfigured";
       state.settings.tiktok.roomId = "";
+      state.settings.tiktok.broadcaster = null;
+      state.settings.tiktok.currentViewers = null;
       if (tiktokConnection) {
         tiktokConnection.status = "disconnected";
         tiktokConnection.liveStatus = state.settings.tiktok.status;
@@ -189,10 +259,11 @@ class ShenPulseCore extends EventEmitter {
         tiktokConnection.error = "";
       }
     }, true);
+    this.liveDirectory?.start();
     this.gameHub.loadPacks();
     this.gameHub.repairMinecraftWinCounterInteractions();
     this.timerScheduler.start();
-    if (this.store.getState().settings.startOverlayServer) {
+    if (readState(this.store, ["settings.startOverlayServer"]).settings?.startOverlayServer) {
       try {
         await this.overlayServer.start();
       } catch (error) {
@@ -200,15 +271,14 @@ class ShenPulseCore extends EventEmitter {
       }
     }
     this.publicOverlayRelay.prepareConfiguration();
-    if (this.store.getState().settings.account?.uid) {
+    if (readState(this.store, ["settings.account.uid"]).settings?.account?.uid) {
       this.publicOverlayRelay.start().catch(() => {
         // Le serveur local et l'interface restent disponibles hors connexion.
       });
     }
-    this.publicOverlayRelay.publishState(this.store.getState());
+    this.publicOverlayRelay.publishState();
     await this.overlayCompletionController.initialize();
-    const tiktokConnection = this.store
-      .getState()
+    const tiktokConnection = readState(this.store, ["connections"])
       .connections.find((item) => item.id === "source_tiktok");
     if (tiktokConnection?.enabled && tiktokConnection.config?.username) {
       this.sourceHub.start(tiktokConnection.id).catch((error) => {
@@ -221,10 +291,17 @@ class ShenPulseCore extends EventEmitter {
       });
     }
     this.refreshGiftCatalog().then(() => this.#changed(true));
+    await this.startCreatorIntegrations();
     return this.snapshot();
   }
 
   async suspendAccountWorkspace() {
+    this.matches.reset();
+    this.liveEventActions.chatbot.reset();
+    // Retire la fiche publique avant d’effacer ou de remplacer l’identité chiffrée.
+    await this.liveDirectory?.suspendPublication();
+    await this.controllerService.stop();
+    await this.kickService.dispose();
     this.overlayCompletionController.stop();
     this.timerScheduler.stop();
     await this.minecraftRoundTimer.dispose();
@@ -239,27 +316,41 @@ class ShenPulseCore extends EventEmitter {
     this.gameCounterCursors.clear();
   }
 
+  async startCreatorIntegrations() {
+    if (!hasAuthenticatedAccount(this.store)) return;
+    if (readState(this.store, ["settings.controllers.devices"]).settings?.controllers?.devices?.length) {
+      try { await this.controllerService.start(); }
+      catch (error) { this.#activity("warning", "controller", "Contrôleurs indisponibles", error.message); }
+    }
+    const connection = readState(this.store, ["connections"]).connections.find((entry) => entry.type === "kick-native" && entry.enabled);
+    if (connection) {
+      try { await this.sourceHub.start(connection.id); }
+      catch (error) { this.#activity("warning", "kick", "Connexion Kick différée", error.message); }
+    }
+  }
+
   async resumeAccountWorkspace() {
+    reconcileGiftReferencesSafely(this);
+    this.liveDirectory?.resumePublication();
     this.store.mutate((state) => {
       clearSessionState(state);
     }, true);
     this.publicOverlayRelay.prepareConfiguration();
     this.timerScheduler.start();
-    if (this.store.getState().settings.startOverlayServer) {
+    if (readState(this.store, ["settings.startOverlayServer"]).settings?.startOverlayServer) {
       await this.overlayServer.start();
     }
-    if (this.store.getState().settings.account?.uid) {
+    if (readState(this.store, ["settings.account.uid"]).settings?.account?.uid) {
       this.publicOverlayRelay.start().catch(() => {
         // Le compte reste utilisable si le relais distant est indisponible.
       });
     }
-    this.publicOverlayRelay.publishState(this.store.getState());
+    this.publicOverlayRelay.publishState();
     await this.overlayCompletionController.initialize();
-    const tiktokConnection = this.store
-      .getState()
+    const tiktokConnection = readState(this.store, ["connections"])
       .connections.find((item) => item.id === "source_tiktok");
     if (
-      this.store.getState().settings.account?.uid &&
+      readState(this.store, ["settings.account.uid"]).settings?.account?.uid &&
       tiktokConnection?.enabled &&
       tiktokConnection.config?.username
     ) {
@@ -272,19 +363,21 @@ class ShenPulseCore extends EventEmitter {
         );
       });
     }
+    await this.startCreatorIntegrations();
     this.#changed(true);
     return this.snapshot();
   }
 
   snapshot() {
-    const customSounds = this.store.getState().customSounds || [];
-    const customMedia = this.store.getState().customMedia || [];
+    const state = this.store.getState();
+    const customSounds = state.customSounds || [];
+    const customMedia = state.customMedia || [];
     const soundCatalog = [...this.soundCatalog, ...customSounds];
     const mediaCatalog = [...this.mediaCatalog, ...customMedia];
     return {
       appVersion: this.appVersion,
-      state: this.store.getState(),
-      packs: this.gameHub.listPacks(),
+      state,
+      packs: this.catalogSnapshot(),
       soundCatalog,
       mediaCatalog,
       catalogCounts: {
@@ -301,31 +394,35 @@ class ShenPulseCore extends EventEmitter {
       localOverlayUrls: this.overlayServer.urls({
         includeRestricted: true
       }),
-      publicOverlayRelay: this.publicOverlayRelay.status()
+      publicOverlayRelay: this.publicOverlayRelay.status(),
+      liveDirectory: this.liveDirectory?.status() || {
+        available: false, connected: false, publishing: false, enabled: false, rows: [], capped: false, error: ""
+      }
     };
   }
 
   runtimeSnapshot() {
-    const state = this.store.getState();
-    return {
-      state: {
-        activity: state.activity,
-        statistics: state.statistics,
-        session: state.session,
-        overlaySession: state.overlaySession
-      },
-      timerRuntime: this.timerScheduler.runtime()
-    };
+    return createCoreRuntimeSnapshot(this.store, this.timerScheduler);
+  }
+
+  catalogSnapshot() {
+    // The catalogue is immutable after loadPacks; avoid cloning thousands of effects per live snapshot.
+    if (this.cachedCatalogSource !== this.gameHub.packs || !this.cachedCatalogPacks) {
+      this.cachedCatalogSource = this.gameHub.packs;
+      this.cachedCatalogPacks = this.gameHub.listPacks();
+    }
+    return this.cachedCatalogPacks;
   }
 
   async refreshGiftCatalog({ force = false } = {}) {
     const username =
-      this.store.getState().settings.tiktok?.username || "tiktok";
+      readState(this.store, ["settings.tiktok.username"]).settings?.tiktok?.username || "tiktok";
     try {
       await this.giftCatalog.refreshLocalized(username, { force });
     } catch {
       // Le catalogue fusionné embarqué reste disponible hors ligne.
     }
+    reconcileGiftReferencesSafely(this);
     return this.giftCatalog.gifts;
   }
 
@@ -360,10 +457,14 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async startSession() {
-    const currentState = this.store.getState();
+    const currentState = readState(this.store, ["settings.tiktok", "settings.kick.live", "connections"]);
     const tiktok = currentState.settings.tiktok || {};
-    if (tiktok.username && tiktok.status !== "live") {
+    if (tiktok.username && tiktok.status !== "live" && !liveKickConnection(currentState)) {
       const results = await this.sourceHub.startEnabled();
+      if (liveKickConnection(readState(this.store, ["settings.kick.live", "connections"]))) {
+        this.#changed();
+        return { ...this.snapshot(), sourceResults: results, waitingForTikTokLive: false };
+      }
       this.store.mutate((state) => {
         state.session.running = false;
         state.session.startedAt = null;
@@ -394,13 +495,18 @@ class ShenPulseCore extends EventEmitter {
       state.session.startedBy = "manual";
       state.session.tiktokRoomId = "";
       state.session.tiktokInterruptedAt = null;
+      state.session.activeConnectionIds = currentState.connections
+        .filter((connection) => connection.enabled &&
+          ((connection.type === "kick-native" && currentState.settings.kick?.live === true) ||
+           (["tiktok-direct", "tiktok-relay"].includes(connection.type) && tiktok.status === "live")))
+        .map((connection) => connection.id);
       resetSessionStatistics(state);
       resetOverlaySession(state, startedAt);
     });
     const results = await this.sourceHub.startEnabled();
     this.overlayServer.publish(
       "session-state",
-      this.store.getState().overlaySession
+      readState(this.store, ["overlaySession"]).overlaySession
     );
     await this.overlayCompletionController.startConfiguredTimer(
       "session-start"
@@ -411,9 +517,12 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async stopSession() {
+    this.matches.reset();
+    this.liveEventActions.chatbot.reset();
     await this.sourceHub.stopAll();
     const endedAt = new Date().toISOString();
     this.store.mutate((state) => {
+      finishLiveStatistics(state, endedAt);
       state.session.running = false;
       state.session.startedAt = null;
       state.session.startedBy = "";
@@ -424,168 +533,55 @@ class ShenPulseCore extends EventEmitter {
     });
     this.overlayServer.publish(
       "session-state",
-      this.store.getState().overlaySession
+      readState(this.store, ["overlaySession"]).overlaySession
     );
     this.#activity("info", "session", "Session arrêtée", "");
     this.#changed();
     return this.snapshot();
   }
-
-  async startGameSession(packId) {
-    const targetId = safeString(packId, 160);
-    const pack = this.gameHub
-      .listPacks()
-      .find((entry) => entry.id === targetId);
-    if (!pack) throw new Error("Ce jeu n’existe plus dans ShenPulse.");
-    this.gameHub.assertAccess(targetId);
-    const currentGame = this.store.getState().session.game || {};
-    if (
-      currentGame.running === true &&
-      currentGame.packId === targetId
-    ) {
-      return this.snapshot();
-    }
-    const currentPackId =
-      this.store.getState().session.game?.packId || "";
-    if (currentPackId && currentPackId !== targetId) {
-      const currentPack = this.gameHub
-        .listPacks()
-        .find((entry) => entry.id === currentPackId);
-      throw new Error(
-        `${currentPack?.name || "Un autre jeu"} est déjà actif. Arrêtez-le avant d’ouvrir ${pack.name}.`
+  handleKickStatus({ connectionId = "source_kick", live = false, viewers } = {}) {
+    if (!hasAuthenticatedAccount(this.store)) return;
+    const connection = readState(this.store, ["connections"]).connections.find((entry) => entry.id === connectionId && entry.type === "kick-native");
+    if (!connection) return;
+    let transition = "";
+    this.store.mutateRuntime((state) => {
+      state.settings.kick = { ...(state.settings.kick || {}), live: connection.enabled && live === true };
+      transition = synchronizeSessionWithKick(state, { connectionId, live: connection.enabled && live === true });
+    });
+    if (transition === "started") {
+      this.overlayCompletionController.stop();
+      this.overlayServer.publish("session-state", readState(this.store, ["overlaySession"]).overlaySession);
+      this.#activity("success", "session", "Session démarrée automatiquement", "LIVE Kick détecté.");
+      this.overlayCompletionController.startConfiguredTimer("kick-session-start").catch((error) =>
+        this.#activity("error", "overlay", "Démarrage automatique du timer impossible", serializeError(error).message)
       );
+    } else if (transition === "stopped") {
+      this.overlayCompletionController.stop();
+      this.overlayServer.publish("session-state", readState(this.store, ["overlaySession"]).overlaySession);
+      this.#activity("info", "session", "LIVE Kick terminé", "Les données de la session sont conservées.");
     }
-    await this.gameHub.prepareConnection(targetId);
-    this.gameHub.initializeDefaultInteractions(targetId);
-    this.store.mutate((state) => {
-      state.session.activeGamePackId = targetId;
-      state.session.game = {
-        running: true,
-        packId: targetId,
-        profileId: state.session.profileId,
-        startedAt: new Date().toISOString(),
-        roundId: "",
-        roundStartedAt: null,
-        roundEndsAt: null,
-        roundDurationSeconds: 0,
-        roundAutoRestart: false,
-        roundStatus: "stopped",
-        roundTimeoutCount: 0,
-        lastRoundTimeoutAt: null
-      };
-    }, true);
-    if (isMinecraftRoundGame(targetId)) {
-      await this.minecraftRoundTimer.start(targetId, "server-start");
+    if (Number.isFinite(Number(viewers))) {
+      this.store.mutateRuntime((state) => {
+        state.settings.kick.viewers = Math.max(0, Number(viewers));
+        if (live === true) recordLiveAudience(state, "kick", viewers);
+      });
     }
-    this.ruleEngine.resetProfileState();
-    this.#activity(
-      "success",
-      "game",
-      `Session ${pack.name} active`,
-      "Les interactions de ce jeu sont maintenant disponibles sur toutes les pages."
-    );
     this.#changed();
-    return this.snapshot();
+  }
+  async startGameSession(packId) {
+    return this.gameSessions.startGameSession(packId);
   }
 
-  async stopGameSession({ notify = true } = {}) {
-    const state = this.store.getState();
-    const activePack = this.gameHub
-      .listPacks()
-      .find((entry) => entry.id === state.session.game?.packId);
-    await this.minecraftRoundTimer.stop();
-    if (activePack) {
-      await this.gameHub.stopRuntime(activePack.id);
-    }
-    await this.gameHub.disconnectAll();
-    this.store.mutate((draft) => {
-      draft.session.game = {
-        running: false,
-        packId: "",
-        profileId: "",
-        startedAt: null,
-        roundId: "",
-        roundStartedAt: null,
-        roundEndsAt: null,
-        roundDurationSeconds: 0,
-        roundAutoRestart: false,
-        roundStatus: "stopped",
-        roundTimeoutCount: 0,
-        lastRoundTimeoutAt: null
-      };
-    }, true);
-    this.ruleEngine.resetProfileState();
-    if (activePack) {
-      this.#activity(
-        "info",
-        "game",
-        `Session ${activePack.name} arrêtée`,
-        "Ses interactions ne seront plus exécutées."
-      );
-    }
-    if (notify) this.#changed();
-    return this.snapshot();
+  async stopGameSession(options) {
+    return this.gameSessions.stopGameSession(options);
   }
 
   async saveGameRoundSettings(packId, incoming = {}) {
-    const targetId = safeString(packId, 160);
-    const pack = this.gameHub.assertAccess(targetId);
-    if (!isMinecraftRoundGame(targetId)) {
-      throw new Error(
-        "Les réglages de durée de partie sont réservés aux jeux Minecraft."
-      );
-    }
-    const settings = normalizeMinecraftRoundSettings(incoming);
-    this.store.mutate((state) => {
-      state.game.roundSettingsByPack ||= {};
-      state.game.roundSettingsByPack[targetId] = settings;
-    });
-    const restarted = await this.minecraftRoundTimer.restartIfActive(
-      targetId,
-      "settings-change"
-    );
-    this.#activity(
-      "success",
-      "game",
-      `Réglages de partie ${pack.name}`,
-      `${settings.durationMinutes} minute${
-        settings.durationMinutes > 1 ? "s" : ""
-      } · relance automatique ${settings.autoRestart ? "activée" : "désactivée"}${
-        restarted ? " · chrono redémarré" : ""
-      }`
-    );
-    this.#changed();
-    return this.snapshot();
+    return this.gameSessions.saveGameRoundSettings(packId, incoming);
   }
 
-  async ingest(raw, source = "manual") {
-    const normalized = raw?.type && raw?.user && raw?.data
-      ? raw
-      : normalizeEvent(raw, source);
-    if (normalized.type === "gift") {
-      this.giftCatalog.mergeLiveGift(normalized.data || {});
-    }
-    const event = enrichGiftEvent(normalized, this.giftCatalog.gifts);
-    if (!this.followSessionGuard.accept(this.store.getState(), event)) {
-      return null;
-    }
-    const overlayChange = this.#recordEvent(event);
-    const completionChange = resolveLikeGoalCompletionChange(
-      event,
-      overlayChange
-    );
-    this.overlayServer.publishEvent(event);
-    this.notifyRenderer("live-event", event);
-    await this.#handleCommand(event);
-    await this.#handleWheelGiftTriggers(event);
-    await this.ruleEngine.process(event);
-    await this.overlayCompletionController.handleLikeGoalChange(
-      completionChange.previousLikeGoalCurrent,
-      completionChange.likeGoalCurrent,
-      { ...event, event, now: new Date().toISOString() }
-    );
-    this.#changed(true);
-    return event;
+  async ingest(raw, source) {
+    return ingestCreatorEvent(this, this.ingestionHooks, raw, source);
   }
 
   async testEvent(type = "gift") {
@@ -593,76 +589,7 @@ class ShenPulseCore extends EventEmitter {
   }
 
   createTestEvent(type = "gift", overrides = {}) {
-    const account = this.store.getState().settings.tiktok?.username || "shenpulse";
-    const viewer =
-      safeString(overrides.username || overrides.uniqueId || "test_viewer", 120)
-        .replace(/^@+/, "") || "test_viewer";
-    const nickname = safeString(
-      overrides.nickname || overrides.displayName || "Spectateur test",
-      160
-    );
-    const count = Math.max(
-      1,
-      Number(
-        overrides.count ?? defaultTestEventCount(type)
-      )
-    );
-    const shared = {
-      uniqueId: viewer,
-      nickname,
-      channelUsername: account,
-      profilePictureUrl: safeString(
-        overrides.avatarUrl || overrides.profilePictureUrl || "",
-        1000
-      )
-    };
-    const samples = {
-      gift: {
-        event: "gift",
-        data: {
-          ...shared,
-           giftId: safeString(overrides.giftId || "rose", 120),
-           giftName: safeString(overrides.giftName || "Rose", 160),
-           giftImageUrl: preferredImageUrl(
-             overrides.giftImageUrl,
-             overrides.giftPictureUrl,
-             overrides.giftImage
-           ),
-           repeatCount: Math.max(1, Number(overrides.repeatCount ?? count)),
-           value: Math.max(1, Number(overrides.value || 1))
-        }
-      },
-      follow: { event: "follow", data: shared },
-      like: {
-        event: "like",
-        data: {
-          ...shared,
-          likeCount: Math.max(1, Number(overrides.likeCount ?? count))
-        }
-      },
-      chat: {
-        event: "chat",
-        data: {
-          ...shared,
-          comment: safeString(
-            overrides.message || overrides.comment || "!help",
-            1000
-          )
-        }
-      },
-      share: { event: "share", data: shared },
-      subscribe: { event: "subscribe", data: shared },
-      join: { event: "join", data: shared },
-      raid: {
-        event: "raid",
-        data: {
-          ...shared,
-          count,
-          viewers: Number(overrides.viewers || count)
-        }
-      }
-    };
-    return samples[type] || samples.gift;
+    return createTestEvent(type, overrides, readState(this.store, ["settings.tiktok.username"]).settings.tiktok?.username);
   }
 
   async simulateEvent(incoming = {}) {
@@ -671,8 +598,7 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async testRule(ruleId, overrides = {}) {
-    const rule = this.store
-      .getState()
+    const rule = readState(this.store, ["rules"])
       .rules.find((item) => item.id === safeString(ruleId, 160));
     if (!rule) throw new Error("Règle introuvable.");
     const type = rule.trigger?.type === "*" ? "gift" : rule.trigger?.type;
@@ -706,7 +632,7 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async restartServers() {
-    if (this.store.getState().settings.startOverlayServer) {
+    if (readState(this.store, ["settings.startOverlayServer"]).settings?.startOverlayServer) {
       await this.overlayServer.start();
       this.#activity("success", "server", "Serveurs locaux redémarrés", "");
     } else {
@@ -727,101 +653,16 @@ class ShenPulseCore extends EventEmitter {
     );
   }
 
-  async handleMinecraftWinCounter({
-    gameId,
-    current,
-    outcome = "win",
-    source = "native"
-  } = {}) {
-    const packId = String(gameId || "");
-    if (!isMinecraftRoundGame(packId) || !Number.isFinite(Number(current))) {
-      return { synchronized: false };
-    }
-    const session = this.store.getState().session?.game || {};
-    if (session.running !== true || session.packId !== packId) {
-      return { synchronized: false };
-    }
-    const previous = Number(
-      this.store.getState().overlaySession?.winCounterCurrent || 0
-    );
-    const next = Math.max(
-      -1_000_000,
-      Math.min(1_000_000, Math.round(Number(current)))
-    );
-    if (previous === next) {
-      const resolution =
-        await this.minecraftRoundTimer.resolveNativeOutcome(packId, {
-          outcome,
-          currentWins: next,
-          source
-        });
-      return {
-        synchronized: false,
-        unchanged: true,
-        current: next,
-        resolution
-      };
-    }
-    const result = await this.actionRunner.run(
-      {
-        id: `minecraft_native_${source}_${Date.now()}`,
-        type: "overlay.win-counter",
-        config: {
-          effectId: `minecraft_native_${source}`,
-          operation: "set",
-          amount: next
-        }
-      },
-      {
-        source: "minecraft-native",
-        user: {
-          id: "minecraft",
-          name: "minecraft",
-          displayName: "Minecraft"
-        }
-      }
-    );
-    const synchronizedCurrent = Number(result?.current ?? next);
-    const resolution = await this.minecraftRoundTimer.resolveNativeOutcome(
-      packId,
-      {
-        outcome,
-        currentWins: synchronizedCurrent,
-        source
-      }
-    );
-    const pack = this.gameHub
-      .listPacks()
-      .find((entry) => entry.id === packId);
-    this.#activity(
-      outcome === "loss" ? "warning" : "success",
-      "game",
-      outcome === "loss"
-        ? `Défaite ${pack?.name || "Minecraft"}`
-        : `Victoire ${pack?.name || "Minecraft"}`,
-      `${synchronizedCurrent > previous ? "+" : ""}${
-        synchronizedCurrent - previous
-      } WIN${Math.abs(synchronizedCurrent - previous) === 1 ? "" : "S"} · total ${synchronizedCurrent}`
-    );
-    this.notifyRenderer("minecraft-win-counter", {
-      packId,
-      previous,
-      current: synchronizedCurrent,
-      outcome,
-      source,
-      resolution
-    });
-    this.#changed(true);
-    return {
-      synchronized: true,
-      previous,
-      current: synchronizedCurrent,
-      outcome,
-      resolution
-    };
+  async handleMinecraftWinCounter(options) {
+    return this.gameSessions.handleMinecraftWinCounter(options);
   }
 
   async shutdown() {
+    this.matches.reset();
+    this.liveEventActions.chatbot.reset();
+    await this.liveDirectory?.stop();
+    await this.controllerService.stop();
+    await this.kickService.dispose();
     if (this.deferredChangeTimer) clearTimeout(this.deferredChangeTimer);
     this.deferredChangeTimer = null;
     this.overlayCompletionController.stop();
@@ -839,292 +680,36 @@ class ShenPulseCore extends EventEmitter {
   }
 
   #wireEvents() {
-    this.minecraftRoundTimer.on("started", ({ packId, durationSeconds }) => {
-      const pack = this.gameHub
-        .listPacks()
-        .find((entry) => entry.id === packId);
-      this.#activity(
-        "success",
-        "game",
-        `Chrono ${pack?.name || "Minecraft"} démarré`,
-        `${Math.round(durationSeconds / 60)} minute${
-          durationSeconds > 60 ? "s" : ""
-        } avant TIME OUT.`
-      );
-      this.#changed();
+    bindCoreEvents({
+      minecraftRoundTimer: this.minecraftRoundTimer,
+      timerScheduler: this.timerScheduler,
+      sourceHub: this.sourceHub,
+      ruleEngine: this.ruleEngine,
+      matches: this.matches,
+      gameHub: this.gameHub,
+      store: this.store,
+      overlayCompletionController: this.overlayCompletionController,
+      overlayServer: this.overlayServer,
+      notifyRenderer: this.notifyRenderer,
+      onActivity: (...args) => this.#activity(...args),
+      onChanged: (deferred) => this.#changed(deferred),
+      onGameBridgeMessage: (pack, message) => this.liveEventActions.handleGameBridgeMessage(pack, message),
+      ingest: (event, source) => this.ingest(event, source),
+      handleKickStatus: (status) => this.handleKickStatus(status),
+      refreshGiftCatalog: (options) => this.refreshGiftCatalog(options)
     });
-    this.minecraftRoundTimer.on(
-      "timeout",
-      ({ packId, appliedAmount, currentWins, autoRestart }) => {
-        const pack = this.gameHub
-          .listPacks()
-          .find((entry) => entry.id === packId);
-        this.#activity(
-          "warning",
-          "game",
-          `TIME OUT ${pack?.name || "Minecraft"}`,
-          `${appliedAmount} WIN${
-            Math.abs(appliedAmount) === 1 ? "" : "S"
-          } · total ${currentWins}${
-            autoRestart ? " · nouveau chrono démarré" : ""
-          }`
-        );
-        this.notifyRenderer("game-round-timeout", {
-          packId,
-          appliedAmount,
-          currentWins,
-          autoRestart
-        });
-        this.#changed();
-      }
-    );
-    this.minecraftRoundTimer.on("error", ({ error }) => {
-      this.#activity(
-        "error",
-        "game",
-        "Erreur du chrono Minecraft",
-        serializeError(error).message
-      );
-      this.#changed();
-    });
-    this.timerScheduler.on("fired", (entry) => {
-      this.#activity(
-        "success",
-        "timer",
-        `Timer exécuté : ${entry.timerName}`,
-        `${entry.actionCount} action(s) × ${entry.repeatCount}`
-      );
-      this.#changed(true);
-    });
-    this.timerScheduler.on("runtime-changed", () => this.#changed());
-    this.timerScheduler.on("error", ({ timer, error }) => {
-      this.#activity(
-        "error",
-        "timer",
-        timer?.name
-          ? `Échec du timer : ${timer.name}`
-          : "Échec du planificateur",
-        error.message
-      );
-      this.#changed();
-    });
-    this.sourceHub.on("event", (event) => {
-      this.ingest(event, event.source).catch((error) =>
-        this.#activity("error", "source", "Événement rejeté", error.message)
-      );
-    });
-    this.sourceHub.on("status", ({ connectionId, status, error }) => {
-      this.#activity(
-        status === "error" ? "error" : "info",
-        "connection",
-        `${connectionId} : ${status}`,
-        error
-      );
-      this.#changed();
-    });
-    this.sourceHub.on("diagnostic", (entry) =>
-      this.#activity(entry.level, "connection", entry.source, entry.message)
-    );
-    this.sourceHub.on("tiktok-status", ({ status, username, roomId }) => {
-      let sessionTransition = "";
-      if (["disconnected", "error", "live", "offline"].includes(status)) {
-        this.store.mutate((state) => {
-          sessionTransition = synchronizeSessionWithTikTok(state, status, {
-            roomId
-          });
-        });
-      }
-      const labels = {
-        live: "Compte TikTok en LIVE",
-        offline: "Compte TikTok hors ligne",
-        checking: "Vérification du LIVE TikTok",
-        disconnected: "Détection TikTok arrêtée",
-        error: "Connexion TikTok en erreur"
-      };
-      this.#activity(
-        status === "error" ? "error" : status === "live" ? "success" : "info",
-        "tiktok",
-        labels[status] || "État TikTok mis à jour",
-        `@${username || "inconnu"}${roomId ? ` · salle ${roomId}` : ""}`
-      );
-      if (sessionTransition === "started") {
-        this.refreshGiftCatalog({ force: true })
-          .then(() => this.#changed(true))
-          .catch(() => {
-            // Le catalogue fusionné local et les cadeaux appris restent disponibles.
-          });
-        this.overlayCompletionController.stop();
-        this.overlayServer.publish(
-          "session-state",
-          this.store.getState().overlaySession
-        );
-        this.#activity(
-          "success",
-          "session",
-          "Session démarrée automatiquement",
-          `LIVE TikTok détecté pour @${username || "inconnu"}`
-        );
-        this.overlayCompletionController
-          .startConfiguredTimer("tiktok-session-start")
-          .catch((error) =>
-            this.#activity(
-              "error",
-              "overlay",
-              "Démarrage automatique du timer impossible",
-              serializeError(error).message
-            )
-          );
-      } else if (sessionTransition === "resumed") {
-        this.refreshGiftCatalog()
-          .then(() => this.#changed(true))
-          .catch(() => {
-            // La reprise du LIVE ne dépend pas du rafraîchissement du catalogue.
-          });
-        this.overlayServer.publish(
-          "session-state",
-          this.store.getState().overlaySession
-        );
-        this.#activity(
-          "success",
-          "session",
-          "Session TikTok reprise",
-          `Même LIVE détecté pour @${username || "inconnu"} : compteurs, classements et timers conservés.`
-        );
-      } else if (sessionTransition === "interrupted") {
-        this.#activity(
-          "warning",
-          "session",
-          "Connexion au LIVE interrompue",
-          `Reconnexion en cours pour @${username || "inconnu"} : les données du LIVE restent intactes.`
-        );
-      }
-      this.#changed();
-    });
-    this.ruleEngine.on("rule-fired", ({ rule, event }) => {
-      this.#activity(
-        "success",
-        "rule",
-        rule.name,
-        `${event.type} de ${event.user?.displayName || "viewer"}`
-      );
-    });
-    this.ruleEngine.on("action-result", ({ ok, action, error, result }) => {
-      this.store.mutateRuntime((state) => {
-        if (ok) {
-          if (state.session.running) {
-            state.statistics.sessionActions += 1;
-          }
-          state.statistics.lifetimeActions += 1;
-        }
-      });
-      if (!ok) {
-        this.#activity("error", "action", action.type, serializeError(error).message);
-      } else if (result?.partial) {
-        const failures = Array.isArray(result.failures) ? result.failures : [];
-        const detail = failures
-          .map((failure) =>
-            `${failure.actionName || failure.actionId || "Action"} : ${
-              failure.message || "erreur inconnue"
-            }`
-          )
-          .join(" · ");
-        this.#activity(
-          "warning",
-          "action",
-          "Groupe partiellement exécuté",
-          detail || `${Number(result.failed || 0)} sous-action(s) en erreur`
-        );
-      }
-      this.#changed(true);
-    });
-    this.gameHub.on("effect-start", ({ pack, effect, payload: effectPayload, context }) => {
-      const payload = {
-        packId: pack.id,
-        effectName: effect.name,
-        effectId: effect.id,
-        quantity: Math.max(1, Number(effectPayload?.effect?.quantity || 1)),
-        duration: Math.max(0, Number(effectPayload?.effect?.duration || 0)),
-        parameters: { ...(effectPayload?.effect?.parameters || {}) },
-        viewer: context.user?.displayName || "Viewer",
-        status: "running"
-      };
-      this.overlayServer.publish("game", payload);
-      this.notifyRenderer("game-effect", payload);
-    });
-    this.gameHub.on("effect-result", ({ pack }) => {
-      if (!isMinecraftRoundGame(pack?.id)) return;
-      this.minecraftRoundTimer
-        .cancelNativeRoundIfStopped(pack.id)
-        .catch(() => {});
-    });
-    this.gameHub.on("bridge-message", ({ pack, message }) => {
-      this.#handleGameBridgeMessage(pack, message).catch((error) => {
-        this.#activity(
-          "error",
-          "game",
-          "Compteur WINS non synchronisé",
-          serializeError(error).message
-        );
-      });
-    });
-  }
-
-  async #handleGameBridgeMessage(pack, message) {
-    const counterEvent = readMontChiliadCounterEvent(
-      pack,
-      message,
-      this.gameCounterCursors
-    );
-    if (!counterEvent) return;
-    const previous = Number(
-      this.store.getState().overlaySession?.winCounterCurrent
-    );
-    const result = await this.actionRunner.run(
-      {
-        id: `native_counter_${counterEvent.sessionId}_${counterEvent.eventId}`,
-        type: "overlay.win-counter",
-        config: {
-          packId: pack.id,
-          effectId: `native_${counterEvent.eventName}`,
-          operation: "adjust",
-          amount: counterEvent.amount
-        }
-      },
-      {
-        source: "gtav-native",
-        user: {
-          id: "gtav",
-          name: "gtav",
-          displayName: "GTA V Mont Chiliad"
-        }
-      }
-    );
-    const current = Number(result?.current);
-    const applied =
-      Number.isFinite(previous) && Number.isFinite(current)
-        ? current - previous
-        : counterEvent.amount;
-    this.#activity(
-      "success",
-      "game",
-      counterEvent.eventName === "win"
-        ? "Victoire Mont Chiliad"
-        : "Mort dans GTA V",
-      `${applied > 0 ? "+" : ""}${applied} WIN${
-        Math.abs(applied) === 1 ? "" : "S"
-      }${Number.isFinite(current) ? ` · total ${current}` : ""}`
-    );
-    this.#changed(true);
   }
 
   #recordEvent(event) {
     let previousLikeGoalCurrent = 0;
     let likeGoalCurrent = 0;
+    let recordedLiveLike = false;
     this.store.mutateRuntime((state) => {
       previousLikeGoalCurrent = Number(
         state.overlaySession?.likeGoalCurrent || 0
       );
       recordEventStatistics(state, event);
+      recordedLiveLike = event.type === "like" && isRealLiveEvent(state, event);
       const runtime = recordOverlayEvent(state, event);
       likeGoalCurrent = Number(runtime?.likeGoalCurrent || 0);
     });
@@ -1140,90 +725,39 @@ class ShenPulseCore extends EventEmitter {
             ? `Likes ×${event.data.count}`
             : event.type
     );
-    return { previousLikeGoalCurrent, likeGoalCurrent };
+    return { previousLikeGoalCurrent, likeGoalCurrent, recordedLiveLike };
   }
 
   async #handleCommand(event) {
-    if (event.type !== "chat" || !event.data.message.startsWith("!")) return;
-    const command = this.store
-      .getState()
-      .commands.find(
-        (item) =>
-          item.enabled &&
-          event.data.message
-            .trim()
-            .toLowerCase()
-            .startsWith(String(item.command).toLowerCase())
-      );
-    if (!command) return;
-    if (command.subscriberOnly && !event.user.subscriber) return;
-    const cooldownKey = `${command.id}:${event.user.id}`;
-    if (Date.now() < (this.commandCooldowns.get(cooldownKey) || 0)) return;
-    this.commandCooldowns.set(
-      cooldownKey,
-      Date.now() + Number(command.cooldownMs || 0)
-    );
-    try {
-      this.sourceHub.send(event.source, { message: command.response });
-    } catch {
-      this.overlayServer.publish("chatbot", {
-        command: command.command,
-        response: command.response,
-        user: event.user
-      });
-    }
+    return this.liveEventActions.handleCommand(event);
   }
 
   async #handleWheelGiftTriggers(event) {
-    if (event.type !== "gift") return;
-    const wheelConfig =
-      this.store.getState().settings.overlayConfigs?.wheel || {};
-    const wheels = Array.isArray(wheelConfig.wheels)
-      ? wheelConfig.wheels
-      : [];
-    const matchingWheels = wheels.filter((wheel) => {
-      return wheelGiftTriggerMatches(
-        wheel,
-        event,
-        this.giftCatalog.gifts
-      );
-    });
-    const deliveryCount = giftEventCount(event);
-    for (let index = 0; index < deliveryCount; index += 1) {
-      const deliveryEvent = giftExecutionEvent(
-        event,
-        index,
-        deliveryCount,
-        1
-      );
-      await Promise.all(
-        matchingWheels.map((wheel) =>
-          this.actionRunner.run(
-            {
-              id: `wheel_trigger_${wheel.id}`,
-              type: "wheel.spin",
-              config: { wheelId: wheel.id }
-            },
-            deliveryEvent
-          )
-        )
-      );
-    }
+    return this.liveEventActions.handleWheelGiftTriggers(event);
   }
 
-  #activity(level, category, title, detail) {
+  #activity(level, category, title, detail, metadata) {
     const entry = {
       level,
       category,
       title: safeString(title, 200),
       detail: safeString(detail, 1000)
     };
-    if (!shouldRecordActivity(this.store.getState(), entry)) return;
+    if (category === "chatbot" && metadata) {
+      Object.assign(entry, commandActivityMetadata(metadata));
+    }
+    const checkState = ["connection", "tiktok"].includes(String(category || "").trim().toLowerCase())
+      ? readState(this.store, ["session.running", "session.game.running", ...(level === "error" ? ["activity"] : [])]) : {};
+    if (!shouldRecordActivity(checkState, entry)) return;
     this.store.addActivity(entry);
   }
 
   #changed(deferred = false) {
-    this.publicOverlayRelay.publishState(this.store.getState());
+    // Les changements structurels/sources relancent les timers ; aucun parcours
+    // supplémentaire de commandes sur les rafales d'événements LIVE différés.
+    if (!deferred) this.liveEventActions?.chatbot.syncTimers();
+    this.liveDirectory?.sync();
+    this.publicOverlayRelay.publishState();
     if (!deferred) {
       if (this.deferredChangeTimer) clearTimeout(this.deferredChangeTimer);
       this.deferredChangeTimer = null;
@@ -1239,244 +773,6 @@ class ShenPulseCore extends EventEmitter {
   }
 }
 
-function wheelGiftTriggerMatches(wheel, event, gifts = []) {
-  if (wheel?.enabled === false || event?.type !== "gift") return false;
-  const trigger = String(wheel?.trigger || "")
-    .trim()
-    .toLocaleLowerCase("fr");
-  const filter = normalizeGiftValueFilter(wheel?.giftValueFilter);
-  if (!trigger && !filter) return false;
-  if (filter) return giftValueFilterMatches(filter, event.data?.value);
-  return giftConditionMatches(
-    {
-      field: "data.giftName",
-      operator: "equals",
-      value: wheel.trigger,
-      giftId: wheel.triggerGift?.giftId,
-      giftCost: wheel.triggerGift?.giftCost,
-      giftImageUrl: wheel.triggerGift?.giftImageUrl
-    },
-    event,
-    gifts
-  );
-}
-
-function synchronizeSessionWithTikTok(
-  state,
-  status,
-  details = {},
-  now = new Date().toISOString()
-) {
-  // Compatibilité avec les anciens appels internes qui passaient directement
-  // l'horodatage en troisième argument.
-  if (typeof details === "string") {
-    now = details;
-    details = {};
-  }
-
-  const session = state.session;
-  const incomingRoomId = safeString(details.roomId || "", 160);
-  const currentRoomId = safeString(session.tiktokRoomId || "", 160);
-  const roomChanged = Boolean(
-    incomingRoomId && currentRoomId && incomingRoomId !== currentRoomId
-  );
-
-  if (status === "live") {
-    const wasInterrupted = Boolean(session.tiktokInterruptedAt);
-    const canResumeSameLive =
-      wasInterrupted &&
-      !roomChanged &&
-      (session.running || (session.startedBy === "tiktok" && session.startedAt));
-
-    if (canResumeSameLive) {
-      session.running = true;
-      session.tiktokRoomId = incomingRoomId || currentRoomId;
-      session.tiktokInterruptedAt = null;
-      session.activeConnectionIds = Array.from(
-        new Set([...(session.activeConnectionIds || []), "source_tiktok"])
-      );
-      if (state.overlaySession) {
-        state.overlaySession.active = true;
-        state.overlaySession.endedAt = null;
-        state.overlaySession.updatedAt = now;
-      }
-      return "resumed";
-    }
-
-    if (session.running && !roomChanged) {
-      session.tiktokRoomId = incomingRoomId || currentRoomId;
-      session.tiktokInterruptedAt = null;
-      session.activeConnectionIds = Array.from(
-        new Set([...(session.activeConnectionIds || []), "source_tiktok"])
-      );
-      return "";
-    }
-
-    session.running = true;
-    session.startedAt = now;
-    session.startedBy = "tiktok";
-    session.tiktokRoomId = incomingRoomId;
-    session.tiktokInterruptedAt = null;
-    session.activeConnectionIds = Array.from(
-      new Set([...(session.activeConnectionIds || []), "source_tiktok"])
-    );
-    resetSessionStatistics(state);
-    resetOverlaySession(state, now);
-    return "started";
-  }
-
-  if (
-    ["disconnected", "error", "offline"].includes(status) &&
-    session.running &&
-    !session.tiktokInterruptedAt
-  ) {
-    session.tiktokInterruptedAt = now;
-    session.activeConnectionIds = (session.activeConnectionIds || []).filter(
-      (connectionId) => connectionId !== "source_tiktok"
-    );
-    return "interrupted";
-  }
-  return "";
-}
-
-function resetSessionStatistics(state) {
-  state.statistics.sessionEvents = 0;
-  state.statistics.sessionActions = 0;
-  state.statistics.sessionLikes = 0;
-  state.statistics.sessionUniqueViewers = [];
-}
-
-function recordEventStatistics(state, event) {
-  const statistics = state.statistics;
-  const count = Number(event.data?.count || 1);
-  statistics.lifetimeEvents += 1;
-  if (event.type === "gift") statistics.gifts += count;
-  if (event.type === "like") statistics.likes += count;
-  if (event.type === "follow") statistics.follows += 1;
-  if (event.type === "subscribe") statistics.subscribers += 1;
-
-  const viewerId = event.user?.id;
-  if (viewerId && !statistics.uniqueViewers.includes(viewerId)) {
-    statistics.uniqueViewers.push(viewerId);
-    statistics.uniqueViewers = statistics.uniqueViewers.slice(-5000);
-  }
-
-  if (!state.session.running) return;
-  statistics.sessionEvents += 1;
-  if (event.type === "like") statistics.sessionLikes += count;
-  if (
-    viewerId &&
-    !statistics.sessionUniqueViewers.includes(viewerId)
-  ) {
-    statistics.sessionUniqueViewers.push(viewerId);
-    statistics.sessionUniqueViewers =
-      statistics.sessionUniqueViewers.slice(-5000);
-  }
-}
-
-function readMontChiliadCounterEvent(pack, message, cursors = new Map()) {
-  if (
-    pack?.id !== "gtav-montchiliad" ||
-    message?.type !== "montchiliad:victory"
-  ) {
-    return null;
-  }
-  const sessionId = safeString(message.sessionId, 160);
-  const eventId = Math.max(0, Math.trunc(Number(message.counterEventId || 0)));
-  const amount = Math.trunc(Number(message.counterDelta || 0));
-  const eventName = safeString(message.counterEvent, 40);
-  if (!sessionId || !Number.isFinite(eventId)) return null;
-
-  const previous = cursors.get(pack.id);
-  if (!previous || previous.sessionId !== sessionId) {
-    cursors.set(pack.id, { sessionId, eventId });
-    return null;
-  }
-  if (
-    eventId <= Number(previous.eventId || 0)
-  ) {
-    return null;
-  }
-  cursors.set(pack.id, { sessionId, eventId });
-  if (
-    eventId <= 0 ||
-    amount === 0 ||
-    !["win", "death"].includes(eventName)
-  ) {
-    return null;
-  }
-  return {
-    sessionId,
-    eventId,
-    amount: Math.max(-1000, Math.min(1000, amount)),
-    eventName
-  };
-}
-
-function clearSessionState(state) {
-  state.session.running = false;
-  state.session.startedAt = null;
-  state.session.startedBy = "";
-  state.session.tiktokRoomId = "";
-  state.session.tiktokInterruptedAt = null;
-  state.session.activeConnectionIds = [];
-}
-
-function defaultTestEventCount(type) {
-  return type === "like" ? 25 : 1;
-}
-
-function resolveLikeGoalCompletionChange(event, change = {}) {
-  const previousLikeGoalCurrent = Math.max(
-    0,
-    Number(change.previousLikeGoalCurrent || 0)
-  );
-  let likeGoalCurrent = Math.max(
-    0,
-    Number(change.likeGoalCurrent || 0)
-  );
-  if (
-    event?.type === "like" &&
-    event?.source === "simulator" &&
-    likeGoalCurrent === previousLikeGoalCurrent
-  ) {
-    likeGoalCurrent += Math.max(1, Number(event.data?.count || 1));
-  }
-  return { previousLikeGoalCurrent, likeGoalCurrent };
-}
-
-function shouldRecordActivity(state, entry, nowMs = Date.now()) {
-  const category = String(entry?.category || "").trim().toLowerCase();
-  if (!["connection", "tiktok"].includes(category)) return true;
-  if (
-    state?.session?.running === true ||
-    state?.session?.game?.running === true
-  ) {
-    return true;
-  }
-  if (String(entry?.level || "").trim().toLowerCase() !== "error") {
-    return false;
-  }
-  const title = String(entry?.title || "");
-  const detail = String(entry?.detail || "");
-  return !(state?.activity || []).some((previous) => {
-    if (
-      String(previous?.category || "").trim().toLowerCase() !== category ||
-      String(previous?.level || "").trim().toLowerCase() !== "error" ||
-      String(previous?.title || "") !== title ||
-      String(previous?.detail || "") !== detail
-    ) {
-      return false;
-    }
-    const timestampMs = Date.parse(String(previous?.timestamp || ""));
-    return (
-      Number.isFinite(timestampMs) &&
-      nowMs - timestampMs >= 0 &&
-      nowMs - timestampMs < 15 * 60 * 1000
-    );
-  });
-}
-
 module.exports = {
   ShenPulseCore,
   clearSessionState,
@@ -1486,6 +782,8 @@ module.exports = {
   resolveLikeGoalCompletionChange,
   resetSessionStatistics,
   shouldRecordActivity,
+  liveKickConnection,
+  synchronizeSessionWithKick,
   synchronizeSessionWithTikTok,
   wheelGiftTriggerMatches
 };

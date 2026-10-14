@@ -1,6 +1,7 @@
 "use strict";
 
 let overlayReadyRevision = 0;
+let localMatchContextReloadScheduled = false;
 
 function waitForOverlayMedia(element) {
   if (!element) return Promise.resolve();
@@ -93,7 +94,20 @@ const overlayChannels = {
   "like-goal": typeof updateLikeGoal === "function" ? updateLikeGoal : null,
   "coin-jar": typeof updateCoinJar === "function" ? updateCoinJar : null,
   "win-counter": typeof updateWinCounter === "function" ? updateWinCounter : null,
-  match: typeof enqueueMatchPlayback === "function" ? enqueueMatchPlayback : null,
+  // Le chargeur historique fournit le moteur canonique de façon asynchrone.
+  // Ne pas capturer une fonction absente avant que sa promesse soit terminée.
+  match: (payload) => typeof enqueueMatchPlayback === "function" ? enqueueMatchPlayback(payload) : false,
+  "match-media": (payload) => {
+    if (typeof playMatchMedia === "function") return playMatchMedia(payload);
+    if (typeof setMatchPlaybackDiagnostic === "function") setMatchPlaybackDiagnostic("media-unavailable");
+    return false;
+  },
+  "match-audio": (payload) => {
+    if (typeof playMatchAudio === "function") return playMatchAudio(payload);
+    if (typeof setMatchPlaybackDiagnostic === "function") setMatchPlaybackDiagnostic("audio-unavailable");
+    return false;
+  },
+  "match-state": typeof hydrateMatchWidget === "function" ? hydrateMatchWidget : null,
   wheel: typeof spinWheel === "function" ? spinWheel : null
 };
 for (const [channel, handler] of Object.entries(overlayChannels)) {
@@ -103,6 +117,14 @@ if (typeof hydrateOverlaySession === "function") overlayChannels["session-state"
 overlayChannels.bootstrap = applyRelayState;
 overlayChannels.design = updatePreviewDesign;
 overlayChannels.configuration = updateOverlayConfiguration;
+if (viewName === "scene") {
+  for (const channel of ["alert", "audio", "tts", "event", "game", "goal", "timer",
+    "multiplier-timer", "like-goal", "coin-jar", "win-counter", "wheel",
+    "session-state", "configuration", "design"]) {
+    overlayChannels[channel] = (payload) => dispatchSceneMessage(channel, payload);
+  }
+  overlayChannels.scene = hydrateScene;
+}
 
 function currentViewAcceptsChannel(channel, payload = {}) {
   if (channel === "bootstrap") return true;
@@ -129,6 +151,12 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("message", (event) => {
+  if (isSceneChild && event.source === window.parent && event.origin === location.origin &&
+    event.data?.source === "shenpulse-scene") {
+    if (!currentViewAcceptsChannel(event.data.channel, event.data.payload)) return;
+    overlayChannels[event.data.channel]?.(event.data.payload || {});
+    return;
+  }
   if (
     !isCatalogPreview ||
     event.source !== window.parent ||
@@ -143,12 +171,34 @@ window.addEventListener("message", (event) => {
 });
 
 async function initialize() {
+  // L'ancien bundle charge le même module de réactions, sans recopier le
+  // moteur. Aucune souscription ne commence avant ses déclarations globales.
+  if (viewName === "match" && globalThis.shenPulseMatchCompatibilityReady) {
+    if (await globalThis.shenPulseMatchCompatibilityReady === false) {
+      document.documentElement.dataset.overlayLoadError = "match-dependencies";
+      document.documentElement.classList.remove("overlay-booting");
+      return;
+    }
+  }
   startOverlayRuntimeVersionMonitor();
+  // Les widgets hébergés utilisent exclusivement leur alias Matchs révocable.
+  // Une URL générique avec le canal des autres overlays n'accorde aucun accès.
+  if (viewName === "match-widget" && relayChannel && !isPublicMatchWidgetSource) {
+    document.documentElement.hidden = true;
+    if (typeof stopMatchWidget === "function") stopMatchWidget();
+    return;
+  }
   setTimeout(markOverlayReady, 1800);
   const localBootstrap = !isCatalogPreview && !relayChannel && !matchSourceBasePath
+    && !isSceneChild
     ? connectLocalEventSource()
     : Promise.resolve();
   const designReady = setupOverlayDesign();
+  if (isSceneChild) {
+    await designReady;
+    markOverlayReady();
+    return;
+  }
   if (typeof renderTimer === "function") renderTimer();
   if (
     isCatalogPreview &&
@@ -206,6 +256,14 @@ async function initialize() {
     });
   }
   if (relayChannel || !matchSourceBasePath) return;
+  connectAuthenticatedMatchEventSource();
+}
+
+/** Source locale authentifiée : seul un changement de LIVE/profil se reprend.
+ * L'ancien flux et ses effets sont arrêtés avant un unique rechargement court.
+ * La nouvelle navigation relit compte/capacité/droits, sans aucun replay.
+ */
+function connectAuthenticatedMatchEventSource() {
   const eventParameters = new URLSearchParams({ token, view: viewName });
   if (viewName === "leaderboard") {
     eventParameters.set("kind", leaderboardKind);
@@ -218,7 +276,12 @@ async function initialize() {
       ? `${matchSourceBasePath}/events`
       : `/events?${eventParameters.toString()}`
   );
-  source.addEventListener("access-revoked", () => {
+  let stopped = false;
+  source.addEventListener("access-revoked", (event) => {
+    if (stopped) return;
+    stopped = true;
+    if (typeof stopMatchWidget === "function") stopMatchWidget();
+    if (typeof stopMatchSourcePlayback === "function") stopMatchSourcePlayback();
     source.close();
     const video = document.getElementById("match-video");
     if (video) {
@@ -227,10 +290,17 @@ async function initialize() {
       video.load();
     }
     document.documentElement.hidden = true;
+    let reason = "";
+    try { reason = JSON.parse(event.data || "{}").reason; } catch { /* Révocation malformée : arrêt définitif. */ }
+    if (localMatchBridgeRoute && reason === "match-context-changed" && !localMatchContextReloadScheduled) {
+      localMatchContextReloadScheduled = true;
+      setTimeout(() => location.reload(), 250);
+    }
   });
   for (const [channel, handler] of Object.entries(overlayChannels)) {
     source.addEventListener(channel, (event) => {
       try {
+        if (stopped) return;
         const message = JSON.parse(event.data);
         if (!currentViewAcceptsChannel(channel, message.payload)) return;
         handler(message.payload);
@@ -261,6 +331,7 @@ function connectLocalEventSource() {
   });
   const timeout = setTimeout(settleBootstrap, 1200);
   source.addEventListener("access-revoked", () => {
+    if (typeof stopMatchWidget === "function") stopMatchWidget();
     clearTimeout(timeout);
     settleBootstrap();
     source.close();
@@ -287,6 +358,14 @@ function connectLocalEventSource() {
 
 function applyRelayState(state, options = {}) {
   if (!state || typeof state !== "object") return;
+  if (viewName === "match-widget") {
+    if (typeof hydrateMatchWidget === "function") hydrateMatchWidget(state.matches || {});
+    return;
+  }
+  if (viewName === "scene") {
+    hydrateSceneState(state);
+    return;
+  }
   goals = Array.isArray(state.goals) ? state.goals : goals;
   if (typeof hydrateOverlaySession === "function") {
     hydrateOverlaySession(state, options);
@@ -300,6 +379,13 @@ let lastRelayBatchId = "";
 let lastRelayConfigurationSignature = "";
 let publicMatchEventSource = null;
 let publicMatchEventChannel = "";
+let publicMatchWidgetLeaseTimer = null;
+let publicMatchWidgetExpiresAtMs = 0;
+let publicMatchWidgetSignature = "";
+let publicMatchPlaybackInitialized = false;
+let publicMatchPlaybackBatchId = "";
+let publicMatchPlaybackContextId = "";
+const PUBLIC_MATCH_WIDGET_LEASE_MS = 120_000;
 const PUBLIC_RELAY_CACHE_PREFIX = "shenpulse-overlay-v2:";
 const PUBLIC_RELAY_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
@@ -345,6 +431,10 @@ function writePublicRelayCache(channel, documentValue) {
 
 function connectPublicRelay() {
   if (isCatalogPreview) return;
+  if (viewName === "match-widget" && !isPublicMatchWidgetSource) {
+    document.documentElement.hidden = true;
+    return;
+  }
   if (isPublicMatchSource) {
     document.documentElement.hidden = true;
     connectPublicMatchAlias();
@@ -455,8 +545,9 @@ function connectPublicMatchAlias() {
   const bootstrap = globalThis.shenPulseRelayBootstrap?.channel === relayChannel
     ? globalThis.shenPulseRelayBootstrap
     : null;
+  let aliasMutationSeen = false;
   bootstrap?.request?.then((documentValue) => {
-    if (!documentValue || publicMatchRelayReady) return;
+    if (!documentValue || publicMatchRelayReady || aliasMutationSeen) return;
     publicMatchRelayDocument = documentValue;
     publicMatchRelayReady = true;
     synchronizePublicMatchSource();
@@ -465,6 +556,7 @@ function connectPublicMatchAlias() {
   const handleMutation = (event, patch) => {
     try {
       const mutation = JSON.parse(event.data);
+      aliasMutationSeen = true;
       publicMatchRelayDocument = applyFirebaseMutation(
         publicMatchRelayDocument,
         mutation.path || "/",
@@ -478,6 +570,7 @@ function connectPublicMatchAlias() {
     }
   };
   const revoke = () => {
+    aliasMutationSeen = true;
     source.close();
     publicMatchRelayDocument = {};
     publicMatchRelayReady = false;
@@ -487,37 +580,140 @@ function connectPublicMatchAlias() {
   source.addEventListener("patch", (event) => handleMutation(event, true));
   source.addEventListener("cancel", revoke);
   source.addEventListener("auth_revoked", revoke);
+  source.addEventListener("error", () => {
+      // EventSource tentera la reconnexion, mais aucune donnée du dernier
+      // accès autorisé ne reste affichée pendant la coupure.
+      aliasMutationSeen = true;
+      publicMatchRelayDocument = {};
+      publicMatchRelayReady = false;
+      synchronizePublicMatchSource();
+  });
+  window.addEventListener("pagehide", () => {
+      source.close();
+      if (isPublicMatchWidgetSource) clearPublicMatchWidget();
+      else {
+        publicMatchRelayDocument = {};
+        publicMatchRelayReady = false;
+        synchronizePublicMatchSource();
+      }
+    }, { once: true });
+}
+
+function clearPublicMatchWidget() {
+  if (publicMatchWidgetLeaseTimer) clearTimeout(publicMatchWidgetLeaseTimer);
+  publicMatchWidgetLeaseTimer = null;
+  publicMatchWidgetExpiresAtMs = 0;
+  publicMatchWidgetSignature = "";
+  document.documentElement.hidden = true;
+  if (typeof hydrateMatchWidget === "function") hydrateMatchWidget({});
+  if (typeof stopMatchWidget === "function") stopMatchWidget();
+}
+
+function synchronizePublicMatchWidget() {
+  const source = publicMatchRelayDocument?.matchSource || {};
+  const presence = publicMatchRelayDocument?.presence || {};
+  const matches = publicMatchRelayDocument?.state?.matches;
+  const updatedAtMs = typeof presence.updatedAt === "string"
+    ? Date.parse(presence.updatedAt) : NaN;
+  const nowMs = Date.now();
+  const expiresAtMs = updatedAtMs + PUBLIC_MATCH_WIDGET_LEASE_MS;
+  const available = publicMatchRelayReady && presence.connected === true &&
+    source.enabled === true && source.widgetsEnabled === true &&
+    source.accountNumber === publicMatchAccountNumber &&
+    Number.isFinite(updatedAtMs) && updatedAtMs <= nowMs + 15_000 &&
+    expiresAtMs > nowMs && matches && typeof matches === "object" &&
+    !Array.isArray(matches) && matches.config?.widgets?.[parameters.get("widget")] &&
+    matches.session && typeof matches.session === "object";
+  if (!available) {
+    clearPublicMatchWidget();
+    return;
+  }
+  document.documentElement.hidden = false;
+  // Une mise à jour de compteur n'étend pas le bail du heartbeat. Un unique
+  // timeout borné masque la source si l'application cesse de publier.
+  if (expiresAtMs !== publicMatchWidgetExpiresAtMs) {
+    if (publicMatchWidgetLeaseTimer) clearTimeout(publicMatchWidgetLeaseTimer);
+    publicMatchWidgetExpiresAtMs = expiresAtMs;
+    publicMatchWidgetLeaseTimer = setTimeout(synchronizePublicMatchSource,
+      Math.max(1, expiresAtMs - nowMs));
+  }
+  const signature = JSON.stringify(matches);
+  if (signature !== publicMatchWidgetSignature) {
+    publicMatchWidgetSignature = signature;
+    if (typeof hydrateMatchWidget === "function") hydrateMatchWidget(matches);
+    markOverlayReady();
+  }
 }
 
 function synchronizePublicMatchSource() {
+  if (isPublicMatchWidgetSource) {
+    synchronizePublicMatchWidget();
+    return;
+  }
   const source = publicMatchRelayDocument?.matchSource || {};
-  const sourceChannel = String(
-    publicMatchRelayDocument?.sourceChannel || ""
-  );
+  const presence = publicMatchRelayDocument?.presence || {};
+  const contextId = String(source.contextId || "");
+  const updatedAtMs = typeof presence.updatedAt === "string" ? Date.parse(presence.updatedAt) : NaN;
+  const expiresAtMs = updatedAtMs + PUBLIC_MATCH_WIDGET_LEASE_MS;
+  const nowMs = Date.now();
   const available =
     publicMatchRelayReady &&
-    publicMatchRelayDocument?.presence?.connected === true &&
-    source.enabled === true &&
+    presence.connected === true &&
+    source.enabled === true && source.widgetsEnabled === true &&
     source.accountNumber === publicMatchAccountNumber &&
-    Number.isInteger(Number(source.localPort)) &&
-    Number(source.localPort) >= 1 &&
-    Number(source.localPort) <= 65_535 &&
-    /^[A-Za-z0-9_-]{24,128}$/.test(sourceChannel);
+    /^[a-f0-9]{64}$/.test(contextId) &&
+    Number.isFinite(updatedAtMs) && updatedAtMs <= nowMs + 15_000 && expiresAtMs > nowMs;
   document.documentElement.hidden = !available;
   if (!available) {
+    if (publicMatchWidgetLeaseTimer) clearTimeout(publicMatchWidgetLeaseTimer);
+    publicMatchWidgetLeaseTimer = null;
+    publicMatchWidgetExpiresAtMs = 0;
+    publicMatchPlaybackInitialized = false;
+    publicMatchPlaybackBatchId = "";
+    publicMatchPlaybackContextId = "";
     publicMatchEventSource?.close();
     publicMatchEventSource = null;
     publicMatchEventChannel = "";
-    finishMatchPlayback();
+    if (typeof stopMatchSourcePlayback === "function") stopMatchSourcePlayback();
+    else finishMatchPlayback();
     return;
   }
-  if (publicMatchEventChannel === sourceChannel) return;
-  publicMatchEventSource?.close();
-  relayDocument = {};
-  relayInitialized = false;
-  lastRelayBatchId = "";
-  publicMatchEventChannel = sourceChannel;
-  publicMatchEventSource = connectPublicRelayChannel(sourceChannel);
+  if (expiresAtMs !== publicMatchWidgetExpiresAtMs) {
+    if (publicMatchWidgetLeaseTimer) clearTimeout(publicMatchWidgetLeaseTimer);
+    publicMatchWidgetExpiresAtMs = expiresAtMs;
+    publicMatchWidgetLeaseTimer = setTimeout(synchronizePublicMatchSource,
+      Math.max(1, expiresAtMs - nowMs));
+  }
+  if (publicMatchPlaybackContextId && publicMatchPlaybackContextId !== contextId) {
+    // Les droits peuvent rester actifs après un changement de profil ou LIVE.
+    // Une animation, un ticket, un média ou une file sonore du contexte quitté
+    // ne doit pas rester à l'écran ni reprendre sur la nouvelle session.
+    if (typeof stopMatchSourcePlayback === "function") stopMatchSourcePlayback();
+    else finishMatchPlayback();
+    publicMatchPlaybackBatchId = "";
+    matchPlaybackRequestIds.clear();
+  }
+  publicMatchPlaybackContextId = contextId;
+  // Le lecteur utilise exclusivement l'alias Matchs. Un score/heartbeat ne
+  // souscrit plus le relais général et ne rejoue jamais une animation passée.
+  const batch = publicMatchRelayDocument?.lastBatch;
+  const batchId = String(batch?.id || "");
+  if (!publicMatchPlaybackInitialized) {
+    publicMatchPlaybackInitialized = true;
+    publicMatchPlaybackBatchId = batch?.contextId === contextId ? batchId : "";
+    return;
+  }
+  if (batch?.contextId !== contextId) return;
+  if (!batchId || batchId === publicMatchPlaybackBatchId) return;
+  publicMatchPlaybackBatchId = batchId;
+  const messages = Array.isArray(batch.messages) ? batch.messages : Object.values(batch.messages || {});
+  for (const message of messages.slice(-64)) {
+    if (!["match", "match-media", "match-audio"].includes(message?.channel)) continue;
+    const emittedAtMs = Date.parse(String(message.timestamp || batch.timestamp || ""));
+    if (!Number.isFinite(emittedAtMs) || nowMs - emittedAtMs > 15000 || emittedAtMs > nowMs + 15000) continue;
+    if (!currentViewAcceptsChannel(message.channel, message.payload)) continue;
+    overlayChannels[message.channel]?.(message.payload || {});
+  }
 }
 
 function applyFirebaseMutation(documentValue, path, data, patch) {

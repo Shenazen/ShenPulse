@@ -15,6 +15,9 @@ store-screenshots/
 *.cer
 *.pvk
 .env
+# Les variantes locales contiennent potentiellement des secrets. N'autoriser
+# un modèle .env qu'après contrôle explicite de son contenu non sensible.
+.env.*
 .DS_Store
 Thumbs.db
 .vs/
@@ -22,4 +25,9 @@ Thumbs.db
 bin/
 obj/
 native/store-update/build/
+resources/protected-match-media/
+# Sources Match privées : les nouvelles vidéos ne doivent pas être publiées
+# dans ce dépôt public. Les fichiers historiques déjà suivis restent inchangés.
+resources/overlays/media/video/**/*.webm
+resources/overlays/media/video/**/*.mp4
 resources/store-update/*.node

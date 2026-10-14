@@ -111,6 +111,30 @@ test("un Like Goal chargé dans un vrai DOM applique sa configuration et son ét
   dom.window.close();
 });
 
+test("le Like Goal utilise le total absolu publié, sans doubler les lots après hydratation", async (t) => {
+  const dom = await loadOverlay("like-goal", { theme: "classic", target: "50000" });
+  t.after(() => dom.window.close());
+  const { window } = dom;
+  const value = () => window.document.getElementById("like-goal-current").textContent;
+  sendCardMessage(window, "session-state", { hasData: true, likeGoalCurrent: 18300 });
+  const first = value();
+  for (const [index, current] of [18300, 18345, 18345].entries()) {
+    sendCardMessage(window, "event", { id: `canonical-like-${index}`, type: "like",
+      user: { id: "viewer" }, data: { count: 45, likeGoalCurrent: current } });
+    window.renderLikeGoal(); // Fin d'animation déterministe : ne tester aucun délai matériel.
+    if (index === 0) assert.equal(value(), first);
+    assert.equal(value().replace(/\D/g, ""), String(current));
+  }
+  sendCardMessage(window, "event", { id: "canonical-zero", type: "like",
+    user: { id: "viewer" }, data: { count: 45, likeGoalCurrent: 0 } });
+  window.renderLikeGoal();
+  assert.equal(value(), "0", "un zéro canonique ne doit pas devenir +45");
+  sendCardMessage(window, "event", { id: "legacy-simulator", type: "like",
+    user: { id: "viewer" }, data: { count: 25 } });
+  window.renderLikeGoal();
+  assert.equal(value(), "25", "les événements d'aperçu anciens gardent leur addition");
+});
+
 test("les sources de tous formats montent directement leur scène native", async () => {
   for (const [view, width, height] of [
     ["like-goal", 1300, 200],

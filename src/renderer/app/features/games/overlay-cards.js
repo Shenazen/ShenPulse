@@ -432,7 +432,7 @@ function gameInteractionOverlayEntries(pack) {
       if (!effect || effect.available === false) return null;
       const giftCondition = ruleGiftCondition(row.rule);
       const giftName = giftCondition?.value || "";
-      const gift = giftForIdentity(giftName, giftCondition?.giftId);
+      const gift = giftForSavedReference(giftName, giftCondition?.giftId, giftCondition);
       const triggerType = gameOverlayTriggerType(row.rule);
       return {
         effectId: effect.id,
@@ -472,11 +472,11 @@ function gameInteractionOverlayEntries(pack) {
       title: `${Math.max(1, Math.round(Number(rule.coinCount) || 1))} PIÈCE${Number(rule.coinCount) > 1 ? "S" : ""}`,
       trigger: rule.name || "Cadeau TikTok",
       triggerType: "gift",
-      triggerKey: rule.name || rule.giftId,
+      triggerKey: rule.giftId || rule.name,
       likeAmount: 0,
       groupKey: `coin-pusher-gift:${rule.giftId || normalizeGiftName(rule.name)}:${rule.coinCount}`,
       effectImageUrl: "",
-      giftImageUrl: rule.image || giftForName(rule.name)?.imageUrl || "",
+      giftImageUrl: giftForSavedReference(rule.name, rule.giftId, rule)?.imageUrl || "",
       giftLabel: rule.name || "Cadeau TikTok"
     }));
   const specialEntries = [
@@ -497,11 +497,11 @@ function gameInteractionOverlayEntries(pack) {
       title,
       trigger: gift.name,
       triggerType: "gift",
-      triggerKey: gift.name,
+      triggerKey: gift.giftId || gift.name,
       likeAmount: 0,
       groupKey: `${effectId}:${gift.giftId || normalizeGiftName(gift.name)}`,
       effectImageUrl: "",
-      giftImageUrl: gift.image || giftForName(gift.name)?.imageUrl || "",
+      giftImageUrl: giftForSavedReference(gift.name, gift.giftId, gift)?.imageUrl || "",
       giftLabel: gift.name
     }));
   const tierEntries = config.diamondCoinTiers.map((tier) => ({

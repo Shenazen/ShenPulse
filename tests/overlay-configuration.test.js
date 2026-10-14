@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const {
   readOverlayRuntimeSource,
   readOverlayStyles,
@@ -11,20 +13,16 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
+const overlayCatalog = require("../resources/overlays/overlay-catalog");
 
 const root = path.join(__dirname, "..");
 const renderer = readRendererSource();
 const rendererCss = readRendererStyles();
 const overlayRuntime = readOverlayRuntimeSource();
 const overlayCss = readOverlayStyles();
-const mainIpc = fs.readFileSync(
-  path.join(root, "src", "main", "ipc.js"),
-  "utf8"
-);
-const mainCore = fs.readFileSync(
-  path.join(root, "src", "main", "core.js"),
-  "utf8"
-);
+const mainIpc = readMainSource("ipc.js");
+const mainCore = readMainSource("core.js");
 const packageJson = JSON.parse(
   fs.readFileSync(path.join(root, "package.json"), "utf8")
 );
@@ -122,16 +120,37 @@ test("tous les overlays utilisent une scène native directe dans les sources nav
   assert.match(overlayRuntime, /function configureNativeOverlayCanvas\(viewName, activeView, catalog\)/);
   assert.match(overlayRuntime, /activeView\.classList\.add\("native-overlay-canvas"\)/);
   assert.match(overlayRuntime, /configureNativeOverlayCanvas\(viewName, activeView, overlayCatalog\)/);
-  assert.match(overlayRuntime, /definition\?\.sourceSize \|\| \[1920, 1080\]/);
+  assert.match(overlayRuntime, /definition\?\.sourceSize \|\| route\?\.sourceSize \|\| \[1920, 1080\]/);
   assert.match(overlayRuntime, /Math\.min\(1, viewportWidth \/ width, viewportHeight \/ height\)/);
   assert.doesNotMatch(overlayRuntime, /function mountNativeOverlayShell/);
   assert.doesNotMatch(overlayRuntime, /forwardNativeOverlayShellMessage/);
   assert.match(
     overlayRuntime,
-    /async function initialize\(\) \{\s*startOverlayRuntimeVersionMonitor\(\);\s*setTimeout\(markOverlayReady, 1800\);/
+    /async function initialize\(\) \{[\s\S]*?startOverlayRuntimeVersionMonitor\(\);[\s\S]*?\n  setTimeout\(markOverlayReady, 1800\);/
   );
   assert.doesNotMatch(overlayCss, /\.native-overlay-shell/);
   assert.match(overlayCss, /\.view\.active\.native-overlay-canvas\s*\{[\s\S]*var\(--native-canvas-scale, 1\)/);
+});
+
+test("la taille native conserve la priorité des manifestes et le défaut 1920×1080, avec sept routes Matchs 1080×540", () => {
+  const dependencies = fs.readFileSync(path.join(root, "resources", "overlays", "runtime", "dependencies.js"), "utf8");
+  const start = dependencies.indexOf("function overlayNativeSourceSize(");
+  const end = dependencies.indexOf("(function loadOverlayDependencies", start);
+  assert.ok(start >= 0 && end > start, "le résolveur de taille natif reste isolable sans initialiser de réseau ou de DOM");
+  const context = vm.createContext({});
+  vm.runInContext(dependencies.slice(start, end), context);
+  const resolve = (view, catalog = overlayCatalog) => Array.from(context.overlayNativeSourceSize(view, catalog));
+  assert.deepEqual(resolve("unknown-view"), [1920, 1080]);
+  assert.deepEqual(resolve("alerts"), [1920, 1080]);
+  assert.deepEqual(resolve("win-counter"), [720, 520]);
+  assert.deepEqual(resolve("like-goal"), [1300, 200]);
+  assert.deepEqual(resolve("win-counter", { definitions: overlayCatalog.definitions, routes: [{ view: "win-counter", sourceSize: [999, 888] }] }), [720, 520], "une nouvelle route ne remplace pas la taille d'un manifeste existant");
+  const routes = overlayCatalog.routes.filter((route) => route.view === "match-widget");
+  assert.deepEqual(routes.map((route) => route.key), ["matchesWins", "matchesStarDonor", "matchesTopDonor", "matchesDonors", "matchesTimer", "matchesVictory", "matchesScoreboard"]);
+  for (const route of routes) {
+    assert.deepEqual(route.sourceSize, [1080, 540], route.key);
+    assert.deepEqual(resolve(route.view), [1080, 540], route.key);
+  }
 });
 
 test("un aperçu n'est révélé qu'après le signal de rendu complet", () => {
@@ -529,16 +548,12 @@ test("les raccourcis configurés pilotent réellement le timer et les wins", () 
 });
 
 test("le cadeau déclencheur d'une roue est exécuté par le moteur", () => {
-  const core = fs.readFileSync(
-    path.join(root, "src", "main", "core.js"),
-    "utf8"
-  );
-  const runner = fs.readFileSync(
-    path.join(root, "src", "main", "action-runner.js"),
-    "utf8"
-  );
+  const core = readMainSource("core.js");
+  const ingestion = readMainSource("core/ingestion.js");
+  const runner = readMainSource("action-runner.js");
 
-  assert.match(core, /await this\.#handleWheelGiftTriggers\(event\)/);
+  assert.match(core, /handleWheelGiftTriggers: \(event\) => this\.#handleWheelGiftTriggers\(event\)/);
+  assert.match(ingestion, /await hooks\.handleWheelGiftTriggers\(event\)/);
   assert.match(core, /event\.type !== "gift"/);
   assert.match(core, /giftConditionMatches/);
   assert.match(core, /this\.giftCatalog\.gifts/);
@@ -706,7 +721,7 @@ test("enregistrer un overlay ne redemarre pas les serveurs locaux", () => {
   );
   assert.match(
     mainCore,
-    /if \(this\.store\.getState\(\)\.settings\.startOverlayServer\)/
+    /if \(readState\(this\.store, \["settings\.startOverlayServer"\]\)\.settings\?\.startOverlayServer\)/
   );
   assert.match(mainCore, /await this\.overlayServer\.stop\(\)/);
 });

@@ -56,6 +56,11 @@ const NAVIGATION_GAME_ACTIONS = new Set([
 async function handleNavigationAndGameEditorAction({ action, target, id }) {
   if (!NAVIGATION_GAME_ACTIONS.has(action)) return ACTION_NOT_HANDLED;
   if (action === "set-actions-section") {
+    // Compatibilité des raccourcis : un seul simulateur, désormais dans le dashboard.
+    if (target.dataset.value === "simulator") {
+      currentPage = "dashboard";
+      return render();
+    }
     actionsSection = target.dataset.value;
     return render();
   }
@@ -64,6 +69,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     return render();
   }
   if (action === "select-simulator-type") {
+    if (setDashboardSimulatorType(target.dataset.type || "gift")) return;
     simulatorType = target.dataset.type || "gift";
     return render();
   }
@@ -84,6 +90,8 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     return render();
   }
   if (action === "open-game") {
+    if (showProNavigationOffers("games")) return;
+    if (!canNavigateTo("games")) return toast("Jeu indisponible", "Cette page est masquée par la configuration ShenPulse.", true);
     const pack =
       id === MINECRAFT_LAUNCHER_ID
         ? visibleGamePacks().find(
@@ -107,10 +115,13 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     if (showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
     if (pack.modeSelector) return openMinecraftModeSelector(pack);
+    currentPage = "games";
     await enterGameWorkspace(pack);
     return;
   }
   if (action === "open-minecraft-mode") {
+    if (showProNavigationOffers("games")) return;
+    if (!canNavigateTo("games")) return toast("Jeu indisponible", "Cette page est masquée par la configuration ShenPulse.", true);
     const pack = snapshot.packs.find(
       (item) => item.id === id && MINECRAFT_MODE_IDS.includes(item.id)
     );
@@ -124,6 +135,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     if (showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
     dialog.close();
+    currentPage = "games";
     await enterGameWorkspace(pack);
     return;
   }

@@ -1,5 +1,7 @@
 "use strict";
 
+const { readMainSource } = require("./helpers/main-source-bundles");
+
 const {
   readOverlayRuntimeSource,
   readOverlayStyles,
@@ -146,10 +148,7 @@ test("affiche le bandeau uniquement après la réponse positive du Store", () =>
     path.join(root, "src", "main", "preload.js"),
     "utf8"
   );
-  const ipc = fs.readFileSync(
-    path.join(root, "src", "main", "ipc.js"),
-    "utf8"
-  );
+  const ipc = readMainSource("ipc.js");
 
   assert.match(html, /id="store-update-banner"[\s\S]*hidden/);
   assert.match(renderer, /storeUpdateStatus\?\.available === true/);

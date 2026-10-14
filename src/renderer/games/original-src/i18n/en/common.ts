@@ -1,0 +1,25 @@
+/** Traductions en du domaine « common ». Les clés publiques restent stables. */
+export default {
+      add: 'Add',
+      all: 'All',
+      cancel: 'Cancel',
+      close: 'Close',
+      copy: 'Copy',
+      delete: 'Delete',
+      disabled: 'Disabled',
+      disable: 'Disable',
+      edit: 'Edit',
+      enable: 'Enable',
+      enabled: 'Enabled',
+      help: 'Help',
+      notifications: 'Notifications',
+      ok: 'OK',
+      open: 'Open',
+      ready: 'Ready',
+      save: 'Save',
+      search: 'Search',
+      new: 'NEW',
+      stop: 'Stop',
+      test: 'Test',
+    };
+

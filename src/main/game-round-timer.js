@@ -1,6 +1,7 @@
 "use strict";
 
 const { EventEmitter } = require("node:events");
+const { readState } = require("./state-projection");
 
 const MINECRAFT_ROUND_GAME_IDS = Object.freeze([
   "minecraft-bedrock-box",
@@ -76,7 +77,7 @@ class MinecraftRoundTimer extends EventEmitter {
   async start(packId, reason = "server-start") {
     if (!isMinecraftRoundGame(packId)) return null;
     this.#clearScheduledTimeout();
-    const settings = minecraftRoundSettings(this.store.getState(), packId);
+    const settings = minecraftRoundSettings(readState(this.store, ["game.roundSettingsByPack"]), packId);
     const durationSeconds = settings.durationMinutes * 60;
     const startedAtMs = Date.now();
     const roundId = `${packId}:${startedAtMs}:${++this.sequence}`;
@@ -97,7 +98,7 @@ class MinecraftRoundTimer extends EventEmitter {
     }, true);
     await this.#publishTimer(durationSeconds);
     const currentWins = Number(
-      this.store.getState().overlaySession?.winCounterCurrent || 0
+      readState(this.store, ["overlaySession.winCounterCurrent"]).overlaySession?.winCounterCurrent || 0
     );
     try {
       await this.gameHub.executeMinecraftCommands(packId, [
@@ -133,7 +134,7 @@ class MinecraftRoundTimer extends EventEmitter {
   }
 
   async restartIfActive(packId, reason = "settings-change") {
-    const session = this.store.getState().session?.game || {};
+    const session = readState(this.store, ["session.game"]).session?.game || {};
     if (
       session.running !== true ||
       session.packId !== packId ||
@@ -162,7 +163,7 @@ class MinecraftRoundTimer extends EventEmitter {
   }
 
   async cancelNativeRoundIfStopped(packId) {
-    const game = this.store.getState().session?.game || {};
+    const game = readState(this.store, ["session.game"]).session?.game || {};
     if (
       game.running !== true ||
       game.packId !== packId ||
@@ -192,7 +193,7 @@ class MinecraftRoundTimer extends EventEmitter {
     packId,
     { outcome = "win", currentWins = 0, source = "native" } = {}
   ) {
-    const state = this.store.getState();
+    const state = readState(this.store, ["session.game", "game.roundSettingsByPack"]);
     const game = state.session?.game || {};
     if (
       game.running !== true ||
@@ -276,7 +277,7 @@ class MinecraftRoundTimer extends EventEmitter {
   }
 
   async #handleTimeout(packId, roundId) {
-    const before = this.store.getState();
+    const before = readState(this.store, ["session.game", "overlaySession.winCounterCurrent"]);
     const session = before.session?.game || {};
     if (
       session.running !== true ||
@@ -310,7 +311,7 @@ class MinecraftRoundTimer extends EventEmitter {
     );
     const currentWins = Number(
       result?.current ??
-        this.store.getState().overlaySession?.winCounterCurrent ??
+        readState(this.store, ["overlaySession.winCounterCurrent"]).overlaySession?.winCounterCurrent ??
         previousWins - 1
     );
     const appliedAmount = Number.isFinite(currentWins)
@@ -325,7 +326,7 @@ class MinecraftRoundTimer extends EventEmitter {
     } catch {
       nativeSynchronized = false;
     }
-    const settings = minecraftRoundSettings(this.store.getState(), packId);
+    const settings = minecraftRoundSettings(readState(this.store, ["game.roundSettingsByPack"]), packId);
     const timedOutAt = new Date().toISOString();
     this.store.mutate((state) => {
       const game = state.session.game;
@@ -352,7 +353,7 @@ class MinecraftRoundTimer extends EventEmitter {
       autoRestart: settings.autoRestart,
       timedOutAt
     });
-    const currentSession = this.store.getState().session?.game || {};
+    const currentSession = readState(this.store, ["session.game"]).session?.game || {};
     if (
       settings.autoRestart &&
       currentSession.running === true &&

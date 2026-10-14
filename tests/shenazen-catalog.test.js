@@ -12,7 +12,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { createDefaultOverlayConfigs } = require("../src/main/defaults");
+const overlayCatalog = require("../resources/overlays/overlay-catalog");
 const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
+const { hasGameAccess, assertGameAccess } = require("../src/main/game-access");
 const {
   GTAV_MONT_CHILIAD_DEFAULT_MAPPINGS,
   GTAV_MONT_CHILIAD_EFFECTS
@@ -124,15 +126,51 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
   assert.ok(games.every((game) => game.effects.length > 0));
   assert.ok(games.every((game) => game.guide?.steps?.length >= 3));
   assert.ok(games.every((game) => Array.isArray(game.guide?.notes)));
-  assert.ok(games.every((game) => game.requiresPro === true));
-  assert.ok(
-    games.every((game) => game.tags.includes("abonnement requis"))
-  );
+  assert.ok(games.filter((game) => game.accessMode === "purchase").every((game) => game.requiresPro === false));
+  assert.ok(games.filter((game) => game.requiresPro === false).every((game) => !game.tags.includes("abonnement requis")));
   assert.ok(
     games
       .filter((game) => game.source.includes("Crowd Control"))
       .every((game) => game.guide.sources.length >= 1)
   );
+});
+
+test("le catalogue exige Pro pour tous les jeux et préserve les droits d'achat séparés", () => {
+  const games = loadShenazenGameCatalog(path.join(root, "resources"));
+  const free = { commerce: { subscription: { tier: "free", source: "none", status: "inactive" }, gameEntitlements: [] } };
+  const pro = { commerce: { subscription: { tier: "pro", source: "subscription", status: "active" }, gameEntitlements: [] } };
+  const includedFree = games.filter((game) => game.accessMode === "included" && game.requiresPro === false);
+  const purchases = games.filter((game) => game.accessMode === "purchase");
+  const includedPro = games.filter((game) => game.accessMode === "included" && game.requiresPro === true);
+  assert.ok(includedFree.length > 0);
+  assert.ok(purchases.length > 0);
+  assert.ok(includedPro.length > 0);
+  for (const game of includedFree) {
+    assert.equal(hasGameAccess(free, game), false, game.id);
+    assert.throws(() => assertGameAccess(free, game), /abonnement/);
+    assert.equal(hasGameAccess(pro, game), true, game.id);
+    assert.equal(assertGameAccess(pro, game), game);
+  }
+  for (const game of purchases) {
+    assert.equal(game.requiresPro, false, game.id);
+    assert.equal(hasGameAccess(free, game), false, game.id);
+    assert.equal(hasGameAccess(pro, game), false, `${game.id} ne devient pas gratuit avec Pro`);
+    assert.throws(() => assertGameAccess(free, game), /achat|essai/);
+    const purchased = { commerce: { ...free.commerce, gameEntitlements: [{ gameId: game.id, source: "purchase", status: "paid" }] } };
+    assert.equal(hasGameAccess(purchased, game), false, `${game.id} acheté conserve son droit en Free sans ouvrir l'accès`);
+    assert.throws(() => assertGameAccess(purchased, game), /abonnement/);
+    const subscribedPurchase = { commerce: { ...pro.commerce, gameEntitlements: purchased.commerce.gameEntitlements } };
+    assert.equal(hasGameAccess(subscribedPurchase, game), true, `${game.id} acheté fonctionne avec Pro`);
+    assert.equal(assertGameAccess(subscribedPurchase, game), game);
+    assert.equal(purchased.commerce.gameEntitlements[0].status, "paid", "aucun achat ne doit être modifié par les vérifications d'accès");
+    assert.equal(hasGameAccess({ commerce: { ...pro.commerce, gameEntitlements: [{ gameId: game.id, source: "purchase", status: "refunded" }] } }, game), false, `${game.id} remboursé reste verrouillé même avec Pro`);
+    assert.equal(hasGameAccess({ commerce: { ...pro.commerce, gameEntitlements: [{ gameId: game.id, source: "trial", status: "trial", expiresAtMs: Date.now() - 1000 }] } }, game), false, `${game.id} essai expiré reste verrouillé même avec Pro`);
+  }
+  for (const game of includedPro) {
+    assert.equal(hasGameAccess(free, game), false, game.id);
+    assert.throws(() => assertGameAccess(free, game), /abonnement/);
+    assert.equal(hasGameAccess(pro, game), true, game.id);
+  }
 });
 
 test("reprend les 30 interactions actives du pack Crowd Control Euro Truck Simulator 2", () => {
@@ -418,11 +456,12 @@ test("réintègre les deux rendus de roue ShenazenOverlay dans l’éditeur et l
   assert.match(overlayStyles, /\.wheel-rim-star/);
 });
 
-test("embarque toutes les vidéos de match utilisées par les deux variantes", () => {
+test("embarque exactement les vidéos de match déclarées par le catalogue canonique", () => {
   const videoDirectory = path.join(root, "resources", "overlays", "media", "video");
   const videos = fs.readdirSync(videoDirectory).filter((file) => file.endsWith(".webm"));
-  assert.equal(videos.length, 15);
-  assert.ok(videos.includes("x2-tikcontrol.webm"));
-  assert.ok(videos.includes("x2-gladiador.webm"));
-  assert.ok(videos.includes("enigma-tikcontrol.webm"));
+  const declared = overlayCatalog.matches.flatMap(({ match }) =>
+    overlayCatalog.animationVariants(match).map(([variant]) => `${match}-${variant}.webm`));
+  assert.equal(new Set(declared).size, declared.length, "aucune déclaration ne duplique un fichier");
+  assert.deepEqual(videos.sort(), declared.sort(), "ni variante manquante ni vidéo orpheline");
+  for (const filename of declared) assert.ok(fs.statSync(path.join(videoDirectory, filename)).size > 0, filename);
 });

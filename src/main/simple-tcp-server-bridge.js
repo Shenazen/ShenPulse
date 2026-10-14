@@ -83,8 +83,10 @@ class SimpleTcpServerBridge extends EventEmitter {
     };
   }
 
-  async send(effectId, options = {}) {
+  async send(effectId, options = {}, { assertAccess = () => {} } = {}) {
+    assertAccess();
     await this.start();
+    assertAccess();
     const socket = this.client;
     if (!socket || socket.destroyed) {
       throw new Error(

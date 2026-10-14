@@ -30,7 +30,8 @@ function renderCoinPusherGiftRuleRow(rule = {}) {
       rule.name || "",
       "",
       "",
-      rule.giftId || ""
+      rule.giftId || "",
+      rule
     )}
     <label class="coin-pusher-compact-field">
       <span>Pièces générées</span>
@@ -95,7 +96,9 @@ function coinPusherInteractionSettingsFromForm(data) {
     .map((name, index) => {
       const cleanName = String(name || "").trim();
       const fallback = current.giftRules.find(
-        (rule) => normalizeGiftName(rule.name) === normalizeGiftName(cleanName)
+        (rule) => giftIds[index]
+          ? String(rule.giftId || "") === String(giftIds[index])
+          : normalizeGiftName(rule.name) === normalizeGiftName(cleanName)
       ) || current.giftRules[index] || {};
       return {
         ...integratedGiftDefinition(cleanName, fallback, giftIds[index]),
@@ -258,7 +261,7 @@ function renderCoinPusherInteractions(pack, unlocked) {
         <article class="coin-pusher-special-card coin-pusher-special-card--guards">
           <header><span>▥</span><div><small>PROTECTION</small><h4>Barrières latérales</h4><p>Relève temporairement les protections du plateau.</p></div></header>
           <div class="integrated-settings-grid">
-            ${giftPickerField("guardGiftName", "Cadeau des barrières", config.guardGift.name, "", "", config.guardGift.giftId)}
+            ${giftPickerField("guardGiftName", "Cadeau des barrières", config.guardGift.name, "", "", config.guardGift.giftId, config.guardGift)}
             ${integratedNumberField("guardGiftDurationSeconds", "Durée (secondes)", config.guardGift.durationSeconds, 1, 300)}
             ${integratedToggle("guardGiftIncludeCoinDrop", "Ajouter aussi les pièces normales", "Le bonus et la pluie de pièces sont cumulés.", config.guardGift.includeCoinDrop)}
           </div>
@@ -267,7 +270,7 @@ function renderCoinPusherInteractions(pack, unlocked) {
           <header><span>?</span><div><small>SURPRISE</small><h4>Dé mystère</h4><p>Fait tomber un cube qui choisit un bonus aléatoire.</p></div></header>
           <div class="integrated-settings-grid">
             ${integratedToggle("mysteryEnabled", "Activer le dé mystère", "Autorise le cadeau et les apparitions aléatoires.", config.mysteryCube.enabled)}
-            ${giftPickerField("mysteryGiftName", "Cadeau du dé", config.mysteryCube.name, "", "", config.mysteryCube.giftId)}
+            ${giftPickerField("mysteryGiftName", "Cadeau du dé", config.mysteryCube.name, "", "", config.mysteryCube.giftId, config.mysteryCube)}
             ${integratedNumberField("mysterySpawnChance", "Chance sur les autres cadeaux (%)", config.mysteryCube.spawnChance, 0, 100, 0.5)}
             ${integratedToggle("mysteryIncludeCoinDrop", "Ajouter les pièces normales", "Le cadeau conserve aussi son gain habituel.", config.mysteryCube.includeCoinDrop)}
             ${integratedToggle("mysteryPointsEnabled", "Bonus de points", "Ajoute un score aléatoire.", config.mysteryCube.pointsBonusEnabled)}
@@ -287,7 +290,7 @@ function renderCoinPusherInteractions(pack, unlocked) {
           <header><span>票</span><div><small>POINTS</small><h4>Tickets bonus</h4><p>Fait tomber des tickets physiques à valeur variable.</p></div></header>
           <div class="integrated-settings-grid">
             ${integratedToggle("ticketsEnabled", "Activer les tickets", "Autorise le cadeau et les tickets aléatoires.", config.tickets.enabled)}
-            ${giftPickerField("ticketsGiftName", "Cadeau des tickets", config.tickets.name, "", "", config.tickets.giftId)}
+            ${giftPickerField("ticketsGiftName", "Cadeau des tickets", config.tickets.name, "", "", config.tickets.giftId, config.tickets)}
             ${integratedNumberField("ticketsSpawnChance", "Chance sur les autres cadeaux (%)", config.tickets.spawnChance, 0, 100, 0.5)}
             ${integratedNumberField("ticketsCountPerGift", "Tickets par cadeau", config.tickets.countPerGift, 1, 50)}
             ${integratedNumberField("ticketsMinPoints", "Valeur minimale", config.tickets.minPoints, 1, 1000000)}

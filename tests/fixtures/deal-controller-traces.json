@@ -1,0 +1,128 @@
+{
+  "bank": {
+    "offer": 675,
+    "requests": [
+      {
+        "id": "cash",
+        "type": "cashOffer",
+        "amount": 675,
+        "title": "playableGames.dealOrNoDeal.bankerOffer:{}",
+        "detail": "reward:675",
+        "acceptLabel": "playableGames.dealOrNoDeal.take:{}",
+        "rejectLabel": "playableGames.dealOrNoDeal.leave:{}",
+        "feedText": "playableGames.dealOrNoDeal.feed.bankerOffer:{\"amount\":\"reward:675\"}"
+      },
+      {
+        "id": "buy",
+        "type": "buyBox",
+        "targetBoxId": 6,
+        "amount": 250,
+        "title": "playableGames.dealOrNoDeal.bankerBuyBoxOffer:{}",
+        "detail": "playableGames.dealOrNoDeal.bankerBuyBoxDetail:{\"box\":6,\"amount\":\"250\"}",
+        "acceptLabel": "playableGames.dealOrNoDeal.buy:{}",
+        "rejectLabel": "playableGames.dealOrNoDeal.leave:{}",
+        "feedText": "playableGames.dealOrNoDeal.feed.bankerBuyBoxOffer:{\"box\":6,\"amount\":\"250\"}"
+      },
+      {
+        "id": "swap",
+        "type": "swapBox",
+        "targetMode": "playerChoice",
+        "requiresTargetChoice": true,
+        "amount": 0,
+        "title": "playableGames.dealOrNoDeal.bankerSwapOffer:{}",
+        "detail": "playableGames.dealOrNoDeal.bankerSwapPlayerChoiceDetail:{}",
+        "acceptLabel": "playableGames.dealOrNoDeal.chooseBox:{}",
+        "rejectLabel": "playableGames.dealOrNoDeal.leave:{}",
+        "feedText": "playableGames.dealOrNoDeal.feed.bankerSwapPlayerChoiceOffer:{}"
+      }
+    ],
+    "targets": [
+      6,
+      2,
+      5
+    ],
+    "forced": [
+      "buy",
+      null
+    ],
+    "forcedKeys": [
+      "buy:1"
+    ],
+    "limits": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        3,
+        999
+      ],
+      [
+        0,
+        0
+      ]
+    ]
+  },
+  "riggedValues": [
+    10,
+    1000,
+    100,
+    500,
+    5000,
+    50
+  ],
+  "scenes": [
+    [
+      "lobby",
+      "waiting"
+    ],
+    [
+      "select",
+      "waiting"
+    ],
+    [
+      "open",
+      "solemnFinal"
+    ],
+    [
+      "banker",
+      "solemnFinal"
+    ],
+    [
+      "finalChoice",
+      "solemnFinal"
+    ],
+    [
+      "targetChoice",
+      "solemnFinal"
+    ],
+    [
+      "result",
+      "heroicTension"
+    ],
+    [
+      "extreme-final",
+      "finalDuel"
+    ]
+  ],
+  "override": "heroic",
+  "released": "",
+  "calls": [
+    [
+      "music-volume",
+      0.4
+    ],
+    [
+      "sound-volume",
+      0.4
+    ],
+    [
+      "scene",
+      "waiting"
+    ]
+  ]
+}

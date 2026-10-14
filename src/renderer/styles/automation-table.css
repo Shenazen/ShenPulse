@@ -1,0 +1,774 @@
+/* Tableau commun Actions, Déclencheurs et Sons : dense, lisible et sans animation. */
+.automation-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid #211a35;
+  border-radius: 5px;
+  background: #090b17;
+  scrollbar-color: #4b365f #0c0d19;
+}
+
+.automation-table {
+  width: 100%;
+  min-width: 1050px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #090b17;
+  color: #e8e8ef;
+  font-family: Inter, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.automation-table :is(th, td) {
+  padding: 11px 12px;
+  border: 0;
+  border-bottom: 1px solid #211a35;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.automation-table thead {
+  background: #101324;
+}
+
+.automation-table th {
+  height: 43px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  color: #94a3b8;
+  font-family: "ShenPulse Display", "Bahnschrift", sans-serif;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .045em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  background: #101324;
+}
+
+.automation-table.data-table {
+  font-size: 13px;
+}
+
+.automation-table.data-table th {
+  font-size: 11px;
+}
+
+.automation-table.data-table td {
+  overflow: visible;
+  color: #e8e8ef;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.automation-table tbody tr {
+  height: 61px;
+  background: #090b17;
+}
+
+.automation-table tbody tr:nth-child(even) {
+  background: #0e0d1d;
+}
+
+.automation-table tbody tr:hover {
+  background: #151225;
+}
+
+.automation-table tbody tr:has(:is(.automation-selection, .automation-table-selection):checked),
+.automation-table tbody tr.automation-row-selected {
+  background: #1a1430;
+}
+
+.automation-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.automation-table .automation-column-select {
+  width: 46px;
+  padding-right: 5px;
+  padding-left: 11px;
+  text-align: center;
+}
+
+.automation-table .automation-column-name {
+  width: 17%;
+}
+
+.automation-table .automation-column-trigger {
+  width: 19%;
+}
+
+.automation-table .automation-column-status {
+  width: 115px;
+}
+
+.automation-table .automation-column-date {
+  width: 105px;
+  color: #778399;
+  text-align: center;
+}
+
+.automation-table .automation-column-commands {
+  width: 145px;
+  text-align: right;
+}
+
+.automation-table :is(.automation-selection, .automation-table-selection) {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  border: 1px solid #a3a9b4;
+  border-radius: 2px;
+  background: #fafbff;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.automation-table :is(.automation-selection, .automation-table-selection):checked {
+  border-color: #a850f5;
+  background: #a850f5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 17 17'%3E%3Cpath d='m4 8 3 3 6-6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 17px no-repeat;
+}
+
+.automation-table :is(.automation-selection, .automation-table-selection):indeterminate {
+  border-color: #a850f5;
+  background: #a850f5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 17 17'%3E%3Cpath d='M4 8.5h9' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") center / 17px no-repeat;
+}
+
+.automation-table .automation-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.automation-table .automation-name-grip {
+  display: flex;
+  flex: 0 0 12px;
+  color: #374153;
+}
+
+.automation-table .automation-name-grip svg {
+  width: 12px;
+  height: 17px;
+  fill: currentColor;
+  stroke: none;
+}
+
+.automation-table .automation-name-copy {
+  min-width: 0;
+}
+
+.automation-table .automation-name-copy strong {
+  display: block;
+  overflow: hidden;
+  color: #e8e8ef;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.automation-table .automation-row-note {
+  display: block;
+  margin-top: 4px;
+  color: #8e8ca3;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.automation-table :is(.automation-effect-list, .automation-effect-chips) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.automation-table .automation-effect-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.automation-table .automation-effect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 7px;
+  border: 1px solid #59327b;
+  border-radius: 4px;
+  background: #281938;
+  color: #c97eff;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.automation-table .automation-effect-chip svg {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.automation-table .automation-effect-chip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.automation-table .automation-effect-chip[data-tone="amber"] {
+  border-color: #785519;
+  background: #392d17;
+  color: #ffbf19;
+}
+
+.automation-table .automation-effect-chip[data-tone="cyan"] {
+  border-color: #145469;
+  background: #102b36;
+  color: #59d7f2;
+}
+
+.automation-table .automation-effect-chip[data-tone="green"] {
+  border-color: #175344;
+  background: #102c29;
+  color: #00c79a;
+}
+
+.automation-table .automation-effect-chip[data-tone="muted"] {
+  border-color: #303045;
+  background: #1b1b2c;
+  color: #a6a7bb;
+}
+
+.automation-table .automation-effect-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 7px;
+  border: 1px solid #282a3a;
+  border-radius: 4px;
+  background: #171a27;
+  color: #b8bfce;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Les déclencheurs gardent leur identité et leurs données : seul le tableau les habille. */
+.automation-table .trigger-pill {
+  max-width: 100%;
+  min-height: 28px;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: #20152f;
+  color: #c972fa;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+.automation-table .trigger-pill > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.automation-table .trigger-pill:has(.event-follow),
+.automation-table .trigger-pill:has(.event-join) {
+  background: #0e2d2c;
+  color: #00c79a;
+}
+
+.automation-table .trigger-pill:has(.event-like) {
+  background: #311526;
+  color: #fb7185;
+}
+
+.automation-table .trigger-pill:has(.event-gift) {
+  padding-left: 0;
+  background: transparent;
+  color: #d5d8e4;
+}
+
+.automation-table .trigger-pill:has(.event-share) {
+  background: #112d2c;
+  color: #37d8b6;
+}
+
+.automation-table .trigger-pill:has(.event-subscribe),
+.automation-table .trigger-pill:has(.event-raid) {
+  background: #32152b;
+  color: #ed55b1;
+}
+
+.automation-table .event-visual {
+  width: 18px;
+  height: 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.automation-table .event-visual svg {
+  width: 16px;
+  height: 16px;
+}
+
+.automation-table .event-visual.event-gift {
+  width: 31px;
+  height: 31px;
+  margin-right: 7px;
+  border-radius: 6px;
+  background: #191329;
+  color: #ed55b1;
+}
+
+.automation-table .automation-gift-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: #352611;
+  color: #ffbf19;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.automation-table .automation-gift-price svg {
+  width: 12px;
+  height: 12px;
+}
+
+.automation-table .automation-status-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.automation-table .automation-status-toggle input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.automation-table .automation-status-toggle > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 27px;
+  padding: 4px 11px;
+  border: 1px solid #41354d;
+  border-radius: 999px;
+  background: #211a2b;
+  color: #a29aa9;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.automation-table .automation-status-toggle > span > i {
+  display: inline-block;
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.automation-table .automation-status-toggle > span > small {
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.automation-table .automation-status-toggle:has(input:checked) > span {
+  border-color: #005a49;
+  background: #0b302a;
+  color: #00c79a;
+}
+
+.automation-table .automation-status-toggle input:focus-visible + span {
+  outline: 2px solid #67e5ef;
+  outline-offset: 3px;
+}
+
+.automation-table .automation-row-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.automation-table .automation-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #281939;
+  color: #ac50f3;
+  box-shadow: none;
+}
+
+.automation-table .automation-icon-button svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2;
+}
+
+.automation-table .automation-icon-button.is-play,
+.automation-table .automation-icon-button.is-success {
+  background: #0d302b;
+  color: #00c79a;
+}
+
+.automation-table .automation-icon-button.is-danger {
+  background: #321b2b;
+  color: #f57091;
+}
+
+.automation-table .automation-icon-button:hover:not(:disabled) {
+  border-color: currentColor;
+  filter: brightness(1.16);
+}
+
+.automation-table .automation-icon-button:focus-visible {
+  outline: 2px solid #67e5ef;
+  outline-offset: 3px;
+}
+
+.automation-table .automation-empty-row td {
+  height: 110px;
+  padding: 25px;
+  color: #a39ab7;
+  text-align: center;
+}
+
+.automation-table .automation-table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 25px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+}
+
+.automation-table .automation-table-sort svg {
+  width: 10px;
+  height: 13px;
+  color: #41485c;
+}
+
+.automation-table th[aria-sort]:not([aria-sort="none"]) .automation-table-sort svg {
+  color: #ac50f3;
+}
+
+.automation-table .automation-table-sort:hover {
+  color: #d9cbea;
+}
+
+.automation-table-selection-summary {
+  padding: 9px 12px;
+  color: #bca9d0;
+  font-size: 11px;
+}
+
+.automation-table-selection-summary[hidden] {
+  display: none;
+}
+
+/* Neutralisation ciblée des anciennes cartes audio, sans modifier les autres ateliers. */
+.automation-table-wrap .automation-table > tbody > tr.audio-rule-card {
+  display: table-row;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.automation-table-wrap .automation-table > tbody > tr > td {
+  display: table-cell;
+  grid-row: auto;
+  grid-column: auto;
+}
+
+.automation-table-wrap .automation-table .audio-rule-state,
+.automation-table-wrap .automation-table .workflow-state {
+  display: inline-flex;
+  gap: 0;
+  justify-items: normal;
+}
+
+.automation-table-wrap .automation-table .audio-rule-state > span > small {
+  margin: 0;
+  color: inherit;
+  font-size: 11px;
+}
+
+.automation-table-wrap .automation-table .audio-rule-trigger {
+  min-width: 0;
+  border-top: 0;
+}
+
+.automation-table-wrap .automation-table .audio-rule-copy strong {
+  color: #e8e8ef;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.automation-table-wrap .automation-table .audio-rule-copy > span {
+  margin-top: 4px;
+  color: #8e8ca3;
+  font-size: 10px;
+}
+
+.automation-table .automation-row-settings {
+  flex: 1 0 100%;
+  margin-top: 5px;
+  color: #9488a7;
+  font-size: 10px;
+}
+
+.automation-table .automation-row-settings > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  color: #a498b6;
+  font-size: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.automation-table .automation-row-settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.automation-table .automation-row-settings > summary::before {
+  color: #ab66d8;
+  content: "+";
+  font-size: 13px;
+  line-height: 1;
+}
+
+.automation-table .automation-row-settings[open] > summary::before {
+  content: "−";
+}
+
+.automation-table .automation-row-settings-body {
+  display: grid;
+  gap: 11px;
+  max-width: 340px;
+  padding: 12px 0 4px;
+}
+
+.automation-table-wrap .automation-table .audio-volume-control {
+  display: grid;
+  grid-row: auto;
+  grid-column: auto;
+  gap: 6px;
+}
+
+.automation-table-wrap .automation-table .audio-volume-control > span {
+  color: #a798b7;
+  font-size: 10px;
+}
+
+.automation-table-wrap .automation-table .volume-slider {
+  width: 100%;
+  accent-color: #ac50f3;
+}
+
+.automation-table-wrap .automation-table .tts-voice-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  grid-row: auto;
+  grid-column: auto;
+}
+
+.automation-table-wrap .automation-table .tts-voice-summary :is(strong, span, small) {
+  margin: 0;
+  font-size: 10px;
+}
+
+.automation-table-wrap .automation-table .audio-output-control {
+  display: grid;
+  grid-row: auto;
+  grid-column: auto;
+  gap: 7px;
+}
+
+.automation-table-wrap .automation-table .audio-output-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.automation-table-wrap .automation-table .audio-output-switch small {
+  font-size: 10px;
+}
+
+.automation-table .audio-output-configure {
+  justify-self: start;
+  font-size: 10px;
+}
+
+.automation-table:has(.audio-rule-card) .automation-column-commands {
+  width: 170px;
+}
+
+.automation-table .compact-context-menu > summary {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #281939;
+  color: #ac50f3;
+  font-size: 14px;
+}
+
+.automation-table .compact-context-menu > div {
+  border-color: #3c2953;
+  background: #101020;
+  text-align: left;
+}
+
+.automation-table .compact-context-menu > div button {
+  padding: 8px 11px;
+  font-size: 11px;
+}
+
+/* Le menu ouvert reste dans le flux : pas de découpe à la dernière ligne. */
+.automation-table .automation-row-controls:has(.compact-context-menu[open]) {
+  flex-wrap: wrap;
+}
+
+.automation-table .compact-context-menu[open] {
+  flex: 1 0 100%;
+}
+
+.automation-table .compact-context-menu[open] > summary {
+  margin-left: auto;
+}
+
+.automation-table .compact-context-menu[open] > div {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  margin-top: 5px;
+  box-shadow: none;
+}
+
+/* Les timers gardent leurs colonnes métier, avec la même palette et les mêmes outils. */
+.timers-data-table.automation-table :is(th:first-child, .table-tools) {
+  width: 130px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.timers-data-table.automation-table th:nth-child(2) {
+  width: 70px;
+}
+
+.timers-data-table.automation-table th:nth-child(4) {
+  width: 180px;
+}
+
+.timers-data-table.automation-table th:nth-child(5) {
+  width: 145px;
+}
+
+.timers-data-table.automation-table th:last-child {
+  width: 200px;
+}
+
+.automation-table .table-tools .automation-icon-button {
+  width: 32px;
+  height: 32px;
+  margin-right: 3px;
+  border-color: transparent;
+}
+
+.automation-table .table-subline {
+  margin-top: 4px;
+  color: #8e8ca3;
+  font-size: 10px;
+}
+
+.automation-table .timer-frequency-pill {
+  padding: 4px 7px;
+  border-color: #145469;
+  border-radius: 4px;
+  background: #102b36;
+  color: #59d7f2;
+  font-size: 11px;
+}
+
+.automation-table .timer-action-chips {
+  min-width: 0;
+}
+
+.automation-table .timer-action-chips span {
+  padding: 3px 7px;
+  border-color: #59327b;
+  border-radius: 4px;
+  background: #281938;
+  color: #c97eff;
+  font-size: 10px;
+}
+
+.automation-table .switch input:checked + span {
+  background: #0b302a;
+  box-shadow: inset 0 0 0 1px #005a49;
+}
+
+.automation-table .switch input:checked + span::after {
+  background: #00c79a;
+  box-shadow: none;
+}
+
+/* Défilement horizontal : aucune commande ni information ne disparaît sur petite fenêtre. */
+@media (max-width: 1100px) {
+  .automation-table {
+    min-width: 1050px;
+  }
+}
+

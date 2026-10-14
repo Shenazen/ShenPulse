@@ -1,0 +1,164 @@
+@media (max-height: 760px) {
+  .top-hud {
+    top: 8px;
+  }
+
+  .brand h1 {
+    font-size: 1.1rem;
+  }
+
+  .entry-banner {
+    top: 14px;
+    width: min(440px, calc(100% - 12px));
+  }
+
+  .entry-banner-amount {
+    font-size: calc(4rem * var(--entry-amount-scale, 1));
+  }
+
+  .premium-entry-text {
+    font-size: calc(2.82rem * var(--premium-entry-amount-scale, 1));
+  }
+
+  .premium-entry-gain {
+    font-size: 1.04rem;
+  }
+
+  .live-frame {
+    --deal-side-width: clamp(62px, 17.4%, 74px);
+    --deal-side-gap: clamp(4px, 1.35%, 7px);
+    --deal-side-clearance: clamp(6px, 1.5%, 9px);
+    --deal-prize-top: clamp(190px, 25%, 240px);
+    --deal-prize-height: clamp(20px, 2.2vh, 25px);
+    --deal-prize-gap: clamp(2px, 0.32vh, 4px);
+    --deal-game-top: clamp(194px, 34%, 218px);
+    --deal-game-bottom: clamp(50px, 7.4%, 58px);
+  }
+
+  .prize-tile {
+    font-size: clamp(0.52rem, min(1.22vh, 2.5vw), 0.65rem);
+  }
+
+  .case-grid {
+    gap: 5px;
+  }
+
+  .case-number {
+    font-size: 0.78rem;
+  }
+
+  .target-choice-panel {
+    top: 46px;
+    width: min(280px, calc(100% - 158px));
+    padding: 9px 11px;
+  }
+
+  .target-choice-panel strong {
+    font-size: 0.98rem;
+  }
+
+}
+
+@media (max-width: 390px) {
+  .live-frame {
+    --deal-side-width: clamp(58px, 18.5%, 70px);
+    --deal-side-gap: 5px;
+    --deal-side-clearance: 6px;
+    --deal-prize-top: clamp(190px, 25%, 236px);
+    --deal-prize-height: clamp(20px, 2.25vh, 25px);
+    --deal-prize-gap: 3px;
+  }
+
+  .entry-banner {
+    width: calc(100% - 20px);
+  }
+
+  .entry-banner-amount {
+    font-size: calc(3.45rem * var(--entry-amount-scale, 1));
+  }
+
+  .premium-entry-text {
+    font-size: calc(2.46rem * var(--premium-entry-amount-scale, 1));
+  }
+
+  .premium-entry-gain {
+    font-size: 0.98rem;
+  }
+
+}
+
+@keyframes slowZoom {
+  from {
+    transform: scale(1.04) translateY(0);
+  }
+  to {
+    transform: scale(1.09) translateY(-1.2%);
+  }
+}
+
+@keyframes suitcaseShine {
+  0%,
+  42% {
+    transform: translateX(0) rotate(20deg);
+    opacity: 0;
+  }
+  54% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(330%) rotate(20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes revealShake {
+  0%,
+  100% {
+    transform: translateX(0) rotateY(0deg);
+  }
+  25% {
+    transform: translateX(-3px) rotateY(-12deg);
+  }
+  55% {
+    transform: translateX(3px) rotateY(14deg);
+  }
+  78% {
+    transform: translateX(-2px) rotateY(-8deg);
+  }
+}
+
+@keyframes phoneWave {
+  from {
+    opacity: 0.72;
+    transform: scale(0.78);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+@keyframes giftFloat {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, 18px, 0) scale(0.85);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + var(--drift)), -185px, 0) scale(1.12);
+  }
+}
+
+@keyframes particlePop {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--tx), var(--ty), 0) rotate(420deg) scale(0.6);
+  }
+}

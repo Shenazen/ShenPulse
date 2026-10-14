@@ -2,7 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { spawn } = require("node:child_process");
+const { runElectronAsNode } = require("./lib/electron-process");
 const { app, safeStorage } = require("electron");
 
 const root = path.join(__dirname, "..");
@@ -54,7 +54,7 @@ async function main() {
     "--manifest",
     path.resolve(requiredOption("manifest"))
   ];
-  const code = await runElectronAsNode(childArguments, {
+  const code = await runElectronAsNode(root, childArguments, {
     B2_MEDIA_BUCKET: settings.bucket,
     B2_MEDIA_ENDPOINT: settings.endpoint,
     B2_MEDIA_REGION: settings.region,
@@ -74,23 +74,6 @@ function readSecret(secrets, secretId) {
   );
 }
 
-function runElectronAsNode(args, environment) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, args, {
-      cwd: root,
-      windowsHide: true,
-      shell: false,
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        ...environment,
-        ELECTRON_RUN_AS_NODE: "1"
-      }
-    });
-    child.once("error", reject);
-    child.once("close", resolve);
-  });
-}
 
 function parseArguments(args) {
   const result = {};

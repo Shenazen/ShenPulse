@@ -1,0 +1,37 @@
+/** Traductions en du domaine « gallery ». Les clés publiques restent stables. */
+export default {
+      categories: {
+        actions: 'Actions',
+        counters: 'Counters',
+        events: 'Events',
+        games: 'Games',
+        gifts: 'Gifts',
+        interactions: 'Interactions',
+        likes: 'Likes',
+        matches: 'Matches',
+        music: 'Music',
+        points: 'Points',
+        rankings: 'Leaderboards',
+        seasonal: 'Seasonal',
+        tools: 'Tools',
+      },
+      donorLeaderboard: 'Donors ranking',
+      help: 'Need help?',
+      matchOverlayHelp: {
+        title: 'How to use these match animation overlays?',
+        step1: 'Step 1: use OBS. TikTok LIVE Studio has degraded and inconsistent behavior for this.',
+        step2: 'Step 2: copy the overlay link you want to use.',
+        step3: 'Step 3: add a new "Browser" source in OBS.',
+        step4: 'Step 4: in this source settings, change:',
+        settingUrl: 'URL: paste the overlay URL.',
+        settingWidth: 'Width: set 1080.',
+        settingHeight: 'Height: set 1920.',
+        settingShutdown: 'Enable "Shutdown source when not visible".',
+        settingRefresh: 'Enable "Refresh browser when scene becomes active".',
+      },
+      overlayGallery: 'Overlay Gallery',
+      search: 'Search',
+      tapperLeaderboard: 'Tappers ranking',
+      wheelActions: 'Wheel of Actions',
+    };
+
