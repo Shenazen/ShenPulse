@@ -79,11 +79,19 @@ Les contrôles en lecture seule confirment : serveur en ligne, PayPal live prêt
 pour les offres configurées, Firebase et stockage média configurés, callback
 Spotify PKCE de production présent. Les API privées refusent les accès anonymes
 et les droits sans identité restent gratuits. Aucun achat, paiement, upload
-personnel, consentement OAuth ni effet réel sur un LIVE n'a été déclenché.
+personnel, consentement OAuth ni effet volontaire de test sur un LIVE n'a été déclenché.
 
 ## Publications
 
-Le Git, le site/EXE et Firebase restent à publier après réussite des contrôles.
-Le site sera déployé sans remplacement du backend ni suppression des jeux et
-anciens installateurs, avec sauvegarde de ses fichiers statiques. Les clips
-Match et leurs clés ne sont jamais envoyés sur Firebase Hosting ni la vitrine.
+- Git : commit applicatif `c62c97b7245914ec6a521e36b0fc4ac685476643` et tag annoté `v2.0.0` poussés sur `origin` ; références distantes contrôlées.
+- Site : [installateur 2.0.0](https://www.shenpulse.leuridan.fr/downloads/ShenPulseSetup-2.0.0.exe) publié avant la vitrine. Téléchargement HTTPS réel : HTTP 200, 512 536 436 octets et SHA-256 identique au tableau ci-dessus.
+- Les 19 fichiers de vitrine ont été relus par HTTPS et leurs empreintes correspondent aux fichiers locaux. Accueil, documentation et routes légales répondent en HTTP 200.
+- Les 15 anciens installateurs sont conservés, avec les mêmes noms et tailles. La 1.0.16 reste téléchargeable. Les jeux, le backend et PM2 n'ont pas été remplacés.
+- Sauvegarde des anciens fichiers statiques : `/var/www/shenpulse/.public-site-backups/pre-public-site-2.0.0-20261014T200749Z-34958cde`.
+- Firebase : règles Realtime Database et Hosting déployés sur `shenazenoverlay`. Le runtime public répond en HTTP 200 avec `2.0.0-overlay1`, également présent dans l'index hébergé.
+- Contrôles après publication : `/users` anonyme refusé (401), requête d'annuaire public bornée autorisée (200), aucune vidéo Cyber brute servie à son URL publique (réponse HTML, pas vidéo).
+- Application locale relancée depuis le nouveau `dist/win-unpacked`, version Windows `2.0.0.0`, fenêtre principale ShenPulse active.
+
+Les clips Match et leurs clés ne sont pas envoyés sur Firebase Hosting ni la
+vitrine. Le canal Microsoft Store reste distinct : envoi Partner Center et vol
+privé non réalisés, conformément à la section ci-dessus.
