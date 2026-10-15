@@ -100,6 +100,27 @@ et smoke de la version Store, puis seulement soumission publique.
 
 ## Publication
 
-Les contrôles de construction et qualification ci-dessus sont terminés.
-La publication Git, EXE/site et Firebase ainsi que les contrôles HTTPS
-post-production restent à consigner après leur exécution effective.
+- Git : commit applicatif `178c71a51382900efa91932938ca523ce9d70efd` et tag
+  annoté `v2.0.2` poussés sur `origin`, références distantes vérifiées.
+- EXE versionné publié avant les fichiers statiques. Empreintes vérifiées
+  côté VPS puis par HTTPS pour les 19 fichiers de `website/dist`.
+- Accueil, documentation et cinq routes légales : 7/7 en HTTP 200 ; liens
+  et notes annoncent 2.0.2, sans ancienne référence de téléchargement active.
+- Téléchargement HTTPS intégral de l'EXE : **512 541 217 octets**, SHA-256
+  `B322E2DED6E97A46F242BC7F589D6E6C1ADD198565E5805FE073AF4027AEC7BE`,
+  identique à l'artefact qualifié. L'installateur 2.0.1 reste en HTTP 200
+  avec ses 512 540 484 octets d'origine.
+- Sauvegarde de vitrine :
+  `/var/www/shenpulse/.public-site-backups/pre-public-site-2.0.2-20261015T135626Z-08fbb1f0`.
+  Backend, PM2, jeux, données privées et anciens installateurs préservés.
+- Firebase : déploiement `database,hosting` terminé sur `shenazenoverlay`.
+  Runtime et index publics relus en HTTPS : `2.0.2-overlay1`, HTTP 200.
+  Les règles de base n'ont pas changé dans cette release ; le contrôle
+  anonyme supplémentaire de `/users` n'a pas été relancé après déploiement.
+- Aucun effet LIVE, son ni commande de machine IRL déclenché. L'application
+  réelle a été fermée proprement avant construction ; les lancements de
+  qualification ont utilisé des environnements de test isolés.
+
+Le canal EXE/site est publié. Le Microsoft Store attend l'authentification
+humaine et les étapes de vol privé décrites plus haut : aucune soumission
+Store ne doit être annoncée comme effectuée.
