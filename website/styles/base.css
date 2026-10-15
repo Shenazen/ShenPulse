@@ -1,3 +1,11 @@
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2');
+}
+
 :root {
   color-scheme: dark;
   --bg: #070815;
@@ -30,7 +38,8 @@
 }
 
 html {
-  min-width: 320px;
+  /* 320 px de fenêtre peuvent laisser 305 px utiles avec une barre de défilement. */
+  min-width: 0;
   scroll-behavior: smooth;
   scroll-padding-top: 100px;
 }
@@ -44,7 +53,7 @@ body {
     radial-gradient(circle at 90% 20%, rgba(25, 214, 232, 0.09), transparent 30rem),
     var(--bg);
   color: var(--text);
-  font-family: "Segoe UI Variable", "Segoe UI", Inter, system-ui, sans-serif;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.65;
   text-rendering: optimizeLegibility;
@@ -63,8 +72,19 @@ body::before {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:where(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 4px;
 }
 
 a {
@@ -74,6 +94,20 @@ a {
 img {
   display: block;
   max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+:where(.hero, .section-heading, .workflow-grid, .feature-grid, .showcase, .split-showcase, .privacy-callout, .site-footer, .docs-shell, .docs-gallery, .docs-card-grid, .legal-layout, .game-guide-grid, .security-grid, .troubleshooting-grid) > * {
+  min-width: 0;
+}
+
+:where(p, li, dd, h1, h2, h3, h4, figcaption) {
+  overflow-wrap: break-word;
+}
+
+:where(.docs-content, .legal-layout, .legal-contact) :where(a, code) {
+  overflow-wrap: anywhere;
 }
 
 h1,
@@ -90,7 +124,7 @@ h1,
 h2,
 h3 {
   color: var(--text);
-  font-family: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
   letter-spacing: -0.04em;
   line-height: 1.08;
 }
@@ -149,6 +183,8 @@ h3 {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .brand img {
@@ -160,6 +196,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .site-nav > a:not(.button) {
@@ -194,7 +231,7 @@ h3 {
 .button {
   display: inline-flex;
   min-height: 46px;
-  padding: 0 19px;
+  padding: 10px 19px;
   align-items: center;
   justify-content: center;
   gap: 12px;
@@ -203,6 +240,8 @@ h3 {
   color: white;
   font-weight: 800;
   text-decoration: none;
+  line-height: 1.4;
+  text-align: center;
   transition:
     transform 0.25s var(--ease-out),
     border-color 0.2s ease,
@@ -264,18 +303,19 @@ h3 {
   width: 28px;
   height: 1px;
   background: currentColor;
+  flex: none;
 }
 
 .hero {
   position: relative;
   display: grid;
   width: min(calc(100% - 40px), var(--max));
-  min-height: 690px;
+  min-height: 0;
   margin: 0 auto;
-  padding: 68px 0 74px;
-  align-items: center;
-  grid-template-columns: minmax(0, 1.04fr) minmax(500px, 0.96fr);
-  gap: clamp(36px, 4vw, 68px);
+  padding: clamp(40px, 4.4vw, 64px) 0 56px;
+  align-items: start;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(28px, 3.5vw, 52px);
 }
 
 

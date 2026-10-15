@@ -19,37 +19,16 @@
   }
 }
 
-@keyframes ambient-glow {
-  from {
-    opacity: 0.55;
-    transform: translate3d(-2%, 1%, 0) scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(4%, -3%, 0) scale(1.08);
-  }
-}
-
-@keyframes note-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1000px) {
   .hero {
     min-height: 0;
-    padding: 72px 0 84px;
-    grid-template-columns: 1fr;
-    gap: 48px;
+    padding: 44px 0 52px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
   }
 
   .hero-copy {
@@ -57,16 +36,18 @@
   }
 
   .hero-visual {
+    width: 100%;
     max-width: 860px;
   }
 
   .feature-grid,
   .security-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .showcase {
-    grid-template-columns: 1fr;
+  .showcase,
+  .tour-panel {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -117,7 +98,7 @@
 
   .hero {
     min-height: 0;
-    padding: 58px 0 70px;
+    padding: 42px 0 48px;
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -126,17 +107,18 @@
   }
 
   .trust-strip {
-    overflow-x: auto;
+    padding: 15px 18px;
     justify-content: start;
+    gap: 12px 20px;
   }
 
   .trust-strip span {
-    flex: none;
+    flex: 0 1 auto;
   }
 
   .workflow-grid,
   .split-showcase {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .section-heading {
@@ -147,12 +129,12 @@
   .showcase,
   .privacy-callout {
     padding: 34px;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 38px;
   }
 
   .site-footer {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .footer-main {
@@ -161,7 +143,7 @@
 
   .docs-shell,
   .legal-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .docs-sidebar,
@@ -171,7 +153,7 @@
 
   .docs-sidebar nav,
   .legal-layout > aside {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .docs-sidebar > strong,
@@ -182,7 +164,7 @@
   .docs-card-grid,
   .docs-gallery,
   .troubleshooting-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .docs-gallery figure:last-child {
@@ -200,11 +182,11 @@
   }
 
   .hero {
-    padding-top: 48px;
+    padding-top: 34px;
   }
 
   .hero h1 {
-    font-size: clamp(2.55rem, 11.8vw, 3.55rem);
+    font-size: clamp(2.25rem, 10.5vw, 3.4rem);
     line-height: 1.01;
   }
 
@@ -215,7 +197,8 @@
 
   .hero-facts {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
   }
 
@@ -224,16 +207,17 @@
   }
 
   .hero-visual {
-    padding: 14px;
+    padding: 10px;
+    border-radius: 16px;
   }
 
   .section {
-    padding: 76px 0;
+    padding: 58px 0;
   }
 
   .feature-grid,
   .security-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .workflow-grid article > span,
@@ -248,6 +232,38 @@
     padding: 26px 20px;
   }
 
+  .tour-panel {
+    padding: 22px 16px;
+    gap: 24px;
+    border-radius: 16px;
+  }
+
+  .tour-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tour-tabs button {
+    padding: 10px 8px;
+    font-size: 0.82rem;
+  }
+
+  .screenshot-dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .screenshot-dialog__header {
+    gap: 8px;
+  }
+
+  .screenshot-dialog__header p {
+    font-size: 0.8rem;
+  }
+
   .final-cta > div,
   .message-page > div,
   .legal-contact {
@@ -256,7 +272,7 @@
   }
 
   .site-footer {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .footer-main,
@@ -280,11 +296,11 @@
 
   .docs-sidebar nav,
   .legal-layout > aside {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .field-table > div {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 3px;
   }
 
@@ -311,7 +327,7 @@
   }
 
   .game-guide-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .legal-layout > article > section {
@@ -325,10 +341,17 @@
     scroll-behavior: auto;
   }
 
+  .reveal,
+  .hero-copy > * {
+    opacity: 1;
+    transform: none;
+  }
+
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }

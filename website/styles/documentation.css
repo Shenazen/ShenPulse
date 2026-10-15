@@ -150,7 +150,7 @@
 
 .section-index {
   color: var(--cyan);
-  font-family: Sora, sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 1.1rem;
 }
 
@@ -276,7 +276,8 @@
 
 .docs-card-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 12px;
 }
 
@@ -345,12 +346,17 @@
 .docs-gallery {
   display: grid;
   margin-top: 26px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 14px;
 }
 
-.docs-gallery figure:last-child {
+.docs-gallery figure:only-child {
   grid-column: 1 / -1;
+}
+
+.docs-gallery .app-shot {
+  margin-bottom: 0;
 }
 
 .accordion-list {

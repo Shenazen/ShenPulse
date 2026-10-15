@@ -106,6 +106,7 @@ export const LEGAL_PAGES = {
   '/confidentialite': {
     eyebrow: 'Données personnelles',
     title: 'Politique de confidentialité',
+    updatedAt: '15 octobre 2026',
     intro: 'Données traitées par le site public, le compte ShenPulse et l’application Windows.',
     sections: [
       ['Responsable et contact', [
@@ -124,8 +125,16 @@ export const LEGAL_PAGES = {
         'La plupart des automatismes et journaux fonctionnent localement. Un relais public ne reçoit que l’état nécessaire aux overlays activés, avec un identifiant révoquable.'
       ]],
       ['Données locales et secrets', [
-        'Profils, règles, historique, paramètres, chemins de jeux et médias restent sur l’appareil sauf action explicite de synchronisation ou d’import.',
-        'Les mots de passe, jetons et clés compatibles sont chiffrés avec le coffre-fort Windows et ne doivent jamais être partagés.'
+        'Les profils, règles, préférences, historiques et chemins de jeux sont conservés localement, dans un espace associé au compte ShenPulse sur ce PC. La version 2.0.2 ne synchronise pas ces profils entre ordinateurs.',
+        'Les mots de passe du compte ne sont pas enregistrés par l’application. Les jetons et clés compatibles sont protégés par le coffre local Windows et ne doivent jamais être partagés.'
+      ]],
+      ['Médias importés', [
+        'Lorsqu’un utilisateur connecté importe un son, une image, un GIF ou une vidéo, le fichier est transféré vers le stockage média Backblaze B2 géré par ShenPulse, au moyen de son API authentifiée. Une clé de stockage personnelle n’est pas demandée à l’utilisateur.',
+        'La bibliothèque locale conserve les informations nécessaires pour retrouver et lire le média. Les sources de diffusion peuvent charger ce média distant. L’utilisateur doit vérifier les droits sur le fichier et éviter d’y inclure des données confidentielles.'
+      ]],
+      ['Annuaire des créateurs en LIVE', [
+        'La publication dans l’annuaire public est facultative. Lorsqu’elle est activée, les informations publiques du LIVE telles que le pseudonyme, la photo publique, la plateforme et l’audience disponible peuvent apparaître sur l’accueil de ShenPulse.',
+        'L’annuaire ne publie pas les profils de configuration, les secrets locaux ou l’adresse e-mail du compte ShenPulse.'
       ]],
       ['Paiement et services tiers', [
         'PayPal traite le paiement et renvoie un identifiant et un état de transaction. ShenPulse ne stocke pas le numéro complet d’un moyen de paiement.',

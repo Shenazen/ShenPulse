@@ -1,26 +1,32 @@
-import { LEGAL_PAGES } from '/app/legal-pages.js'
+import { LEGAL_PAGES } from '/app/legal-pages.js?v=20261015-web1'
 import {
   ACTION_TYPES,
   APP_TABS,
   CLIENT_RELEASE,
   OVERLAY_TYPES,
   POPUP_GROUPS
-} from '/content.js'
-import { GAMES } from '/game-catalog.js'
+} from '/content.js?v=20261015-web1'
+import { GAMES } from '/game-catalog.js?v=20261015-web1'
+import { productTour, screenshot, screenshotDialog, bindVisuals } from '/app/visual-tour.js?v=20261015-web1'
+import { escapeHtml } from '/app/html.js?v=20261015-web1'
 
 const app = document.querySelector('#app')
 const DOWNLOAD_URL = '/downloads/ShenPulseSetup-2.0.2.exe'
-const SCREENSHOT_VERSION = '20261009'
 const SITE_ORIGIN = 'https://www.shenpulse.leuridan.fr'
 const RETIRED_ROUTES = ['/login', '/setup', '/admin', '/app']
+let pageController = null
+let pageObservers = []
 
 const HOME_FAQ = [
   ['Est-ce un site ou une application ?', 'ShenPulse est une application Windows. Le site sert uniquement à présenter le logiciel, télécharger l’installateur et consulter la documentation.'],
   ['Faut-il ouvrir une page de configuration ?', 'Non. La connexion, la configuration, les abonnements et les jeux se gèrent exclusivement depuis l’application.'],
-  ['Puis-je tester sans être en live ?', 'Oui. Le mode Démo et les boutons de test permettent de vérifier règles, médias, sons, voix, overlays et effets.'],
-  ['Comment ajouter un overlay ?', 'Configure-le dans ShenPulse, copie son URL, puis ajoute une source navigateur dans OBS avec les dimensions conseillées.'],
-  ['Quels jeux sont présentés ?', `Les ${GAMES.length} cartes actuellement visibles dans la galerie publique de l’application, avec une distinction claire entre interactions exécutables et fiches de référence.`],
-  ['À quoi sert la carte de partage ?', 'Elle s’affiche automatiquement quand tu partages l’adresse du site sur un réseau social ou une messagerie compatible. Tu n’as aucun fichier à joindre manuellement.']
+  ['Puis-je tester sans être en live ?', 'Oui. Le simulateur du tableau de bord et les boutons de test permettent de vérifier tes règles. Attention : les actions associées peuvent réellement lancer un média, un effet ou une machine IRL. Prépare une configuration de test sans risque.'],
+  ['Comment ajouter un overlay ?', 'Configure-le dans ShenPulse, copie la source proposée, puis ajoute une source navigateur dans OBS ou une source Lien dans TikTok LIVE Studio. Respecte les dimensions indiquées et garde ShenPulse ouvert.'],
+  ['Quelles fonctions nécessitent Pro ?', 'Jeux vidéo, Machines IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Certains modules de jeux demandent aussi un achat supplémentaire. Les prix et droits de ton compte sont présentés dans l’application.'],
+  ['Mes profils sont-ils conservés ?', 'Oui, les profils et leurs réglages sont rattachés à ton compte sur ce PC. La version 2.0.2 renforce leur sauvegarde et leur restauration à la reconnexion. Cela ne constitue pas une synchronisation entre ordinateurs : conserve aussi tes exports.'],
+  ['Dois-je configurer Backblaze pour importer un son ?', 'Non. Le stockage média est géré par ShenPulse pour tous les comptes connectés, sans clé Backblaze personnelle. Tu peux importer les formats autorisés depuis l’application, dans la limite indiquée au moment de l’import.'],
+  ['Les commandes répondent-elles dans le chat ?', 'L’onglet Commandes reçoit des messages commençant par ! et exécute l’effet configuré : musique, action ou overlay. Il n’envoie pas de réponse textuelle automatique au chat.'],
+  ['Quels jeux sont présentés ?', `Les ${GAMES.length} fiches du catalogue public de l’application. Les fiches de référence sont distinguées des intégrations exécutables ; une fiche seule ne garantit pas qu’un mod tiers est installé ou compatible.`]
 ]
 
 renderCurrentRoute()
@@ -28,17 +34,20 @@ window.addEventListener('popstate', renderCurrentRoute)
 document.addEventListener('click', handleNavigation)
 
 function handleNavigation(event) {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
   const link = event.target.closest('a[href]')
   if (!link || link.target || link.hasAttribute('download')) return
   const url = new URL(link.href, window.location.href)
   if (url.origin !== window.location.origin) return
   event.preventDefault()
+  const samePage = normalizePath(url.pathname) === normalizePath(window.location.pathname) && url.search === window.location.search
   history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
-  renderCurrentRoute()
+  if (samePage && url.hash) scrollToCurrentHash({ focus: true })
+  else renderCurrentRoute({ focusHash: Boolean(url.hash) })
   if (!url.hash) window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
-function renderCurrentRoute() {
+function renderCurrentRoute({ focusHash = false } = {}) {
   const path = normalizePath(window.location.pathname)
   const route = RETIRED_ROUTES.some((retired) => path === retired || path.startsWith(`${retired}/`))
     ? 'retired'
@@ -50,17 +59,26 @@ function renderCurrentRoute() {
   else if (route === 'retired') renderPage(retiredPage(), 'Fonction disponible dans l’application — ShenPulse', 'not-found')
   else renderPage(notFoundPage(), 'Page introuvable — ShenPulse', 'not-found')
 
-  scrollToCurrentHash()
+  scrollToCurrentHash({ focus: focusHash })
 }
 
-function scrollToCurrentHash() {
+function scrollToCurrentHash({ focus = false } = {}) {
   if (!window.location.hash) return
   let id = window.location.hash.slice(1)
   try { id = decodeURIComponent(id) } catch {}
   requestAnimationFrame(() => {
     const target = document.getElementById(id)
+    if (target?.closest('[hidden]')) {
+      // Un lien du sommaire reste utilisable après une recherche qui masquait sa cible.
+      for (const input of document.querySelectorAll('#docs-search, #game-search')) input.value = ''
+      document.querySelector('#docs-search')?.dispatchEvent(new Event('input', { bubbles: true }))
+    }
     if (target instanceof HTMLDetailsElement) target.open = true
     target?.scrollIntoView()
+    if (target && focus) {
+      if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1')
+      target.focus({ preventScroll: true })
+    }
     const sectionId = target?.closest('.doc-section')?.id || id
     requestAnimationFrame(() => {
       document.querySelectorAll('.docs-sidebar a[href^="#"]').forEach((link) => {
@@ -71,9 +89,19 @@ function scrollToCurrentHash() {
 }
 
 function renderPage(content, title, pageClass) {
+  document.querySelector('.screenshot-dialog[open]')?.close()
+  pageController?.abort()
+  pageObservers.forEach((observer) => observer.disconnect())
+  pageObservers = []
+  pageController = new AbortController()
   document.title = title
   document.documentElement.dataset.page = pageClass
-  app.innerHTML = `${header()}${content}${footer()}`
+  const canonical = `${SITE_ORIGIN}${normalizePath(window.location.pathname)}`
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonical)
+  document.querySelector('meta[property="og:url"]')?.setAttribute('content', canonical)
+  document.querySelector('meta[name="robots"]')?.setAttribute('content', pageClass === 'not-found' ? 'noindex,follow' : 'index,follow')
+  app.innerHTML = `${header()}${content}${footer()}${screenshotDialog()}`
+  app.querySelector('main')?.setAttribute('tabindex', '-1')
   bindPageBehaviors(pageClass)
 }
 
@@ -97,12 +125,13 @@ function footer() {
     <footer class="site-footer">
       <div class="footer-main">
         <a class="brand brand--footer" href="/"><img src="/brand/shenpulse-logo.png" alt="ShenPulse" width="315" height="64"></a>
-        <p>L’application Windows qui transforme les réactions d’un live en moments de jeu.</p>
+        <p>STREAM · INTERACTIONS · ENSEMBLE<br>L’application Windows pour créer un live avec ta communauté.</p>
         <a class="button button--small" href="${DOWNLOAD_URL}" download>Télécharger pour Windows</a>
       </div>
       <nav aria-label="Liens utiles">
         <strong>Produit</strong>
         <a href="/docs">Documentation</a>
+        <a href="/#decouvrir">Découvrir l’application</a>
         <a href="${DOWNLOAD_URL}" download>Téléchargement</a>
       </nav>
       <nav aria-label="Liens légaux">
@@ -125,30 +154,30 @@ function homePage() {
     <main id="main">
       <section class="hero">
         <div class="hero-copy">
-          <div class="eyebrow"><span></span> ShenPulse ${CLIENT_RELEASE.version} · Application Windows pour créateurs live</div>
-          <h1>Chaque réaction devient <em>un moment de jeu.</em></h1>
-          <p class="hero-lead">ShenPulse relie les événements de ton live à des alertes, overlays, sons, voix, commandes et effets de jeu — depuis une seule application locale.</p>
+          <div class="eyebrow"><span></span> ShenPulse ${CLIENT_RELEASE.version} · Pour les créateurs LIVE</div>
+          <h1>Ton live.<em>Ta communauté aux commandes.</em></h1>
+          <p class="hero-lead">Cadeaux, likes, messages : transforme les réactions reçues en sons, animations, jeux et interactions. Prépare ton show et pilote-le depuis une seule application Windows.</p>
           <div class="hero-actions">
             <a class="button button--primary" href="${DOWNLOAD_URL}" download>Télécharger ShenPulse <span>↓</span></a>
-            <a class="button button--ghost" href="/docs">Découvrir la documentation <span>→</span></a>
+            <a class="button button--ghost" href="#decouvrir">Voir l’application <span>↓</span></a>
           </div>
           <dl class="hero-facts">
             <div><dt>Windows 10+</dt><dd>Application locale</dd></div>
-            <div><dt>${GAMES.length} jeux</dt><dd>Catalogue public</dd></div>
-            <div><dt>0 traceur</dt><dd>Sur le site public</dd></div>
+            <div><dt>${GAMES.length} fiches</dt><dd>Jeux & modules publics</dd></div>
+            <div><dt>Tes profils</dt><dd>Sauvegardés sur ce PC</dd></div>
           </dl>
         </div>
         <div class="hero-visual">
           <span class="visual-label">Aperçu de l’application</span>
-          ${screenshot('/screenshots/app-overview-public.png', 'Vue d’ensemble de l’application ShenPulse', true)}
-          <div class="floating-note floating-note--top"><span>●</span> Prêt à interagir</div>
-          <div class="floating-note floating-note--bottom"><strong>Catalogue</strong> cadeaux recherchables</div>
+          ${screenshot('/screenshots/home-public.png', 'L’accueil de ShenPulse 2.0.2', true)}
         </div>
       </section>
 
       <section class="trust-strip" aria-label="Fonctions principales">
-        ${['Événements live', 'Actions multi-étapes', 'Overlays OBS', 'Jeux interactifs', 'Profils locaux'].map((item) => `<span>${item}</span>`).join('')}
+        ${['TikTok LIVE', 'Actions & commandes', 'OBS & LIVE Studio', 'Musique & voix', 'Machines IRL'].map((item) => `<span>${item}</span>`).join('')}
       </section>
+
+      ${productTour()}
 
       <section class="section intro-section" id="nouveautes">
         <div class="section-heading">
@@ -162,14 +191,14 @@ function homePage() {
 
       <section class="section intro-section">
         <div class="section-heading">
-          <div><span class="eyebrow">Un centre de contrôle, pas une usine à gaz</span><h2>Prépare, teste, puis lance ton live.</h2></div>
-          <p>Tout ce qui configure ou pilote ShenPulse reste dans l’application. Le site public ne contient ni connexion, ni setup, ni panneau de gestion.</p>
+          <div><span class="eyebrow">De l’idée au direct</span><h2>Prépare. Teste. Fais vivre ton show.</h2></div>
+          <p>Un profil pour chaque univers, des réactions à ton image et des sources prêtes à rejoindre ton logiciel de diffusion.</p>
         </div>
         <div class="workflow-grid">
           ${[
-            ['01', 'Connecte une source', 'Renseigne ton @ TikTok, utilise le mode Démo ou ajoute un relais autorisé.'],
-            ['02', 'Compose tes réactions', 'Associe un événement à un média, un son, une voix, une roue ou un effet de jeu.'],
-            ['03', 'Teste tout le parcours', 'Simule les cadeaux et vérifie le rendu dans OBS avant de passer en direct.']
+            ['01', 'Choisis ton profil', 'Connecte ton compte ShenPulse, sélectionne ton profil et renseigne le @ TikTok à suivre.'],
+            ['02', 'Compose tes interactions', 'Associe un cadeau ou un événement à un son, une animation, une commande ou un effet compatible.'],
+            ['03', 'Vérifie tes sources', 'Ajoute les liens à OBS ou LIVE Studio, puis teste les réactions dans une configuration sans risque.']
           ].map(([number, title, copy]) => `<article><span>${number}</span><h3>${title}</h3><p>${copy}</p></article>`).join('')}
         </div>
       </section>
@@ -181,12 +210,12 @@ function homePage() {
         </div>
         <div class="feature-grid">
           ${[
-            ['bolt', 'Automatisations', 'Filtres, seuils, probabilités, priorités et cooldowns pour maîtriser chaque déclenchement.'],
-            ['layers', 'Overlays & widgets', 'Like Goal, classements, timers, roue, Coin Jar, compteur de wins et animations de match.'],
-            ['music', 'Sons & voix', 'Bibliothèque audio, médias personnels, TTS filtré et commandes Spotify.'],
-            ['game', 'Jeux & effets', 'Jeux intégrés, installateurs gérés, passerelles locales et fiches de compatibilité transparentes.'],
-            ['broadcast', 'OBS & sources', 'Sources navigateur stables, dimensions conseillées et aperçu réel dans l’application.'],
-            ['shield', 'Contrôle local', 'Secrets chiffrés, API loopback protégée, profils exportables et aucune télémétrie par défaut.']
+            ['bolt', 'Actions & commandes', 'Cadeaux, likes ou commandes ! : choisis l’événement et compose les effets, avec permissions et cooldowns.'],
+            ['layers', 'Overlays & matchs', 'Objectifs, classements, roue, timers et réactions de match trouvent leur place dans ton habillage.'],
+            ['music', 'Sons, voix & musique', 'Importe tes sons, prépare la synthèse vocale et configure les demandes musicales Spotify.'],
+            ['game', 'Jeux & machines IRL', 'Relie les interactions compatibles à ta partie ou à tes prises PlugPlus, avec des tests sous ton contrôle.'],
+            ['broadcast', 'OBS & LIVE Studio', 'Retrouve les liens de sources, les dimensions et les réglages utiles dans l’application.'],
+            ['shield', 'Profils & communauté', 'Sépare tes configurations par profil et retrouve participants, contributions, rangs et blocages.']
           ].map(([icon, title, copy]) => `<article><span class="feature-icon" data-icon="${icon}"></span><h3>${title}</h3><p>${copy}</p></article>`).join('')}
         </div>
       </section>
@@ -194,21 +223,32 @@ function homePage() {
       <section class="section showcase">
         <div class="showcase-copy">
           <span class="eyebrow">Jeux interactifs</span>
-          <h2>Le même catalogue que dans l’application.</h2>
-          <p>Le site reprend les ${GAMES.length} cartes visibles dans la galerie publique de ShenPulse et indique si leurs interactions sont exécutables ou présentées comme référence de compatibilité.</p>
+          <h2>Change de jeu, garde ton univers.</h2>
+          <p>Explore les ${GAMES.length} fiches du catalogue public. Prérequis, installation et état des interactions sont indiqués pour chaque intégration.</p>
           <ul class="check-list">
-            <li>Installation et sauvegarde guidées</li>
+            <li>Accès Pro ou Premium requis</li>
             <li>Interactions configurables et testables</li>
             <li>Une seule session de jeu active à la fois</li>
           </ul>
-          <a class="button button--ghost" href="/docs#jeux">Voir les ${GAMES.length} jeux publics <span>→</span></a>
+          <a class="button button--ghost" href="/docs#jeux">Explorer le catalogue public <span>→</span></a>
         </div>
         ${screenshot('/screenshots/games-public.png', 'Galerie publique des jeux ShenPulse')}
       </section>
 
       <section class="section split-showcase">
         <article>
-          <div><span class="eyebrow">Sources navigateur</span><h3>Le rendu avant l’URL.</h3><p>Configure thème, placement, couleurs et visibilité avec un aperçu fidèle, puis copie la source dans OBS.</p></div>
+          <div><span class="eyebrow">Matchs · Pro</span><h3>Le bon effet, au bon moment.</h3><p>Prépare tes widgets et automatisations de match, puis retrouve les sources prévues pour la diffusion.</p><a class="text-link" href="/docs#matchs">Comprendre les Matchs →</a></div>
+          ${screenshot('/screenshots/matches-public.png', 'Matchs : tableau de bord et automatisations')}
+        </article>
+        <article>
+          <div><span class="eyebrow">Ta communauté</span><h3>Plus que des chiffres.</h3><p>Participants, contributions et rangs : garde une vue claire de ton public et retrouve facilement les utilisateurs bloqués.</p><a class="text-link" href="/docs#utilisateurs">Découvrir les Utilisateurs →</a></div>
+          ${screenshot('/screenshots/users-public.png', 'Utilisateurs : participants, contributions et rangs')}
+        </article>
+      </section>
+
+      <section class="section split-showcase">
+        <article>
+          <div><span class="eyebrow">Sources navigateur</span><h3>Un habillage qui te ressemble.</h3><p>Configure couleurs, placement et visibilité, puis copie ta source dans OBS ou LIVE Studio.</p></div>
           ${screenshot('/screenshots/overlays-public.png', 'Galerie des overlays ShenPulse')}
         </article>
         <article>
@@ -220,13 +260,13 @@ function homePage() {
       <section class="section privacy-callout">
         <div>
           <span class="eyebrow">Site volontairement simple</span>
-          <h2>Pas de compte web. Pas de configuration web.</h2>
-          <p>La vitrine présente ShenPulse, la documentation explique l’application et le téléchargement fournit l’installateur. Les achats PayPal, la connexion et les réglages restent dans l’application.</p>
+          <h2>Le show se prépare dans l’application.</h2>
+          <p>Le site te guide, sans te demander de compte ni de paiement. Dans ShenPulse, chaque compte conserve ses profils sur son PC. Les imports de sons, images, GIF et vidéos utilisent le stockage géré, sans clé personnelle à configurer.</p>
         </div>
         <div class="privacy-list">
-          <span><b>01</b> Aucun formulaire public</span>
-          <span><b>02</b> Aucun lien de paiement public</span>
-          <span><b>03</b> Aucun cookie publicitaire</span>
+          <span><b>01</b> Connexion et offres dans l’application</span>
+          <span><b>02</b> Médias importés pour tous les comptes connectés</span>
+          <span><b>03</b> Site sans cookie publicitaire</span>
         </div>
       </section>
 
@@ -249,13 +289,13 @@ function docsPage() {
       <header class="docs-hero">
         <span class="eyebrow">Centre d’aide ShenPulse</span>
         <h1>Tout comprendre, du premier lancement au jeu en direct.</h1>
-        <p>Chaque onglet, bouton important, fenêtre et famille de champs est expliqué ci-dessous. Les fichiers d’illustration sont recadrés avant publication et ne contiennent ni navigation latérale ni écran d’administration.</p>
+        <p>Retrouve les espaces créateur, les réglages et les parcours de ShenPulse ${CLIENT_RELEASE.version}. Les captures utilisent le vrai rendu de l’application avec des données de démonstration, sans compte personnel ni écran d’administration. Clique sur une image pour l’agrandir.</p>
         <label class="docs-search">
           <span aria-hidden="true">⌕</span>
-          <input id="docs-search" type="search" placeholder="Rechercher un onglet, un champ, un jeu ou un problème…" autocomplete="off">
+          <input id="docs-search" type="search" aria-label="Rechercher dans la documentation" placeholder="Rechercher un onglet, un champ, un jeu ou un problème…" autocomplete="off">
           <kbd>Ctrl K</kbd>
         </label>
-        <div class="docs-meta"><span><b>${APP_TABS.length}</b> espaces documentés</span><span><b>${POPUP_GROUPS.length}</b> fenêtres expliquées</span><span><b>${GAMES.length}</b> jeux documentés</span></div>
+        <div class="docs-meta"><span><b>${APP_TABS.length}</b> espaces documentés</span><span><b>${POPUP_GROUPS.length}</b> fenêtres expliquées</span><span><b>${GAMES.length}</b> fiches jeux & modules</span></div>
       </header>
 
       <div class="docs-shell">
@@ -265,6 +305,8 @@ function docsPage() {
             ${[
               ['demarrage', 'Démarrage rapide'],
               ['interface', 'Repères de l’interface'],
+              ['profils-donnees', 'Comptes & profils'],
+              ['medias-imports', 'Importer ses médias'],
               ['onglets', 'Tous les onglets'],
               ['actions-types', 'Types d’actions'],
               ['fenetres', 'Fenêtres et champs'],
@@ -278,17 +320,17 @@ function docsPage() {
         </aside>
 
         <div class="docs-content" id="docs-content">
-          ${docSection('demarrage', 'Démarrage rapide', 'Passe de l’installation à un test complet en moins de quinze minutes.', `
+          ${docSection('demarrage', 'Démarrage rapide', 'Le parcours conseillé pour préparer ton premier test, à ton rythme.', `
             <ol class="numbered-steps">
               ${[
                 ['Télécharger et installer', `Utilise uniquement <a href="${DOWNLOAD_URL}" download>l’installateur officiel</a>. Ferme l’ancienne version avant de lancer la mise à jour.`],
                 ['Ouvrir ou créer le compte', 'La fenêtre de connexion s’ouvre dans l’application. Confirme l’adresse e-mail si ShenPulse le demande.'],
                 ['Choisir un profil', 'Le profil “Démarrage” est vierge. Crée un profil par jeu ou type d’émission si tu veux séparer tes réglages.'],
-                ['Connecter TikTok', 'Clique sur le bloc @ TikTok dans la barre du haut, renseigne le pseudo public et lance la détection. Le mode Démo reste disponible hors live.'],
+                ['Connecter TikTok', 'Dans la barre du haut, renseigne le @ public et lance la détection. Pour tester hors live, utilise le simulateur du tableau de bord.'],
                 ['Créer une action', 'Dans Actions, choisis un type, complète les champs puis utilise Tester.'],
                 ['Ajouter le déclencheur', 'Associe un cadeau, un like, un message ou un autre événement. Commence avec un cooldown simple.'],
                 ['Ajouter l’overlay dans OBS', 'Dans Overlays, configure le rendu, copie l’URL et crée une source navigateur aux dimensions indiquées.'],
-                ['Tester puis démarrer', 'Simule un cadeau, vérifie le Journal, puis démarre la session live et éventuellement la session du jeu.']
+                ['Tester sans risque', 'Le simulateur peut exécuter les actions associées. Désactive les machines et effets sensibles avant le test, puis vérifie le Journal et le rendu de tes sources.']
               ].map(([title, copy], index) => `<li><span>${index + 1}</span><div><h3>${title}</h3><p>${copy}</p></div></li>`).join('')}
             </ol>
             <div class="callout callout--success"><strong>Ordre conseillé</strong><p>Action → test manuel → déclencheur → test cadeau → source OBS → session live. Cet ordre isole immédiatement l’étape qui pose problème.</p></div>
@@ -300,24 +342,48 @@ function docsPage() {
               ${[
                 ['Navigation latérale', 'Regroupe Pilotage, Création et Système. Le badge indique le nombre d’éléments lorsque c’est pertinent.'],
                 ['Bannière de page', 'Présente l’espace en cours sans ajouter un deuxième en-tête à la barre supérieure.'],
-                ['Compte ShenPulse', 'Connexion, synchronisation des droits et accès aux réglages du compte.'],
+                ['Compte ShenPulse', 'Identité connectée, abonnement actuel et menu du compte. Les droits ne dépendent pas du @ TikTok surveillé.'],
                 ['Jeu actif', 'Ramène au jeu en cours ou arrête sa passerelle. Ce contrôle apparaît seulement pendant une session de jeu.'],
                 ['Profil', 'Change l’espace de travail actif. Le bouton ••• ouvre la gestion des profils.'],
                 ['Compte TikTok', 'Le champ de la barre supérieure reçoit le @ public et affiche l’état de connexion.'],
                 ['Bouton de connexion', 'Connecter, En attente du live ou Déconnecter selon l’état du compte surveillé.'],
-                ['Démarrer le live', 'Lance ou arrête la session du profil courant.'],
-                ['Services locaux', 'En bas de la barre latérale, indique les ports de l’API et des overlays.'],
+                ['État LIVE', 'Le badge est placé à côté du @ TikTok. Il ne remplace pas le contrôle des sources dans le logiciel de diffusion.'],
                 ['Menu de compte', 'En haut à droite, indique l’abonnement et regroupe notamment le mode léger et la langue.'],
                 ['Badges Pro', 'Jeux vidéo, Machines IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif.']
               ].map(fieldRow).join('')}
             </div>
-            <div class="callout"><strong>À ne pas confondre</strong><p>La détection TikTok surveille le compte, la session live active les automatismes et la session de jeu ouvre une passerelle. Les trois états peuvent être différents.</p></div>
+            <div class="callout"><strong>À ne pas confondre</strong><p>Le compte ShenPulse possède tes réglages, le @ TikTok désigne le LIVE surveillé et la session de jeu ouvre une passerelle. Une connexion à ShenPulse seule ne garantit pas que les événements du LIVE sont reçus.</p></div>
+          `)}
+
+          ${docSection('profils-donnees', 'Ton compte, tes profils, tes réglages', 'Une configuration par univers, sans mélanger les comptes du même PC.', `
+            <div class="field-table">
+              ${[
+                ['Compte ShenPulse', 'Possède les profils, les bibliothèques importées, les intégrations et les droits d’accès. Il est distinct du compte TikTok dont tu suis le LIVE.'],
+                ['Profil actif', 'Restaure ses actions, déclencheurs, commandes, timers, overlays, réglages Matchs et interactions de jeux. En 2.0.2, les préférences TTS et des demandes musicales suivent aussi le profil.'],
+                ['Reconnexion sur ce PC', 'La sauvegarde locale retrouve les profils du compte et le profil précédemment sélectionné. Un autre utilisateur ne reçoit pas cette configuration.'],
+                ['Changement de PC', 'Cette sauvegarde n’est pas une synchronisation cloud. Conserve un export avant une réinstallation ou un changement d’ordinateur. Les secrets locaux ne sont pas transférés par un export de profil.'],
+                ['Sauvegardes', 'Les créations et modifications de profils sont enregistrées. Exporte régulièrement ton travail ; une copie encore présente est nécessaire pour récupérer des données déjà effacées.']
+              ].map(fieldRow).join('')}
+            </div>
+            <div class="callout"><strong>Accès aux réglages d’infrastructure</strong><p>Administration, Contrôleurs et Paramètres sont réservés au propriétaire ShenPulse. Un abonnement Pro ne donne pas ces accès. Les réglages créateur utiles restent dans leurs espaces dédiés.</p></div>
+          `)}
+
+          ${docSection('medias-imports', 'Importer tes sons, images et vidéos', 'Le stockage est géré par ShenPulse pour tous les comptes connectés.', `
+            <ol class="compact-steps">
+              <li>Connecte-toi à ton compte ShenPulse.</li>
+              <li>Dans <b>Voix & sons</b>, utilise <b>Importer un son</b>, ou ouvre le sélecteur média de l’effet à configurer.</li>
+              <li>Choisis un fichier dont tu possèdes les droits, dans un format accepté.</li>
+              <li>Attends la fin du transfert avant de sélectionner le média dans ton action ou ton alerte.</li>
+              <li>Teste la bonne sortie : écoute locale ou source audio/média LIVE.</li>
+            </ol>
+            <div class="callout callout--success"><strong>Aucune clé Backblaze personnelle</strong><p>Les sons, images, GIF et vidéos importés utilisent le stockage géré. Une connexion Internet est nécessaire pour l’import et la lecture d’un média distant. La taille et les formats autorisés sont contrôlés à l’import.</p></div>
+            ${screenshot('/screenshots/sounds-public.png', 'Voix & sons : bibliothèque et alertes compactes')}
           `)}
 
           ${docSection('onglets', 'Tous les onglets utilisateur', 'Chaque zone et chaque contrôle important est détaillé ici.', `
             <div class="docs-card-grid tabs-docs">
               ${APP_TABS.map((tab) => `
-                <article class="doc-card doc-searchable" id="${tab.id}" data-search="${searchText(tab)}">
+                <article class="doc-card doc-searchable" id="${tab.id}" data-search="${escapeHtml(searchText(tab))}">
                   <header><span>${tab.group}</span><h3>${tab.title}</h3><p>${tab.summary}</p></header>
                   <dl>${tab.parts.map(([term, desc]) => `<div><dt>${term}</dt><dd>${desc}</dd></div>`).join('')}</dl>
                   <div class="tips"><strong>Bon à savoir</strong>${tab.tips.map((tip) => `<p>• ${tip}</p>`).join('')}</div>
@@ -325,7 +391,11 @@ function docsPage() {
             </div>
             <div class="docs-gallery">
               ${screenshot('/screenshots/actions-public.png', 'Onglet Actions et déclencheurs')}
-              ${screenshot('/screenshots/sounds-public.png', 'Onglet Sons et voix')}
+              ${screenshot('/screenshots/commands-public.png', 'Commandes : effets, permissions et cooldowns')}
+              ${screenshot('/screenshots/irl-public.png', 'Machines IRL : prises et interactions en listes')}
+              ${screenshot('/screenshots/music-public.png', 'Musique : lecture et demandes de titres')}
+              ${screenshot('/screenshots/matches-public.png', 'Matchs : statistiques, widgets et automatisations')}
+              ${screenshot('/screenshots/users-public.png', 'Utilisateurs : contributions, rangs et blocages')}
               ${screenshot('/screenshots/subscription-public.png', 'Onglet Abonnement')}
             </div>
           `)}
@@ -340,7 +410,7 @@ function docsPage() {
           ${docSection('fenetres', 'Fenêtres, popups et champs', 'Les boutons Annuler et Enregistrer ferment le formulaire. Une erreur de validation apparaît dans le pied de la fenêtre sans effacer la saisie.', `
             <div class="accordion-list">
               ${POPUP_GROUPS.map((popup, index) => `
-                <details class="doc-searchable" id="${popup.id}" data-search="${searchText(popup)}" ${index < 2 ? 'open' : ''}>
+                <details class="doc-searchable" id="${popup.id}" data-search="${escapeHtml(searchText(popup))}" ${index < 2 ? 'open' : ''}>
                   <summary><span>${String(index + 1).padStart(2, '0')}</span><div><h3>${popup.title}</h3><p>${popup.purpose}</p></div><b>+</b></summary>
                   <div class="field-table">${popup.fields.map(fieldRow).join('')}</div>
                 </details>`).join('')}
@@ -348,7 +418,7 @@ function docsPage() {
             <div class="callout"><strong>Bibliothèques et catalogues</strong><p>Les sélecteurs de cadeaux, sons et médias acceptent une recherche. Écoute ou prévisualise l’élément avant de le valider ; un nom identique ne garantit pas le même fichier.</p></div>
           `)}
 
-          ${docSection('overlays-doc', 'Overlays et configuration OBS', 'Chaque source a son propre usage et ses dimensions recommandées.', `
+          ${docSection('overlays-doc', 'Overlays, OBS et TikTok LIVE Studio', 'Chaque source a son propre usage et ses dimensions recommandées.', `
             ${screenshot('/screenshots/overlays-public.png', 'Overlays et widgets dans ShenPulse')}
             <div class="field-table overlay-types">${OVERLAY_TYPES.map(([name, use, size]) => fieldRow([name, `${use} Taille conseillée : ${size}.`])).join('')}</div>
             <h3 class="subheading">Ajouter une source dans OBS</h3>
@@ -360,7 +430,8 @@ function docsPage() {
               <li>Si la source doit repartir à zéro à chaque scène, active le rafraîchissement lorsque la scène devient active.</li>
               <li>Utilise le simulateur ShenPulse pour vérifier l’affichage et le son.</li>
             </ol>
-            <div class="callout"><strong>Animations de Matchs dans TikTok LIVE Studio</strong><p>Dans Matchs → Automatisations, copie la source prévue pour Studio et colle-la dans une source Lien. Garde ShenPulse ouvert sur le même PC : les vidéos protégées sont lues localement, sans fichier exporté. Les animations contiennent leur son ; les aperçus dans ShenPulse restent muets. Vérifie aussi le volume de la source dans le mélangeur de Studio.</p></div>
+            <div class="callout"><strong>Animations de Matchs dans TikTok LIVE Studio</strong><p>Dans Matchs → Widgets, utilise « Copier pour TikTok Studio » puis colle le lien dans une source Lien. Configure et active tes effets dans Automatisations. Garde ShenPulse ouvert sur le même PC : les vidéos protégées sont lues localement, sans fichier exporté. Les animations contiennent leur son ; les aperçus dans ShenPulse restent muets. Vérifie aussi le volume de la source dans le mélangeur de Studio.</p></div>
+            <div class="callout callout--warning"><strong>Un widget peut être vide au repos</strong><p>Active une automatisation et sélectionne un effet avant de le tester. Certaines sources ne s’affichent qu’au déclenchement de l’événement. La détection d’un match dépend des événements que TikTok transmet réellement à ShenPulse.</p></div>
             <h3 class="subheading">Champs communs des overlays</h3>
             <div class="field-table">
               ${[
@@ -379,7 +450,7 @@ function docsPage() {
           ${docSection('jeux', 'Jeux et effets interactifs', `Cette section reprend les ${GAMES.length} cartes actuellement visibles dans la galerie publique de ShenPulse.`, `
             ${screenshot('/screenshots/games-public.png', 'Galerie publique des jeux et effets')}
             <div class="game-legend"><span><i class="status-dot status-dot--active"></i> Interactions exécutables</span><span><i class="status-dot"></i> Fiche de référence</span></div>
-            <label class="game-search"><span>⌕</span><input id="game-search" type="search" placeholder="Filtrer les ${GAMES.length} jeux…"><b id="game-count">${GAMES.length}</b></label>
+            <label class="game-search"><span>⌕</span><input id="game-search" type="search" aria-label="Filtrer les fiches de jeux" placeholder="Filtrer les ${GAMES.length} fiches…"><b id="game-count">${GAMES.length}</b></label>
             <div class="game-doc-grid" id="game-doc-grid">
               ${GAMES.map((game, index) => `
                 <details class="game-doc doc-searchable" id="jeu-${escapeHtml(game.id)}" data-game="${escapeHtml(searchText(game))}" data-search="${escapeHtml(searchText(game))}">
@@ -412,13 +483,15 @@ function docsPage() {
               ${[
                 ['Le live n’est pas détecté', ['Vérifie le @ sans faute.', 'Confirme que le compte est publiquement en direct.', 'Arrête puis relance la détection.', 'Teste le mode Démo pour isoler la connexion.']],
                 ['Une action ne part pas', ['Vérifie l’interrupteur de la règle.', 'Contrôle le type, les conditions et le seuil.', 'Attends la fin du cooldown.', 'Utilise Tester sur l’action puis sur la règle.']],
-                ['L’overlay est vide', ['Vérifie que les services locaux sont verts.', 'Recharge la source OBS.', 'Contrôle l’URL et les dimensions.', 'Simule un événement compatible.']],
+                ['L’overlay est vide', ['Garde ShenPulse ouvert et connecté.', 'Recharge la source de diffusion.', 'Vérifie le bon profil, l’activation du widget et le lien copié.', 'Teste un événement compatible sans effet dangereux.']],
                 ['Le jeu ne réagit pas', ['Vérifie qu’une seule session de jeu est active.', 'Contrôle le port ou l’URL de la passerelle.', 'Teste un effet marqué exécutable.', 'Compare la version du jeu et du mod.']],
                 ['Pas de son ou de voix', ['Teste la piste dans la bibliothèque.', 'Vérifie le volume ShenPulse et Windows.', 'Contrôle la voix système.', 'Vérifie les filtres TTS.']],
-                ['OBS ne répond pas', ['Active OBS WebSocket.', 'Vérifie l’adresse et le mot de passe.', 'Clique sur Tester OBS.', 'Contrôle le pare-feu local.']],
-                ['Spotify est déconnecté', ['Vérifie le Client ID.', 'Déclare l’URI de retour exacte.', 'Relance l’autorisation.', 'Garde un appareil Spotify actif.']],
-                ['Après une mise à jour', ['Exporte les profils avant si possible.', 'Installe la dernière version.', 'Rouvre le jeu ou la source OBS.', 'Consulte le Journal pour une migration.']]
-              ].map(([title, steps]) => `<article class="doc-searchable" data-search="${searchText([title, steps])}"><h3>${title}</h3><ol>${steps.map((step) => `<li>${step}</li>`).join('')}</ol></article>`).join('')}
+                ['OBS ne répond pas', ['Active le serveur OBS WebSocket dans OBS.', 'Vérifie la configuration de la connexion autorisée.', 'Contrôle l’action et son résultat dans le Journal.', 'Pour un réglage d’infrastructure indisponible, contacte le support.']],
+                ['Spotify est déconnecté', ['Ouvre les réglages de Musique.', 'Vérifie la configuration et l’autorisation Spotify.', 'Confirme les prérequis du compte Spotify.', 'Garde un appareil de lecture actif.']],
+                ['Une commande ! ne part pas', ['Vérifie le bon profil et l’accès Pro.', 'Contrôle le nom, les alias et la plateforme.', 'Vérifie le rôle requis et les cooldowns.', 'Vérifie que l’action liée existe et est active dans ce profil.']],
+                ['Un import échoue', ['Vérifie la connexion au compte et à Internet.', 'Contrôle le format et la taille du fichier.', 'Réessaie avec la dernière version de ShenPulse.', 'Note le message exact pour le support, sans partager de jeton.']],
+                ['Après une mise à jour', ['Exporte les profils avant si possible.', 'Installe la dernière version.', 'Reconnecte le même compte sur le même PC.', 'Vérifie le profil actif avant de relancer les effets.']]
+              ].map(([title, steps]) => `<article class="doc-searchable" data-search="${escapeHtml(searchText([title, steps]))}"><h3>${title}</h3><ol>${steps.map((step) => `<li>${step}</li>`).join('')}</ol></article>`).join('')}
             </div>
           `)}
 
@@ -449,7 +522,7 @@ function legalPage(page) {
         <span class="eyebrow">${page.eyebrow}</span>
         <h1>${page.title}</h1>
         <p>${page.intro}</p>
-        <small>Version en vigueur au 30 juillet 2026</small>
+        <small>Version en vigueur au ${page.updatedAt || '30 juillet 2026'}</small>
       </header>
       <div class="legal-layout">
         <aside>
@@ -492,17 +565,13 @@ function docSection(id, title, intro, body) {
   return `<section class="doc-section doc-searchable-section" id="${id}"><header><span class="section-index">#</span><div><h2>${title}</h2><p>${intro}</p></div></header><div class="section-body">${body}</div></section>`
 }
 
-function screenshot(src, alt, priority = false) {
-  const loading = priority ? 'eager' : 'lazy'
-  const fetchPriority = priority ? ' fetchpriority="high"' : ''
-  return `<figure class="app-shot"><div><img src="${src}?v=${SCREENSHOT_VERSION}" alt="${alt}" width="2312" height="1440" loading="${loading}"${fetchPriority}></div><figcaption>${alt} — fichier public recadré avant publication.</figcaption></figure>`
-}
-
 function fieldRow([term, description]) {
   return `<div><dt>${term}</dt><dd>${description}</dd></div>`
 }
 
 function bindPageBehaviors(pageClass) {
+  const signal = pageController.signal
+  bindVisuals(app, signal)
   const menuButton = document.querySelector('.menu-toggle')
   const siteNav = document.querySelector('#site-nav')
   menuButton?.addEventListener('click', () => {
@@ -518,37 +587,35 @@ function bindPageBehaviors(pageClass) {
   const searchable = [...document.querySelectorAll('.doc-searchable')]
   const sections = [...document.querySelectorAll('.doc-searchable-section')]
   const empty = document.querySelector('#docs-empty')
+  const gameSearch = document.querySelector('#game-search')
+  const games = [...document.querySelectorAll('.game-doc')]
+  const gameCount = document.querySelector('#game-count')
 
-  docsSearch?.addEventListener('input', () => {
+  const applySearch = () => {
     const query = normalizeSearch(docsSearch.value)
+    const gameQuery = normalizeSearch(gameSearch?.value)
     let visibleCount = 0
     searchable.forEach((element) => {
-      const visible = !query || normalizeSearch(element.dataset.search || element.textContent).includes(query)
+      const globalMatches = !query || normalizeSearch(element.dataset.search || element.textContent).includes(query)
+      const gameMatches = !element.matches('.game-doc') || !gameQuery || normalizeSearch(element.dataset.game).includes(gameQuery)
+      const visible = globalMatches && gameMatches
       element.hidden = !visible
       if (visible) visibleCount += 1
     })
+    let visibleSections = 0
     sections.forEach((section) => {
       const ownMatches = !query || normalizeSearch(section.textContent).includes(query)
       const childVisible = [...section.querySelectorAll('.doc-searchable')].some((item) => !item.hidden)
       section.hidden = Boolean(query) && !ownMatches && !childVisible
+      if (!section.hidden) visibleSections += 1
     })
-    if (empty) empty.hidden = visibleCount > 0 || !query
-  })
+    if (gameCount) gameCount.textContent = String(games.filter((game) => !game.hidden).length)
+    if (empty) empty.hidden = visibleCount > 0 || visibleSections > 0 || !query
+  }
+  docsSearch?.addEventListener('input', applySearch, { signal })
+  gameSearch?.addEventListener('input', applySearch, { signal })
 
-  document.addEventListener('keydown', focusDocsSearch, { once: true })
-  const gameSearch = document.querySelector('#game-search')
-  const games = [...document.querySelectorAll('.game-doc')]
-  const gameCount = document.querySelector('#game-count')
-  gameSearch?.addEventListener('input', () => {
-    const query = normalizeSearch(gameSearch.value)
-    let count = 0
-    games.forEach((item) => {
-      const visible = !query || normalizeSearch(item.dataset.game).includes(query)
-      item.hidden = !visible
-      if (visible) count += 1
-    })
-    if (gameCount) gameCount.textContent = String(count)
-  })
+  document.addEventListener('keydown', focusDocsSearch, { signal })
 
   const docSections = [...document.querySelectorAll('.doc-section')]
   const highlightCurrentSection = () => {
@@ -566,6 +633,7 @@ function bindPageBehaviors(pageClass) {
     highlightCurrentSection,
     { rootMargin: '-80px 0px -75%', threshold: [0, 0.05, 0.2] }
   )
+  pageObservers.push(observer)
   docSections.forEach((section) => observer.observe(section))
   highlightCurrentSection()
 }
@@ -606,6 +674,7 @@ function bindHomeMotion() {
     },
     { rootMargin: '0px 0px -10%', threshold: 0.1 }
   )
+  pageObservers.push(revealObserver)
 
   targets.forEach((element) => revealObserver.observe(element))
 }
@@ -614,8 +683,6 @@ function focusDocsSearch(event) {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
     document.querySelector('#docs-search')?.focus()
-  } else {
-    document.addEventListener('keydown', focusDocsSearch, { once: true })
   }
 }
 
@@ -636,17 +703,6 @@ function normalizeSearch(value) {
     .trim()
 }
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
 function searchText(value) {
   return normalizeSearch(JSON.stringify(value))
 }
-
-void SITE_ORIGIN

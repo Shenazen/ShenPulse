@@ -23,6 +23,11 @@ await writeFile(
 
 await cp(path.join(root, 'public'), dist, { recursive: true })
 await cp(path.join(root, 'app'), path.join(dist, 'app'), { recursive: true })
+// Même famille que l’application, servie localement : aucun appel à un CDN de polices.
+await mkdir(path.join(dist, 'fonts'), { recursive: true })
+for (const file of ['inter-latin-wght-normal.woff2', 'LICENSE-Inter.txt']) {
+  await cp(path.join(root, '..', 'resources', 'overlays', 'fonts', file), path.join(dist, 'fonts', file))
+}
 
 const index = await readFile(path.join(dist, 'index.html'), 'utf8')
 await writeFile(path.join(dist, '404.html'), index)
