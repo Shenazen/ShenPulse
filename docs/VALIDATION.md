@@ -85,6 +85,26 @@ installation et smoke de la version Store, puis seulement soumission publique.
 
 ## Publication
 
-Les contrôles locaux EXE et site sont terminés. Les confirmations Git, HTTPS et
-Firebase seront ajoutées après les opérations externes. Cette section ne vaut
-pas confirmation de publication tant que ces résultats ne sont pas consignés.
+- Git : commit applicatif `22a07553f530c7ddd6507d60907f4cbac2c32115` et tag
+  annoté `v2.0.1` poussés sur `origin`, références distantes vérifiées.
+- Site : installateur versionné publié avant les fichiers de vitrine, avec
+  vérification SHA-256 côté VPS. Les 19 fichiers publics sont ensuite relus par
+  HTTPS et correspondent exactement aux empreintes de `website/dist`.
+- Accueil, documentation et cinq routes légales : HTTP 200. Les liens de
+  téléchargement et les notes du site annoncent bien 2.0.1.
+- Sauvegarde de vitrine conservée :
+  `/var/www/shenpulse/.public-site-backups/pre-public-site-2.0.1-20261015T124918Z-02f82b3c`.
+  Le backend, PM2, les jeux et les anciens installateurs ne sont pas remplacés.
+- Firebase : règles et Hosting déployés sur `shenazenoverlay`, runtime et index
+  publics vérifiés en HTTP 200 avec `2.0.1-overlay1`. L’accès anonyme à `/users`
+  reste refusé (401). Le stockage média partagé reste configuré après publication.
+- Application locale relancée depuis `dist/win-unpacked`, version Windows
+  `2.0.1.0`, fenêtre ShenPulse active. La page Paramètres confirme « GÉRÉ PAR
+  SHENPULSE » et l’accès aux médias pour tous les comptes connectés.
+- Téléchargement HTTPS intégral de l’EXE terminé : **512 540 484 octets** et
+  SHA-256 `2096146995F8693E924A43E3FAD17FE21B7A7406E915F349A4A8E5CFBBA9952F`,
+  identiques au fichier qualifié. L’ancien installateur 2.0.0 reste disponible
+  en HTTP 200 avec ses 512 536 436 octets d’origine.
+
+Le canal EXE/site est publié ; le canal Microsoft Store reste bloqué selon la
+section précédente et ne doit pas être présenté comme soumis ou disponible.
