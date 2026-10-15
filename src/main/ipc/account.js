@@ -7,7 +7,7 @@ const { snapshotForRenderer } = require("../account-access");
 const { safeString } = require("../utils");
 const { notify } = require("./notifications");
 
-function registerAccountIpc({ handle, core, store, accountService, adminService, storeUpdateService, getWindow, switchAccountWorkspace }) {
+function registerAccountIpc({ handle, core, store, accountService, adminService, storeUpdateService, getWindow, switchAccountWorkspace, refreshAccountWorkspace }) {
   handle("snapshot:get", async () => {
     core.overlayServer?.refreshAccess();
     return snapshotForRenderer(core.snapshot(), store);
@@ -21,13 +21,14 @@ function registerAccountIpc({ handle, core, store, accountService, adminService,
   
   handle("account:status", async () => {
     const previousUid = store.getActiveAccountUid?.() || "";
+    const generation = accountService.sessionGeneration;
     const result = await accountService.status();
     core.overlayServer?.refreshAccess();
     const nextUid = store.getActiveAccountUid?.() || "";
+    // Une autre connexion a déjà repris son espace : l'ancien statut ne doit pas l'arrêter.
+    if (nextUid && generation !== accountService.sessionGeneration) return result;
     if (previousUid !== nextUid) {
-      await core.suspendAccountWorkspace();
-      await core.resumeAccountWorkspace();
-      notify(core, "state-changed", core.snapshot());
+      await refreshAccountWorkspace();
     }
     return result;
   });
@@ -133,19 +134,17 @@ function registerAccountIpc({ handle, core, store, accountService, adminService,
     accountService.gameCheatAccess()
   );
   
-  handle("account:logout", async () => {
-    await Promise.allSettled([
-      core.stopSession(),
-      core.stopGameSession({ notify: false })
-    ]);
-    await core.suspendAccountWorkspace();
+  handle("account:logout", () => switchAccountWorkspace(() => {
     adminService.logout();
     const result = accountService.logout();
     core.overlayServer?.matchSource?.clear();
-    await core.resumeAccountWorkspace();
-    notify(core, "state-changed", core.snapshot());
     return result;
-  });
+  }, {
+    beforeSuspend: () => Promise.allSettled([
+      core.stopSession(),
+      core.stopGameSession({ notify: false })
+    ])
+  }));
   
   handle("premium-seat:assign", async (_event, incoming) => {
     const result = await accountService.assignPremiumSeat({

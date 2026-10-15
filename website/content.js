@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.0.1',
-  title: 'Tes médias, sans configuration supplémentaire.',
-  summary: 'Le stockage partagé ShenPulse permet à tous les comptes connectés d’importer leurs sons, vidéos, images et GIF, sans clé Backblaze à renseigner.',
+  version: '2.0.2',
+  title: 'Tes profils, tes réglages, ton compte.',
+  summary: 'Retrouve tes profils et réglages à la reconnexion sur ce même PC, avec des sauvegardes renforcées et des transitions de compte plus sûres.',
   highlights: [
-    ['Importe tes médias', 'Sons, vidéos, images et GIF utilisent le stockage partagé pour les comptes gratuits et abonnés.'],
-    ['Garde tes réglages', 'Les bibliothèques, profils et URL de médias déjà enregistrés sont conservés.'],
-    ['Un import plus sûr', 'Contrôle des formats et de la taille, erreurs plus lisibles et protection contre un changement de compte pendant le transfert.']
+    ['Retrouve ton travail', 'Profils, actions, médias et intégrations restent associés à ton compte sur ce PC. Les changements de compte conservent les sauvegardes existantes.'],
+    ['Personnalise chaque profil', 'Voix TTS et réglages des demandes musicales suivent le profil actif. Les réponses retardées d’un ancien compte ne remplacent plus la session courante.'],
+    ['Garde l’infrastructure privée', 'Administration, Contrôleurs et Paramètres sont réservés au propriétaire. Les imports de médias restent disponibles pour tous les comptes connectés.']
   ]
 }
 

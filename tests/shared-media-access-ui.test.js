@@ -58,8 +58,8 @@ test("un visiteur ne peut pas importer ni lire une configuration privée de stoc
   assert.doesNotMatch(context.renderSettings(), /backblazeKeyId|backblazeApplicationKey|settings-form/);
 });
 
-test("les réglages normaux ne demandent aucune clé locale, même sur un poste neuf", (t) => {
-  const context = contextFor(t);
+test("les réglages propriétaire ne demandent aucune clé locale, même sur un poste neuf", (t) => {
+  const context = contextFor(t, { admin: true });
   assert.equal(context.snapshot.state.settings.backblaze.keyIdSecretId, "");
   const html = context.renderSettings();
   assert.match(html, /GÉRÉ PAR SHENPULSE/);

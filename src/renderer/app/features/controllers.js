@@ -25,8 +25,8 @@ function controllerTargets(type = "action") {
 }
 
 function renderControllers() {
+  if (!isVerifiedAdminSession()) return renderOwnerOnlyPagePlaceholder("Contrôleurs");
   ensureControllerWorkspace();
-  if (!isAccountAuthenticated()) return renderPrivateDataPlaceholder("Contrôleurs", "Connectez votre compte ShenPulse pour appairer un Stream Deck ou un contrôleur MIDI.");
   const settings = snapshot.state.settings.controllers || {};
   const devices = controllerStatus?.devices || settings.devices || [];
   const mappings = controllerStatus?.mappings || settings.mappings || [];

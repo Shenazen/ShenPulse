@@ -415,13 +415,15 @@ const pages = [
   { id: "membership", label: "Abonnement", icon: "♛", title: "Tarifs & abonnement", kicker: "ACCÈS SHENPULSE" },
   { id: "connections", label: "Connexions", icon: "⌁", title: "Connexions", kicker: "PLATEFORMES & RELAIS", count: () => snapshot?.state.connections.length },
   { id: "activity", label: "Journal", icon: "≡", title: "Journal d’activité", kicker: "DIAGNOSTIC LOCAL" },
-  { id: "settings", label: "Paramètres", icon: "⚙", title: "Paramètres", kicker: "APPLICATION & CONFIDENTIALITÉ" },
+  { id: "settings", label: "Paramètres", icon: "⚙", title: "Paramètres", kicker: "APPLICATION & CONFIDENTIALITÉ", ownerOnly: true, defaultScope: "admin" },
   {
     id: "admin",
     label: "Administration",
     icon: "♜",
     title: "Administration ShenPulse",
     kicker: "ACCÈS PROPRIÉTAIRE SÉCURISÉ",
+    ownerOnly: true,
+    defaultScope: "admin",
     hidden: () => !isVerifiedAdminSession()
   }
 ];
@@ -461,7 +463,7 @@ pages.splice(pages.findIndex((page) => page.id === "actions") + 1, 0,
   { id: "music", label: "Musique", title: "Musique & song requests", kicker: "AMBIANCE DU LIVE", icon: "♫" }
 );
 pages.splice(pages.findIndex((page) => page.id === "connections") + 1, 0,
-  { id: "controllers", label: "Contrôleurs", title: "Stream Deck & MIDI", kicker: "RÉGIE PHYSIQUE", icon: "▦" }
+  { id: "controllers", label: "Contrôleurs", title: "Stream Deck & MIDI", kicker: "RÉGIE PHYSIQUE", icon: "▦", ownerOnly: true, defaultScope: "admin" }
 );
 // Les commandes gardent leur route historique, après les interactions IRL.
 const chatbotNavigationEntry = pages.splice(pages.findIndex((page) => page.id === "commands"), 1)[0];

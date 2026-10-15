@@ -198,36 +198,24 @@ function visibleActivityEntries(state = {}) {
   });
 }
 
-function renderPrivateDataPlaceholder(title, detail) {
+function renderPrivateDataPlaceholder(title, detail, { allowSignIn = true } = {}) {
   return `<section class="card guest-private-placeholder">
     <span aria-hidden="true">◇</span>
     <h2>${escapeHtml(title)}</h2>
     <p>${escapeHtml(detail)}</p>
-    <button class="button primary" type="button" data-action="account-login">Se connecter ou s’inscrire</button>
+    ${allowSignIn ? '<button class="button primary" type="button" data-action="account-login">Se connecter ou s’inscrire</button>' : ""}
   </section>`;
 }
 
+/** Même refus pour les routes propriétaires, sans lire leurs réglages privés. */
+function renderOwnerOnlyPagePlaceholder(title) {
+  return renderPrivateDataPlaceholder(title, "Cette page est réservée au compte propriétaire de ShenPulse.", {
+    allowSignIn: !isAccountAuthenticated()
+  });
+}
+
 function renderSettings() {
-  if (!isAccountAuthenticated()) {
-    return `<div class="settings-layout guest-settings-overview">
-      <section class="card">
-        <header class="card-header"><div><p class="eyebrow">APPLICATION</p><h3>Comportement</h3></div></header>
-        <div class="card-body"><p>Les services locaux, les préférences de fenêtre et les autorisations système se configurent ici après connexion.</p></div>
-      </section>
-      <section class="card">
-        <header class="card-header"><div><p class="eyebrow">AUDIO</p><h3>Synthèse vocale</h3></div></header>
-        <div class="card-body"><p>La voix, la vitesse et le volume restent consultables et modifiables uniquement par le compte connecté.</p></div>
-      </section>
-      <section class="card">
-        <header class="card-header"><div><p class="eyebrow">INTÉGRATIONS</p><h3>OBS, Spotify et stockage</h3></div></header>
-        <div class="card-body"><p>Les adresses, identifiants, ports, jetons et secrets enregistrés sur cet appareil sont masqués en mode consultation.</p></div>
-      </section>
-      <section class="card">
-        <header class="card-header"><div><p class="eyebrow">DONNÉES LOCALES</p><h3>Import, export et suppression</h3></div></header>
-        <div class="card-body"><p>Aucune opération sur les données locales n’est autorisée sans connexion à ShenPulse.</p></div>
-      </section>
-    </div>`;
-  }
+  if (!isVerifiedAdminSession()) return renderOwnerOnlyPagePlaceholder("Paramètres");
   const settings = snapshot.state.settings;
   return `
     <form id="settings-form" class="page-grid">

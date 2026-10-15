@@ -6,6 +6,8 @@
 const fs = require("node:fs");
 const { safeString } = require("../utils");
 const { notify } = require("./notifications");
+const { assertAuthenticatedAccount } = require("../account-access");
+const { currentMediaAccountUid, assertMediaAccount } = require("../backblaze-media");
 
 function registerDesktopIpc({ handle, core, store, getWindow, clipboard, dialog, shell }) {
   handle("clipboard:write", (_event, text) => {
@@ -33,6 +35,9 @@ function registerDesktopIpc({ handle, core, store, getWindow, clipboard, dialog,
   });
   
   handle("data:import", async () => {
+    assertAuthenticatedAccount(store);
+    const expectedUid = currentMediaAccountUid(store);
+    assertMediaAccount(store, expectedUid);
     const owner = getWindow();
     const result = await dialog.showOpenDialog(owner, {
       title: "Importer une configuration ShenPulse",
@@ -40,6 +45,8 @@ function registerDesktopIpc({ handle, core, store, getWindow, clipboard, dialog,
       filters: [{ name: "Profil ShenPulse", extensions: ["json"] }]
     });
     if (result.canceled || !result.filePaths[0]) return { canceled: true };
+    assertMediaAccount(store, expectedUid);
+    assertAuthenticatedAccount(store);
     const imported = JSON.parse(fs.readFileSync(result.filePaths[0], "utf8"));
     store.importState(imported);
     await core.restartServers();

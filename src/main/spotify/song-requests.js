@@ -5,41 +5,9 @@ const { readState } = require("../state-projection");
 const { safeString, clone } = require("../utils");
 
 const HISTORY_LIMIT = 30;
-const QUEUE_LIMIT = 50;
 const COOLDOWN_LIMIT = 1000;
-const DEFAULT_COMMANDS = { request: "!sr", skip: "!skip", nowPlaying: "!np", queue: "!queue" };
 const TEST_SOURCES = new Set(["simulator", "test", "rule-test", "manual-preview", "demo", "source_demo"]);
-
-function boundedNumber(value, fallback, min, max) {
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.min(max, Math.max(min, Math.round(number))) : fallback;
-}
-
-function normalizeSongRequestSettings(value = {}, strict = false) {
-  const source = value && typeof value === "object" ? value : {};
-  const commands = {};
-  for (const [key, fallback] of Object.entries(DEFAULT_COMMANDS)) {
-    const command = safeString(source.commands?.[key] || fallback, 30).trim().toLowerCase();
-    if (!/^![a-z][a-z0-9_-]{0,20}$/.test(command)) {
-      if (strict) throw new Error("Les commandes musicales doivent commencer par ! et ne contenir aucun espace.");
-      commands[key] = fallback;
-    } else commands[key] = command;
-  }
-  if (new Set(Object.values(commands)).size !== 4) {
-    if (strict) throw new Error("Utilisez quatre commandes musicales différentes.");
-    Object.assign(commands, DEFAULT_COMMANDS);
-  }
-  return {
-    enabled: source.enabled === true, allowExplicit: source.allowExplicit === true,
-    maxDurationMinutes: boundedNumber(source.maxDurationMinutes, 10, 1, 120),
-    maxQueue: boundedNumber(source.maxQueue, 20, 1, QUEUE_LIMIT),
-    maxPerViewer: boundedNumber(source.maxPerViewer ?? source.maxPerUser, 3, 1, 10),
-    cooldownSeconds: boundedNumber(source.cooldownSeconds, 10, 0, 3600),
-    allowViewerSkip: source.allowViewerSkip === true,
-    blockedArtists: Array.isArray(source.blockedArtists) ? [...new Set(source.blockedArtists.map((artist) => safeString(artist, 120).trim()).filter(Boolean))].slice(0, 100) : [],
-    commands
-  };
-}
+const { normalizeSongRequestSettings, QUEUE_LIMIT } = require("./song-request-settings");
 
 function normalizedArtist(value) {
   return String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();

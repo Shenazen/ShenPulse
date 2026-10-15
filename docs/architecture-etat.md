@@ -13,6 +13,8 @@ pas leurs profils et ne modifie pas les droits d'abonnement.
 | `defaults.js` | Façade compatible des fabriques de valeurs initiales. |
 | `state/defaults/state.js` | État complet et profil vierge ; objets toujours indépendants. |
 | `state/defaults/overlays.js` | Configurations d'overlays, roues et segments initiaux. |
+| `state/defaults/preferences.js` | Valeurs et héritage des préférences TTS de profil. |
+| `spotify/song-request-settings.js` | Normalisation pure des préférences musicales, commune au service et aux profils. |
 | `state/constants.js` | Versions, délais et périmètre des données de compte. |
 | `state/json-storage.js` | Écriture atomique, vérification, sauvegarde et récupération. |
 | `state/migrations.js` | Mise à niveau des configurations et réinitialisation du runtime au démarrage. |
@@ -54,9 +56,34 @@ depuis les normaliseurs.
 - Une configuration importée ne reprend pas le consentement de publication
   publique de la personne qui l'a exportée.
 
+## Réglages de compte et de profil
+
+Le workspace de profil passe en version 2, sans changer le schéma global 2.
+Il conserve désormais l'ensemble des préférences TTS (`enabled`, `language`,
+`voice`, `rate`, `pitch`, `volume`, `profanityFilter`) et `songRequestSettings`.
+Ce dernier correspond aux paramètres présentés comme `songRequests.settings`
+dans l'interface, stockés à l'exécution dans `settings.spotify.songRequests`.
+
+Un ancien profil sans ces champs hérite des valeurs sauvegardées dans son
+propre compte, jamais de celles du compte précédemment connecté. Les valeurs
+déjà spécifiques au profil sont prioritaires. La normalisation et la capture
+conservent ensuite une copie indépendante par profil ; changer de profil,
+se reconnecter ou relancer l'application recharge la même configuration.
+Les anciens imports récupèrent également ces préférences sans adopter les
+identifiants Spotify de l'exporteur.
+
+Les comptes et jetons Spotify, la file et l'historique musical, les appareils
+IRL, les ports, les autorisations système, les droits d'abonnement et les
+références du coffre restent au niveau du compte. Ils ne sont jamais copiés
+dans les préférences de profil. Les règles et interactions IRL sont déjà
+isolées dans les actions du profil ; les appareils physiques restent communs
+aux profils du même compte.
+
 ## Sauvegarde et récupération
 
-Une modification de configuration garde un délai de regroupement de 200 ms.
+Une modification de configuration garde un délai de regroupement de 200 ms,
+à l'exception de la création, du renommage et de la suppression d'un profil,
+confirmés sur disque avant le retour de l'opération.
 Une mutation de runtime LIVE n'alloue pas de snapshot complet et dispose d'une
 échéance fixe de 5 secondes : les événements suivants ne la repoussent pas.
 Une écriture immédiate et `flush()` annulent les deux temporisateurs et
@@ -69,6 +96,16 @@ synchronisé avec `fsync`, puis relu avant renommage. Le fichier `.bak`
 conserve la génération précédente valide. Une génération corrompue ne doit
 jamais écraser une sauvegarde valide ; les fichiers de récupération restent
 disponibles pour inspection.
+
+Les activations et désactivations de comptes sont préparées sur une copie :
+l'espace de compte et son identité sont écrits dans la même génération, avant
+de remplacer l'état en mémoire. Un échec disque laisse les profils et le compte
+actifs intacts. Si une ancienne génération a perdu son entrée de workspace mais
+possède encore sa configuration active identifiée, celle-ci est récupérée
+uniquement sous cet UID. La génération originale est conservée dans
+`shenpulse-state.before-account-workspace-recovery-v1.json`. Sans session valide,
+les données restent cachées jusqu'à la reconnexion du même propriétaire ; elles
+ne sont jamais attribuées au prochain compte connecté.
 
 Les secrets restent dans le coffre local séparé. `safeStorage` est utilisé
 quand le système le permet ; ce refactoring ne change pas le mécanisme existant

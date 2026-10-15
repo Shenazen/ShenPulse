@@ -7,14 +7,30 @@ const { entitlementExpiryMs, mergeEntitlementPayloads, entitlementGameId, active
 
 /** Fusionne les deux réponses vérifiées et ne transforme jamais une panne en nouveau droit. */
 async function syncEntitlements(service, { silent = false } = {}, flow) {
+  // La synchronisation appartient à une connexion précise, pas seulement à
+  // un UID : déconnexion/reconnexion du même compte invalide aussi le résultat.
+  const uid = cleanUid(flow.session().uid);
+  const generation = Number.isSafeInteger(service.sessionGeneration) ? service.sessionGeneration : 0;
+  const assertCurrentSession = () => {
+    const currentGeneration = Number.isSafeInteger(service.sessionGeneration) ? service.sessionGeneration : 0;
+    if (cleanUid(flow.session().uid) !== uid || currentGeneration !== generation) {
+      const error = new Error("Le compte ShenPulse a changé pendant la synchronisation des droits.");
+      error.code = "ACCOUNT_SESSION_CHANGED";
+      error.staleSession = true;
+      // Une ancienne réponse ne prouve jamais que le nouveau compte est
+      // invalide et ne doit donc pas provoquer sa déconnexion.
+      throw error;
+    }
+  };
   try {
-    const token = await flow.token();
-    const uid = cleanUid(flow.session().uid);
     if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
+    const token = await flow.token();
+    assertCurrentSession();
     const [accountResult, publicResult] = await Promise.allSettled([
       accountEntitlements(service, token, uid),
       publicEntitlements(service, uid)
     ]);
+    assertCurrentSession();
     const accountPayload =
       accountResult.status === "fulfilled"
         ? accountResult.value
@@ -42,6 +58,9 @@ async function syncEntitlements(service, { silent = false } = {}, flow) {
     return payload;
   } catch (error) {
     if (silent) return null;
+    // Le renouvellement du jeton peut lui-même échouer après un changement
+    // de compte. Convertir alors l'ancien refus, sans invalider la session B.
+    assertCurrentSession();
     throw error;
   }
 }

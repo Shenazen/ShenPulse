@@ -162,7 +162,8 @@ function normalizeAccountWorkspace(workspace, ownerUid = "") {
     ),
     profiles: profiles.map((profile, index) => {
       const profileWorkspace = normalizeProfileWorkspace(
-        profile?.workspace
+        profile?.workspace,
+        { ttsFallback: settings.tts, songRequestSettingsFallback: settings.spotify?.songRequests }
       );
       return {
         ...clone(profile),

@@ -266,7 +266,11 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     assert.equal(stableHome.querySelector('.home-game-card'), null, "La galerie de jeux est retirée de l’accueil");
     assert.ok(stableHome.querySelector('.home-feature[data-navigate="games"]'), "Le raccourci Jeux reste disponible sans galerie");
     const homeRoutes = [...stableHome.querySelectorAll("[data-navigate]")].map((button) => button.dataset.navigate);
-    assert.deepEqual([...new Set(homeRoutes)].sort(), ["actions", "connections", "controllers", "dashboard", "games", "music", "overlays", "users", "voice"]);
+    assert.deepEqual([...new Set(homeRoutes)].sort(), ["actions", "connections", "dashboard", "games", "music", "overlays", "users", "voice"]);
+    for (const privatePage of ["admin", "controllers", "settings"]) {
+      assert.equal(navigation.querySelector(`[data-navigate="${privatePage}"]`), null);
+    }
+    assert.equal(dom.window.document.querySelector('#account-menu [data-navigate="settings"]').hidden, true);
     for (const [index, route] of homeRoutes.entries()) {
       const button = dom.window.document.querySelectorAll(".creator-home-page [data-navigate]")[index];
       assert.equal(button.dataset.navigate, route);
@@ -291,7 +295,7 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     assert.equal(dom.window.document.querySelector("#simulator-form"), null,
       "l’accueil reste une page distincte du simulateur et des statistiques live");
     assert.equal(dom.window.document.querySelector('#navigation [data-navigate="studio"]'), null, "Studio Live a été retiré de la navigation.");
-    for (const [id, selector] of [["games", ".games-gallery-page"], ["users", ".creator-users-page"], ["voice", ".creator-voice-page"], ["music", ".creator-music-page"], ["controllers", '[data-studio-hero="controllers"]'], ["matches", ".creator-matches-page"]]) {
+    for (const [id, selector] of [["games", ".games-gallery-page"], ["users", ".creator-users-page"], ["voice", ".creator-voice-page"], ["music", ".creator-music-page"], ["matches", ".creator-matches-page"]]) {
       const item = dom.window.document.querySelector(`#navigation [data-navigate="${id}"]`);
       assert.ok(item, `La navigation ${id} doit être visible.`);
       item.click();

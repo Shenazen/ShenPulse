@@ -444,11 +444,18 @@ async function perform(work, successMessage) {
 }
 
 function acceptSnapshot(value) {
+  const previousUid = String(snapshot?.state?.settings?.account?.uid || "");
+  const nextUid = String(value?.state?.settings?.account?.uid || "");
+  if (previousUid !== nextUid) {
+    // Les aperçus importés ne doivent jamais survivre au changement de compte.
+    if (typeof mediaSessionEntries !== "undefined") mediaSessionEntries.clear();
+    if (typeof globalMediaLibrary !== "undefined") globalMediaLibrary.close();
+  }
   snapshot = value;
   if (value?.state?.settings?.siteVisibility) {
     siteVisibility = value.state.settings.siteVisibility;
   }
-  if (Array.isArray(value?.soundCatalog) && value.soundCatalog.length) {
+  if (Array.isArray(value?.soundCatalog)) {
     SOUND_LIBRARY = value.soundCatalog;
   }
   if (Array.isArray(value?.mediaCatalog)) {

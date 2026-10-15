@@ -10,7 +10,10 @@ async function runBrowserAuth(service, emailHint = "", flow) {
     port: service.googleLoopbackPort,
     timeoutMs: BROWSER_AUTH_TIMEOUT_MS
   });
+  const cancel = () => callback.close();
   try {
+    flow.assertCurrent?.();
+    service.browserAuthCancel = cancel;
     const authRequest = await flow.identityRequest(
       "accounts:createAuthUri",
       {
@@ -51,6 +54,7 @@ async function runBrowserAuth(service, emailHint = "", flow) {
     await service.syncEntitlements({ silent: true });
     return flow.publicStatus(true);
   } finally {
+    if (service.browserAuthCancel === cancel) service.browserAuthCancel = null;
     callback.close();
   }
 }

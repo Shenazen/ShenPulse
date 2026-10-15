@@ -6,7 +6,7 @@
  * compteur. OBS télécharge et compile ainsi beaucoup moins de JavaScript.
  */
 (async function loadActiveOverlayRuntime() {
-  const VERSION = "2.0.1-overlay1";
+  const VERSION = "2.0.2-overlay1";
   const query = new URLSearchParams(location.search);
   if (globalThis.shenPulseMatchLocalEntry) {
     // Une entrée Studio explicite ne démarre pas un second lecteur Firebase,

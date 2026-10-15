@@ -450,6 +450,11 @@ function syncAccountChrome() {
   accountMenu
     .querySelector(".account-logout-action")
     ?.toggleAttribute("hidden", !authenticated);
+  // Les raccourcis du compte suivent les mêmes droits que la navigation.
+  // Un cache distant public ne doit pas réouvrir une page propriétaire.
+  accountMenu.querySelectorAll("[data-navigate]").forEach((button) => {
+    button.hidden = !canNavigateTo(button.dataset.navigate);
+  });
   accountAuthCta.hidden = authenticated;
   profileControl.hidden = !authenticated;
   tiktokControl.hidden = !authenticated;

@@ -20,6 +20,7 @@ const { registerGamesIpc } = require("./ipc/games");
 const { registerDesktopIpc } = require("./ipc/desktop");
 const { registerUsersIpc } = require("./ipc/users");
 const { registerMatchesIpc } = require("./ipc/matches");
+const { changedSessionError } = require("./account/session-guard");
 
 function localServerSettingsSignature(settings = {}) {
   return JSON.stringify([
@@ -71,7 +72,7 @@ function registerIpc({
         assertIntegrationIpcSender("chatbot:entity", args[0], getWindow());
       }
       if (!guestAllowedChannels.has(channel)) {
-        if (channel.startsWith("admin:")) {
+        if (channel.startsWith("admin:") || channel.startsWith("controllers:") || channel === "server:restart") {
           assertAdminAccount(store);
         } else {
           assertAuthenticatedAccount(store);
@@ -105,27 +106,62 @@ function registerIpc({
     }
     return targetId;
   };
-  const switchAccountWorkspace = async (operation) => {
-    await core.suspendAccountWorkspace();
+  let accountTransition = 0;
+  let accountLifecycle = Promise.resolve();
+  // Sérialiser seulement les services locaux : une fenêtre Google ouverte ne bloque pas la déconnexion.
+  const runAccountLifecycle = (operation) => {
+    const pending = accountLifecycle.then(operation);
+    accountLifecycle = pending.catch(() => {});
+    return pending;
+  };
+  const switchAccountWorkspace = async (operation, { beforeSuspend } = {}) => {
+    const transition = ++accountTransition;
+    accountService.invalidatePendingSessionOperations?.();
+    const assertCurrent = () => {
+      if (transition !== accountTransition) throw changedSessionError();
+    };
+    await runAccountLifecycle(async () => {
+      assertCurrent();
+      await beforeSuspend?.();
+      assertCurrent();
+      await core.suspendAccountWorkspace();
+    });
     try {
-      const result = await operation();
-      await core.resumeAccountWorkspace();
+      assertCurrent();
+      const result = await operation(assertCurrent);
+      assertCurrent();
+      await runAccountLifecycle(async () => { assertCurrent(); await core.resumeAccountWorkspace(); });
+      assertCurrent();
       core.overlayServer?.refreshAccess();
       notify(core, "state-changed", core.snapshot());
       return result;
     } catch (error) {
-      await core.resumeAccountWorkspace().catch(() => {});
+      if (transition === accountTransition) {
+        await runAccountLifecycle(async () => { assertCurrent(); await core.resumeAccountWorkspace(); }).catch(() => {});
+      }
       throw error;
     }
   };
+  const refreshAccountWorkspace = () => {
+    const transition = accountTransition;
+    const generation = accountService.sessionGeneration;
+    const isCurrent = () => transition === accountTransition && generation === accountService.sessionGeneration;
+    return runAccountLifecycle(async () => {
+      if (!isCurrent()) return;
+      await core.suspendAccountWorkspace();
+      if (!isCurrent()) return;
+      await core.resumeAccountWorkspace();
+      if (isCurrent()) notify(core, "state-changed", core.snapshot());
+    });
+  };
 
   registerIntegrationsIpc({ handle, core, store, integrationChange });
-  registerAccountIpc({ handle, core, store, accountService, adminService, storeUpdateService, getWindow, switchAccountWorkspace });
+  registerAccountIpc({ handle, core, store, accountService, adminService, storeUpdateService, getWindow, switchAccountWorkspace, refreshAccountWorkspace });
   registerAdminIpc({ handle, core, store, adminService });
   registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dialog, net });
   registerSessionIpc({ handle, core, store });
   registerSettingsIpc({ handle, core, store, localServerSettingsSignature });
-  registerWorkspaceIpc({ handle, core, store });
+  registerWorkspaceIpc({ handle, core, store, accountService });
   const { auditGameInteraction } = registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog, requireGameAccess, requireGameSessionAvailability });
   registerDesktopIpc({ handle, core, store, getWindow, clipboard, dialog, shell });
   registerUsersIpc({ handle, core, store });

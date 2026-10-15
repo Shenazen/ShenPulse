@@ -115,6 +115,52 @@ test("controller HTTP API requires pairing, blocks remote origins, and cannot au
   assert.equal((await fetch(`${base}/targets`, { headers: { Authorization: "Bearer " } })).status, 401);
 });
 
+test("les contrôleurs directs et HTTP refusent un autre compte, même avec un jeton de périphérique valide", async (context) => {
+  const store = mockStore({ settings: { account: {
+    uid: "owner", email: "alexandre.leuridan@gmail.com", emailVerified: true, refreshTokenSecretId: "account-session"
+  } } });
+  store.setSecret("account-session", "fixture-refresh-token");
+  const calls = [];
+  const service = new ControllerService({ store, executeAction: async (id) => calls.push(id), selectProfile: async () => {} });
+  service.port = () => 0;
+  await service.start();
+  context.after(() => service.stop());
+  const base = `http://127.0.0.1:${service.server.address().port}`;
+  const { code } = await service.pairingCode();
+  const { token } = service.pair({ code });
+  assert.equal((await fetch(`${base}/targets`, { headers: { Authorization: `Bearer ${token}` } })).status, 200);
+  store.getState().settings.account.email = "ordinary@example.com";
+  await assert.rejects(service.pairingCode(), { code: "ADMIN_ACCOUNT_REQUIRED" });
+  assert.throws(() => service.saveMapping({}), { code: "ADMIN_ACCOUNT_REQUIRED" });
+  await assert.rejects(service.executeTarget({ targetType: "action", targetId: "sound_1" }), { code: "ADMIN_ACCOUNT_REQUIRED" });
+  for (const pathname of ["/targets", "/execute", "/pair"]) {
+    const response = await fetch(`${base}${pathname}`, {
+      method: pathname === "/targets" ? "GET" : "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      ...(pathname === "/targets" ? {} : { body: "{}" })
+    });
+    assert.equal(response.status, 403, pathname);
+  }
+  assert.equal((await fetch(`${base}/health`)).status, 200);
+  store.getState().settings.account = {};
+  assert.equal((await fetch(`${base}/targets`, { headers: { Authorization: `Bearer ${token}` } })).status, 401);
+  await assert.rejects(service.start(), { code: "ACCOUNT_REQUIRED" });
+  assert.deepEqual(calls, []);
+});
+
+test("le démarrage des contrôleurs referme son socket si le propriétaire change pendant l'écoute", async () => {
+  const store = mockStore({ settings: { account: {
+    uid: "owner", email: "alexandre.leuridan@gmail.com", emailVerified: true, refreshTokenSecretId: "account-session"
+  } } });
+  store.setSecret("account-session", "fixture-refresh-token");
+  const service = new ControllerService({ store });
+  service.port = () => 0;
+  const starting = service.start();
+  store.getState().settings.account.email = "ordinary@example.com";
+  await assert.rejects(starting, { code: "ADMIN_ACCOUNT_REQUIRED" });
+  assert.equal(service.server, null);
+});
+
 test("Kick events preserve identity, roles, gifts and subscription quantity", () => {
   const chat = normalizeKickEvent("chat.message.sent", { sender: { user_id: 12, username: "Lou", identity: { badges: [{ type: "moderator" }, { type: "subscriber" }] } }, content: "Salut" }, "message-1");
   assert.equal(chat.type, "chat");

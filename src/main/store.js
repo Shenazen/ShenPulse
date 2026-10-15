@@ -13,6 +13,7 @@ const { normalizeRules, normalizeRuleActionSelection } = require("./state/rule-n
 const { normalizeWheelSegmentActions } = require("./state/overlay-configs");
 const projections = require("./state/projections");
 const { collectGiftReferenceUpdates, applyGiftReferenceUpdates } = require("./state/gift-upgrade-migration");
+const { settingsForProfileImport } = require("./settings-access");
 
 /** Façade de l'état local : API stable, mutations, secrets et cadence des sauvegardes. */
 class StateStore {
@@ -86,34 +87,72 @@ class StateStore {
     return backupPath;
   }
 
+  /** Conserve la génération originale avant récupération d'un cache de compte absent. */
+  preserveAccountWorkspaceRecovery() {
+    const backupPath = path.join(this.directory, "shenpulse-state.before-account-workspace-recovery-v1.json");
+    if (fs.existsSync(backupPath)) this.storage.parseJsonFile(backupPath);
+    else {
+      const content = fs.existsSync(this.filePath)
+        ? this.storage.parseJsonFile(this.filePath).content
+        : JSON.stringify(this.state, null, 2);
+      this.storage.atomicWrite(backupPath, content, false);
+    }
+    return backupPath;
+  }
+
   /** Sauvegarde l'ancien propriétaire, puis charge exclusivement le compte demandé. */
-  activateAccount(uid) {
+  activateAccount(uid, accountSession = null) {
     const targetUid = cleanAccountUid(uid);
     if (!targetUid) {
       throw new Error("Le compte ShenPulse ne possède pas d’identifiant valide.");
     }
-    const currentUid = this.getActiveAccountUid();
-    if (currentUid === targetUid) return this.getState();
-
-    this.workspaces.syncActiveAccountWorkspace();
-    this.state.accountWorkspaces ||= {};
-    const key = accountWorkspaceKey(targetUid);
-    if (!this.state.accountWorkspaces[key]) {
-      this.state.accountWorkspaces[key] =
-        this.workspaces.claimUnclaimedWorkspace(targetUid);
+    if (accountSession !== null && (typeof accountSession !== "object" ||
+        Array.isArray(accountSession) || cleanAccountUid(accountSession.uid) !== targetUid)) {
+      throw new Error("L'identité de connexion ne correspond pas au compte demandé.");
     }
-    this.state.activeAccountUid = targetUid;
-    this.workspaces.loadAccountWorkspace(targetUid);
-    this.touch(true);
-    return this.getState();
+    const currentUid = this.getActiveAccountUid();
+    if (currentUid === targetUid && !accountSession) return this.getState();
+
+    const nextState = clone(this.state);
+    const nextWorkspaces = new WorkspaceManager({ state: nextState });
+    nextWorkspaces.syncActiveAccountWorkspace();
+    nextState.accountWorkspaces ||= {};
+    const key = accountWorkspaceKey(targetUid);
+    if (!nextState.accountWorkspaces[key]) {
+      nextState.accountWorkspaces[key] =
+        nextWorkspaces.claimUnclaimedWorkspace(targetUid);
+    }
+    nextState.activeAccountUid = targetUid;
+    if (currentUid !== targetUid) nextWorkspaces.loadAccountWorkspace(targetUid);
+    // L'identité est écrite dans la même transaction que son espace. Un arrêt
+    // entre deux lignes ne doit jamais laisser les profils B sous la session A.
+    nextState.settings.account = accountSession
+      ? { ...clone(accountSession), uid: targetUid }
+      : createDefaultState().settings.account;
+    return this.#commitAccountTransition(nextState);
   }
 
   /** Conserve la configuration du compte et affiche un espace anonyme vierge. */
   deactivateAccount() {
-    this.workspaces.syncActiveAccountWorkspace();
-    this.state.activeAccountUid = "";
-    this.workspaces.loadAnonymousWorkspace();
-    this.touch(true);
+    const nextState = clone(this.state);
+    const nextWorkspaces = new WorkspaceManager({ state: nextState });
+    nextWorkspaces.syncActiveAccountWorkspace();
+    nextState.activeAccountUid = "";
+    nextWorkspaces.loadAnonymousWorkspace();
+    nextState.settings.account = createDefaultState().settings.account;
+    return this.#commitAccountTransition(nextState);
+  }
+
+  /** Un changement de compte n'est visible qu'après confirmation de sa sauvegarde. */
+  #commitAccountTransition(nextState) {
+    new WorkspaceManager({ state: nextState }).syncActiveAccountWorkspace();
+    nextState.updatedAt = new Date().toISOString();
+    this.storage.atomicWrite(this.filePath, JSON.stringify(nextState, null, 2));
+    if (this.writeTimer) clearTimeout(this.writeTimer);
+    if (this.runtimeWriteTimer) clearTimeout(this.runtimeWriteTimer);
+    this.writeTimer = null;
+    this.runtimeWriteTimer = null;
+    this.state = nextState;
     return this.getState();
   }
 
@@ -174,7 +213,7 @@ class StateStore {
       } else {
         entries.push(copy);
       }
-    });
+    }, collection === "profiles");
   }
 
   /** Enregistre une interaction de jeu sur disque avant de rendre la main. */
@@ -222,7 +261,7 @@ class StateStore {
         this.state.session.profileId = this.state.profiles[0].id;
         this.workspaces.loadProfileWorkspace(this.state.session.profileId);
       }
-      this.touch();
+      this.touch(true);
       return this.getState();
     }
     return this.mutate((state) => {
@@ -322,17 +361,18 @@ class StateStore {
         "Connectez-vous au compte qui doit posséder cette configuration."
       );
     }
+    const importedSettings = settingsForProfileImport(this, imported.settings, this.state.settings);
     const importedState = {
       ...createDefaultState(),
       ...clone(imported),
       settings: {
         ...createDefaultState().settings,
-        ...(imported.settings || {}),
+        ...importedSettings,
         // Un export tiers ne peut ni activer l'envoi ni pointer vers le coffre
         // local d'un autre compte. Le consentement courant reste inchangé.
         tiktok: {
           ...createDefaultState().settings.tiktok,
-          ...(imported.settings?.tiktok || {}),
+          ...(importedSettings.tiktok || {}),
           chat: this.state.settings.tiktok?.chat?.accountUid === uid
             ? clone(this.state.settings.tiktok.chat)
             : { provider: "none" }

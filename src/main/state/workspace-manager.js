@@ -32,6 +32,17 @@ class WorkspaceManager {
       !Array.isArray(this.state.accountWorkspaces)
         ? this.state.accountWorkspaces
         : {};
+    // Certaines anciennes générations possèdent encore la configuration à la
+    // racine mais ont perdu son entrée de cache. L'UID actif explicite prouve
+    // son propriétaire ; ne jamais attribuer cette copie au prochain connecté.
+    const rootOwnerUid = cleanAccountUid(this.state.activeAccountUid) ||
+      (!Object.hasOwn(this.state, "activeAccountUid") ? storedAccountUid : "");
+    const rootKey = accountWorkspaceKey(rootOwnerUid);
+    if (rootOwnerUid && (!existingWorkspaces[rootKey] ||
+        typeof existingWorkspaces[rootKey] !== "object" || Array.isArray(existingWorkspaces[rootKey]))) {
+      this.store.preserveAccountWorkspaceRecovery?.();
+      existingWorkspaces[rootKey] = createAccountWorkspaceFromState(this.state, rootOwnerUid);
+    }
     this.state.accountWorkspaces = Object.fromEntries(
       Object.entries(existingWorkspaces)
         .filter(([, workspace]) => workspace && typeof workspace === "object")
@@ -156,7 +167,10 @@ class WorkspaceManager {
         };
       }
 
-      profile.workspace = normalizeProfileWorkspace(profile.workspace);
+      profile.workspace = normalizeProfileWorkspace(profile.workspace, {
+        ttsFallback: this.state.settings.tts,
+        songRequestSettingsFallback: this.state.settings.spotify?.songRequests
+      });
       profile.enabledRuleIds = profile.workspace.rules.map((rule) => rule.id);
       profile.createdAt ||= now;
       profile.updatedAt ||= now;
@@ -195,13 +209,20 @@ class WorkspaceManager {
     const profile = this.state.profiles.find((item) => item.id === profileId);
     if (!profile) return false;
 
-    const workspace = normalizeProfileWorkspace(profile.workspace);
+    const workspace = normalizeProfileWorkspace(profile.workspace, {
+      ttsFallback: this.state.settings.tts,
+      songRequestSettingsFallback: this.state.settings.spotify?.songRequests
+    });
     profile.workspace = workspace;
     profile.enabledRuleIds = workspace.rules.map((rule) => rule.id);
     this.state.rules = clone(workspace.rules);
     this.state.goals = clone(workspace.goals);
     this.state.commands = clone(workspace.commands);
     this.state.timers = clone(workspace.timers);
+    this.state.settings.tts = clone(workspace.tts);
+    this.state.settings.spotify = {
+      ...(this.state.settings.spotify || {}), songRequests: clone(workspace.songRequestSettings)
+    };
     this.state.settings.matches = clone(workspace.matches);
     this.state.matchSession = createMatchSession(workspace.matchSession, { disconnected: true });
     this.state.settings.overlayConfigs = clone(workspace.overlayConfigs);

@@ -11,7 +11,35 @@ const { readState } = require("../state-projection");
 const { normalizeChatbotCommand } = require("../../shared/chatbot-command");
 const { assertCommandsAccess } = require("../chatbot-service");
 
-function registerWorkspaceIpc({ handle, core, store }) {
+/** Une transition de profil appartient à une connexion précise, pas seulement
+ * à un identifiant de profil que plusieurs comptes pourraient partager.
+ * Les références de secrets sont comparées sans jamais lire leurs valeurs.
+ */
+function profileSelectionOwner(store, accountService) {
+  const account = store.getAccountSession?.() ||
+    readState(store, ["settings.account"]).settings?.account || {};
+  const uid = String(account.uid || "").trim();
+  return {
+    uid,
+    activeUid: typeof store.getActiveAccountUid === "function" ? String(store.getActiveAccountUid() || "") : uid,
+    email: String(account.email || "").trim().toLowerCase(),
+    refreshTokenSecretId: String(account.refreshTokenSecretId || ""),
+    generation: Number.isSafeInteger(accountService?.sessionGeneration) ? accountService.sessionGeneration : null
+  };
+}
+
+function assertProfileSelectionOwner(store, accountService, owner) {
+  const current = profileSelectionOwner(store, accountService);
+  if (!owner.uid || owner.activeUid !== owner.uid || current.activeUid !== current.uid ||
+      JSON.stringify(current) !== JSON.stringify(owner)) {
+    const error = new Error("Le compte ShenPulse a changé pendant la sélection du profil. Recommencez depuis le compte actuel.");
+    error.code = "PROFILE_ACCOUNT_CHANGED";
+    error.staleSession = true;
+    throw error;
+  }
+}
+
+function registerWorkspaceIpc({ handle, core, store, accountService = null }) {
   handle("entity:upsert", (_event, collection, item) => {
     const allowed = new Set([
       "rules",
@@ -157,9 +185,12 @@ function registerWorkspaceIpc({ handle, core, store }) {
   });
   
   handle("profile:select", async (_event, profileId) => {
+    const owner = profileSelectionOwner(store, accountService);
+    assertProfileSelectionOwner(store, accountService, owner);
     core.matches?.reset();
     core.liveEventActions?.chatbot.reset();
     await core.stopGameSession({ notify: false });
+    assertProfileSelectionOwner(store, accountService, owner);
     store.selectProfile(safeString(profileId, 160));
     core.ruleEngine.resetProfileState();
     core.liveEventActions?.chatbot.syncTimers();

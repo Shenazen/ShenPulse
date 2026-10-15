@@ -230,6 +230,7 @@ function openProfileManager() {
 }
 
 function openProfileEditor(profile) {
+  const owner = captureCreatorPrivateOperation();
   const current = profile || {
     id: "",
     name: "",
@@ -250,6 +251,7 @@ function openProfileEditor(profile) {
       </div>
     </div>`,
     onSubmit: async (data) => {
+      assertCreatorPrivateOperation(owner);
       const now = new Date().toISOString();
       const profileId = current.id || `profile_${cryptoId()}`;
       await api.upsert("profiles", {
@@ -259,8 +261,11 @@ function openProfileEditor(profile) {
         createdAt: current.createdAt || now,
         updatedAt: now
       });
+      assertCreatorPrivateOperation(owner);
       if (!profile) await api.selectProfile(profileId);
-      snapshot = await api.getSnapshot();
+      const next = await api.getSnapshot();
+      assertCreatorPrivateOperation(owner);
+      acceptSnapshot(next);
     }
   });
 }

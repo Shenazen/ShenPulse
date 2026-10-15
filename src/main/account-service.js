@@ -12,6 +12,7 @@ const { createLoopbackCallback } = require("./account/browser-loopback");
 const { createGoogleIdTokenLoopback } = require("./account/google-loopback");
 const { createPaymentLoopbackCallback } = require("./account/payment-loopback");
 const { prepareMediaUpload } = require("./account/media-uploads");
+const { captureSessionGuard } = require("./account/session-guard");
 
 /** Façade compatible du compte : garde les jetons en mémoire et orchestre les domaines métier. */
 class AccountService {
@@ -29,8 +30,10 @@ class AccountService {
     this.googleLoopbackPort = Number(googleLoopbackPort);
     this.idToken = "";
     this.expiresAt = 0;
+    this.sessionGeneration = 0;
     this.refreshPromise = null;
     this.browserAuthPromise = null;
+    this.browserAuthCancel = null;
     this.subscriptionCheckoutPromise = null;
     this.gameCheckoutPromise = null;
     this.subscriptionCheckoutCancel = null;
@@ -39,6 +42,7 @@ class AccountService {
 
   /** Vérifie la session ; une panne réseau conserve l'identité locale avec offline=true. */
   async status() {
+    const guard = this.#sessionGuard();
     const session = this.#session();
     if (
       !normalizeEmail(session.email) ||
@@ -51,8 +55,10 @@ class AccountService {
       const token = await this.#token();
       await this.#synchronizeIdentity(token);
       await this.syncEntitlements({ silent: true });
+      guard.assertCurrent();
       return this.#publicStatus(true);
     } catch (error) {
+      if (!guard.isCurrent()) return this.#publicStatus(true);
       if (isInvalidSessionError(error)) {
         this.#clearSession();
         return this.#publicStatus(false);
@@ -71,6 +77,7 @@ class AccountService {
     const password = requirePassword(incoming.password, {
       minimumLength: 1
     });
+    const guard = this.#beginAuthOperation();
     const payload = await this.#identityRequest(
       "accounts:signInWithPassword",
       {
@@ -81,9 +88,11 @@ class AccountService {
     );
     await this.#acceptAuthPayload(payload, {
       fallbackEmail: email,
-      providerId: "password"
+      providerId: "password",
+      guard
     });
     await this.syncEntitlements({ silent: true });
+    guard.assertCurrent();
     return this.#publicStatus(true);
   }
 
@@ -97,6 +106,7 @@ class AccountService {
     if (password !== confirmation) {
       throw new Error("Les deux mots de passe ne correspondent pas.");
     }
+    const guard = this.#beginAuthOperation();
 
     let payload = await this.#identityRequest("accounts:signUp", {
       email,
@@ -106,6 +116,7 @@ class AccountService {
     const displayName =
       cleanDisplayName(incoming.displayName) ||
       cleanDisplayName(email.split("@")[0]);
+    guard.assertCurrent();
     if (displayName) {
       const updated = await this.#identityRequest("accounts:update", {
         idToken: payload.idToken,
@@ -124,7 +135,8 @@ class AccountService {
     }).catch(() => {});
     await this.#acceptAuthPayload(payload, {
       fallbackEmail: email,
-      providerId: "password"
+      providerId: "password",
+      guard
     });
     this.#clearCommercialRights();
     return this.#publicStatus(true);
@@ -159,18 +171,22 @@ class AccountService {
     }
     const rawEmailHint = String(incoming.email || "").trim();
     const emailHint = rawEmailHint ? requireEmail(rawEmailHint) : "";
-    this.browserAuthPromise = this.#runBrowserAuth(emailHint).finally(() => {
-      this.browserAuthPromise = null;
+    const guard = this.#beginAuthOperation();
+    const pending = this.#runBrowserAuth(emailHint, guard).finally(() => {
+      if (this.browserAuthPromise === pending) this.browserAuthPromise = null;
     });
-    return this.browserAuthPromise;
+    this.browserAuthPromise = pending;
+    return pending;
   }
 
   /** Attribue le siège Premium puis relit les droits confirmés par le serveur. */
   async assignPremiumSeat(incoming = {}) {
+    const guard = this.#sessionGuard();
     const beneficiaryEmail = requireEmail(
       incoming.beneficiaryEmail || incoming.email
     );
     const token = await this.#token();
+    guard.assertCurrent();
     const uid = cleanUid(this.#session().uid);
     const response = await this.fetch(
       `${this.webOrigin}/api/payments/premium-seat`,
@@ -189,6 +205,7 @@ class AccountService {
       }
     );
     const payload = await readPayload(response);
+    guard.assertCurrent();
     if (!response.ok) throw apiError(payload, response.status);
     await this.syncEntitlements();
     return payload;
@@ -209,8 +226,11 @@ class AccountService {
 
   /** Programme l'arrêt et conserve les droits jusqu'à l'échéance renvoyée par le serveur. */
   async stopSubscription() {
+    const guard = this.#sessionGuard();
     const token = await this.#token();
+    guard.assertCurrent();
     await this.#synchronizeIdentity(token);
+    guard.assertCurrent();
     const uid = cleanUid(this.#session().uid);
     if (!uid) throw invalidSessionError("Session ShenPulse expirée.");
 
@@ -227,9 +247,11 @@ class AccountService {
       }
     );
     const payload = await readPayload(response);
+    guard.assertCurrent();
     if (!response.ok) throw apiError(payload, response.status);
 
     await this.syncEntitlements();
+    guard.assertCurrent();
     const pendingChange = normalizeSubscriptionPendingChange({
       effectiveAt: payload.effectiveAt,
       fromTier: payload.tier,
@@ -304,8 +326,11 @@ class AccountService {
 
   /** Identité vérifiée réservée au processus principal, jamais exposée directement au rendu. */
   async identityForInternalUse() {
+    const guard = this.#sessionGuard();
     const idToken = await this.#token();
+    guard.assertCurrent();
     await this.#synchronizeIdentity(idToken);
+    guard.assertCurrent();
     const session = this.#session();
     return {
       email: normalizeEmail(session.email),
@@ -317,9 +342,11 @@ class AccountService {
 
   /** Présence LIVE interne : réutilise la session chiffrée sans lookup par heartbeat. */
   async identityForLiveDirectory() {
+    const guard = this.#sessionGuard();
     const expectedUid = cleanUid(this.#session().uid);
     if (!expectedUid) throw invalidSessionError("Session ShenPulse expirée.");
     const idToken = await this.#token();
+    guard.assertCurrent();
     const uid = cleanUid(this.#session().uid);
     if (uid !== expectedUid) throw invalidSessionError("Le compte ShenPulse a changé.");
     return { uid, idToken };
@@ -335,6 +362,7 @@ class AccountService {
 
   /** Vérifie le droit du compte actif par empreinte d'e-mail, jamais par saisie du rendu. */
   async gameCheatAccess() {
+    const guard = this.#sessionGuard();
     const session = this.#session();
     if (
       session.emailVerified !== true ||
@@ -344,7 +372,9 @@ class AccountService {
       return { allowed: false, checkedAt: "" };
     }
     const token = await this.#token();
+    guard.assertCurrent();
     await this.#synchronizeIdentity(token);
+    guard.assertCurrent();
     const current = this.#session();
     if (current.emailVerified !== true) {
       return { allowed: false, checkedAt: "" };
@@ -359,6 +389,7 @@ class AccountService {
       }
     );
     const payload = await readPayload(response);
+    guard.assertCurrent();
     if (!response.ok) throw apiError(payload, response.status);
     return {
       allowed: payload === true,
@@ -366,18 +397,20 @@ class AccountService {
     };
   }
 
-  async #runBrowserAuth(emailHint = "") {
-    return runBrowserAuth(this, emailHint, this.#flowContext());
+  async #runBrowserAuth(emailHint = "", guard) {
+    return runBrowserAuth(this, emailHint, this.#flowContext(guard));
   }
 
   async #acceptAuthPayload(
     payload,
-    { fallbackEmail = "", providerId = "" } = {}
+    { fallbackEmail = "", providerId = "", guard = this.#sessionGuard({ identity: false }) } = {}
   ) {
+    guard.assertCurrent();
     if (!payload?.idToken || !payload?.refreshToken) {
       throw new Error("Firebase n’a pas confirmé le compte ShenPulse.");
     }
     const lookup = await this.#lookup(payload.idToken).catch(() => null);
+    guard.assertCurrent();
     const email = normalizeEmail(
       lookup?.email || payload.email || fallbackEmail
     );
@@ -390,27 +423,16 @@ class AccountService {
 
     const previous = this.#session();
     const sameAccount = cleanUid(previous.uid) === uid;
-    if (
-      !sameAccount &&
-      previous.refreshTokenSecretId
-    ) {
-      this.store.setSecret(previous.refreshTokenSecretId, "");
-    }
     const refreshTokenSecretId = this.store.setSecret(
       sameAccount ? previous.refreshTokenSecretId : "",
       String(payload.refreshToken)
     );
-    this.idToken = String(payload.idToken);
-    this.expiresAt =
-      Date.now() +
-      Math.max(60, Number(payload.expiresIn) || 3600) * 1000;
     const providers = Array.isArray(lookup?.providerUserInfo)
       ? lookup.providerUserInfo
       : [];
     const resolvedProvider =
       String(providers[0]?.providerId || providerId || "password").trim();
-    this.store.activateAccount?.(uid);
-    this.store.set("settings.account", {
+    const accountSession = {
       email,
       uid,
       displayName: cleanDisplayName(
@@ -421,7 +443,15 @@ class AccountService {
       emailVerified: lookup?.emailVerified === true,
       refreshTokenSecretId,
       lastAuthenticatedAt: new Date().toISOString()
-    });
+    };
+    this.store.activateAccount?.(uid, accountSession);
+    this.store.set("settings.account", accountSession);
+    this.store.flush?.();
+    this.idToken = String(payload.idToken);
+    this.expiresAt = Date.now() + Math.max(60, Number(payload.expiresIn) || 3600) * 1000;
+    if (!sameAccount && previous.refreshTokenSecretId) {
+      this.store.setSecret(previous.refreshTokenSecretId, "");
+    }
   }
 
   async #identityRequest(action, body) {
@@ -456,8 +486,10 @@ class AccountService {
   }
 
   async #synchronizeIdentity(idToken) {
+    const guard = this.#sessionGuard();
     const current = this.#session();
     const lookup = await this.#lookup(idToken);
+    guard.assertCurrent();
     const email = normalizeEmail(lookup?.email);
     const uid = cleanUid(lookup?.localId);
     if (
@@ -496,13 +528,15 @@ class AccountService {
       return this.idToken;
     }
     if (this.refreshPromise) return this.refreshPromise;
-    this.refreshPromise = this.#refreshToken().finally(() => {
-      this.refreshPromise = null;
+    const pending = this.#refreshToken().finally(() => {
+      if (this.refreshPromise === pending) this.refreshPromise = null;
     });
-    return this.refreshPromise;
+    this.refreshPromise = pending;
+    return pending;
   }
 
   async #refreshToken() {
+    const guard = this.#sessionGuard();
     const session = this.#session();
     const uid = cleanUid(session.uid);
     const refreshToken = this.store.getSecret(
@@ -529,6 +563,7 @@ class AccountService {
       }
     );
     const payload = await readPayload(response);
+    guard.assertCurrent();
     if (!response.ok) throw firebaseAuthError(payload, true);
     if (cleanUid(payload.user_id) !== uid || !payload.id_token) {
       throw invalidSessionError(
@@ -560,16 +595,35 @@ class AccountService {
   }
 
   /** Contrat interne explicite : les domaines ne lisent pas directement les méthodes privées. */
-  #flowContext() {
+  #flowContext(guard = this.#sessionGuard()) {
     return {
-      token: () => this.#token(),
+      assertCurrent: () => guard.assertCurrent(),
+      token: async () => { guard.assertCurrent(); const token = await this.#token(); guard.assertCurrent(); return token; },
       session: () => this.#session(),
-      synchronizeIdentity: (token) => this.#synchronizeIdentity(token),
-      identityRequest: (...args) => this.#identityRequest(...args),
-      acceptAuthPayload: (...args) => this.#acceptAuthPayload(...args),
-      publicStatus: (authenticated) => this.#publicStatus(authenticated),
-      ensureGameEntitlement: (productId) => this.#ensureGameEntitlement(productId)
+      synchronizeIdentity: async (token) => { guard.assertCurrent(); await this.#synchronizeIdentity(token); guard.assertCurrent(); },
+      identityRequest: async (...args) => { guard.assertCurrent(); const result = await this.#identityRequest(...args); guard.assertCurrent(); return result; },
+      acceptAuthPayload: (payload, options) => this.#acceptAuthPayload(payload, { ...options, guard }),
+      publicStatus: (authenticated) => { guard.assertCurrent(); return this.#publicStatus(authenticated); },
+      ensureGameEntitlement: (productId) => { guard.assertCurrent(); return this.#ensureGameEntitlement(productId); }
     };
+  }
+
+  #sessionGuard(options) {
+    return captureSessionGuard(this, () => this.#session(), options);
+  }
+
+  /** Invalide les réponses en vol sans effacer les profils ni une connexion encore valide. */
+  invalidatePendingSessionOperations() {
+    this.sessionGeneration += 1;
+    this.browserAuthCancel?.();
+    this.browserAuthCancel = null;
+    this.refreshPromise = null;
+    this.browserAuthPromise = null;
+  }
+
+  #beginAuthOperation() {
+    this.invalidatePendingSessionOperations();
+    return this.#sessionGuard({ identity: false });
   }
 
   #session() {
@@ -601,12 +655,8 @@ class AccountService {
   }
 
   #clearSession() {
+    this.invalidatePendingSessionOperations();
     const session = this.#session();
-    if (session.refreshTokenSecretId) {
-      this.store.setSecret(session.refreshTokenSecretId, "");
-    }
-    this.idToken = "";
-    this.expiresAt = 0;
     this.store.deactivateAccount?.();
     this.store.set("settings.account", {
       email: "",
@@ -618,6 +668,12 @@ class AccountService {
       refreshTokenSecretId: "",
       lastAuthenticatedAt: ""
     });
+    this.store.flush?.();
+    this.idToken = "";
+    this.expiresAt = 0;
+    if (session.refreshTokenSecretId) {
+      this.store.setSecret(session.refreshTokenSecretId, "");
+    }
     this.#clearCommercialRights();
   }
 }

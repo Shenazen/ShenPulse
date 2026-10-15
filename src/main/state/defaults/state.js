@@ -8,15 +8,19 @@ const { createLiveStatistics } = require("../../../shared/live-statistics");
 const { createViewerDatabase } = require("../../viewers/normalization");
 const { createDefaultOverlayConfigs } = require("./overlays");
 const { normalizeMatchesConfig, createMatchSession } = require("../../../shared/matches-contract");
+const { createDefaultTtsSettings } = require("./preferences");
+const { normalizeSongRequestSettings } = require("../../spotify/song-request-settings");
 
 /** Configuration de profil vierge, sans actions ni droits de compte. */
 function createEmptyProfileWorkspace() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     rules: [],
     goals: [],
     commands: [],
     timers: [],
+    tts: createDefaultTtsSettings(),
+    songRequestSettings: normalizeSongRequestSettings(),
     matches: normalizeMatchesConfig(),
     matchSession: createMatchSession(),
     overlayConfigs: createDefaultOverlayConfigs(),
@@ -68,15 +72,7 @@ function createDefaultState() {
         enabled: false,
         devices: []
       },
-      tts: {
-        enabled: true,
-        language: "fr-FR",
-        voice: "",
-        rate: 1,
-        pitch: 1,
-        volume: 0.9,
-        profanityFilter: true
-      },
+      tts: createDefaultTtsSettings(),
       obs: {
         url: "ws://127.0.0.1:4455",
         passwordSecretId: ""

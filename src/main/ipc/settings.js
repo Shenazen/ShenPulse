@@ -9,6 +9,7 @@ const { sanitizeEntity } = require("./sanitizers");
 const { notify } = require("./notifications");
 const { readState } = require("../state-projection");
 const { assertProFeatureAccess } = require("../pro-feature-access");
+const { settingsAllowedForAccount } = require("../settings-access");
 
 function registerSettingsIpc({ handle, core, store, localServerSettingsSignature }) {
   handle("server:restart", () => core.restartServers());
@@ -22,8 +23,10 @@ function registerSettingsIpc({ handle, core, store, localServerSettingsSignature
   );
   
   handle("settings:save", async (_event, incoming) => {
-    const settings = sanitizeEntity(incoming);
+    const sanitized = sanitizeEntity(incoming || {});
+    if (typeof sanitized !== "object" || Array.isArray(sanitized)) throw new Error("Réglages invalides.");
     const current = readState(store, ["settings"]).settings;
+    const settings = settingsAllowedForAccount(store, sanitized, current);
     if (Object.hasOwn(settings, "irl") && JSON.stringify(settings.irl) !== JSON.stringify(current.irl)) {
       assertProFeatureAccess(store, "irl");
     }
@@ -110,4 +113,4 @@ function registerSettingsIpc({ handle, core, store, localServerSettingsSignature
   });
 }
 
-module.exports = { registerSettingsIpc };
+module.exports = { registerSettingsIpc, settingsAllowedForAccount };

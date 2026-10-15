@@ -36,18 +36,25 @@ profilePickerButton.addEventListener("click", () => {
   profileMenu.hidden = !opening;
   profilePickerButton.setAttribute("aria-expanded", String(opening));
 });
+
+/** Applique aussi les catalogues du profil et ignore une réponse d'un ancien compte. */
+async function switchProfileFromChrome(profileId) {
+  const owner = captureCreatorPrivateOperation();
+  await perform(() => api.selectProfile(profileId), "Profil actif modifié");
+  if (!creatorPrivateOperationActive(owner)) return;
+  const next = await api.getSnapshot();
+  if (!creatorPrivateOperationActive(owner)) return;
+  acceptSnapshot(next);
+  render();
+}
+
 profileMenu.addEventListener("click", async (event) => {
   if (!isAccountAuthenticated()) return openAccountLogin();
   const choice = event.target.closest("[data-profile-select]");
   if (!choice) return;
   profileMenu.hidden = true;
   profilePickerButton.setAttribute("aria-expanded", "false");
-  await perform(
-    () => api.selectProfile(choice.dataset.profileSelect),
-    "Profil actif modifié"
-  );
-  snapshot = await api.getSnapshot();
-  render();
+  await switchProfileFromChrome(choice.dataset.profileSelect);
 });
 document.addEventListener("click", (event) => {
   if (profileControl.contains(event.target)) return;
@@ -106,9 +113,7 @@ tiktokConnectionButton.addEventListener("click", () =>
 document.getElementById("membership-popup-button").addEventListener("click", openMembershipPopup);
 profileSelect.addEventListener("change", async () => {
   if (!isAccountAuthenticated()) return openAccountLogin();
-  await perform(() => api.selectProfile(profileSelect.value), "Profil actif modifié");
-  snapshot = await api.getSnapshot();
-  render();
+  await switchProfileFromChrome(profileSelect.value);
 });
 
 dialogForm.addEventListener(

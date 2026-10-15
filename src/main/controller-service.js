@@ -6,7 +6,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
-const { assertAuthenticatedAccount } = require("./account-access");
+const { assertAdminAccount } = require("./account-access");
 const { safeString, timingSafeToken } = require("./utils");
 const { jsonResponse, readRequestBody, listenLoopback, closeServer } = require("./integration-http");
 const { normalizeMidiMessage, controllerActionTargets } = require("../shared/controller-contract");
@@ -39,7 +39,7 @@ function normalizeMapping(incoming = {}) {
 }
 
 class ControllerService {
-  constructor({ store, executeAction, selectProfile, pluginDirectory, pluginIconPath = "", authorize = () => assertAuthenticatedAccount(store) }) {
+  constructor({ store, executeAction, selectProfile, pluginDirectory, pluginIconPath = "", authorize = () => assertAdminAccount(store) }) {
     this.store = store;
     this.executeAction = executeAction;
     this.selectProfile = selectProfile;
@@ -63,6 +63,7 @@ class ControllerService {
   }
 
   async start() {
+    this.authorize();
     if (this.server?.listening) return this.status();
     const server = http.createServer((request, response) => {
       this.handleRequest(request, response).catch((error) => {
@@ -72,6 +73,8 @@ class ControllerService {
     server.requestTimeout = 10000;
     server.headersTimeout = 10000;
     await listenLoopback(server, this.port());
+    try { this.authorize(); }
+    catch (error) { await closeServer(server); throw error; }
     this.server = server;
     return this.status();
   }
@@ -232,7 +235,11 @@ class ControllerService {
     }
     const url = new URL(request.url || "/", "http://127.0.0.1");
     if (url.pathname === "/health" && request.method === "GET") return jsonResponse(response, 200, { ok: true, app: "ShenPulse" });
-    this.authorize();
+    try { this.authorize(); }
+    catch (error) {
+      if (!["ACCOUNT_REQUIRED", "ADMIN_ACCOUNT_REQUIRED"].includes(error.code)) throw error;
+      return jsonResponse(response, error.code === "ACCOUNT_REQUIRED" ? 401 : 403, { error: error.message });
+    }
     if (url.pathname === "/pair" && request.method === "POST") {
       return jsonResponse(response, 200, this.pair(JSON.parse((await readRequestBody(request)).toString("utf8"))));
     }

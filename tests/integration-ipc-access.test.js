@@ -25,6 +25,7 @@ function fixture() {
       sync: operation("directory:sync")
     },
     snapshot: () => ({ state }),
+    restartServers: operation("server:restart"),
     notifyRenderer: () => {},
     gameHub: { assertAccess: operation("game:access") }
   };
@@ -88,14 +89,44 @@ test("Matchs exige le renderer principal, l’authentification et Pro avant lect
   assert.throws(() => f.handlers.get("matches:status")(f.event), { code: "ACCOUNT_REQUIRED" });
 });
 
-test("all registered Kick and controller IPC handlers accept the authenticated canonical main frame", async () => {
-  const { handlers, event, calls } = fixture();
+test("les IPC Kick acceptent un compte connecté et les contrôleurs exigent le propriétaire", async () => {
+  const { handlers, event, calls, state } = fixture();
   assert.deepEqual([...handlers.keys()].filter((channel) => /^(kick|controllers):/.test(channel)), integrationChannels);
   for (const channel of integrationChannels) {
+    if (channel.startsWith("controllers:")) {
+      state.settings.account.email = "alexandre.leuridan@gmail.com";
+      state.settings.account.emailVerified = true;
+    }
     const result = await handlers.get(channel)(event, { id: "mapping" });
     assert.equal(result.ok, true, channel);
   }
   assert.equal(calls.length, integrationChannels.length);
+});
+
+test("les contrôleurs et le redémarrage des services restent privés même pour un compte Pro", () => {
+  for (const pro of [false, true]) {
+    const { handlers, event, calls, state } = fixture();
+    state.commerce = { subscription: { tier: pro ? "pro" : "free", active: pro } };
+    for (const channel of [...integrationChannels.filter((key) => key.startsWith("controllers:")), "server:restart"]) {
+      assert.throws(() => handlers.get(channel)(event, {}), { code: "ADMIN_ACCOUNT_REQUIRED" }, channel);
+    }
+    assert.equal(calls.length, 0);
+  }
+});
+
+test("seul le propriétaire vérifié peut redémarrer les services ou accéder aux contrôleurs", async () => {
+  const { handlers, event, state, calls } = fixture();
+  state.settings.account.email = "alexandre.leuridan@gmail.com";
+  for (const verified of [false, true]) {
+    state.settings.account.emailVerified = verified;
+    for (const channel of ["controllers:status", "server:restart"]) {
+      if (!verified) assert.throws(() => handlers.get(channel)(event), { code: "ADMIN_ACCOUNT_REQUIRED" });
+      else assert.equal((await handlers.get(channel)(event)).ok, true);
+    }
+  }
+  assert.deepEqual(calls.map((call) => call.name), ["controllers:status", "server:restart"]);
+  state.settings.account = {};
+  assert.throws(() => handlers.get("server:restart")(event), { code: "ACCOUNT_REQUIRED" });
 });
 
 test("every integration IPC rejects a remote page, a game window, and subframes without invoking services", () => {
@@ -149,7 +180,9 @@ test("Windows local document comparison normalizes case and encoding without adm
 });
 
 test("Windows case and encoded spelling variants remain usable through real integration IPC handlers", async () => {
-  const { handlers, event, frame, calls } = fixture();
+  const { handlers, event, frame, calls, state } = fixture();
+  state.settings.account.email = "alexandre.leuridan@gmail.com";
+  state.settings.account.emailVerified = true;
   frame.url = MAIN_RENDERER_URL.replace("index.html", "%69ndex.html");
   if (process.platform === "win32") frame.url = frame.url.toLowerCase();
   assert.equal((await handlers.get("controllers:status")(event)).ok, true);

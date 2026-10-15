@@ -304,7 +304,7 @@ test("l’interface invitée reste navigable mais verrouille données et command
   );
   assert.match(
     renderer,
-    /Les adresses, identifiants, ports, jetons et secrets/
+    /Cette page est réservée au compte propriétaire de ShenPulse/
   );
   assert.match(ipc, /assertAuthenticatedAccount\(store\)/);
   assert.match(ipc, /snapshotForRenderer\(core\.snapshot\(\), store\)/);
