@@ -229,10 +229,6 @@ function renderSettings() {
     </div>`;
   }
   const settings = snapshot.state.settings;
-  const backblaze = settings.backblaze || {};
-  const backblazeConfigured = Boolean(
-    backblaze.keyIdSecretId && backblaze.applicationKeySecretId
-  );
   return `
     <form id="settings-form" class="page-grid">
       <div class="settings-layout">
@@ -273,17 +269,9 @@ function renderSettings() {
           </div>
         </section>
         <section class="card">
-          <header class="card-header"><div><p class="eyebrow">STOCKAGE MÉDIA GLOBAL</p><h3>Backblaze B2</h3><small>Sons, images, GIF et vidéos personnalisés.</small></div><span class="badge ${backblazeConfigured ? "success" : ""}">${backblazeConfigured ? "CONFIGURÉ" : "À CONFIGURER"}</span></header>
+          <header class="card-header"><div><p class="eyebrow">STOCKAGE MÉDIA GLOBAL</p><h3>Médias ShenPulse</h3><small>Sons, images, GIF et vidéos personnalisés.</small></div><span class="badge cyan">GÉRÉ PAR SHENPULSE</span></header>
           <div class="card-body form-grid">
-            ${field("backblazeBucket", "Bucket", backblaze.bucket || "", "text", "full")}
-            ${field("backblazeEndpoint", "Endpoint S3", backblaze.endpoint || "", "text", "full")}
-            ${field("backblazeRegion", "Région", backblaze.region || "")}
-            ${field("backblazePrefix", "Dossier", backblaze.prefix || "mediauploads")}
-            ${field("backblazePublicBaseUrl", "URL publique", backblaze.publicBaseUrl || "", "url", "full")}
-            ${field("backblazeMaxMb", "Taille maximale (Mo)", Math.round(Number(backblaze.maxBytes || 209715200) / 1024 / 1024), "number", 'min="1" max="200"')}
-            <label class="field"><span>Nouveau Key ID</span><input type="password" name="backblazeKeyId" placeholder="${backblaze.keyIdSecretId ? "Clé chiffrée enregistrée" : "À renseigner"}"></label>
-            <label class="field"><span>Nouvelle Application Key</span><input type="password" name="backblazeApplicationKey" placeholder="${backblaze.applicationKeySecretId ? "Clé chiffrée enregistrée" : "À renseigner"}"></label>
-            <div class="field full"><small>Les clés sont conservées dans le coffre-fort Windows et ne sont jamais envoyées au renderer. Elles servent uniquement à importer les sons choisis dans le bucket.</small></div>
+            <div class="field full"><strong>Disponible pour tous les comptes connectés</strong><small>Importez vos fichiers depuis la bibliothèque de sons ou de médias. ShenPulse gère leur hébergement Backblaze B2 : aucune clé de stockage à renseigner sur cet appareil. Vos imports restent dans la bibliothèque de votre compte.</small></div>
           </div>
         </section>
       </div>

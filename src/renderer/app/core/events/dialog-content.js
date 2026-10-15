@@ -370,17 +370,7 @@ content.addEventListener("submit", async (event) => {
       obsPassword: values.obsPassword,
       spotify: {
         redirectPort: Number(values.spotifyRedirectPort)
-      },
-      backblaze: {
-        bucket: values.backblazeBucket,
-        endpoint: values.backblazeEndpoint,
-        region: values.backblazeRegion,
-        prefix: values.backblazePrefix,
-        publicBaseUrl: values.backblazePublicBaseUrl,
-        maxBytes: Number(values.backblazeMaxMb || 200) * 1024 * 1024
-      },
-      backblazeKeyId: values.backblazeKeyId,
-      backblazeApplicationKey: values.backblazeApplicationKey
+      }
     });
     render();
   }, "Paramètres enregistrés");

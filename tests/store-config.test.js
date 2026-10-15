@@ -12,7 +12,7 @@ const packageJson = JSON.parse(
 );
 
 test("embarque l'identité Microsoft Store réservée", () => {
-  assert.equal(packageJson.version, "2.0.0");
+  assert.equal(packageJson.version, "2.0.1");
   assert.equal(packageJson.build.buildVersion, undefined);
   assert.equal(packageJson.build.buildNumber, undefined);
   assert.equal(packageJson.build.appx.setBuildNumber, false);

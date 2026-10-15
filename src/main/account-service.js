@@ -11,6 +11,7 @@ const { runBrowserAuth } = require("./account/browser-auth");
 const { createLoopbackCallback } = require("./account/browser-loopback");
 const { createGoogleIdTokenLoopback } = require("./account/google-loopback");
 const { createPaymentLoopbackCallback } = require("./account/payment-loopback");
+const { prepareMediaUpload } = require("./account/media-uploads");
 
 /** Façade compatible du compte : garde les jetons en mémoire et orchestre les domaines métier. */
 class AccountService {
@@ -322,6 +323,14 @@ class AccountService {
     const uid = cleanUid(this.#session().uid);
     if (uid !== expectedUid) throw invalidSessionError("Le compte ShenPulse a changé.");
     return { uid, idToken };
+  }
+
+  /** Stockage partagé pour tout compte connecté, sans condition d’abonnement. */
+  async prepareMediaUpload(incoming = {}) {
+    return prepareMediaUpload(this, incoming, {
+      identity: () => this.identityForLiveDirectory(),
+      currentUid: () => cleanUid(this.#session().uid)
+    });
   }
 
   /** Vérifie le droit du compte actif par empreinte d'e-mail, jamais par saisie du rendu. */

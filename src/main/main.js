@@ -214,17 +214,13 @@ async function bootstrap() {
   }
   store = new StateStore(app.getPath("userData"), safeStorage);
   store.load();
-  const backblazeMedia = new BackblazeMediaService({
-    store,
-    environmentPaths: [
-      process.env.SHENAZEN_OVERLAY_ENV,
-      path.resolve(app.getAppPath(), "..", "ShenazenOverlay", ".env")
-    ].filter(Boolean)
-  });
-  backblazeMedia.importEnvironmentConfiguration();
   accountService = new AccountService({
     store,
     openExternal: (url) => shell.openExternal(url)
+  });
+  const backblazeMedia = new BackblazeMediaService({
+    store,
+    createUpload: (incoming) => accountService.prepareMediaUpload(incoming)
   });
   storeUpdateService = new StoreUpdateService({ app, shell });
   const adminService = new AdminService({ store, accountService });

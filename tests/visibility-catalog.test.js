@@ -13,6 +13,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   FEATURE_ITEMS,
+  VISIBILITY_SCHEMA_VERSION,
+  LEGACY_ALIASES,
+  SHARED_MEDIA_FEATURES,
   auditVisibility,
   canAccessScope,
   canonicalizeVisibility,
@@ -155,7 +158,7 @@ test("la migration remplace les identifiants hérités sans perdre leurs portée
   };
 
   const migrated = canonicalizeVisibility(legacy, catalog);
-  assert.equal(migrated.schemaVersion, 9);
+  assert.equal(migrated.schemaVersion, VISIBILITY_SCHEMA_VERSION);
   assert.deepEqual(migrated.navigation.live, { scope: "admin" });
   assert.deepEqual(migrated.navigation.goals, { scope: "hidden" });
   assert.deepEqual(migrated.navigation.dashboard, { scope: "public" });
@@ -177,7 +180,7 @@ test("Studio Live and overlays have independent scopes after the version 8 migra
   const catalog = { navigation: [{ id: "studio" }, { id: "overlays" }] };
   const legacy = canonicalizeVisibility({ schemaVersion: 7,
     navigation: { studio: { scope: "admin" } } }, catalog);
-  assert.equal(legacy.schemaVersion, 9);
+  assert.equal(legacy.schemaVersion, VISIBILITY_SCHEMA_VERSION);
   assert.deepEqual(legacy.navigation.overlays, { scope: "admin" });
   assert.deepEqual(legacy.navigation.studio, { scope: "public" });
   const updated = canonicalizeVisibility({ schemaVersion: 8,
@@ -200,7 +203,7 @@ test("Accueil is public by default and does not overwrite saved navigation visib
     { id: "dashboard" }, { id: "studio" }, { id: "overlays" }] };
   const migrated = canonicalizeVisibility({ schemaVersion: 7,
     navigation: { dashboard: { scope: "hidden" }, studio: { scope: "admin" } } }, catalog);
-  assert.equal(migrated.schemaVersion, 9, "la migration commerciale conserve les droits des autres pages");
+  assert.equal(migrated.schemaVersion, VISIBILITY_SCHEMA_VERSION, "la migration commerciale conserve les droits des autres pages");
   assert.deepEqual(migrated.navigation.home, { scope: "public" });
   assert.deepEqual(migrated.navigation.dashboard, { scope: "hidden" });
   assert.deepEqual(migrated.navigation.overlays, { scope: "admin" });
@@ -272,7 +275,7 @@ test("la migration IRL ouvre uniquement les anciennes portées forcées proprié
     games: { private: { scope: "admin" } }, actionTypeOverrides: { "irl:shelly": false } };
   const saved = structuredClone(old);
   const migrated = migrateVisibility(old);
-  assert.equal(migrated.schemaVersion, 9);
+  assert.equal(migrated.schemaVersion, VISIBILITY_SCHEMA_VERSION);
   assert.equal(scopeFor(old, "navigation", "irl"), "public", "le chemin chaud interprète aussi le cache brut");
   assert.deepEqual(migrated.navigation.irl, { scope: "public" });
   assert.deepEqual(migrated.features["irl:shelly"], { scope: "public", detail: "conservé" });
@@ -298,8 +301,53 @@ test("IRL conserve les interdictions anciennes et toutes les restrictions modern
   }
   const source = { schemaVersion: 9, navigation: { irl: { scope: "admin" } },
     features: { "irl:shelly": { scope: "admin" } }, actionTypes: { "irl:shelly": { scope: "admin" } } };
-  assert.deepEqual(migrateVisibility(source), source);
+  const migrated = migrateVisibility(source);
+  assert.deepEqual(migrated.navigation, source.navigation);
+  assert.deepEqual(migrated.actionTypes, source.actionTypes);
+  assert.deepEqual(migrated.features["irl:shelly"], source.features["irl:shelly"]);
   assert.equal(scopeFor(source, "navigation", "irl"), "admin");
+});
+
+test("le stockage partagé ignore uniquement les anciens blocages Backblaze, pas les autres droits", () => {
+  for (const schemaVersion of [0, 8, 9, 10, 100]) {
+    for (const scope of ["admin", "hidden", false]) {
+      const source = { schemaVersion, features: {
+        "backblaze:sounds": { scope, note: "conservée" }, "backblaze.media": scope,
+        "tts:voices": { scope: "hidden" }, "obs:websocket": { scope: "admin" }
+      }, maintenanceFeatures: { storageSummary: { scope } },
+      navigation: { voice: { scope: "hidden" }, irl: { scope: "admin" } },
+      actionTypes: { "audio:play": { scope: "hidden" } }, games: { private: { scope: "admin" } } };
+      const before = structuredClone(source);
+      const migrated = migrateVisibility(source);
+      for (const id of SHARED_MEDIA_FEATURES) {
+        assert.equal(scopeFor(source, "features", id), "public", "le cache Firebase brut doit fonctionner immédiatement");
+        assert.equal(scopeFor(migrated, "features", id), "public");
+        assert.equal(migrated.features[id.replace(".", ":")].scope, "public");
+        assert.equal(LEGACY_ALIASES.features[id], undefined);
+      }
+      assert.equal(migrated.features["backblaze:sounds"].note, "conservée");
+      for (const id of ["tts:voices", "obs:websocket"]) assert.deepEqual(migrated.features[id], before.features[id]);
+      assert.deepEqual(migrated.navigation.voice, before.navigation.voice);
+      if (schemaVersion >= 9) assert.deepEqual(migrated.navigation.irl, before.navigation.irl);
+      assert.deepEqual(migrated.actionTypes, before.actionTypes);
+      assert.deepEqual(migrated.games, before.games);
+      assert.deepEqual(source, before, "migration sans mutation du document distant");
+      assert.deepEqual(migrateVisibility(migrated), migrated, "migration idempotente");
+    }
+  }
+});
+
+test("la console ne peut pas remettre le stockage partagé en accès propriétaire", () => {
+  const catalog = { features: FEATURE_ITEMS };
+  const source = canonicalizeVisibility({}, catalog);
+  source.features["backblaze:sounds"] = { scope: "admin" };
+  assert.equal(auditVisibility(source, catalog).changed, true);
+  const canonical = canonicalizeVisibility(source, catalog);
+  assert.equal(auditVisibility(canonical, catalog).changed, false);
+  for (const id of SHARED_MEDIA_FEATURES) {
+    assert.equal(FEATURE_ITEMS.find((item) => item.id === id).fixedScope, "public");
+    assert.deepEqual(canonical.features[id.replace(".", ":")], { scope: "public" });
+  }
 });
 
 test("relever le schéma conserve l'alias historique Studio des overlays", () => {

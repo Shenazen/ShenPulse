@@ -30,14 +30,21 @@ const VISUAL_TYPES = new Map([
   [".webp", "image/webp"]
 ]);
 
+const MAX_MEDIA_BYTES = 200 * 1024 * 1024;
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+
 class BackblazeMediaService {
-  constructor({ store, environmentPaths = [], fetchImpl = globalThis.fetch }) {
+  constructor({ store, environmentPaths = [], fetchImpl = globalThis.fetch, createUpload = null }) {
     this.store = store;
     this.environmentPaths = environmentPaths;
     this.fetch = fetchImpl;
+    // L'application distribuée demande une autorisation au serveur ; elle ne
+    // reçoit jamais les clés du bucket. Le mode local reste réservé aux outils.
+    this.createUpload = typeof createUpload === "function" ? createUpload : null;
   }
 
   importEnvironmentConfiguration() {
+    if (this.createUpload) return this.status();
     const current = readState(this.store, ["settings.backblaze"]).settings.backblaze || {};
     if (current.keyIdSecretId && current.applicationKeySecretId) {
       return this.status();
@@ -73,6 +80,9 @@ class BackblazeMediaService {
   }
 
   status() {
+    if (this.createUpload) {
+      return { configured: true, managed: true, maxBytes: MAX_MEDIA_BYTES };
+    }
     try {
       const config = this.#configuration();
       return {
@@ -89,8 +99,8 @@ class BackblazeMediaService {
     }
   }
 
-  async uploadSound(filePath) {
-    const media = await this.uploadMedia(filePath, "sound");
+  async uploadSound(filePath, options = {}) {
+    const media = await this.uploadMedia(filePath, "sound", options);
     return {
       ...media,
       detail: `Son personnalisé Backblaze · ${formatBytes(media.size)}`,
@@ -99,8 +109,8 @@ class BackblazeMediaService {
     };
   }
 
-  async uploadMedia(filePath, requestedKind = "visual") {
-    const config = this.#configuration();
+  async uploadMedia(filePath, requestedKind = "visual", { expectedUid = "" } = {}) {
+    if (this.createUpload || expectedUid) assertMediaAccount(this.store, expectedUid);
     const absolutePath = path.resolve(String(filePath || ""));
     const extension = path.extname(absolutePath).toLowerCase();
     const typeMap = requestedKind === "sound" ? AUDIO_TYPES : VISUAL_TYPES;
@@ -116,27 +126,50 @@ class BackblazeMediaService {
     if (!stats.isFile() || stats.size <= 0) {
       throw new Error("Le fichier sélectionné est vide ou introuvable.");
     }
-    if (stats.size > config.maxBytes) {
+    const config = this.createUpload ? null : this.#configuration();
+    const maxBytes = config?.maxBytes || MAX_MEDIA_BYTES;
+    if (stats.size > maxBytes) {
       throw new Error(
-        `Fichier trop volumineux. Limite : ${Math.round(config.maxBytes / 1024 / 1024)} Mo.`
+        `Fichier trop volumineux. Limite : ${Math.round(maxBytes / 1024 / 1024)} Mo.`
       );
     }
-    const key = [
+    if (this.createUpload || expectedUid) assertMediaAccount(this.store, expectedUid);
+    const localKey = config ? [
       safePathSegment(config.prefix || "mediauploads"),
       "desktop",
       mediaKind(contentType, requestedKind),
       `${randomUUID()}${extension}`
-    ].filter(Boolean).join("/");
-    const uploadUrl = presignPutObjectUrl({ config, key });
+    ].filter(Boolean).join("/") : "";
+    const target = this.createUpload
+      ? validateManagedUpload(await this.createUpload({
+          fileName: path.basename(absolutePath), contentType, size: stats.size, expectedUid
+        }), { contentType, size: stats.size, expectedUid })
+      : {
+          key: localKey,
+          uploadUrl: presignPutObjectUrl({ config, key: localKey }),
+          publicUrl: publicMediaUrl(config, localKey),
+          headers: { "Content-Type": contentType }
+        };
+    if (this.createUpload || expectedUid) assertMediaAccount(this.store, expectedUid);
     const body = await fs.promises.readFile(absolutePath);
-    const response = await this.fetch(uploadUrl, {
+    if (body.length !== stats.size) {
+      throw new Error("Le fichier a changé pendant son import. Sélectionnez-le à nouveau.");
+    }
+    if (this.createUpload || expectedUid) assertMediaAccount(this.store, expectedUid);
+    const response = await this.fetch(target.uploadUrl, {
       method: "PUT",
       body,
       headers: {
+        ...target.headers,
         "Content-Length": String(body.length),
         "Content-Type": contentType
-      }
+      },
+      // Ni redirection, ni cookies, ni jeton Firebase vers un hôte de stockage.
+      redirect: "error",
+      credentials: "omit",
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS)
     });
+    if (this.createUpload || expectedUid) assertMediaAccount(this.store, expectedUid);
     if (!response.ok) {
       throw new Error(`Upload Backblaze B2 échoué (${response.status}).`);
     }
@@ -150,12 +183,12 @@ class BackblazeMediaService {
       name,
       detail: `${mediaKindLabel(kind)} personnalisé Backblaze · ${formatBytes(stats.size)}`,
       category: "custom",
-      url: publicMediaUrl(config, key),
+      url: target.publicUrl,
       tone: "cyan",
       kind,
       source: "custom",
       contentType,
-      key,
+      key: target.key,
       size: stats.size,
       createdAt: new Date().toISOString()
     };
@@ -186,10 +219,10 @@ class BackblazeMediaService {
       prefix: safePathSegment(settings.prefix || "mediauploads"),
       publicBaseUrl: validatePublicBaseUrl(settings.publicBaseUrl),
       maxBytes: Math.min(
-        200 * 1024 * 1024,
+        MAX_MEDIA_BYTES,
         Math.max(
           1024 * 1024,
-          positiveNumber(settings.maxBytes, 200 * 1024 * 1024)
+          positiveNumber(settings.maxBytes, MAX_MEDIA_BYTES)
         )
       )
     };
@@ -208,6 +241,65 @@ class BackblazeMediaService {
     }
     return {};
   }
+}
+
+/** Identité locale uniquement : aucun secret ou jeton ne sort de cette vérification. */
+function currentMediaAccountUid(store) {
+  const session = store?.getAccountSession?.() ||
+    readState(store, ["settings.account"]).settings.account || {};
+  const uid = String(session.uid || "").trim();
+  return typeof store?.getActiveAccountUid === "function" && store.getActiveAccountUid() !== uid
+    ? "" : uid;
+}
+
+/** Empêche un import commencé sous A d'être ajouté à la bibliothèque de B. */
+function assertMediaAccount(store, expectedUid) {
+  if (!expectedUid || currentMediaAccountUid(store) !== expectedUid) {
+    const error = new Error("Le compte ShenPulse a changé pendant l'import. Recommencez depuis le compte souhaité.");
+    error.code = "MEDIA_ACCOUNT_CHANGED";
+    throw error;
+  }
+}
+
+/** Seules les destinations B2 émises par le courtier sont utilisables pour un PUT. */
+function validateManagedUpload(payload, { contentType, size, expectedUid }) {
+  const invalid = () => new Error("Le service de stockage a renvoyé une autorisation média invalide.");
+  const media = payload?.media;
+  const upload = payload?.upload;
+  if (payload?.ok !== true || upload?.method !== "PUT" ||
+      media?.contentType !== contentType || media?.size !== size) throw invalid();
+  const key = String(media?.key || "");
+  if (!key || key.length > 1024 || /[\\\u0000-\u001f\u007f?#]/.test(key) ||
+      key.split("/").some((part) => !part || part === "." || part === "..")) throw invalid();
+  if (key.split("/")[1] !== safePathSegment(expectedUid)) throw invalid();
+  let uploadUrl, publicUrl;
+  try {
+    uploadUrl = new URL(upload.url);
+    publicUrl = new URL(media.publicUrl);
+  } catch { throw invalid(); }
+  for (const url of [uploadUrl, publicUrl]) {
+    if (url.protocol !== "https:" || url.username || url.password || url.port || url.hash ||
+        !url.hostname.endsWith(".backblazeb2.com")) throw invalid();
+  }
+  if (!/^(?:[a-z0-9][a-z0-9.-]*\.)?s3\.[a-z0-9-]+\.backblazeb2\.com$/i.test(uploadUrl.hostname) ||
+      publicUrl.search || !publicUrl.pathname.endsWith(`/${encodeS3Key(key)}`) ||
+      !uploadUrl.pathname.endsWith(`/${encodeS3Key(key)}`)) throw invalid();
+  if (upload.expiresAt !== undefined) {
+    const expiry = typeof upload.expiresAt === "number" ? upload.expiresAt : Date.parse(upload.expiresAt);
+    if (!Number.isFinite(expiry) || expiry <= Date.now()) throw invalid();
+  }
+  const headers = {};
+  for (const [name, value] of Object.entries(upload.headers || {})) {
+    const lower = name.toLowerCase();
+    if (!["content-type", "content-length", "x-amz-content-sha256", "x-amz-checksum-sha256"].includes(lower) ||
+        typeof value !== "string" || /[\r\n]/.test(value)) throw invalid();
+    if (lower === "content-type" && value !== contentType) throw invalid();
+    if (lower === "content-length" && value !== String(size)) throw invalid();
+    headers[lower === "content-type" ? "Content-Type" : lower === "content-length" ? "Content-Length" : lower] = value;
+  }
+  // Ne jamais conserver le jeton signé dans la bibliothèque : seule l'URL
+  // publique permanente sera enregistrée et partagée avec les overlays.
+  return { key, uploadUrl: uploadUrl.href, publicUrl: publicUrl.href, headers };
 }
 
 function presignPutObjectUrl({ config, key, now = new Date(), ttl = 900 }) {
@@ -373,7 +465,10 @@ function mediaKindLabel(kind) {
 module.exports = {
   AUDIO_TYPES,
   BackblazeMediaService,
+  MAX_MEDIA_BYTES,
   VISUAL_TYPES,
+  assertMediaAccount,
+  currentMediaAccountUid,
   parseEnvironmentFile,
   presignPutObjectUrl,
   publicMediaUrl

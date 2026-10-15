@@ -8,7 +8,14 @@
   if (root) root.ShenPulseVisibility = catalog;
 })(typeof globalThis === "object" ? globalThis : this, () => {
   const SCOPES = new Set(["public", "admin", "hidden"]);
-  const VISIBILITY_SCHEMA_VERSION = 9;
+  const VISIBILITY_SCHEMA_VERSION = 10;
+  // Le seuil de l'ancienne migration IRL ne suit pas les migrations futures.
+  const IRL_PUBLIC_SCHEMA_VERSION = 9;
+  const SHARED_MEDIA_FEATURES = Object.freeze(["backblaze.sounds", "backblaze.media"]);
+
+  function isSharedMediaFeature(id) {
+    return SHARED_MEDIA_FEATURES.includes(id);
+  }
 
   const FEATURE_ITEMS = Object.freeze([
     {
@@ -38,14 +45,16 @@
     {
       id: "backblaze.sounds",
       label: "Sons personnalisés Backblaze B2",
-      detail: "Import et hébergement des sons ajoutés par l’utilisateur",
-      icon: "☁"
+      detail: "Stockage ShenPulse partagé, disponible pour tous les comptes connectés",
+      icon: "☁",
+      fixedScope: "public"
     },
     {
       id: "backblaze.media",
       label: "Médias personnalisés Backblaze B2",
-      detail: "Import et hébergement des images, GIF et vidéos de l’utilisateur",
-      icon: "▧"
+      detail: "Images, GIF et vidéos hébergés par ShenPulse pour tous les comptes connectés",
+      icon: "▧",
+      fixedScope: "public"
     },
     {
       id: "tts.voices",
@@ -94,8 +103,6 @@
       "sources.custom": ["setupFeatures.connectorStreamerbot"],
       "obs.websocket": ["setupFeatures.connectorObs"],
       "spotify.playback": ["navigation.song"],
-      "backblaze.sounds": ["maintenanceFeatures.storageSummary"],
-      "backblaze.media": ["maintenanceFeatures.storageSummary"],
       "tts.voices": ["actionTypes.tts"],
       "data.management": ["maintenanceFeatures.storageBreakdown"]
     },
@@ -171,7 +178,7 @@
     const irl = (section === "navigation" && id === "irl") ||
       (["features", "actionTypes"].includes(section) && id === "irl.shelly");
     const normalized = normalizeScope(value);
-    return irl && Number(source?.schemaVersion || 0) < VISIBILITY_SCHEMA_VERSION && normalized === "admin"
+    return irl && Number(source?.schemaVersion || 0) < IRL_PUBLIC_SCHEMA_VERSION && normalized === "admin"
       ? "public" : normalized;
   }
 
@@ -186,13 +193,24 @@
       if (candidate.navigation.overlays === undefined) candidate.navigation.overlays = candidate.navigation.studio;
       delete candidate.navigation.studio;
     }
-    if (Number(candidate.schemaVersion || 0) < VISIBILITY_SCHEMA_VERSION) {
+    if (Number(candidate.schemaVersion || 0) < IRL_PUBLIC_SCHEMA_VERSION) {
       for (const [section, id] of [["navigation", "irl"], ["features", "irl.shelly"], ["actionTypes", "irl.shelly"]]) {
         for (const key of new Set([id, storageKey(id)])) {
           const entry = candidate[section]?.[key];
           if (entry === undefined || normalizeScope(entry) !== "admin") continue;
           candidate[section][key] = entry && typeof entry === "object" ? { ...entry, scope: "public" } : "public";
         }
+      }
+    }
+    // Le stockage n'est plus une fonction propriétaire : ni une ancienne
+    // restriction, ni son ancien alias « résumé stockage » ne bloquent l'import.
+    // L'authentification et la validation des formats restent côté serveur.
+    candidate.features = candidate.features && typeof candidate.features === "object" && !Array.isArray(candidate.features)
+      ? candidate.features : {};
+    for (const id of SHARED_MEDIA_FEATURES) {
+      for (const key of new Set([storageKey(id), ...(candidate.features[id] !== undefined ? [id] : [])])) {
+        const entry = candidate.features[key];
+        candidate.features[key] = entry && typeof entry === "object" ? { ...entry, scope: "public" } : { scope: "public" };
       }
     }
     candidate.schemaVersion = Math.max(VISIBILITY_SCHEMA_VERSION, Number(candidate.schemaVersion) || VISIBILITY_SCHEMA_VERSION);
@@ -206,6 +224,8 @@
     aliases = LEGACY_ALIASES,
     fallback = "public"
   ) {
+    // Les anciennes réponses Firebase peuvent arriver avant leur migration.
+    if (section === "features" && isSharedMediaFeature(id)) return "public";
     // Before version 8, "studio" named the overlays gallery. It must not
     // become a scope for the new community-games Studio Live page.
     if (section === "navigation" && id === "studio" && Number(source?.schemaVersion || 0) < 8) {
@@ -295,8 +315,10 @@
     }
     obsolete += Object.keys(source?.setupFeatures || {}).length;
     obsolete += Object.keys(source?.maintenanceFeatures || {}).length;
+    const sharedStorageNeedsMigration = (catalogBySection?.features || []).some((item) =>
+      isSharedMediaFeature(item.id) && normalizeScope(source?.features?.[storageKey(item.id)] ?? source?.features?.[item.id]) !== "public");
     return {
-      changed: missing > 0 || obsolete > 0,
+      changed: missing > 0 || obsolete > 0 || sharedStorageNeedsMigration,
       missing,
       obsolete,
       total
@@ -306,6 +328,8 @@
   return Object.freeze({
     VISIBILITY_SCHEMA_VERSION,
     FEATURE_ITEMS,
+    SHARED_MEDIA_FEATURES,
+    isSharedMediaFeature,
     LEGACY_ALIASES,
     auditVisibility,
     canAccessScope,

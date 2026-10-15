@@ -19,6 +19,9 @@ function canAccessCatalogItem(section, id) {
 }
 
 function canAccessFeature(id) {
+  // Le stockage partagé ne dépend ni d'un abonnement ni d'un ancien flag admin.
+  // Il reste fermé aux visiteurs sans compte, comme les canaux d'import IPC.
+  if (visibilityTools.isSharedMediaFeature(id)) return isAccountAuthenticated();
   if (id === "irl.shelly" && (!isAccountAuthenticated() || !hasProAccess() ||
       !canAccessCatalogItem("navigation", "irl"))) return false;
   return canAccessCatalogItem("features", id);

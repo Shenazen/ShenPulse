@@ -6,6 +6,7 @@
 const { searchMyInstantsSounds, searchWikimediaMedia } = require("../catalogs");
 const { id, safeString } = require("../utils");
 const { notify } = require("./notifications");
+const { assertMediaAccount, currentMediaAccountUid } = require("../backblaze-media");
 
 function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dialog, net }) {
   handle("catalog:gifts", async (_event, query, limit) => {
@@ -38,6 +39,8 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
   );
   
   handle("sound:upload", async () => {
+    const expectedUid = currentMediaAccountUid(store);
+    assertMediaAccount(store, expectedUid);
     const result = await dialog.showOpenDialog(getWindow(), {
       title: "Ajouter un son personnalisé",
       properties: ["openFile"],
@@ -49,7 +52,9 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
       ]
     });
     if (result.canceled || !result.filePaths[0]) return { canceled: true };
-    const sound = await backblazeMedia.uploadSound(result.filePaths[0]);
+    assertMediaAccount(store, expectedUid);
+    const sound = await backblazeMedia.uploadSound(result.filePaths[0], { expectedUid });
+    assertMediaAccount(store, expectedUid);
     store.mutate((state) => {
       state.customSounds = [
         sound,
@@ -63,6 +68,8 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
   });
   
   handle("media:upload", async (_event, requestedKind) => {
+    const expectedUid = currentMediaAccountUid(store);
+    assertMediaAccount(store, expectedUid);
     const kind = requestedKind === "sound" ? "sound" : "visual";
     const result = await dialog.showOpenDialog(getWindow(), {
       title:
@@ -96,10 +103,13 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
     if (result.canceled || !result.filePaths[0]) {
       return { canceled: true };
     }
+    assertMediaAccount(store, expectedUid);
     const media = await backblazeMedia.uploadMedia(
       result.filePaths[0],
-      kind
+      kind,
+      { expectedUid }
     );
+    assertMediaAccount(store, expectedUid);
     if (kind === "sound") {
       store.mutate((state) => {
         state.customSounds = [

@@ -164,6 +164,7 @@ async function saveAdminVisibilityScope(section, id, scope) {
     throw new Error("Cet élément n’existe pas dans ShenPulseNew.");
   }
   if (catalogItem.ownerOnly) scope = "admin";
+  else if (catalogItem.fixedScope) scope = catalogItem.fixedScope;
   const storedId = adminVisibilityStorageKey(id);
   next[section][storedId] = { scope };
   if (section === "actionTypes") {
@@ -187,7 +188,7 @@ async function saveAdminVisibilityBulk(scope) {
     const storedId = adminVisibilityStorageKey(id);
     const item = items.find((entry) => entry.id === id);
     next[adminVisibilitySection][storedId] = {
-      scope: item?.ownerOnly ? "admin" : scope
+      scope: item?.ownerOnly ? "admin" : item?.fixedScope || scope
     };
     if (adminVisibilitySection === "actionTypes") {
       next.actionTypeOverrides[storedId] = true;

@@ -33,14 +33,20 @@ moteur de lecture audio.
 recopier les éditeurs ou l'exécution. Les identifiants `data-rule`, `data-id`,
 `data-index` et les commandes `data-action` restent identiques.
 
-La visibilité TTS dépend toujours de `tts.voices` et de `tts.speak`. L'import
-personnalisé dépend toujours de `backblaze.sounds`. Le mode consultation ne montre
+La visibilité TTS dépend toujours de `tts.voices` et de `tts.speak`. Depuis la
+version 2.0.1, l'import personnalisé est disponible pour tous les comptes
+authentifiés (Free, Pro, Premium et administrateur), sans configuration Backblaze
+locale. `backblaze.sounds` et `backblaze.media` ont une portée publique fixe ; les
+anciennes restrictions et l'alias `maintenanceFeatures.storageSummary` ne bloquent
+plus les imports. Le stockage reste géré côté serveur et les bibliothèques restent
+propres à chaque compte. Le mode consultation ne montre
 aucune règle privée ni URL de sortie. Les actions audio masquées continuent
 d'être filtrées par `soundActionRows`.
 
 Les réglages de TTS, le volume, le choix local/LIVE, les écrans 1 à 8, les règles
 de rôle et de contenu restent enregistrés dans les structures existantes.
-La refonte n'effectue aucune migration de données.
+La refonte n'effectue aucune migration des règles ni des profils. La mise à jour
+2.0.1 migre uniquement les anciennes portées de visibilité du stockage partagé.
 
 ## Architecture et coût
 

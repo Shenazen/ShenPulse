@@ -278,7 +278,7 @@ function renderAdminVisibility() {
         ${entries.length ? entries.map((item) => `<article>
           <span class="admin-item-icon">${escapeHtml(item.icon || adminVisibilityIcon(item.scope))}</span>
           <div class="admin-item-copy"><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail || "")}</small><code>${escapeHtml(item.id)}</code></div>
-          <select data-action="admin-scope" data-section="${escapeHtml(adminVisibilitySection)}" data-id="${escapeHtml(item.id)}" class="scope-${escapeHtml(item.scope)}" aria-label="Visibilité de ${escapeHtml(item.label)}" ${item.ownerOnly ? "disabled title=\"Accès propriétaire forcé\"" : ""}>
+          <select data-action="admin-scope" data-section="${escapeHtml(adminVisibilitySection)}" data-id="${escapeHtml(item.id)}" class="scope-${escapeHtml(item.scope)}" aria-label="Visibilité de ${escapeHtml(item.label)}" ${item.ownerOnly ? "disabled title=\"Accès propriétaire forcé\"" : item.fixedScope ? "disabled title=\"Disponible pour tous les comptes connectés\"" : ""}>
             <option value="public" ${item.scope === "public" ? "selected" : ""}>Visible par tous</option>
             <option value="admin" ${item.scope === "admin" ? "selected" : ""}>Moi uniquement</option>
             <option value="hidden" ${item.scope === "hidden" ? "selected" : ""}>Masqué</option>

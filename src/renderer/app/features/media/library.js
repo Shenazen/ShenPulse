@@ -40,7 +40,7 @@ function soundPickerField(
         <button type="button" class="button small" data-open-media-library data-kind="sound" data-input="${escapeHtml(name)}" data-optional="${optional ? "true" : "false"}">Ouvrir la bibliothèque</button>
       </div>
     </div>
-    <small>Catalogue web MyInstants, aperçu immédiat et import personnel Backblaze.</small>
+    <small>Catalogue web MyInstants, aperçu immédiat et import hébergé par ShenPulse.</small>
   </div>`;
 }
 
@@ -83,7 +83,7 @@ function mediaPickerField(
         <button type="button" class="button small" data-open-media-library data-kind="visual" data-input="${escapeHtml(name)}" data-optional="${optional ? "true" : "false"}">Ouvrir la bibliothèque média</button>
       </div>
     </div>
-    <small>Catalogue web d’images, GIF, vidéos et animations, ou import personnel Backblaze.</small>
+    <small>Catalogue web d’images, GIF, vidéos et animations, ou import hébergé par ShenPulse.</small>
   </div>`;
 }
 
@@ -312,7 +312,7 @@ function renderMediaLibrary() {
           ? mediaLibraryContext.kind === "sound"
             ? "MyInstants · aperçu avant utilisation"
             : "Wikimedia Commons & animations TikFinity"
-          : "Vos imports personnels Backblaze"
+          : "Les imports de votre compte ShenPulse"
       }</span>`;
   if (mediaLibraryContext.kind === "sound") {
     mediaLibraryResults.className = "media-library-results sound-results";
@@ -368,7 +368,7 @@ function mediaLibraryEmptyMarkup() {
   return `<div class="media-library-empty">
     <span>◇</span>
     <strong>${isCustom ? "Aucun média personnalisé" : "Aucun résultat"}</strong>
-    <p>${isCustom ? "Utilisez le bouton d’import pour envoyer un fichier depuis votre PC vers votre espace Backblaze." : "Essayez une autre recherche ou un autre filtre."}</p>
+    <p>${isCustom ? "Utilisez le bouton d’import pour héberger votre fichier avec ShenPulse, sans configurer de stockage." : "Essayez une autre recherche ou un autre filtre."}</p>
   </div>`;
 }
 
@@ -481,10 +481,10 @@ async function loadRemoteMediaLibrary({ append = false } = {}) {
 function updateMediaLibraryUploadButton({ busy = false } = {}) {
   const isSound = mediaLibraryContext?.kind === "sound";
   mediaLibraryUploadButton.innerHTML = busy
-    ? `<span class="media-import-icon">↥</span><span><strong>Envoi vers Backblaze…</strong><small>Veuillez patienter pendant le transfert.</small></span>`
+    ? `<span class="media-import-icon">↥</span><span><strong>Import ShenPulse…</strong><small>Veuillez patienter pendant le transfert.</small></span>`
     : `<span class="media-import-icon">＋</span><span><strong>${
         isSound ? "Importer mon propre son" : "Importer mon propre média"
-      }</strong><small>Depuis votre PC · stockage personnel Backblaze</small></span>`;
+      }</strong><small>Depuis votre PC · hébergement géré par ShenPulse</small></span>`;
 }
 
 function updateCompactMediaPicker(root, item) {
@@ -537,7 +537,7 @@ async function uploadMediaFromLibrary() {
   if (!canAccessFeature(featureId)) {
     return toast(
       "Import indisponible",
-      "Cette bibliothèque personnalisée est masquée par l’administration.",
+      "Connectez-vous à votre compte ShenPulse pour importer vos fichiers.",
       true
     );
   }

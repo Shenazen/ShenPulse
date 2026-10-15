@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.0.0',
-  title: 'Un espace créateur repensé, du chat au match.',
-  summary: 'Une interface plus compacte et un code réorganisé, tout en conservant les profils et les configurations existantes.',
+  version: '2.0.1',
+  title: 'Tes médias, sans configuration supplémentaire.',
+  summary: 'Le stockage partagé ShenPulse permet à tous les comptes connectés d’importer leurs sons, vidéos, images et GIF, sans clé Backblaze à renseigner.',
   highlights: [
-    ['Pilote ton live', 'Accueil, tableau de bord et utilisateurs revus ; listes compactes pour les actions, les sons, les commandes et les Machines IRL.'],
-    ['Donne les commandes au chat', 'Crée des commandes ! pour la musique, les actions et les overlays, avec permissions et cooldowns, sans réponse automatique publiée dans le chat.'],
-    ['Anime tes matchs', 'Suivi des événements TikTok reçus, widgets, automatisations et six animations Cyber avec son intégré. Les vidéos sont chiffrées dans l’application, sans bouton d’export.']
+    ['Importe tes médias', 'Sons, vidéos, images et GIF utilisent le stockage partagé pour les comptes gratuits et abonnés.'],
+    ['Garde tes réglages', 'Les bibliothèques, profils et URL de médias déjà enregistrés sont conservés.'],
+    ['Un import plus sûr', 'Contrôle des formats et de la taille, erreurs plus lisibles et protection contre un changement de compte pendant le transfert.']
   ]
 }
 

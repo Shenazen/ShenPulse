@@ -21,6 +21,7 @@ const {
   normalizeTrialRequest
 } = require("../src/main/admin-service");
 const { createDefaultState } = require("../src/main/defaults");
+const { VISIBILITY_SCHEMA_VERSION } = require("../src/shared/visibility-catalog");
 
 test("réserve la connexion admin à l’adresse propriétaire avant tout appel réseau", async () => {
   let fetchCalls = 0;
@@ -143,7 +144,7 @@ test("les réponses Firebase anciennes ouvrent IRL sans rétablir la restriction
     actionTypeOverrides: { "irl:shelly": false } };
   for (const normalize of [normalizeSiteSettings, normalizePublicVisibility]) {
     const normalized = normalize(old);
-    assert.equal(normalized.schemaVersion, 9);
+    assert.equal(normalized.schemaVersion, VISIBILITY_SCHEMA_VERSION);
     assert.deepEqual(normalized.navigation.irl, { scope: "public" });
     assert.deepEqual(normalized.navigation.admin, { scope: "admin" });
     assert.deepEqual(normalized.features["irl:shelly"], { scope: "public" });
@@ -155,6 +156,21 @@ test("les réponses Firebase anciennes ouvrent IRL sans rétablir la restriction
     assert.deepEqual(modern.navigation.irl, { scope: "admin" });
   }
   assert.equal(normalizeSiteSettings(old).actionTypeOverrides["irl:shelly"], false);
+});
+
+test("les réponses Firebase rendent les imports Backblaze accessibles sans ouvrir les autres services", () => {
+  const old = { schemaVersion: 9, features: { "backblaze:sounds": { scope: "admin" }, "backblaze:media": false,
+    "tts:voices": { scope: "hidden" }, "obs:websocket": { scope: "admin" } },
+    navigation: { irl: { scope: "admin" } }, maintenanceFeatures: { storageSummary: { scope: "hidden" } } };
+  for (const normalize of [normalizeSiteSettings, normalizePublicVisibility]) {
+    const normalized = normalize(old);
+    assert.equal(normalized.schemaVersion, VISIBILITY_SCHEMA_VERSION);
+    assert.deepEqual(normalized.features["backblaze:sounds"], { scope: "public" });
+    assert.deepEqual(normalized.features["backblaze:media"], { scope: "public" });
+    assert.deepEqual(normalized.features["tts:voices"], { scope: "hidden" });
+    assert.deepEqual(normalized.features["obs:websocket"], { scope: "admin" });
+    assert.deepEqual(normalized.navigation.irl, { scope: "admin" });
+  }
 });
 
 test("la visibilité publique reste disponible hors ligne après déconnexion", async () => {
