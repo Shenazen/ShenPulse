@@ -102,12 +102,31 @@ envoi de l'AppXUpload au produit `9NDR71Z41ZJG`, vol privé, installation et
 smoke de cette version Store, puis seulement soumission publique.
 Cela ne constitue pas une certification de l'EXE indépendant.
 
-## Publication
+## Publication et contrôles post-production
 
-Au moment du commit de release : artefacts EXE/site qualifiés, plan VPS validé,
-publication Git/VPS/Firebase et contrôles HTTPS encore à réaliser.
-Ce statut sera complété après les opérations effectives ; construire les paquets
-ne vaut pas publication.
+- Commit de release `9ed5659e925bcf50937168ac40cb6e33a90f8f70`, tag annoté
+  `v2.0.3` : poussés vers `origin`, références distantes vérifiées.
+- Publication VPS terminée : EXE versionné publié avant les fichiers statiques,
+  31 fichiers contrôlés par SHA-256 côté serveur. Backend, jeux, PM2 et données
+  privées non modifiés ; anciens installateurs conservés.
+- Sauvegarde de la vitrine :
+  `/var/www/shenpulse/.public-site-backups/pre-public-site-2.0.3-20261016T121217Z-e65dcf38`.
+- Contrôle HTTPS indépendant après publication : **31/31 fichiers** identiques
+  aux sources qualifiées ; accueil, documentation et cinq routes légales
+  **7/7 en HTTP 200**, téléchargement 2.0.3 référencé.
+- EXE téléchargé intégralement par HTTPS : **512 659 659 octets**, SHA-256
+  `FC2ADB84E8DB736F1746A3A051C974D0073AF7666C7D11E5B48F526C1195DF1D`,
+  identique à l'artefact local. Ancien EXE 2.0.2 toujours en HTTP 200 avec ses
+  512 541 217 octets d'origine.
+- Firebase `database,hosting` déployé sur `shenazenoverlay`, site
+  `shenpulse-overlays`. Index et manifeste publics : `2.0.3-overlay1` en HTTPS,
+  loader public identique au source par SHA-256. Lecture anonyme de `/users`
+  refusée après déploiement ; les règles n'ont pas changé dans cette release.
+- Le canal **EXE/site et les overlays sont publiés**. Le Microsoft Store reste
+  **non envoyé et non publié**, en attente de WACK isolé et des étapes de vol
+  privé décrites plus haut. Aucune certification Store n'est annoncée.
+
+Journal de contrôle : `.artifacts/release-2.0.3-https-postcheck.log`.
 
 ## Journaux et incident de préparation
 
