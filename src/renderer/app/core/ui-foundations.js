@@ -29,9 +29,99 @@ function normalizeGiftName(value) {
     .toLocaleLowerCase("fr");
 }
 
+function trueCommunityHeartId(value) {
+  const id = String(value || "").trim().toLowerCase();
+  return typeof ShenPulseGiftIdentity !== "undefined" && typeof ShenPulseGiftIdentity.isCommunityHeartGiftId === "function"
+    ? ShenPulseGiftIdentity.isCommunityHeartGiftId(id) : id === "7934" || id === "heart-me";
+}
+
+function compatibleGiftAlias(gift, id) {
+  return !gift?.id || !id || trueCommunityHeartId(gift.id) === trueCommunityHeartId(id);
+}
+
+/** Presentation policy only: a creator skin cannot recolor the true Heart Me.
+ * Other exact IDs retain their provider's name and artwork, never its family. */
+function giftForPresentation(gift, id = gift?.id || "") {
+  if (!gift || typeof gift !== "object") return gift;
+  const result = { ...gift };
+  if (typeof ShenPulseGiftIdentity !== "undefined" && trueCommunityHeartId(id)) {
+    result.name = ShenPulseGiftIdentity.COMMUNITY_HEART_CANONICAL_NAME;
+    result.imageUrl = ShenPulseGiftIdentity.COMMUNITY_HEART_IMAGE_URL;
+    result.giftFamily = "community-heart";
+  } else if (id) {
+    if (result.giftFamily === "community-heart") result.giftFamily = "";
+    if (result.family === "community-heart") result.family = "";
+  }
+  for (const key of ["alternateIds", "giftIds"]) if (Array.isArray(result[key])) {
+    const filtered = result[key].filter((alias) => compatibleGiftAlias({ id }, alias));
+    if (filtered.length !== result[key].length) result[key] = filtered;
+  }
+  return Object.keys(result).every((key) => result[key] === gift[key]) ? gift : result;
+}
+
+// Creator-specific artwork is ephemeral and separate from historical IDs.
+// Changing account, profile, @ or room immediately makes the old artwork inert.
+let currentRoomGiftVisuals = null;
+function giftVisualRoomContext() {
+  const state = typeof snapshot !== "undefined" ? snapshot?.state : null;
+  const username = String(state?.settings?.tiktok?.username || "").trim().replace(/^@+/, "").toLowerCase();
+  return { username, roomId: String(state?.settings?.tiktok?.roomId || ""),
+    key: JSON.stringify([state?.settings?.account?.uid || "", state?.session?.profileId || "", username]) };
+}
+
+function rememberRoomGifts(gifts, room) {
+  const context = giftVisualRoomContext();
+  const target = String(room?.username || "").trim().replace(/^@+/, "").toLowerCase();
+  const roomId = String(room?.roomId || "");
+  if (!context.username || context.username !== target || !/^[1-9]\d{0,19}$/.test(roomId) ||
+    context.roomId && context.roomId !== roomId) return false;
+  if (room.available !== true && room.partial !== true) { currentRoomGiftVisuals = null; return true; }
+  const rows = (Array.isArray(gifts) ? gifts : []).slice(0, 10000).filter((gift) =>
+    typeof gift?.id === "string" && gift.id.length <= 160 && typeof gift.name === "string" &&
+    /^https:\/\//i.test(String(gift.imageUrl || "")));
+  const byId = currentRoomGiftVisuals?.key === context.key && currentRoomGiftVisuals.roomId === roomId
+    ? new Map(currentRoomGiftVisuals.byId) : new Map();
+  // Search responses contain only matching rows. A search for Rose must not
+  // erase a different already verified creator gift used elsewhere on the page.
+  for (const gift of rows) { byId.delete(gift.id); byId.set(gift.id, { ...giftForPresentation(gift) }); }
+  while (byId.size > 10000) byId.delete(byId.keys().next().value);
+  currentRoomGiftVisuals = { key: context.key, roomId, byId };
+  return true;
+}
+
+function currentRoomGiftForId(id) {
+  if (!id || !currentRoomGiftVisuals) return null;
+  const context = giftVisualRoomContext();
+  if (currentRoomGiftVisuals.key !== context.key || context.roomId && context.roomId !== currentRoomGiftVisuals.roomId) {
+    currentRoomGiftVisuals = null; return null;
+  }
+  return currentRoomGiftVisuals.byId.get(String(id)) || null;
+}
+
+function preferCurrentRoomGift(gift, id = "") {
+  if (!compatibleGiftAlias(gift, id)) return null;
+  const exact = currentRoomGiftForId(id) || currentRoomGiftForId(gift?.id);
+  if (exact && compatibleGiftAlias(exact, id || gift?.id)) return giftForPresentation(exact, id || exact.id);
+  const matches = [...new Set((gift?.alternateIds || []).filter((alias) => compatibleGiftAlias(gift, alias))
+    .map(currentRoomGiftForId).filter(Boolean))];
+  return giftForPresentation(matches.length === 1 ? matches[0] : gift, id || gift?.id);
+}
+
+function currentRoomGiftForName(name) {
+  const firstId = currentRoomGiftVisuals?.byId.keys().next().value;
+  if (!firstId || !currentRoomGiftForId(firstId)) return null;
+  const key = normalizeGiftName(name);
+  const matches = [...currentRoomGiftVisuals.byId.values()].filter((gift) => normalizeGiftName(gift.name) === key);
+  return matches.length === 1 ? matches[0] : null;
+}
+
 function rememberGifts(gifts = []) {
   const replacements = new Map();
-  for (const gift of gifts) {
+  // Discard only incorrect in-memory red-heart cross-ID associations left by
+  // older catalogues. Historical conditions and their IDs are not rewritten.
+  for (const [id, gift] of giftCatalogById) if (!compatibleGiftAlias(gift, id)) giftCatalogById.delete(id);
+  for (const input of gifts) {
+    const gift = giftForPresentation(input);
     const ids = [gift.id, ...(gift.alternateIds || [])]
       .map((id) => String(id || "").trim())
       .filter(Boolean);
@@ -40,7 +130,7 @@ function rememberGifts(gifts = []) {
       .filter(Boolean);
     for (const id of ids) {
       const previous = giftCatalogById.get(id);
-      if (previous && previous !== gift) replacements.set(previous, gift);
+      if (previous && previous !== gift && compatibleGiftAlias(previous, gift.id)) replacements.set(previous, gift);
       giftCatalogById.set(id, gift);
     }
     for (const key of names) {
@@ -76,20 +166,27 @@ function giftForIdentity(name, id = "", metadata = {}) {
     giftCost: metadata.giftCost ?? metadata.cost ?? metadata.giftValue,
     giftImageUrl: metadata.giftImageUrl || metadata.imageUrl || metadata.image || metadata.giftImage
   };
+  const currentRoomGift = currentRoomGiftForId(String(id || "").trim());
+  if (currentRoomGift) return giftForPresentation(currentRoomGift, id);
+  if (!String(id || "").trim()) {
+    const namedRoomGift = currentRoomGiftForName(name);
+    if (namedRoomGift) return giftForPresentation(namedRoomGift);
+  }
   // Les alias confirmés lors d'un lot précédent restent valides après rafraîchissement.
   const byId = giftCatalogById.get(String(id || "").trim());
-  if (byId) return byId;
+  if (byId && compatibleGiftAlias(byId, id)) return preferCurrentRoomGift(byId, id);
   if (typeof ShenPulseGiftIdentity !== "undefined") {
     const gift = ShenPulseGiftIdentity.findCatalogGift(GIFT_CATALOG, candidate);
-    if (gift) return gift;
+    if (gift && compatibleGiftAlias(gift, id)) return preferCurrentRoomGift(gift, id);
   }
+  if (trueCommunityHeartId(id)) return giftForPresentation({ id: String(id), name, cost: Number(metadata.giftCost ?? metadata.cost) || 1 }, id);
   // Repli aux noms déjà connus : jamais de choix arbitraire entre homonymes.
   if (String(id || "").trim()) return null;
   const previous = giftCatalogByName.get(normalizeGiftName(name));
   const matches = Array.isArray(previous) ? previous : previous ? [previous] : [];
   const cost = Number(metadata.giftCost ?? metadata.cost ?? 0);
   const compatible = cost > 0 ? matches.filter((gift) => Number(gift.cost) === cost) : matches;
-  return compatible.length === 1 ? compatible[0] : null;
+  return compatible.length === 1 ? preferCurrentRoomGift(compatible[0], id) : null;
 }
 
 /** Affiche les références sauvegardées même si TikTok ne les propose plus. */
@@ -144,7 +241,8 @@ function giftReferenceForSave(name, id = "", existing = {}) {
   };
   const family = String(saved.giftFamily || gift?.giftFamily || gift?.family || "");
   if (family) result.giftFamily = family;
-  const knownIds = [gift?.id, ...(gift?.alternateIds || [])].map((value) => String(value || "")).filter(Boolean);
+  const knownIds = [gift?.id, ...(gift?.alternateIds || [])].map((value) => String(value || ""))
+    .filter((knownId) => knownId && compatibleGiftAlias({ id: effectiveId || gift?.id }, knownId));
   const catalogGift = giftCatalogById.get(String(gift?.id || ""));
   if (catalogGift && knownIds.length && (!effectiveId || knownIds.includes(effectiveId) || giftCatalogById.get(effectiveId) === catalogGift || knownIds.some((knownId) => saved.giftIds?.includes(knownId)))) {
     result.giftIds = [...new Set([...(Array.isArray(saved.giftIds) ? saved.giftIds : []), ...knownIds])];
@@ -446,6 +544,10 @@ async function perform(work, successMessage) {
 function acceptSnapshot(value) {
   const previousUid = String(snapshot?.state?.settings?.account?.uid || "");
   const nextUid = String(value?.state?.settings?.account?.uid || "");
+  if (previousUid !== nextUid ||
+      snapshot?.state?.session?.profileId !== value?.state?.session?.profileId) {
+    if (typeof stopRendererAudioPlayback === "function") stopRendererAudioPlayback();
+  }
   if (previousUid !== nextUid) {
     // Les aperçus importés ne doivent jamais survivre au changement de compte.
     if (typeof mediaSessionEntries !== "undefined") mediaSessionEntries.clear();
@@ -461,6 +563,7 @@ function acceptSnapshot(value) {
   if (Array.isArray(value?.mediaCatalog)) {
     MEDIA_LIBRARY = value.mediaCatalog;
   }
+  if (typeof synchronizeOverlayAssetWarmup === "function") synchronizeOverlayAssetWarmup();
   return value;
 }
 

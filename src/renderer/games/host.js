@@ -10,6 +10,8 @@ let pack = null;
 let settings = null;
 let game = null;
 let giftCatalog = [];
+let giftCatalogResult = null;
+let hostGiftCatalogView = "room";
 
 const DEFAULT_DEAL_SETTINGS = Object.freeze({
   entryGift: "Rose",
@@ -224,6 +226,17 @@ root.addEventListener("input", (event) => {
   }
 });
 
+root.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-host-gift-catalog-view]");
+  if (!button) return;
+  hostGiftCatalogView = hostGiftCatalogView === "global" ? "room" : "global";
+  const list = document.getElementById("host-gift-options");
+  if (list) list.innerHTML = hostGiftOptionsMarkup();
+  const label = document.getElementById("host-gift-catalog-label");
+  if (label) label.textContent = hostGiftCatalogLabel();
+  button.textContent = hostGiftCatalogView === "global" ? "Voir les cadeaux du créateur" : "Voir le catalogue global";
+});
+
 api.on("game-effect", (payload) => {
   if (payload?.packId !== gameId) return;
   const effectId = payload.effectId;
@@ -285,9 +298,14 @@ api.on("game-effect", (payload) => {
   if (effectId === "boite-premium") premiumBox();
 });
 
-Promise.all([api.getSnapshot(), api.searchGifts("", 1000)])
-  .then(([value, giftResult]) => {
-    snapshot = value;
+api.getSnapshot()
+  .then(async (value) => {
+    const scope = hostGiftScope(value);
+    const giftResult = await api.searchGifts("", 10000);
+    const current = await api.getSnapshot();
+    if (hostGiftScope(current) !== scope) throw new Error("Le compte, le profil ou le créateur a changé. Rouvrez le jeu.");
+    snapshot = current;
+    giftCatalogResult = giftResult;
     giftCatalog = giftResult.gifts || [];
     pack = snapshot.packs.find((entry) => entry.id === gameId);
     if (!pack) throw new Error("Jeu intégré introuvable.");

@@ -479,6 +479,15 @@ function refreshRendererStateComparison(previous, value) {
 
 api.on("state-changed", handleRendererStateChanged);
 
+api.on("gift-room-catalog-updated", (result) => {
+  if (!rememberRoomGifts(result?.roomGifts, result?.room)) return;
+  if (!rendererVisualsActive()) return;
+  updateAllGiftPickerSelections();
+  refreshGiftVisuals();
+  const input = document.activeElement;
+  if (input?.matches?.("[data-gift-picker]")) void hydrateGiftCatalog(input.value, input);
+});
+
 api.on("gift-catalog-updated", (gifts) => {
   if (!Array.isArray(gifts) || !gifts.length) return;
   rememberGifts(gifts);
@@ -607,63 +616,7 @@ api.on("playback", async (payload) => {
     }
     utterance.lang = selectedVoice?.lang || payload.language || "fr-FR";
     window.speechSynthesis.speak(utterance);
-  } else if (
-    payload.type === "audio" &&
-    /^https?:|^data:|^blob:/i.test(payload.url || "")
-  ) {
-    activePreviewAudio?.pause();
-    activePreviewAudio?.remove();
-    const audioStage = document.getElementById("audio-stage");
-    const audio = document.createElement("audio");
-    audio.src = payload.url;
-    audio.preload = "auto";
-    audio.volume = Number(payload.volume ?? 1);
-    activePreviewAudio = audio;
-    activePreviewAudioScope = payload.previewScope || "";
-    audioStage.replaceChildren(audio);
-    if (payload.outputDeviceId) {
-      if (typeof audio.setSinkId !== "function") {
-        audio.remove();
-        activePreviewAudio = null;
-        activePreviewAudioScope = "";
-        return toast(
-          "Sortie audio incompatible",
-          "Cette version de Windows ne permet pas de diriger le son vers le périphérique choisi.",
-          true
-        );
-      }
-      try {
-        await audio.setSinkId(payload.outputDeviceId);
-      } catch (error) {
-        audio.remove();
-        activePreviewAudio = null;
-        activePreviewAudioScope = "";
-        return toast(
-          "Périphérique audio indisponible",
-          error.message || "Actualisez la liste et choisissez de nouveau le câble audio virtuel.",
-          true
-        );
-      }
-    }
-    audio.addEventListener(
-      "ended",
-      () => {
-        if (activePreviewAudio === audio) {
-          activePreviewAudio = null;
-          activePreviewAudioScope = "";
-        }
-        audio.remove();
-      },
-      { once: true }
-    );
-    audio
-      .play()
-      .catch((error) =>
-        toast(
-          "Lecture du son impossible",
-          error.message || "Le fichier audio n’est pas accessible.",
-          true
-        )
-      );
+  } else if (payload.type === "audio") {
+    await playRendererAudio(payload);
   }
 });

@@ -430,6 +430,7 @@ dialog.addEventListener("click", (event) => {
         config: {
           url: mediaPreview.dataset.mediaPreviewUrl,
           volume: 0.9,
+          outputMode: "local",
           previewScope: "editor-dialog"
         }
       })
@@ -480,6 +481,13 @@ mediaLibrarySearchInput.addEventListener("input", () => {
 });
 
 mediaLibraryDialog.addEventListener("click", (event) => {
+  const removal = event.target.closest("[data-remove-custom-sound]");
+  if (removal) {
+    event.preventDefault();
+    event.stopPropagation();
+    globalMediaLibrary.removeSound(removal.dataset.removeCustomSound);
+    return;
+  }
   const source = event.target.closest("[data-media-source]");
   if (source) {
     mediaLibrarySource = source.dataset.mediaSource;
@@ -519,7 +527,7 @@ mediaLibraryDialog.addEventListener("click", (event) => {
       api.testAction({
         id: `preview_${cryptoId()}`,
         type: "audio.play",
-        config: { url: preview.dataset.mediaPreviewUrl, volume: 0.9 }
+        config: { url: preview.dataset.mediaPreviewUrl, volume: 0.9, outputMode: "local", previewScope: "media-library" }
       })
     ).catch(() => {});
     return;

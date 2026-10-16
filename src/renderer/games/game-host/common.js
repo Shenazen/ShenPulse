@@ -34,9 +34,38 @@ function formatNumber(value) {
 
 function giftForName(value) {
   const normalized = String(value || "").trim().toLocaleLowerCase("fr");
-  return giftCatalog.find(
+  return [...(hostHasRoomGiftCatalog() ? giftCatalogResult.roomGifts || [] : []), ...giftCatalog].find(
     (gift) => String(gift.name || "").trim().toLocaleLowerCase("fr") === normalized
   );
+}
+
+function hostGiftScope(value) {
+  const state = value?.state;
+  return JSON.stringify([state?.settings?.account?.uid || "", state?.session?.profileId || "",
+    state?.settings?.tiktok?.username || "", state?.settings?.tiktok?.roomId || ""]);
+}
+
+function hostHasRoomGiftCatalog() {
+  const room = giftCatalogResult?.room, tiktok = snapshot?.state?.settings?.tiktok;
+  const username = (value) => String(value || "").trim().replace(/^@+/, "").toLowerCase();
+  return Boolean(room && username(tiktok?.username) && username(room.username) === username(tiktok.username) &&
+    (!tiktok.roomId || String(room.roomId || "") === String(tiktok.roomId)) && (room.available === true || room.partial === true));
+}
+
+function hostGiftCatalogRows() {
+  return hostHasRoomGiftCatalog() && hostGiftCatalogView !== "global" ? giftCatalogResult.roomGifts || [] : giftCatalog;
+}
+
+function hostGiftCatalogLabel() {
+  return hostHasRoomGiftCatalog() && hostGiftCatalogView !== "global"
+    ? `${giftCatalogResult.room.available === true ? "Cadeaux du LIVE" : "Cadeaux reçus (liste partielle)"} de @${giftCatalogResult.room.username}`
+    : "Catalogue global · disponibilité sur ce LIVE non garantie";
+}
+
+function hostGiftOptionsMarkup() {
+  const rows = hostGiftCatalogRows();
+  const groups = typeof ShenPulseGiftDisplay !== "undefined" ? ShenPulseGiftDisplay.groupGiftDisplayRows(rows) : rows.map((gift) => ({ gift }));
+  return groups.map(({ gift }) => `<option value="${escapeHtml(gift.name)}">${escapeHtml(gift.cost)} pièces</option>`).join("");
 }
 
 function giftField(name, label, value) {

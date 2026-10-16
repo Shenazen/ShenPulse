@@ -1,4 +1,4 @@
-import { normalizeLiveGift, triggerMatchesGift, slugify } from '../../../../domain/liveGifts'
+import { normalizeLiveGift, triggerMatchesGift, slugify, isCommunityHeartGiftId } from '../../../../domain/liveGifts'
 import type { CoinPusherSettings, CoinPusherGiftRule, CoinPusherDesignatedGift } from './types'
 import { loadCoinPusherSettings } from './storage-settings'
 import { asRecord } from './records'
@@ -32,10 +32,14 @@ export function coinPusherDesignatedGiftMatches(
 
 /** Une seule comparaison pour les exceptions de pièces et les objets spéciaux. */
 function configuredGiftMatches(gift: ReturnType<typeof normalizeLiveGift>, designation: CoinPusherDesignatedGift): boolean {
-  const ids = [designation.giftId, ...(designation.giftIds || [])].filter(Boolean)
+  const heartDesignation = designation.giftId ? isCommunityHeartGiftId(designation.giftId) : designation.giftFamily === 'community-heart'
+  const ids = [designation.giftId, ...(designation.giftIds || [])].filter((id) => id &&
+    (designation.giftId ? isCommunityHeartGiftId(designation.giftId) === isCommunityHeartGiftId(id)
+      : !heartDesignation || isCommunityHeartGiftId(id)))
   const triggers = ids.map((id) => /^(?:gift:|gift-name:)/i.test(id) ? id : `gift:${id}`)
   if (triggers.some((trigger) => triggerMatchesGift(trigger, gift))) return true
-  if (designation.giftFamily === 'community-heart' && gift.giftFamily === 'community-heart') return true
+  if (heartDesignation && gift.id) return isCommunityHeartGiftId(gift.id)
+  if (heartDesignation && gift.giftFamily === 'community-heart') return true
   // Un ID explicite différent n'est jamais remplacé par un nom homonyme.
   if (gift.id && triggers.some((trigger) => !trigger.startsWith('gift-name:'))) return false
   return Boolean(

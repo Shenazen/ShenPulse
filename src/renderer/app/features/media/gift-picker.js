@@ -26,7 +26,7 @@ function giftPickerField(
       <button type="button" data-gift-clear title="Effacer">×</button>
     </div>
     <div class="gift-picker-results" data-gift-results hidden></div>
-    <small>Recherche par nom, ID ou nombre de pièces dans le catalogue TikTok fusionné.</small>
+    <small>Recherche par nom, ID ou pièces. Les cadeaux du créateur sont proposés en priorité ; les références enregistrées sont conservées.</small>
   </div>`;
 }
 
@@ -118,46 +118,94 @@ function syncGiftTriggerCondition(root) {
   });
 }
 
+function giftPickerCatalogContext() {
+  const state = typeof snapshot === "undefined" ? null : snapshot?.state;
+  return { uid: state?.settings?.account?.uid || "", profileId: state?.session?.profileId || "",
+    username: String(state?.settings?.tiktok?.username || "").trim().replace(/^@+/, "").toLowerCase(),
+    roomId: String(state?.settings?.tiktok?.roomId || "") };
+}
+
+function giftPickerRoomMatches(room) {
+  const current = giftPickerCatalogContext();
+  return Boolean(current.username && room && typeof room.username === "string" &&
+    room.username.trim().replace(/^@+/, "").toLowerCase() === current.username &&
+    (!current.roomId || String(room.roomId || "") === current.roomId));
+}
+
+function acceptGiftCatalogResult(result) {
+  // Display grouping never changes the identity lookup or the stored aliases.
+  rememberGifts(Array.isArray(result?.gifts) ? result.gifts : []);
+  if (giftPickerRoomMatches(result?.room) && typeof rememberRoomGifts === "function") {
+    rememberRoomGifts(Array.isArray(result.roomGifts) ? result.roomGifts : [], result.room);
+  }
+}
+
+function giftPickerDisplayGroups(gifts, options) {
+  const rows = (gifts || []).filter((gift) => gift?.selectable !== false).map((gift) => giftForPresentation(gift));
+  return typeof ShenPulseGiftDisplay !== "undefined"
+    ? ShenPulseGiftDisplay.groupGiftDisplayRows(rows, options)
+    : rows.map((gift) => ({ gift, variants: [gift] }));
+}
+
+function giftPickerResultButton(gift, variant = false) {
+  return `<button type="button" class="gift-result" data-gift-choice="${escapeHtml(gift.name)}" data-gift-id="${escapeHtml(gift.id || "")}" data-gift-image="${escapeHtml(gift.imageUrl || "")}">
+    ${gift.imageUrl ? `<img src="${escapeHtml(gift.imageUrl)}" alt="" loading="lazy">` : '<span class="gift-result-fallback">🎁</span>'}
+    <span><strong>${escapeHtml(gift.name)}</strong><small>${escapeHtml(gift.cost)} pièce${gift.cost > 1 ? "s" : ""}${variant ? ` · ID ${escapeHtml(gift.id || "non précisé")}` : ""}</small></span>
+    <span class="gift-result-select">Choisir</span></button>`;
+}
+
+function renderGiftCatalogResults(result, input, query = "") {
+  const list = document.getElementById("gift-catalog-options"), root = input?.closest("[data-gift-picker-root]");
+  if (!list) return;
+  const scope = JSON.stringify(giftPickerCatalogContext());
+  if (root && root.dataset.giftCatalogScope !== scope) {
+    root.dataset.giftCatalogScope = scope; root.dataset.giftCatalogView = "room";
+  }
+  const room = result.room || {}, roomKnown = giftPickerRoomMatches(room) && (room.available === true || room.partial === true);
+  const showRoom = roomKnown && root?.dataset.giftCatalogView !== "global";
+  const groups = giftPickerDisplayGroups(showRoom ? result.roomGifts || [] : result.gifts || [], {
+    preferredId: root?.querySelector("[data-gift-id-input]")?.value || "", query
+  });
+  list.innerHTML = groups.map(({ gift }) => `<option value="${escapeHtml(gift.name)}">${escapeHtml(gift.cost)} pièces · ${escapeHtml(gift.id)}</option>`).join("");
+  list.dataset.total = String(groups.length);
+  const results = root?.querySelector("[data-gift-results]");
+  if (!results) return;
+  const roomLabel = room.available === true ? "Cadeaux du LIVE" : "Cadeaux reçus";
+  const label = showRoom ? `${roomLabel} de @${room.username}` : "Catalogue global";
+  results.innerHTML = `<div class="gift-results-summary"><strong>${groups.length} cadeau${groups.length > 1 ? "x" : ""}</strong><span>Tri : pièces ↑ puis A–Z</span></div>
+    <div class="gift-results-scope"><strong>${escapeHtml(label)}</strong>
+      ${showRoom ? room.available === true ? "" : "<small>Liste partielle observée pendant ce LIVE, pas un catalogue complet.</small>" : "<small>Références globales : disponibilité sur ce LIVE non garantie.</small>"}
+      ${roomKnown ? `<button type="button" class="button small ghost" data-gift-catalog-view="${showRoom ? "global" : "room"}">${showRoom ? "Voir le catalogue global" : `Voir les ${roomLabel.toLowerCase()}`}</button>` : ""}</div>
+    ${groups.map(({ gift, variants }) => giftPickerResultButton(gift) + (variants.length > 1
+      ? `<details class="gift-result-variants"><summary>Autres variantes (${variants.length - 1})</summary>${variants.filter((variant) => variant !== gift).map((variant) => giftPickerResultButton(variant, true)).join("")}</details>` : "")).join("")}
+    ${groups.length ? "" : `<p class="picker-empty">${showRoom ? "Aucun cadeau correspondant dans cette liste du créateur." : "Aucun cadeau trouvé."}</p>`}`;
+  results.querySelector("[data-gift-catalog-view]")?.addEventListener("click", (event) => {
+    if (JSON.stringify(giftPickerCatalogContext()) !== scope || !document.contains(input)) return;
+    root.dataset.giftCatalogView = event.currentTarget.dataset.giftCatalogView;
+    renderGiftCatalogResults(result, input, query);
+  });
+  results.hidden = false; positionGiftResults(root);
+}
+
 async function hydrateGiftCatalog(query = "", input = null) {
   const list = document.getElementById("gift-catalog-options");
   if (!list) return;
-  const requestId = String(++giftRequestSequence);
+  const requestId = String(++giftRequestSequence), scope = JSON.stringify(giftPickerCatalogContext());
   if (input) input.dataset.giftRequestId = requestId;
+  const current = () => requestId === String(giftRequestSequence) && JSON.stringify(giftPickerCatalogContext()) === scope &&
+    (!input || document.contains(input) && input.dataset.giftRequestId === requestId);
   try {
-    // Chargement complet une fois au démarrage ; les recherches restent bornées.
+    // Keep the complete identity cache; only the visible options are grouped.
     const result = await api.searchGifts(query, String(query || "").trim() ? 1000 : 10000);
-    if (input && input.dataset.giftRequestId !== requestId) return;
-    rememberGifts(result.gifts || []);
-    list.innerHTML = (result.gifts || [])
-      .map(
-        (gift) =>
-          `<option value="${escapeHtml(gift.name)}">${escapeHtml(gift.cost)} pièces · ${escapeHtml(gift.id)}</option>`
-      )
-      .join("");
-    list.dataset.total = String(result.total || 0);
-    const root = input?.closest("[data-gift-picker-root]");
-    const results = root?.querySelector("[data-gift-results]");
-    if (results) {
-      const gifts = result.gifts || [];
-      results.innerHTML = `<div class="gift-results-summary">
-          <strong>${gifts.length} cadeau${gifts.length > 1 ? "x" : ""}</strong>
-          <span>Tri : pièces ↑ puis A–Z</span>
-        </div>${gifts
-        .map(
-          (gift) => `<button type="button" class="gift-result" data-gift-choice="${escapeHtml(gift.name)}" data-gift-id="${escapeHtml(gift.id || "")}" data-gift-image="${escapeHtml(gift.imageUrl || "")}">
-            ${gift.imageUrl ? `<img src="${escapeHtml(gift.imageUrl)}" alt="" loading="lazy">` : '<span class="gift-result-fallback">🎁</span>'}
-            <span><strong>${escapeHtml(gift.name)}</strong><small>${escapeHtml(gift.cost)} pièce${gift.cost > 1 ? "s" : ""}</small></span>
-            <span class="gift-result-select">Choisir</span>
-          </button>`
-        )
-        .join("")}${gifts.length ? "" : `<p class="picker-empty">Aucun cadeau trouvé.</p>`}`;
-      results.hidden = false;
-      positionGiftResults(root);
-    }
+    if (!current()) return;
+    acceptGiftCatalogResult(result); renderGiftCatalogResults(result, input, query);
     if (input) updateGiftPickerSelection(input.closest("[data-gift-picker-root]"));
     else updateAllGiftPickerSelections();
   } catch {
+    if (!current()) return;
     list.innerHTML = "";
+    const results = input?.closest("[data-gift-picker-root]")?.querySelector("[data-gift-results]");
+    if (results) { results.innerHTML = '<p class="picker-empty">Catalogue indisponible. Vos cadeaux enregistrés sont conservés ; réessayez la recherche.</p>'; results.hidden = false; }
   }
 }
 
@@ -166,6 +214,12 @@ function updateGiftPickerSelection(root, gift = null) {
   const idInput = root?.querySelector("[data-gift-id-input]");
   const selected = root?.querySelector("[data-gift-selected]");
   if (!input || !selected) return;
+  if (gift) {
+    gift = giftForIdentity(input.value, idInput?.value || gift.id) || giftForPresentation(gift, idInput?.value || gift.id);
+    // An explicit choice can repair an old menu's label; ordinary hydration
+    // never alters an existing field, selected technical ID or draft.
+    if (gift?.name) input.value = gift.name;
+  }
   if (gift) {
     root.dataset.giftReference = JSON.stringify({
       giftName: input.value,

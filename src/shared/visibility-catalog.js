@@ -8,7 +8,11 @@
   if (root) root.ShenPulseVisibility = catalog;
 })(typeof globalThis === "object" ? globalThis : this, () => {
   const SCOPES = new Set(["public", "admin", "hidden"]);
-  const VISIBILITY_SCHEMA_VERSION = 10;
+  const VISIBILITY_SCHEMA_VERSION = 11;
+  const CONFIGURABLE_PRIVATE_GAMES_SCHEMA_VERSION = 11;
+  // Ces jeux avaient un verrou compilé avant v11. Une ancienne valeur public
+  // ne pouvait pas les ouvrir et ne doit pas les publier lors de la migration.
+  const LEGACY_PRIVATE_GAME_IDS = Object.freeze(["fortnite", "find-the-needle-demo"]);
   // Le seuil de l'ancienne migration IRL ne suit pas les migrations futures.
   const IRL_PUBLIC_SCHEMA_VERSION = 9;
   const SHARED_MEDIA_FEATURES = Object.freeze(["backblaze.sounds", "backblaze.media"]);
@@ -153,6 +157,35 @@
     return true;
   }
 
+  function hasConfigurableGameScopes(source) {
+    const version = Number(source?.schemaVersion);
+    return Number.isFinite(version) && version >= CONFIGURABLE_PRIVATE_GAMES_SCHEMA_VERSION;
+  }
+
+  /** ownerOnly est un défaut privé pour les jeux, pas un verrou irrévocable.
+   * Seule une portée explicite valide du nouveau schéma peut les ouvrir.
+   * Les pages sensibles conservent leur règle propriétaire indépendante.
+   */
+  function gameScopeFor(source, pack) {
+    const fallback = pack?.ownerOnly === true ? "admin" : "public";
+    if (!pack?.id) return fallback;
+    const games = source?.games;
+    const key = storageKey(pack.id);
+    const entry = games && typeof games === "object" && !Array.isArray(games)
+      ? Object.hasOwn(games, key) ? games[key] : Object.hasOwn(games, pack.id) ? games[pack.id] : undefined
+      : undefined;
+    const raw = entry && typeof entry === "object" ? entry.scope : entry;
+    if (raw !== false && !SCOPES.has(raw)) return fallback;
+    const scope = normalizeScope(raw);
+    return pack.ownerOnly === true && scope === "public" &&
+      !hasConfigurableGameScopes(source)
+      ? "admin" : scope;
+  }
+
+  function canAccessGame(source, pack, isOwner) {
+    return Boolean(pack?.id && canAccessScope(gameScopeFor(source, pack), isOwner));
+  }
+
   function storageKey(id) {
     return String(id || "")
       .trim()
@@ -213,6 +246,15 @@
         candidate.features[key] = entry && typeof entry === "object" ? { ...entry, scope: "public" } : { scope: "public" };
       }
     }
+    if (!hasConfigurableGameScopes(candidate)) {
+      for (const id of LEGACY_PRIVATE_GAME_IDS) {
+        const entry = candidate.games?.[storageKey(id)] ?? candidate.games?.[id];
+        const scope = entry && typeof entry === "object" ? entry.scope : entry;
+        if (scope !== "public") continue;
+        candidate.games[storageKey(id)] = entry && typeof entry === "object"
+          ? { ...entry, scope: "admin" } : { scope: "admin" };
+      }
+    }
     candidate.schemaVersion = Math.max(VISIBILITY_SCHEMA_VERSION, Number(candidate.schemaVersion) || VISIBILITY_SCHEMA_VERSION);
     return candidate;
   }
@@ -263,7 +305,9 @@
         const id = String(item?.id || "").trim();
         if (!id) continue;
         result[section][storageKey(id)] = {
-          scope: scopeFor(
+          scope: section === "games"
+            ? gameScopeFor(candidate, { id, ownerOnly: item.defaultScope === "admin" })
+            : scopeFor(
             candidate,
             section,
             id,
@@ -317,8 +361,11 @@
     obsolete += Object.keys(source?.maintenanceFeatures || {}).length;
     const sharedStorageNeedsMigration = (catalogBySection?.features || []).some((item) =>
       isSharedMediaFeature(item.id) && normalizeScope(source?.features?.[storageKey(item.id)] ?? source?.features?.[item.id]) !== "public");
+    const privateGamesNeedMigration = !hasConfigurableGameScopes(source) &&
+      (catalogBySection?.games || []).some(item => item.defaultScope === "admin" &&
+        scopeFor(source, "games", item.id) === "public");
     return {
-      changed: missing > 0 || obsolete > 0 || sharedStorageNeedsMigration,
+      changed: missing > 0 || obsolete > 0 || sharedStorageNeedsMigration || privateGamesNeedMigration,
       missing,
       obsolete,
       total
@@ -333,6 +380,8 @@
     LEGACY_ALIASES,
     auditVisibility,
     canAccessScope,
+    canAccessGame,
+    gameScopeFor,
     canonicalizeVisibility,
     normalizeScope,
     migrateVisibility,

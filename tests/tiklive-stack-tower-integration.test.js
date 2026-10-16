@@ -199,7 +199,7 @@ test("branche le catalogue, l’achat et la roue Stack Tower", async () => {
   assert.equal(pack.connector.type, "tiklive-stack-tower-http");
   assert.equal(pack.connector.url, "http://127.0.0.1:7817");
   assert.equal(pack.accessMode, "purchase");
-  assert.equal(pack.price, 19.99);
+  assert.equal(pack.price, 9.99);
   assert.equal(pack.requiresPro, false);
   assert.equal(pack.artwork, "catalog/shenpulse-stack-tower.png");
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");

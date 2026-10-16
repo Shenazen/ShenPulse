@@ -138,7 +138,7 @@ function openLiveAudioOutputEditor(row) {
     body: `<div class="live-audio-output-dialog">
       <div class="live-audio-output-intro">
         <span aria-hidden="true">◉</span>
-        <div><strong>Choisissez l’écran qui transportera le son</strong><p>Les sons et le TTS seront joués uniquement par l’URL de cet écran.</p></div>
+        <div><strong>Choisissez l’écran qui transportera le son</strong><p>Les sons et le TTS restent audibles dans ShenPulse. « Tout le monde » ajoute leur diffusion par l’URL de cet écran ; les préécoutes restent privées.</p></div>
       </div>
       <label class="field full"><span>Écran de diffusion</span><select name="liveScreen" required>
         ${Array.from({ length: 8 }, (_value, index) => {
@@ -153,7 +153,7 @@ function openLiveAudioOutputEditor(row) {
       </div>
       <div class="live-audio-output-warning">
         <strong>Attention aux doublons</strong>
-        <p>Vérifiez si cette URL est déjà présente dans votre interface de LIVE avant de l’ajouter. Si la même URL est chargée dans deux sources, le son et le TTS seront entendus deux fois.</p>
+        <p>Vérifiez si cette URL est déjà présente dans votre interface de LIVE avant de l’ajouter. Si la même URL est chargée dans deux sources, le son et le TTS seront entendus deux fois. Évitez aussi de capturer le son de ShenPulse en plus de cette source. Une capture audio du bureau peut transmettre vos préécoutes privées.</p>
       </div>
       <div class="live-audio-output-spotify">
         <strong>Spotify</strong>

@@ -138,31 +138,43 @@ test("n'assimile jamais deux cadeaux uniquement par leur visuel", () => {
   );
 });
 
-test("reconnaît le cœur de communauté même personnalisé par le créateur", () => {
+test("un cadeau personnalisé distinct conserve son nom et ne déclenche pas le vrai cœur", () => {
   const event = {
     type: "gift",
     data: {
-      giftId: "601333",
-      giftName: "Kiickers",
+      giftId: "157842",
+      giftName: "Shenazen Pulse",
       giftCombo: true,
       giftImageUri: "webcast-sg/resource/saliency_seg_creator.png",
       value: 1
     }
   };
 
-  assert.equal(giftFamily(event.data), "community-heart");
-  assert.equal(canonicalGiftName(event.data), "Cœur sur moi");
+  assert.equal(giftFamily(event.data), "");
+  assert.equal(canonicalGiftName(event.data), "Shenazen Pulse");
   assert.equal(
     giftConditionMatches(
       { value: "Envoie-moi un cœur", giftId: "7934" },
       event,
       []
     ),
-    true
+    false
   );
   const enriched = enrichGiftEvent(event, []);
-  assert.equal(enriched.data.giftName, COMMUNITY_HEART_CANONICAL_NAME);
-  assert.equal(enriched.data.giftOriginalName, "Kiickers");
+  assert.equal(enriched.data.giftName, "Shenazen Pulse");
+  assert.equal(enriched.data.giftOriginalName, undefined);
+});
+
+test("des anciennes familles et listes d’alias ne transforment plus les cadeaux personnalisés en cœur rouge", () => {
+  for (const id of ["17712", "62816", "601333", "157842"]) {
+    const data = { giftId: id, giftName: "Cadeau personnel", giftFamily: "community-heart",
+      giftCombo: true, giftImageUri: "webcast-sg/resource/saliency_seg_creator.png", value: 1 };
+    assert.equal(giftFamily(data), "");
+    assert.equal(canonicalGiftName(data), "Cadeau personnel");
+    assert.equal(giftConditionMatches({ value: "Cœur sur moi", giftId: "7934", giftIds: [id], giftFamily: "community-heart" }, { data }, []), false);
+    assert.equal(giftConditionMatches({ value: "Cadeau personnel", giftId: id, giftIds: ["7934"], giftFamily: "community-heart" },
+      giftEvent("Cœur sur moi", 1, "", "7934"), []), false);
+  }
 });
 
 test("les anciens libellés Heart Me restent dans la catégorie Cœur sur moi", () => {
@@ -174,6 +186,16 @@ test("les anciens libellés Heart Me restent dans la catégorie Cœur sur moi", 
   ]) {
     assert.equal(giftFamily({ giftName: name }), "community-heart");
     assert.equal(canonicalGiftName({ giftName: name }), "Cœur sur moi");
+  }
+});
+
+test("une ancienne référence cœur sans ID primaire ne conserve pas un faux alias personnalisé", () => {
+  for (const condition of [
+    { value: "Cœur sur moi", giftFamily: "community-heart", giftIds: ["7934", "157842", "17712"] },
+    { value: "Heart Me", giftIds: ["heart-me", "157842"] }
+  ]) {
+    assert.equal(giftConditionMatches(condition, giftEvent("Shenazen Pulse", 1, "", "157842"), []), false);
+    assert.equal(giftConditionMatches(condition, giftEvent("Cœur sur moi", 1, "", "7934"), []), true);
   }
 });
 

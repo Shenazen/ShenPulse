@@ -265,7 +265,9 @@ function renderDealSettings() {
         <button class="secondary" type="button" data-command="banker">Forcer l’appel du banquier</button>
         <button class="secondary" type="button" data-command="premium">Ouvrir une boîte premium</button>
       </div>
-      <datalist id="host-gift-options">${giftCatalog.map((gift) => `<option value="${escapeHtml(gift.name)}">${escapeHtml(gift.cost)} pièces</option>`).join("")}</datalist>
+      <p id="host-gift-catalog-label">${escapeHtml(hostGiftCatalogLabel())}</p>
+      ${hostHasRoomGiftCatalog() ? `<button type="button" class="secondary" data-host-gift-catalog-view>${hostGiftCatalogView === "global" ? "Voir les cadeaux du créateur" : "Voir le catalogue global"}</button>` : ""}
+      <datalist id="host-gift-options">${hostGiftOptionsMarkup()}</datalist>
     </form>
   </aside>`;
 }

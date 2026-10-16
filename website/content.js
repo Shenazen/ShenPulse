@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.0.2',
-  title: 'Tes profils, tes réglages, ton compte.',
-  summary: 'Retrouve tes profils et réglages à la reconnexion sur ce même PC, avec des sauvegardes renforcées et des transitions de compte plus sûres.',
+  version: '2.0.3',
+  title: 'Des cadeaux justes, un LIVE plus fluide.',
+  summary: 'Retrouve les cadeaux du créateur suivi, une écoute locale indépendante de Studio et un suivi des périodes de bonus Matchs renforcé.',
   highlights: [
-    ['Retrouve ton travail', 'Profils, actions, médias et intégrations restent associés à ton compte sur ce PC. Les changements de compte conservent les sauvegardes existantes.'],
-    ['Personnalise chaque profil', 'Voix TTS et réglages des demandes musicales suivent le profil actif. Les réponses retardées d’un ancien compte ne remplacent plus la session courante.'],
-    ['Garde l’infrastructure privée', 'Administration, Contrôleurs et Paramètres sont réservés au propriétaire. Les imports de médias restent disponibles pour tous les comptes connectés.']
+    ['Choisis le bon cadeau', 'Le sélecteur privilégie les cadeaux du créateur et distingue les variantes sans confondre leurs identifiants. Cœur sur moi reste rouge ; les cadeaux personnels gardent leur nom.'],
+    ['Écoute avant de diffuser', 'Les préécoutes restent dans ShenPulse, sans source Studio à ajouter. Retire aussi un son de ta bibliothèque importée sans modifier les actions qui l’utilisent.'],
+    ['Prépare les temps forts', 'Le chronomètre Matchs avance chaque seconde et les périodes ×2/×3 confirmées sont suivies séparément. Un secours visuel Windows facultatif est proposé pour les bandeaux non transmis par TikTok.']
   ]
 }
 
@@ -70,7 +70,7 @@ export const APP_TABS = [
     title: 'Voix & sons',
     summary: 'Trois espaces : Synthèse vocale, Alertes sonores et Diffusion LIVE.',
     parts: [
-      ['Bibliothèque', 'Recherche les sons inclus, écoute un aperçu et sélectionne une piste.'],
+      ['Bibliothèque', 'Recherche les sons inclus, écoute un aperçu local et sélectionne une piste. Les sons importés peuvent être retirés de ta bibliothèque avec confirmation, sans effacer leurs usages existants ni le fichier distant.'],
       ['Alertes sonores', 'Associe un son, un volume et un déclencheur à une règle.'],
       ['Synthèse vocale', 'Choisit une voix, une vitesse, une hauteur et un volume.'],
       ['Filtres TTS', 'Autorise ou bloque emojis, mentions, commandes et liens avant lecture.'],
@@ -78,7 +78,7 @@ export const APP_TABS = [
       ['Diffusion LIVE', 'Choisis une sortie locale ou un écran audio du LIVE, puis utilise l’URL correspondante dans ton logiciel de diffusion.'],
       ['Actions de ligne', 'Teste, modifie, duplique ou supprime une alerte avec les boutons directs. Une confirmation précède la suppression.']
     ],
-    tips: ['Les voix proposées dépendent de celles disponibles dans Windows.', 'Un aperçu local et un test dans le LIVE n’utilisent pas forcément la même sortie.', 'La voix par défaut suit le profil actif ; une règle peut définir ses propres paramètres.']
+    tips: ['Les voix proposées dépendent de celles disponibles dans Windows.', 'La préécoute reste locale. Une règle « Moi uniquement » ne transmet rien à l’URL audio ; « Tout le monde » ajoute la diffusion sur l’écran choisi.', 'Une capture séparée du son du bureau peut aussi transmettre le retour local : évite les doublons dans ton logiciel de diffusion.', 'La voix par défaut suit le profil actif ; une règle peut définir ses propres paramètres.']
   },
   {
     id: 'musique',
@@ -164,7 +164,8 @@ export const APP_TABS = [
       ['Automatisations', 'Choisis un temps fort : début, bonus ×2/×3, reprise de tête, remontée, égalité finale, Tap Tap, dernières secondes, victoire ou défaite. Ajoute une animation, une vidéo, un son ou une action et active la règle.'],
       ['Pack Cyber', 'Six animations : Gant de boxe, x2, x3, Tap Tap, Merci pour ton cœur et Snipe. Aucun Coffre Cyber n’est proposé.'],
       ['Source Studio', 'Dans Widgets, copie la source destinée à TikTok Studio pour les animations, vidéos et sons LIVE. ShenPulse et le logiciel de diffusion doivent rester ouverts sur le même PC. Les vidéos du catalogue sont chiffrées et lues en mémoire, sans bouton d’export.'],
-      ['Audio', 'Le son intégré des vidéos est activé pendant leur lecture sur la source de diffusion ; les aperçus restent muets.']
+      ['Audio', 'Le son intégré des vidéos est activé pendant leur lecture sur la source de diffusion ; les aperçus restent muets.'],
+      ['Lecture visuelle locale', 'Option Windows désactivée par défaut : choisis une fenêtre montrant le bandeau actif et ton @, puis délimite les deux zones. Les images restent en mémoire sur le PC, sans cloud ni enregistrement. Ce mode ne lit pas un téléphone et exige que la fenêtre soit visible et lisible.']
     ],
     tips: ['Un accès Pro ou Premium actif est requis.', 'La vitesse et la précision dépendent des événements transmis par TikTok. Une connexion en cours de match peut attendre le prochain événement.', 'Les cartes de match ne sont pas détectées automatiquement par toutes les connexions : vérifie l’indication affichée avant d’utiliser ce déclencheur.', 'Le chiffrement limite la copie directe, sans empêcher toute extraction experte ou capture vidéo.', 'Les tests de diffusion exécutent réellement les sorties configurées après confirmation ; ils ne modifient pas les scores ni l’historique.']
   },

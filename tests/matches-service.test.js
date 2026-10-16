@@ -11,6 +11,7 @@ const { selectStatePaths } = require("../src/main/state-projection");
 const { ActionRunner } = require("../src/main/action-runner");
 const { StateStore } = require("../src/main/store");
 const { projectMatchesOverlayState, projectMatchesOverlayPayload } = require("../src/main/matches-overlay-state");
+const { tiktokRoomLiveMetadata } = require("../src/main/sources/tiktok-protocol");
 
 function fixture() {
   let now = 1790000000000;
@@ -38,7 +39,13 @@ function fixture() {
   const save = (moment, extra = {}) => service.saveAutomation({ id: moment, name: moment, moment, enabled: true,
     reaction: { type: "sound", url: "https://cdn.example.test/son.mp3" }, ...extra });
   const advance = async (ms) => { now += ms; for (const timer of [...timers.keys()]) if (timer.at <= now) { timers.delete(timer); timer.callback(); } await service.whenIdle(); };
-  return { state, store, service, calls, activities, published, projections, timers, frame, save, advance, now: () => now };
+  const earn = (multiplier, startsAtMs = now, durationMs = 5000, extra = {}) => {
+    service.handle(frame("task", [10, 20], { startsAtMs: 0, endsAtMs: 0, ...extra,
+      bonus: { stage: "announced", multiplier, startsAtMs, durationMs, result: "unknown", periodKey: "" } }));
+    service.handle(frame("task", [10, 20], { startsAtMs: 0, endsAtMs: 0, ...extra,
+      bonus: { stage: "settled", multiplier: null, startsAtMs, durationMs: 0, result: "success", periodKey: "" } }));
+  };
+  return { state, store, service, calls, activities, published, projections, timers, frame, save, advance, earn, now: () => now };
 }
 
 test("contrat Matchs fermé, widgets et automatismes éteints par défaut, valeurs bornées", () => {
@@ -147,6 +154,22 @@ test("un avantage d’un point ne constitue pas une grande remontée et un ID pr
   assert.equal(unknown.state.matchSession.result, null); assert.equal(unknown.state.matchSession.session.wins, 0);
 });
 
+test("l'UID texte exact de room.owner identifie le streamer du match sans assouplir le garde d'identité", async () => {
+  const f = fixture(), ownId = "1234567890123456789"; f.save("lead"); f.save("victory");
+  f.state.settings.tiktok.broadcaster = tiktokRoomLiveMetadata({ data: { id_str: "room", owner: {
+    id: Number(ownId), id_str: ownId, display_id: "creator"
+  } } }, "creator", "room").broadcaster;
+  const frame = (phase, scores) => {
+    const input = f.frame(phase, scores); input.participants[0].id = ownId; return input;
+  };
+  f.service.handle(frame("start", [3, 6])); f.service.handle(frame("update", [7, 6])); await f.service.whenIdle();
+  assert.equal(f.state.matchSession.ownUserId, ownId);
+  assert.deepEqual(f.state.matchSession.participants.map((row) => row.own), [true, false]);
+  f.service.handle(frame("end", [7, 6])); await f.service.whenIdle();
+  assert.equal(f.state.matchSession.result, "win"); assert.equal(f.state.matchSession.session.wins, 1);
+  assert.deepEqual(f.activities.map((entry) => entry[3]), ["lead", "victory"]);
+});
+
 test("égalité dans la dernière minute et snipe sont calculés sur le chronomètre mesuré, une fois par match", async () => {
   const f = fixture(); f.save("tieEnd"); f.save("snipe"); f.service.handle(f.frame("start", [10, 10]));
   await f.advance(60000); assert.equal(f.calls.length, 1); assert.equal(f.state.matchSession.status, "running");
@@ -157,9 +180,49 @@ test("égalité dans la dernière minute et snipe sont calculés sur le chronom�
 
 test("multiplicateur fourni par TikTok se déclenche à sa date réelle, jamais pendant l’annonce anticipée", async () => {
   const f = fixture(); f.save("multiplierX2"); f.service.handle(f.frame());
-  f.service.handle(f.frame("task", [10, 20], { multiplier: 2, rewardStartsAtMs: f.now() + 10000 }));
+  f.earn(2, f.now() + 10000);
   await f.service.whenIdle(); assert.equal(f.calls.length, 0); await f.advance(10000); assert.equal(f.calls.length, 1);
   assert.equal(f.state.matchSession.multiplier, 2);
+});
+
+test("le snipe n'attend aucun nouveau score TikTok, même si le dernier paquet date de plusieurs dizaines de secondes", async () => {
+  const f = fixture(); f.save("snipe", { remainingSeconds: 15 });
+  const startedAtMs = f.now(), endsAtMs = startedAtMs + 120000;
+  f.service.handle(f.frame("start", [3, 6], { startsAtMs: startedAtMs, endsAtMs }));
+  await f.advance(104999); assert.equal(f.calls.length, 0);
+  assert.equal(f.state.matchSession.lastEventAtMs, startedAtMs);
+  await f.advance(1); assert.equal(f.calls.length, 1);
+  assert.equal(f.state.matchSession.lastEventAtMs, startedAtMs, "Aucun faux événement TikTok ne sert de battement d'horloge");
+  await f.advance(10000); f.service.reschedule(); await f.service.whenIdle();
+  assert.equal(f.calls.length, 1, "Le même snipe ne se rejoue pas après un score retardé");
+});
+
+test("les scores espacés ou fréquents ne repoussent jamais l'échéance fixe du snipe", async () => {
+  const f = fixture(); f.save("snipe", { remainingSeconds: 15 });
+  const startsAtMs = f.now(), endsAtMs = startsAtMs + 120000;
+  f.service.handle(f.frame("start", [3, 6], { startsAtMs, endsAtMs }));
+  for (const elapsed of [10000, 20000, 30000, 40000, 4999]) {
+    await f.advance(elapsed); f.service.handle(f.frame("update", [4, 8], { startsAtMs, endsAtMs }));
+    await f.service.whenIdle(); assert.equal(f.calls.length, 0);
+  }
+  await f.advance(1); assert.equal(f.calls.length, 1);
+});
+
+test("deux manches successives gardent chacune leur x2 et leur snipe sans reprendre une échéance de l'ancienne manche", async () => {
+  const f = fixture(); f.save("multiplierX2"); f.save("snipe", { remainingSeconds: 15 });
+  let startsAtMs = f.now(), endsAtMs = startsAtMs + 120000;
+  f.service.handle(f.frame("start", [3, 6], { startsAtMs, endsAtMs }));
+  f.earn(2, f.now() + 10000, 10000);
+  await f.advance(10000); assert.equal(f.calls.length, 1); assert.equal(f.state.matchSession.multiplier, 2);
+  await f.advance(95000); assert.equal(f.calls.length, 2);
+  f.service.handle(f.frame("end", [3, 6], { startsAtMs, endsAtMs }));
+  await f.advance(16000); startsAtMs = f.now(); endsAtMs = startsAtMs + 120000;
+  f.service.handle(f.frame("start", [0, 0], { battleId: "second-round", startsAtMs, endsAtMs }));
+  f.earn(2, f.now() + 10000, 10000, { battleId: "second-round" });
+  await f.advance(10000); assert.equal(f.calls.length, 3); assert.equal(f.state.matchSession.multiplier, 2);
+  await f.advance(95000); assert.equal(f.calls.length, 4);
+  assert.equal(f.state.matchSession.session.battles, 2);
+  assert.deepEqual(f.activities.map((entry) => entry[3]), ["multiplierX2", "snipe", "multiplierX2", "snipe"]);
 });
 
 test("les contributions LIVE restent exactes, sont regroupées sur une frame et survivent au nouveau match", async () => {
@@ -238,9 +301,9 @@ test("une fin sans score ni résultat ne déduit pas une victoire du cache et ac
 
 test("le multiplicateur cesse à sa durée mesurée et une annonce retardée ne modifie aucun état hors LIVE", async () => {
   const f = fixture(); f.service.handle(f.frame());
-  f.service.handle(f.frame("task", [10, 20], { multiplier: 2, rewardStartsAtMs: f.now(), rewardDurationMs: 5000 }));
+  f.earn(2, f.now(), 5000);
   assert.equal(f.state.matchSession.multiplier, 2); await f.advance(5000); assert.equal(f.state.matchSession.multiplier, 1);
-  f.service.handle(f.frame("task", [10, 20], { multiplier: 3, rewardStartsAtMs: f.now() + 5000, rewardDurationMs: 5000 }));
+  f.earn(3, f.now() + 5000, 5000);
   f.state.session.running = false; await f.advance(5000); assert.equal(f.state.matchSession.multiplier, 1);
 });
 

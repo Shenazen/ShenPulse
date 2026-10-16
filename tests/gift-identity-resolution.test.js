@@ -73,7 +73,7 @@ test("un ID distinct n’est pas déclaré cœur de communauté sur son seul nom
   assert.equal(giftFamily({ giftId: "distinct", giftName: "Heart Me", giftCost: 999 }), "");
   assert.equal(giftFamily({ giftId: "distinct", giftName: "Envoie-moi un cœur", giftCost: 1 }), "");
   assert.equal(giftFamily({ giftId: "heart-me", giftName: "Ancien libellé" }), "community-heart");
-  assert.equal(giftFamily({ giftId: "distinct", giftCost: 1, giftCombo: true, giftImageUri: "saliency_seg_custom.png" }), "community-heart");
+  assert.equal(giftFamily({ giftId: "distinct", giftCost: 1, giftCombo: true, giftImageUri: "saliency_seg_custom.png" }), "");
 });
 
 test("le résolveur commun s’exécute aussi dans l’interface sans CommonJS", () => {

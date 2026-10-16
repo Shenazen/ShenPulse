@@ -68,8 +68,10 @@ function adminVisibilityCatalog() {
         pack.accessMode === "purchase" ? "achat séparé" : "inclus"
       }`,
       icon: "◇",
+      // Un jeu privé reste privé par défaut, sans figer le choix du propriétaire.
+      // Les pages sensibles conservent, elles, leur verrou ownerOnly ci-dessus.
       ...(pack.ownerOnly === true
-        ? { defaultScope: "admin", ownerOnly: true }
+        ? { defaultScope: "admin" }
         : {})
     }))
   };

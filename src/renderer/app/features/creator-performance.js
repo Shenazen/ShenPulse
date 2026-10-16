@@ -16,6 +16,7 @@ function rendererVisualsActive() {
 }
 
 function synchronizeRendererVisibility() {
+  if (typeof synchronizeOverlayAssetWarmup === "function") synchronizeOverlayAssetWarmup();
   if (typeof synchronizeCreatorMusicPolling === "function") synchronizeCreatorMusicPolling();
   if (!rendererVisualsActive()) {
     if (creatorRenderHandle !== null) {

@@ -10,33 +10,55 @@ const { readState } = require("../state-projection");
 const { assertProFeatureAccess, createProFeatureGuard } = require("../pro-feature-access");
 const { hasAuthenticatedAccount } = require("../account-access");
 const { hasProAccess } = require("../../shared/pro-access");
-const { normalizeMatchesConfig, normalizeMatchAutomation, createMatchSession, MATCH_WIDGETS } = require("../../shared/matches-contract");
+const { normalizeMatchesConfig, normalizeMatchAutomation, normalizeMatchTeams, createMatchSession, MATCH_WIDGETS } = require("../../shared/matches-contract");
 const { CommandExecutor } = require("../commands/executor");
 const { projectMatchesOverlayState } = require("../matches-overlay-state");
 const { giftEventCount } = require("../rule-engine");
+const { MatchBonuses } = require("./bonuses");
 
 const PATHS = ["settings.matches", "matchSession", "settings.account.uid", "session.profileId", "session.running", "session.startedAt",
   "settings.tiktok.roomId", "settings.tiktok.username", "settings.tiktok.status", "settings.tiktok.broadcaster", "commerce.subscription", "settings.siteVisibility"];
 const signature = (value) => JSON.stringify(value);
 const clone = (value) => structuredClone(value);
-const ACTION_CONTEXT_PATHS = [...PATHS.filter((key) => key !== "matchSession"), "matchSession.battleId", "matchSession.status", "matchSession.result", "matchSession.scope", "matchSession.endsAtMs", "matchSession.participants"];
-const LIVE_CONTEXT_PATHS = ACTION_CONTEXT_PATHS.filter((key) => !["settings.matches", "matchSession.participants", "matchSession.endsAtMs"].includes(key));
+const ACTION_CONTEXT_PATHS = [...PATHS.filter((key) => key !== "matchSession"), "matchSession.battleId", "matchSession.startObserved", "matchSession.status", "matchSession.result", "matchSession.scope", "matchSession.endsAtMs", "matchSession.participants", "matchSession.teams"];
+const LIVE_CONTEXT_PATHS = ACTION_CONTEXT_PATHS.filter((key) => !["settings.matches", "matchSession.participants", "matchSession.teams", "matchSession.endsAtMs"].includes(key));
+const SIDE_MOMENTS = new Set(["lead", "comeback", "tieEnd", "victory", "defeat"]);
 function mismatch() { const error = new Error("Le compte ou le profil du match a changé."); error.code = "FEATURE_CONTEXT_CHANGED"; return error; }
 function scope(state) { return { uid: state.settings?.account?.uid || "", profileId: state.session?.profileId || "", roomId: state.settings?.tiktok?.roomId || "" }; }
 function assertExpectedScope(state, expected) {
   if (expected && (String(expected.ownerUid || "") !== state.settings?.account?.uid || String(expected.profileId || "") !== state.session?.profileId)) throw mismatch();
 }
 function identifiedDuo(runtime) {
+  if (runtime.teams?.length) return null; // Un identifiant d'équipe n'est pas une paire de streamers.
   const own = runtime.participants.find((entry) => entry.own), rival = runtime.participants.find((entry) => !entry.own);
   return runtime.participants.length === 2 && own?.id && rival?.id && own.id !== rival.id ? { own, rival } : null;
 }
+function identifiedTeams(runtime) {
+  const teams = runtime.teams || [], own = teams.filter((entry) => entry.own), rival = teams.filter((entry) => !entry.own);
+  return teams.length === 2 && own.length === 1 && rival.length === 1 && own[0].id !== rival[0].id ? { own: own[0], rival: rival[0], team: true } : null;
+}
+function teamContext(runtime) {
+  if (!runtime?.teams?.length) return "";
+  return signature(runtime.teams.map((row) => [row.id, row.own === true, [...row.participantIds].sort()]).sort(([a], [b]) => a.localeCompare(b)));
+}
+/** Un premier score récent peut annoncer un début absent du flux OPEN, mais
+ * uniquement si les dates prouvent un match commencé pendant ce LIVE établi.
+ * Une reconnexion, une date absente ou un match déjà ancien n'est pas un début. */
+function recentScoresProveStart(state, input, hasScores, now) {
+  const startedAt = state.session?.startedAt;
+  if (typeof startedAt !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(startedAt)) return false;
+  const liveStart = Date.parse(startedAt), battleStart = Number(input.startsAtMs), battleEnd = Number(input.endsAtMs);
+  return hasScores && Number.isFinite(liveStart) && liveStart > 0 && battleStart >= liveStart && battleStart <= now &&
+    now - battleStart <= 10000 && battleEnd > now;
+}
 function comparison(runtime) {
-  const duo = identifiedDuo(runtime); if (!duo || duo.own.score == null || duo.rival.score == null) return null;
+  const duo = runtime.teams?.length ? identifiedTeams(runtime) : identifiedDuo(runtime); if (!duo || duo.own.score == null || duo.rival.score == null) return null;
   return { ...duo, difference: duo.own.score - duo.rival.score };
 }
 function eligibleMoment(state, moment, now) {
   const runtime = state.matchSession;
   if (!state.session?.running || state.settings?.tiktok?.status !== "live" || !runtime?.battleId) return false;
+  if (moment === "battleStart" && runtime.startObserved !== true) return false;
   if (moment === "victory" || moment === "defeat") return runtime.status === "finished" && runtime.result === (moment === "victory" ? "win" : "lose");
   return runtime.status === "running" && (!runtime.endsAtMs || runtime.endsAtMs > now);
 }
@@ -48,6 +70,22 @@ class MatchesService {
     this.executor = new CommandExecutor({ store, actionRunner, accessSection: "matches" });
     this.identity = ""; this.seen = new Set(); this.cooldowns = new Map(); this.timers = new Map(); this.likes = [];
     this.pending = []; this.processing = false; this.completion = Promise.resolve(); this.generation = 0;
+    this.bonuses = new MatchBonuses({ now: this.now, current: () => {
+      try { assertProFeatureAccess(this.store, "matches"); } catch { return null; }
+      const state = this.state(), runtime = state.matchSession;
+      const ownerId = String(state.settings?.tiktok?.broadcaster?.userId || state.settings?.tiktok?.broadcaster?.id || "");
+      return state.session?.running && state.settings?.tiktok?.status === "live" && runtime?.status === "running" &&
+        runtime.ownUserId && (!ownerId || ownerId === "0" || ownerId === runtime.ownUserId) &&
+        // Keep the same live/account/profile context available at the deadline
+        // so reconcile can clear the last multiplier. Activation still checks
+        // the match end independently; an expired match cannot fire a bonus.
+        signature(runtime.scope) === signature(scope(state))
+        ? { identity: signature(scope(state)), battleId: runtime.battleId, roomId: String(state.settings.tiktok.roomId || ""), startedAtMs: runtime.startedAtMs, endsAtMs: runtime.endsAtMs, bonusEndsAtMs: runtime.bonusEndsAtMs || 0,
+          ownerUserId: runtime.ownUserId, ownerVerified: Boolean(ownerId && ownerId !== "0" && ownerId === runtime.ownUserId), ownerTeams: teamContext(runtime) } : null;
+    }, timer: (key, ms, callback) => this.timer(`bonus:${key}`, ms, callback), clearTimer: (key) => {
+      const timerKey = `bonus:${key}`; if (this.timers.has(timerKey)) this.clearTimeoutImpl(this.timers.get(timerKey)); this.timers.delete(timerKey);
+    }, onChange: (multiplier) => this.mutate((next) => { next.matchSession.multiplier = multiplier; }),
+    onStart: (multiplier, bonusKey) => this.fireMoment(`multiplierX${multiplier}`, undefined, { bonusKey }), publish: () => this.publish() });
   }
   state() { return readState(this.store, PATHS); }
   status() {
@@ -56,6 +94,7 @@ class MatchesService {
     return { config: normalizeMatchesConfig(state.settings?.matches), runtime, capabilities: { battle: true, scores: true, multiplier: true, cards: false } };
   }
   reset() {
+    this.bonuses.reset();
     this.generation += 1; this.pending = []; this.likes = []; this.seen.clear(); this.cooldowns.clear();
     for (const timer of this.timers.values()) this.clearTimeoutImpl(timer);
     this.timers.clear(); this.identity = "";
@@ -88,7 +127,8 @@ class MatchesService {
     assertProFeatureAccess(this.store, "matches"); const state = this.state(); assertExpectedScope(state, expected);
     const current = normalizeMatchesConfig(state.settings?.matches), widgets = { ...current.widgets };
     for (const { id } of MATCH_WIDGETS) if (input?.widgets?.[id]) widgets[id] = { ...widgets[id], ...input.widgets[id] };
-    const config = normalizeMatchesConfig({ ...current, widgets });
+    const config = normalizeMatchesConfig({ ...current, widgets,
+      ...(Object.hasOwn(input || {}, "visualBonus") ? { visualBonus: input.visualBonus } : {}) });
     this.mutate((next) => { next.settings.matches = config; }, true); this.publish(); return this.status();
   }
   validateReaction(item) {
@@ -142,12 +182,14 @@ class MatchesService {
     if (reaction.type === "sound") return { id, type: "audio.play", config: { ...reaction } };
     return { id, type: "overlay.media", config: { ...reaction } };
   }
-  async runReaction(item, { test = false, capturedScope = scope(this.state()), battleId = "" } = {}) {
+  async runReaction(item, { test = false, capturedScope = scope(this.state()), capturedTeams = teamContext(this.state().matchSession), battleId = "", bonusKey = "" } = {}) {
     const generation = this.generation, expectedSignature = signature(item);
     const guard = createProFeatureGuard(this.store, "matches");
     const shouldExecute = () => {
       try { guard(); } catch { return false; }
       const fresh = readState(this.store, ACTION_CONTEXT_PATHS); if (generation !== this.generation || signature(scope(fresh)) !== signature(capturedScope)) return false;
+      if (SIDE_MOMENTS.has(item.moment) && capturedTeams !== teamContext(fresh.matchSession)) return false;
+      if (!test && bonusKey && !this.bonuses.isActive(bonusKey)) return false;
       const current = normalizeMatchesConfig(fresh.settings?.matches).automations.find((entry) => entry.id === item.id);
       return Boolean(current && signature(current) === expectedSignature && (test || current.enabled && fresh.matchSession?.battleId === battleId && eligibleMoment(fresh, current.moment, this.now())));
     };
@@ -198,73 +240,109 @@ class MatchesService {
     const timer = this.setTimeoutImpl(() => { this.timers.delete(key); callback(); }, Math.max(0, ms)); timer?.unref?.(); this.timers.set(key, timer);
   }
   handle(input = {}) {
-    if (input.source && input.source !== "source_tiktok" || !["start", "update", "end", "cancel", "task", "punish"].includes(input.phase)) return false;
+    if (input.source && input.source !== "source_tiktok" || !["start", "update", "end", "cancel", "task", "punish", "gift-bonus"].includes(input.phase)) return false;
     if (!hasAuthenticatedAccount(this.store)) return false;
     const state = this.state(); if (!hasProAccess(state) || !state.session?.running || state.settings?.tiktok?.status !== "live") return false;
     try { assertProFeatureAccess(this.store, "matches"); } catch { return false; }
     const currentScope = scope(state); if (input.roomId && input.roomId !== currentScope.roomId) return false;
     if (input.channelUsername && String(input.channelUsername).replace(/^@/, "").toLowerCase() !== String(state.settings.tiktok.username || "").replace(/^@/, "").toLowerCase()) return false;
     const identity = signature(currentScope); if (identity !== this.identity) { this.reset(); this.identity = identity; }
-    if (input.id) { const key = `${input.phase}:${input.id}`; if (this.seen.has(key)) return false;
-      this.seen.add(key); while (this.seen.size > 2000) this.seen.delete(this.seen.values().next().value); }
+    if (input.phase === "gift-bonus") {
+      if (input.source !== "source_tiktok" || input.test === true || input.roomId !== currentScope.roomId ||
+        typeof input.channelUsername !== "string" || !input.channelUsername.replace(/^@/, "") ||
+        !String(state.settings.tiktok.username || "").replace(/^@/, "") ||
+        signature(state.matchSession?.scope) !== identity) return false;
+      return this.bonuses.observeGift(input, identity);
+    }
     if (!input.battleId || input.phase === "punish") return false;
+    if (input.id) { const key = `${input.battleId}:${input.phase}:${input.id}`; if (this.seen.has(key)) return false;
+      this.seen.add(key); while (this.seen.size > 2000) this.seen.delete(this.seen.values().next().value); }
     const old = signature(state.matchSession?.scope) === identity ? state.matchSession : createMatchSession(state.matchSession);
     const newBattle = old.battleId !== input.battleId;
+    if (input.phase === "task" && newBattle) { this.bonuses.accept(input, identity, true); return false; }
+    const incomingTeams = normalizeMatchTeams(input.teams);
+    const hasScores = incomingTeams.some((entry) => entry.score !== null) || (input.participants || []).some((entry) =>
+      ["number", "string"].includes(typeof entry.score) && String(entry.score).trim() !== "" && Number.isFinite(Number(entry.score)) && Number(entry.score) >= 0);
     // Reconnexion ou match rejoint en cours : le SDK peut fournir les scores
     // sans renvoyer OPEN. Ses dates doivent prouver un match plus récent ; un
     // ancien paquet retardé ne remplace jamais le match courant. Cette reprise
     // n'invente pas le moment « début », ni un résultat final.
     if (newBattle && old.battleId && input.phase !== "start" && !(input.phase === "update" &&
       input.startsAtMs > old.startedAtMs && input.startsAtMs <= this.now() + 60000 && input.endsAtMs > this.now() &&
-      (input.participants || []).some((entry) => entry.score != null))) return false;
+      hasScores)) return false;
     if (newBattle && old.history.some((entry) => entry.battleId === input.battleId)) return false;
     if (newBattle && input.phase === "start" && old.startedAtMs && input.startsAtMs && input.startsAtMs < old.startedAtMs) return false;
     if (!old.battleId && ["task", "cancel"].includes(input.phase)) return false;
+    if (!newBattle && old.status === "cancelled") return false;
     if (!newBattle && old.status === "finished" && input.phase !== "end") return false;
     const before = newBattle ? null : comparison(old), moments = [];
+    const recentStart = newBattle && input.phase === "update" && recentScoresProveStart(state, input, hasScores, this.now());
     this.mutate((next) => {
       let runtime = signature(next.matchSession?.scope) === identity ? next.matchSession : createMatchSession(next.matchSession);
       if (!runtime.battleId || runtime.battleId !== input.battleId) {
         runtime = { ...createMatchSession(runtime), scope: currentScope, status: "running", battleId: input.battleId,
           startedAtMs: input.startsAtMs || input.receivedAtMs, endsAtMs: input.endsAtMs || 0,
           liveContributors: runtime.liveContributors || [], lastGift: runtime.lastGift || null, lastContribution: runtime.lastContribution || null };
-        runtime.session.battles += 1; if (input.phase === "start") moments.push("battleStart");
+        runtime.session.battles += 1;
+      }
+      // ARMIES peut précéder OPEN dans le SDK. Le début réel n'est donc pas
+      // réservé à la création du runtime, et n'est jamais répété par son cooldown.
+      if ((input.phase === "start" || recentStart) && runtime.startObserved !== true) {
+        runtime.startObserved = true; runtime.startOrigin = input.phase === "start" ? "open" : "recent-scores"; moments.push("battleStart");
       }
       if (input.endsAtMs) runtime.endsAtMs = input.endsAtMs;
       if (["start", "update"].includes(input.phase) && runtime.status === "disconnected") runtime.status = "running";
       if (input.startsAtMs) runtime.startedAtMs = input.startsAtMs;
+      if (!runtime.bonusEndsAtMs && Number.isSafeInteger(input.bonusEndsAtMs) && input.bonusEndsAtMs > Math.max(1e12, runtime.startedAtMs) &&
+        input.bonusEndsAtMs <= runtime.endsAtMs) runtime.bonusEndsAtMs = input.bonusEndsAtMs;
       const rows = new Map(runtime.participants.map((entry) => [entry.id, entry]));
       const username = String(next.settings.tiktok.broadcaster?.username || next.settings.tiktok.username || "").replace(/^@/, "").toLowerCase();
       const ownerId = String(next.settings.tiktok.broadcaster?.userId || next.settings.tiktok.broadcaster?.id || "");
       for (const row of input.participants || []) {
         const previous = rows.get(row.id) || {}; const known = Object.fromEntries(Object.entries(row).filter(([key, value]) => value !== null && value !== "" && !(key === "donors" && !value.length)));
-        const merged = { ...previous, ...known, own: Boolean(ownerId && row.id === ownerId || username && (row.username || previous.username || "").toLowerCase() === username) };
-        rows.set(row.id, merged);
+        rows.set(row.id, { ...previous, ...known, own: false });
       }
-      runtime.participants = [...rows.values()].slice(0, 16); runtime.ownUserId = runtime.participants.find((entry) => entry.own)?.id || "";
+      const teams = new Map(normalizeMatchTeams(runtime.teams).map((row) => [row.id, row]));
+      for (const team of incomingTeams) {
+        const previous = teams.get(team.id) || {};
+        teams.set(team.id, { ...previous, ...team, participantIds: team.participantIds.length ? team.participantIds : previous.participantIds || [],
+          score: team.score ?? previous.score ?? null, result: team.result || previous.result || null, donors: team.donors.length ? team.donors : previous.donors || [] });
+      }
+      runtime.teams = [...teams.values()].slice(0, 8);
+      const participants = [...rows.values()].slice(0, 16);
+      // Un UID TikTok connu est prioritaire au pseudo ; jamais l'UID Firebase.
+      const owners = participants.filter((row) => ownerId && ownerId !== "0" ? row.id === ownerId : username && String(row.username || "").replace(/^@/, "").toLowerCase() === username);
+      runtime.ownUserId = owners.length === 1 ? owners[0].id : ownerId && ownerId !== "0" && runtime.teams.some((row) => row.participantIds.includes(ownerId)) ? ownerId : "";
+      const ownTeams = runtime.ownUserId ? runtime.teams.filter((row) => row.participantIds.includes(runtime.ownUserId)) : [];
+      runtime.ownTeamId = ownTeams.length === 1 ? ownTeams[0].id : "";
+      runtime.teams.forEach((row) => { row.own = row.id === runtime.ownTeamId; });
+      runtime.participants = participants.map((row) => {
+        const memberTeams = runtime.teams.filter((team) => team.participantIds.includes(row.id));
+        return { ...row, own: row.id === runtime.ownUserId, ...(runtime.teams.length ? { teamId: memberTeams.length === 1 ? memberTeams[0].id : "" } : {}) };
+      });
+      if ([1, 2, 3, 4, 51, 52].includes(input.battleType)) runtime.battleType = input.battleType;
       const after = comparison(runtime);
       const duo = identifiedDuo(runtime);
       if (duo) {
         const pair = runtime.pairRounds.find((entry) => entry.opponentId === duo.rival.id);
         runtime.rounds = { own: pair?.own || 0, opponent: pair?.opponent || 0 };
-      }
-      if (before && after && before.difference <= 0 && after.difference > 0) {
+      } else if (runtime.teams.length) runtime.rounds = { own: null, opponent: null };
+      const sameSides = before && after && before.own.id === after.own.id && before.rival.id === after.rival.id && Boolean(before.team) === Boolean(after.team) && teamContext(old) === teamContext(runtime);
+      if (sameSides && before.difference <= 0 && after.difference > 0) {
         moments.push("lead"); if (before.difference < 0) moments.push("comeback");
       }
       if (after?.difference === 0 && runtime.status === "running") moments.push("tieEnd");
-      if (input.rewardFinished) runtime.multiplier = 1;
-      if (input.multiplier && (!input.rewardStartsAtMs || input.rewardStartsAtMs <= this.now()) && runtime.multiplier !== input.multiplier) {
-        runtime.multiplier = input.multiplier; moments.push(`multiplierX${input.multiplier}`);
-      }
       runtime.lastEventAtMs = input.receivedAtMs || this.now();
-      if (input.phase === "cancel") runtime.status = "disconnected";
+      if (input.phase === "cancel") { runtime.status = "cancelled"; runtime.multiplier = 1; }
       if (input.phase === "end") {
         runtime.status = "finished";
+        runtime.multiplier = 1;
         runtime.endedAtMs = this.now();
         // Une fin muette ne transforme jamais les scores précédents en
         // résultat final. Seul le paquet END courant constitue une preuve.
-        const ownEnd = (input.participants || []).find((entry) => entry.id === runtime.ownUserId);
-        const rivalEnd = after && (input.participants || []).find((entry) => entry.id === after.rival.id);
+        const endRows = runtime.teams.length ? incomingTeams : input.participants || [];
+        const ownEnd = endRows.find((entry) => entry.id === (runtime.teams.length ? runtime.ownTeamId : runtime.ownUserId));
+        const rivalEnd = after && endRows.find((entry) => entry.id === after.rival.id);
         const finalScores = input.confirmedEnd && after && ownEnd?.score != null && rivalEnd?.score != null;
         const incomingResult = input.confirmedEnd && ownEnd?.result || (finalScores ? ownEnd.score > rivalEnd.score ? "win" : ownEnd.score < rivalEnd.score ? "lose" : "draw" : null);
         let history = runtime.history.find((entry) => entry.battleId === runtime.battleId);
@@ -278,7 +356,7 @@ class MatchesService {
           runtime.session.wins += Number(runtime.result === "win"); runtime.session.losses += Number(runtime.result === "lose"); runtime.session.draws += Number(runtime.result === "draw");
           if (runtime.result === "win") runtime.session.winStreak += 1;
           else if (runtime.result) runtime.session.winStreak = 0;
-          if (after) {
+          if (after && !after.team) {
             let pair = runtime.pairRounds.find((entry) => entry.opponentId === after.rival.id);
             if (!pair) { pair = { opponentId: after.rival.id, own: 0, opponent: 0 }; runtime.pairRounds.push(pair); }
             pair.own += Number(runtime.result === "win"); pair.opponent += Number(runtime.result === "lose"); runtime.pairRounds = runtime.pairRounds.slice(-20);
@@ -289,20 +367,10 @@ class MatchesService {
       }
       next.matchSession = runtime;
     });
+    if (input.phase === "cancel") { this.reset(); this.identity = identity; this.publish(); return true; }
     for (const moment of moments) this.fireMoment(moment, undefined, { deficit: Math.max(0, -(before?.difference || 0)) });
-    if (input.rewardFinished) {
-      for (const key of ["multiplier", "multiplier-end"]) if (this.timers.has(key)) { this.clearTimeoutImpl(this.timers.get(key)); this.timers.delete(key); }
-    }
-    if (input.multiplier && input.rewardStartsAtMs > this.now()) this.timer("multiplier", input.rewardStartsAtMs - this.now(), () => {
-      const fresh = this.state(); if (signature(scope(fresh)) !== identity || !fresh.session?.running || fresh.settings?.tiktok?.status !== "live" || fresh.matchSession?.battleId !== input.battleId || fresh.matchSession.status !== "running") return;
-      try { assertProFeatureAccess(this.store, "matches"); } catch { return; }
-      this.mutate((next) => { next.matchSession.multiplier = input.multiplier; }); this.fireMoment(`multiplierX${input.multiplier}`); this.publish();
-    });
-    if (input.multiplier && input.rewardDurationMs > 0) this.timer("multiplier-end", Math.max(0, (input.rewardStartsAtMs || this.now()) + input.rewardDurationMs - this.now()), () => {
-      const fresh = this.state(); if (signature(scope(fresh)) !== identity || !fresh.session?.running || fresh.settings?.tiktok?.status !== "live" || fresh.matchSession?.battleId !== input.battleId || fresh.matchSession.status !== "running" || fresh.matchSession.multiplier !== input.multiplier) return;
-      try { assertProFeatureAccess(this.store, "matches"); } catch { return; }
-      this.mutate((next) => { next.matchSession.multiplier = 1; }); this.publish();
-    });
+    this.bonuses.attachBattle(input.battleId, identity, input.startsAtMs || old.startedAtMs || input.receivedAtMs || this.now());
+    this.bonuses.accept(input, identity); this.bonuses.reconcile();
     this.reschedule(); this.publish(); return true;
   }
   handleLiveEvent(event) {
@@ -359,11 +427,11 @@ class MatchesService {
         if (state.matchSession.status !== "running" || remaining <= 0 || remaining > item.remainingSeconds * 1000 || comparison(state.matchSession)?.difference !== 0) continue;
       }
       if (moment === "likeRush" && this.likes.filter((entry) => entry.at >= now - item.windowSeconds * 1000).reduce((sum, entry) => sum + entry.count, 0) < item.threshold) continue;
-      const key = `${state.matchSession.battleId}:${item.id}`;
+      const key = `${state.matchSession.battleId}:${item.id}${details.bonusKey ? `:${details.bonusKey}` : ""}`;
       if ((this.cooldowns.get(key) || 0) > now || this.pending.length >= 30) continue;
       this.cooldowns.set(key, ["snipe", "tieEnd"].includes(moment) ? Number.MAX_SAFE_INTEGER : now + item.cooldownMs);
       while (this.cooldowns.size > 1000) this.cooldowns.delete(this.cooldowns.keys().next().value);
-      this.pending.push({ item, capturedScope: scope(state), battleId: state.matchSession.battleId });
+      this.pending.push({ item, capturedScope: scope(state), capturedTeams: teamContext(state.matchSession), battleId: state.matchSession.battleId, bonusKey: details.bonusKey || "" });
     }
     this.pump();
   }

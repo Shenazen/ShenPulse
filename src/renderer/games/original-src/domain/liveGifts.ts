@@ -8,12 +8,14 @@ export type LiveGift = {
   imageUrl: string
   name: string
   source?: string
+  selectable?: boolean
 }
 
 export type GiftTriggerOption = {
   alternateIds?: string[]
   alternateNames?: string[]
   giftIds?: string[]
+  giftFamily?: string
   coinCost?: number
   colors: string[]
   cost: string
@@ -24,6 +26,7 @@ export type GiftTriggerOption = {
   label?: string
   name: string
   source?: string
+  selectable?: boolean
   subtitle?: string
   value?: string
 }
@@ -51,7 +54,7 @@ const giftAliasGroups = [
   ['rose', '5655'],
   ['gg', '6064'],
   ['finger-heart', '5487', 'finger heart', 'finger hearts', 'coeur avec les doigts', 'coeur doigts', 'c\u0153ur avec les doigts', 'c\u0153ur doigts'],
-  ['heart-me', '7934', '17712', '62816', '601333', 'heart me', 'coeur sur moi', 'cœur sur moi', 'coeur du jour', 'cœur du jour', 'community heart', 'envoie moi un coeur'],
+  ['heart-me', '7934', 'heart me', 'coeur sur moi', 'cœur sur moi', 'coeur du jour', 'cœur du jour', 'envoie moi un coeur'],
   ['perfume', '5658', 'parfum'],
   ['doughnut', '5879', 'donut', 'beignet'],
   ['cap', '6104', 'casquette'],
@@ -100,6 +103,7 @@ const giftAliasCatalogIdLookup = new Map<string, string>([
 
 export function createGiftTriggerOptions(gifts: RawGift[] = []): GiftTriggerOption[] {
   const realOptions = gifts
+    .filter((gift) => gift?.selectable !== false && String(gift?.id || gift?.giftId || '') !== '17712')
     .map(giftToTriggerOption)
     .filter((gift) => gift.id && gift.name)
     .sort((left, right) => sourceRank(left.source) - sourceRank(right.source) || costValue(left.cost) - costValue(right.cost) || left.name.localeCompare(right.name))
@@ -115,7 +119,7 @@ export function createGiftTriggerOptionList(options: GiftTriggerOptionInput[] = 
       ? [config.prepend]
       : []
   const mappedOptions = normalizeGiftTriggerOptions(options)
-    .filter((option) => !excludeIds.has(option.id))
+    .filter((option) => option.selectable !== false && option.id.replace(/^gift:/i, '') !== '17712' && !excludeIds.has(option.id))
     .map((option) => ({
       ...option,
       ...(config.group ? { group: config.group } : {}),
@@ -172,7 +176,8 @@ export function normalizeGiftTriggerOption(option: GiftTriggerOptionInput | null
 
   return {
     ...option,
-    alternateIds: uniqueOptionStrings(option.alternateIds, option.giftIds),
+    alternateIds: uniqueOptionStrings(option.alternateIds, option.giftIds).filter((alias) => compatibleHeartGiftIds(id, alias, option.giftFamily)),
+    ...(Array.isArray(option.giftIds) ? { giftIds: uniqueOptionStrings(option.giftIds).filter((alias) => compatibleHeartGiftIds(id, alias, option.giftFamily)) } : {}),
     alternateNames: uniqueOptionStrings(option.alternateNames),
     coinCost: Number.isFinite(parsedCost) && parsedCost > 0 ? parsedCost : undefined,
     colors,
@@ -199,7 +204,8 @@ export function giftToTriggerOption(gift: RawGift = {}): GiftTriggerOption {
     : normalized.id ? `gift:${normalized.id}` : nameId
   return {
     id: optionId,
-    alternateIds: uniqueOptionStrings(gift.alternateIds, gift.giftIds).map((id) => id.startsWith('gift:') ? id : `gift:${id}`),
+    alternateIds: uniqueOptionStrings(gift.alternateIds, gift.giftIds).filter((id) => compatibleHeartGiftIds(normalized.id, id, normalized.giftFamily))
+      .map((id) => id.startsWith('gift:') ? id : `gift:${id}`),
     alternateNames: uniqueOptionStrings(gift.alternateNames, [gift.originalName]),
     name: normalized.name,
     cost: normalized.cost ? String(normalized.cost) : '',
@@ -207,19 +213,34 @@ export function giftToTriggerOption(gift: RawGift = {}): GiftTriggerOption {
     colors: colorPair(normalized.id || normalized.name),
     imageUrl: normalized.imageUrl,
     source,
+    ...(gift.selectable === false ? { selectable: false } : {}),
   }
 }
 
 export function normalizeLiveGift(gift: RawGift = {}): LiveGift {
+  const id = String(gift.id || gift.giftId || gift.gift_id || '').trim()
+  const family = isCommunityHeartGiftId(id) ? 'community-heart'
+    : gift.giftFamily === 'community-heart' && id ? '' : String(gift.giftFamily || '').trim()
   return {
-    ...(Array.isArray(gift.giftIds) ? { giftIds: [...new Set(gift.giftIds.map((id: unknown) => String(id || '').trim()).filter(Boolean))] as string[] } : {}),
-    ...(gift.giftFamily ? { giftFamily: String(gift.giftFamily).trim() } : {}),
-    id: String(gift.id || gift.giftId || gift.gift_id || '').trim(),
+    ...(Array.isArray(gift.giftIds) ? { giftIds: uniqueOptionStrings(gift.giftIds).filter((alias) => compatibleHeartGiftIds(id, alias, family)) } : {}),
+    ...(family ? { giftFamily: family } : {}),
+    id,
     name: String(gift.name || gift.giftName || '').trim(),
     cost: Number(gift.cost || gift.giftCost || gift.value || gift.diamondCount || gift.diamond_count || 0) || 0,
     imageUrl: String(gift.imageUrl || gift.giftImageUrl || gift.giftPictureUrl || '').trim(),
     source: String(gift.source || '').trim(),
+    ...(gift.selectable === false ? { selectable: false } : {}),
   }
+}
+
+export function isCommunityHeartGiftId(value: unknown) {
+  const id = String(value || '').trim().replace(/^gift:/i, '').toLowerCase()
+  return id === '7934' || id === 'heart-me'
+}
+
+function compatibleHeartGiftIds(primary: unknown, alias: unknown, family?: unknown) {
+  return String(primary || '').trim() ? isCommunityHeartGiftId(primary) === isCommunityHeartGiftId(alias)
+    : family !== 'community-heart' || isCommunityHeartGiftId(alias)
 }
 
 export function triggerMatchesGift(triggerId: string, gift: RawGift) {
@@ -227,7 +248,11 @@ export function triggerMatchesGift(triggerId: string, gift: RawGift) {
   if (!triggerId || triggerId === 'none') return false
 
   if (normalized.id && triggerId === `gift:${normalized.id}`) return true
-  if (normalized.giftFamily === 'community-heart' && giftAliasLookup.get(slugify(triggerId.replace(/^gift:/, ''))) === 'heart-me') return true
+  const heartTrigger = giftAliasLookup.get(slugify(triggerId.replace(/^(?:gift:|gift-name:)/i, ''))) === 'heart-me'
+  // An exact creator gift cannot become Heart Me through stale family/name
+  // metadata, even when an older setting also stored a wrong heart alias.
+  if (heartTrigger && normalized.id) return isCommunityHeartGiftId(normalized.id)
+  if (normalized.giftFamily === 'community-heart' && heartTrigger) return true
   if (normalized.id && (triggerId.startsWith('gift:') || /^\d+$/.test(triggerId))) {
     // Les alias techniques confirmés sont permis, pas le nom d'un autre ID.
     return [normalized.id, ...(normalized.giftIds || [])].some((id) => giftLookupKeysIntersect(giftLookupKeys(triggerId), giftLookupKeys(id)))

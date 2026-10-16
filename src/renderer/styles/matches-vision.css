@@ -1,0 +1,12 @@
+.matches-vision-editor { display: grid; gap: 14px; }
+.matches-vision-editor p { margin: 0; line-height: 1.55; }
+.matches-vision-state { color: var(--cyan, #22d3ee); font-weight: 700; }
+.matches-vision-toolbar, .matches-vision-zone-choices, .matches-vision-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.matches-vision-zone-choices .is-selected { border-color: #22d3ee; background: #103742; color: #a5f3fc; }
+.matches-vision-preview { position: relative; align-self: start; width: 100%; overflow: hidden; border: 1px solid #3c3760; border-radius: 10px; cursor: crosshair; touch-action: none; user-select: none; }
+.matches-vision-preview[hidden], .matches-vision-selection[hidden] { display: none; }
+.matches-vision-preview img { display: block; width: 100%; height: auto; max-height: none; object-fit: contain; pointer-events: none; }
+.matches-vision-selection { position: absolute; box-sizing: border-box; border: 2px solid #22d3ee; background: #22d3ee1f; pointer-events: none; }
+.matches-vision-selection.is-owner { border-color: #c084fc; background: #c084fc1f; }
+.matches-vision-selection span { position: absolute; left: 0; top: 0; max-width: 100%; padding: 1px 4px; color: #fff; background: #11142c; font-size: 11px; white-space: nowrap; overflow: hidden; }
+.matches-vision-feedback { min-height: 24px; color: #b7c2d5; font-size: 13px; }

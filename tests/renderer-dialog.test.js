@@ -211,10 +211,10 @@ test("les mises à jour conservent les éléments du menu sous la souris", () =>
   );
   const chromeSync = app.slice(
     app.indexOf("function syncChrome"),
-    app.indexOf("function render()")
+    app.indexOf("function render(")
   );
   const pageRenderer = app.slice(
-    app.indexOf("function render()"),
+    app.indexOf("function render("),
     app.indexOf("function captureAdminScrollState")
   );
 

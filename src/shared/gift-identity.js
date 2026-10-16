@@ -7,15 +7,15 @@
 
 const catalogIndexes = new WeakMap();
 const COMMUNITY_HEART_CANONICAL_NAME = "Cœur sur moi";
-// Visuel générique actuel fourni par le CDN TikTok pour le cadeau 17712.
-// L'ancien « Heart Me » (7934) reste un alias fonctionnel, pas son ancien dessin.
-const COMMUNITY_HEART_IMAGE_URL = "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/dad7a63955f98891958e37071bb067f3.png~tplv-obj.webp";
+// Base neutre Heart Me fournie par TikTok : cœur rouge au clin d'œil, bord doré,
+// sans accessoires de créateur. Un cadeau personnalisé avec un autre ID
+// conserve son identité et son nom exact : son détourage ne prouve rien.
+// Ne pas confondre avec l'icône dorée entrelacée du catalogue brut 17712 ni
+// avec les variantes personnalisées « resource/composed.* » du cadeau 7934.
+const COMMUNITY_HEART_IMAGE_URL = "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/heartme_outfit/base_heartme_composition.png~tplv-obj.webp";
 const COMMUNITY_HEART_GIFT_IDS = new Set([
   "heart-me",
-  "7934",
-  "17712",
-  "62816",
-  "601333"
+  "7934"
 ]);
 const COMMUNITY_HEART_NAMES = new Set([
   "coeur de la communaute",
@@ -59,12 +59,11 @@ function giftImageIdentity(value = "") {
   return filename.match(/^([a-f0-9]{32})(?:\.(?:png|jpe?g|webp))?$/i)?.[1] || filename;
 }
 
-function giftFamily(value = {}) {
-  const explicit = String(value.giftFamily ?? value.family ?? "")
-    .trim()
-    .toLowerCase();
-  if (explicit) return explicit;
+function isCommunityHeartGiftId(value) {
+  return COMMUNITY_HEART_GIFT_IDS.has(String(value || "").trim().toLowerCase());
+}
 
+function giftFamily(value = {}) {
   const gift = {
     ...(value.extendedGiftInfo || {}),
     ...(value.giftDetails || {}),
@@ -76,38 +75,13 @@ function giftFamily(value = {}) {
   const nameKey = normalizeGiftName(
     value.giftName ?? value.name ?? gift.giftName ?? gift.name
   );
-  if (
-    COMMUNITY_HEART_GIFT_IDS.has(id) ||
-    (!id && COMMUNITY_HEART_NAMES.has(nameKey))
-  ) {
-    return "community-heart";
-  }
-
-  const cost = Number(
-    value.giftCost ??
-      value.cost ??
-      value.value ??
-      value.diamondCount ??
-      gift.cost ??
-      gift.diamondCount ??
-      gift.diamond_count ??
-      0
-  );
-  const combo = Boolean(
-    value.giftCombo ?? value.combo ?? gift.combo ?? gift.isCombo
-  );
-  const imageUri = String(
-    value.giftImageUri ??
-      value.imageUri ??
-      gift.imageUri ??
-      gift.image?.uri ??
-      gift.icon?.uri ??
-      ""
-  );
-  if (cost === 1 && combo && /(?:^|\/)saliency_seg_/i.test(imageUri)) {
-    return "community-heart";
-  }
-  return "";
+  if (isCommunityHeartGiftId(id)) return "community-heart";
+  const explicit = String(value.giftFamily ?? value.family ?? "").trim().toLowerCase();
+  // Older versions persisted this incorrect family for unrelated custom IDs.
+  // A precise non-heart ID takes priority over that stale family or its name.
+  if (id) return explicit === "community-heart" ? "" : explicit;
+  if (explicit) return explicit;
+  return COMMUNITY_HEART_NAMES.has(nameKey) ? "community-heart" : "";
 }
 
 function canonicalGiftName(value = {}, fallback = "Cadeau") {
@@ -122,6 +96,7 @@ function giftIdentity(value = {}) {
     value.giftCost ?? value.cost ?? value.value ?? value.diamondCount ?? 0
   );
   const id = String(value.giftId ?? value.id ?? "").trim().toLowerCase();
+  const family = giftFamily(value);
   const alternateIds = [
     ...(Array.isArray(value.alternateIds) ? value.alternateIds : []),
     ...(Array.isArray(value.giftIds) ? value.giftIds : [])
@@ -130,8 +105,10 @@ function giftIdentity(value = {}) {
     .filter(Boolean);
   return {
     id,
-    ids: [...new Set([id, ...alternateIds].filter(Boolean))],
-    family: giftFamily(value),
+    ids: [...new Set([id, ...alternateIds].filter(Boolean))].filter((candidate) =>
+      id ? candidate === id || isCommunityHeartGiftId(candidate) === isCommunityHeartGiftId(id)
+        : family !== "community-heart" || isCommunityHeartGiftId(candidate)),
+    family,
     name: canonicalGiftName(value, ""),
     nameKey: normalizeGiftName(canonicalGiftName(value, "")),
     imageUrl: String(
@@ -323,6 +300,7 @@ return Object.freeze({
   giftConditionMatches,
   giftFamily,
   giftIdentity,
+  isCommunityHeartGiftId,
   giftImageIdentity,
   giftVisualUrl,
   normalizeGiftName,

@@ -5,6 +5,7 @@ coverage/
 .artifacts/
 .firebase/
 .tmp/
+tmp/
 .tmp-*/
 .tmp-*.jar
 *.log

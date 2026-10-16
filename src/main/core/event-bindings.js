@@ -9,7 +9,7 @@ const { isMinecraftRoundGame } = require("../game-round-timer");
 const { synchronizeSessionWithTikTok } = require("./session-state");
 const { recordLiveAudience } = require("./event-statistics");
 
-function bindCoreEvents({ minecraftRoundTimer, timerScheduler, sourceHub, ruleEngine, gameHub, store, overlayCompletionController, overlayServer, matches, notifyRenderer, onActivity, onChanged, onGameBridgeMessage, ingest, handleKickStatus, refreshGiftCatalog }) {
+function bindCoreEvents({ minecraftRoundTimer, timerScheduler, sourceHub, ruleEngine, gameHub, store, overlayCompletionController, overlayServer, matches, notifyRenderer, onActivity, onChanged, onGameBridgeMessage, ingest, handleKickStatus, refreshGiftCatalog, synchronizeGiftCatalogScope }) {
   minecraftRoundTimer.on("started", ({ packId, durationSeconds }) => {
     const pack = gameHub
       .listPacks()
@@ -112,6 +112,7 @@ function bindCoreEvents({ minecraftRoundTimer, timerScheduler, sourceHub, ruleEn
     onChanged(true);
   });
   sourceHub.on("tiktok-status", ({ status, username, roomId }) => {
+    synchronizeGiftCatalogScope?.();
     if (["disconnected", "error", "offline"].includes(status)) matches?.disconnect?.();
     let sessionTransition = "";
     if (["disconnected", "error", "live", "offline"].includes(status)) {

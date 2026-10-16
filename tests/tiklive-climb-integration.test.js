@@ -252,7 +252,7 @@ test("branche le catalogue ShenPulse sur le pont Climb", async () => {
   assert.equal(pack.connector.type, "tiklive-climb-http");
   assert.equal(pack.connector.url, "http://127.0.0.1:7777");
   assert.equal(pack.accessMode, "purchase");
-  assert.equal(pack.price, 19.99);
+  assert.equal(pack.price, 9.99);
   assert.equal(pack.requiresPro, false);
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");
   const initialization = hub.initializeDefaultInteractions(pack.id);

@@ -81,6 +81,88 @@ test("le dialogue d’achat informe de l’accès Pro requis sans changer le pri
   assert.equal(typeof editor.onSubmit, "function");
 });
 
+test("le prix est visible sans clic sur les cartes à acheter, avec le même montant que le dialogue", (t) => {
+  const { window, render } = gameContext(t, { tier: "pro", status: "active" });
+  const page = render();
+  const card = page.querySelector('[data-id="paid"]');
+  assert.equal(card.querySelector(".tile-purchase-price strong").textContent, window.gamePrice(purchase));
+  assert.equal(card.querySelector(".tile-purchase-price small").textContent, "Achat unique");
+  assert.match(card.querySelector(".tile-status").textContent, /ACHAT REQUIS/);
+  assert.equal(card.querySelector(".tile-action-button").textContent, "Acheter le jeu");
+  assert.equal(page.querySelector('[data-id="video"] .tile-purchase-price'), null);
+  assert.equal(window.editor, undefined, "Afficher le prix n'ouvre aucun dialogue ni paiement");
+  window.openGamePurchaseDialog(purchase);
+  assert.equal(window.editor.submitLabel, `Acheter pour ${card.querySelector(".tile-purchase-price strong").textContent}`);
+});
+
+test("le tarif reste visible sans Pro, sans contourner l'abonnement ni le libellé d'accès", (t) => {
+  const { window, render } = gameContext(t);
+  const card = render().querySelector('[data-id="paid"]');
+  assert.equal(card.querySelector(".tile-purchase-price strong").textContent, window.gamePrice(purchase));
+  assert.match(card.querySelector(".tile-status").textContent, /ACCÈS PRO REQUIS/);
+  assert.equal(card.querySelector(".tile-action-button").textContent, "Voir l’abonnement");
+  assert.equal(window.isGameUnlocked(purchase), false);
+});
+
+test("les quatre nouveaux prix du vrai catalogue sont cohérents entre cartes et dialogues d'achat", (t) => {
+  const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
+  const { window, render } = gameContext(t, { tier: "pro", status: "active" });
+  const prices = { "tiklive-climb": 9.99, "clash-of-live": 12.99, "tiklive-cube-wars": 9.99, "tiklive-stack-tower": 9.99 };
+  window.snapshot.packs = loadShenazenGameCatalog(path.resolve(sourceRoot, "../resources")).filter((pack) => Object.hasOwn(prices, pack.id));
+  const page = render();
+  assert.equal(page.querySelectorAll(".tile-purchase-price").length, 4);
+  for (const pack of window.snapshot.packs) {
+    assert.equal(pack.price, prices[pack.id]);
+    assert.equal(pack.currency, "EUR");
+    const displayed = page.querySelector(`[data-id="${pack.id}"] .tile-purchase-price strong`).textContent;
+    assert.equal(displayed, new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(prices[pack.id]));
+    window.openGamePurchaseDialog(pack);
+    assert.equal(window.editor.submitLabel, `Acheter pour ${displayed}`);
+    assert.equal(window.isGameUnlocked(pack), false, "le prix ne crée aucun droit d'achat");
+  }
+});
+
+test("un achat ou essai actif n'affiche pas un nouveau prix à payer, même sans Pro", (t) => {
+  const { window, render } = gameContext(t);
+  for (const entitlement of ["paid", { productId: "paid", status: "trial", source: "trial", expiresAtMs: Date.now() + 60000 }]) {
+    window.snapshot.state.commerce.gameEntitlements = [entitlement];
+    assert.equal(render().querySelector('[data-id="paid"] .tile-purchase-price'), null);
+    window.snapshot.state.commerce.subscription = { tier: "premium", status: "active" };
+    const acquired = render().querySelector('[data-id="paid"]');
+    assert.equal(acquired.querySelector(".tile-purchase-price"), null);
+    assert.equal(acquired.querySelector(".tile-action-button").textContent, "Entrer dans le jeu");
+    window.snapshot.state.commerce.subscription = { tier: "free", status: "free" };
+  }
+});
+
+test("les prix des cartes suivent le catalogue et sa devise, sans prix mis en cache ni HTML injecté", (t) => {
+  const { window, render } = gameContext(t, { tier: "pro", status: "active" });
+  const pack = { ...purchase, name: '<img src="x" onerror="alert(1)">', price: 7.99, currency: "USD" };
+  window.snapshot.packs = [pack];
+  let card = render().querySelector('[data-id="paid"]');
+  assert.equal(card.querySelector(".tile-purchase-price strong").textContent, new Intl.NumberFormat("fr-FR", { style: "currency", currency: "USD" }).format(7.99));
+  assert.equal(card.querySelector("h3 img"), null);
+  pack.price = 9.5; pack.currency = "EUR";
+  card = render().querySelector('[data-id="paid"]');
+  assert.equal(card.querySelector(".tile-purchase-price strong").textContent, window.gamePrice(pack));
+  assert.match(card.querySelector(".tile-purchase-price strong").textContent, /9,50/);
+});
+
+test("FR/EN traduit la mention d'achat unique sans changer le prix ni sa devise", (t) => {
+  const { window, run, render } = gameContext(t, { tier: "pro", status: "active" });
+  let locale = "fr-FR";
+  window.studioLocale = () => locale;
+  window.syncStudioPreferences = () => {};
+  run(fs.readFileSync(path.join(sourceRoot, "renderer", "app", "features", "studio-language.js"), "utf8"));
+  const page = render(), price = page.querySelector(".tile-purchase-price strong").textContent;
+  locale = "en-US"; window.applyStudioLanguage(page);
+  assert.equal(page.querySelector(".tile-purchase-price small").textContent, "One-time purchase");
+  assert.equal(page.querySelector(".tile-purchase-price strong").textContent, price);
+  locale = "fr-FR"; window.applyStudioLanguage(page);
+  assert.equal(page.querySelector(".tile-purchase-price small").textContent, "Achat unique");
+  assert.equal(page.querySelector(".tile-purchase-price strong").textContent, price);
+});
+
 test("la capacité Free garde ses trois actions et son profil sans promettre les jeux gratuits", (t) => {
   const { window, run } = gameContext(t);
   window.snapshot.state.rules = [{ actions: [{ type: "overlay.media" }, { type: "action.group" }, { type: "tts.speak" }] }];

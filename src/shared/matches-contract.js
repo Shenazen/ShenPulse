@@ -100,7 +100,33 @@
         seen.add(normalized.id); automations.push(normalized);
       } catch { /* Une ancienne référence malformée n’est jamais activée automatiquement. */ }
     }
-    return { schemaVersion: 1, widgets, automations };
+    const config = { schemaVersion: 1, widgets, automations };
+    if (Object.hasOwn(input, "visualBonus")) {
+      const region = (value, maxArea) => {
+        if (!value || typeof value !== "object") return null;
+        const { x, y, width, height } = value;
+        return [x, y, width, height].every((n) => typeof n === "number" && Number.isFinite(n)) &&
+          x >= 0 && y >= 0 && width > 0 && height > 0 && x + width <= 1 && y + height <= 1 && width * height <= maxArea
+          ? { x, y, width, height } : null;
+      };
+      const bannerROI = region(input.visualBonus?.bannerROI, 0.3), ownerROI = region(input.visualBonus?.ownerROI, 0.1);
+      config.visualBonus = { enabled: input.visualBonus?.enabled === true && Boolean(bannerROI && ownerROI), bannerROI, ownerROI };
+    }
+    return config;
+  }
+  /** Les totaux d'équipe restent distincts des scores des personnes. Une valeur
+   * absente n'est pas zéro ; l'appartenance au streamer est calculée côté moteur. */
+  function normalizeMatchTeams(input) {
+    const score = (value) => !["number", "string"].includes(typeof value) || String(value).trim() === "" || !Number.isFinite(Number(value)) || Number(value) < 0 ? null : Math.min(Number.MAX_SAFE_INTEGER, Number(value));
+    const seen = new Set();
+    return (Array.isArray(input) ? input : []).slice(0, 8).flatMap((row) => {
+      const id = text(row?.id, 120); if (!id || id === "0" || seen.has(id)) return [];
+      seen.add(id);
+      return [{ id, participantIds: [...new Set((Array.isArray(row.participantIds) ? row.participantIds : []).map((value) => text(value, 120)).filter((value) => value && value !== "0"))].slice(0, 8),
+        score: score(row.score), result: ["win", "lose", "draw"].includes(row.result) ? row.result : null,
+        donors: (Array.isArray(row.donors) ? row.donors : []).slice(0, 10).map((donor) => ({ id: text(donor?.id, 120), username: text(donor?.username, 120),
+          displayName: text(donor?.displayName, 160), avatarUrl: mediaUrl(donor?.avatarUrl), score: score(donor?.score), diamonds: score(donor?.diamonds) })).filter((donor) => donor.id) }];
+    });
   }
   function createMatchSession(input = {}, { disconnected = false } = {}) {
     const session = input.session || {};
@@ -109,13 +135,13 @@
       result: ["win", "lose", "draw"].includes(entry.result) ? entry.result : null,
       ownScore: entry.ownScore == null ? null : number(entry.ownScore, 0), rivalScore: entry.rivalScore == null ? null : number(entry.rivalScore, 0)
     }));
-    return { schemaVersion: 1, scope: {}, status: disconnected ? "disconnected" : "idle", battleId: "", startedAtMs: 0, endsAtMs: 0,
-      participants: [], liveContributors: [], lastGift: null, lastContribution: null, ownUserId: "", result: null, multiplier: 1, lastMoment: "", lastEventAtMs: 0, endedAtMs: 0,
+    return { schemaVersion: 1, scope: {}, status: disconnected ? "disconnected" : "idle", battleId: "", startObserved: false, startOrigin: "", startedAtMs: 0, endsAtMs: 0, bonusEndsAtMs: 0,
+      participants: [], teams: [], battleType: 0, liveContributors: [], lastGift: null, lastContribution: null, ownUserId: "", ownTeamId: "", result: null, multiplier: 1, lastMoment: "", lastEventAtMs: 0, endedAtMs: 0,
       rounds: { own: null, opponent: null }, manualWins: input.manualWins == null ? null : Math.round(number(input.manualWins, 0, 0, 100000)),
       pairRounds: (Array.isArray(input.pairRounds) ? input.pairRounds : []).slice(-20).map((entry) => ({ opponentId: text(entry.opponentId, 120), own: Math.round(number(entry.own, 0, 0, 100000)), opponent: Math.round(number(entry.opponent, 0, 0, 100000)) })).filter((entry) => entry.opponentId),
       session: { battles: Math.round(number(session.battles, 0)), wins: Math.round(number(session.wins, 0)),
         losses: Math.round(number(session.losses, 0)), draws: Math.round(number(session.draws, 0)), winStreak: Math.round(number(session.winStreak, 0, 0, 100000)) }, history,
       capabilities: { battle: true, scores: true, multiplier: true, cards: false } };
   }
-  return { MATCH_MOMENTS, MATCH_WIDGETS, ANIMATIONS, CARDS, normalizeMatchAutomation, normalizeMatchesConfig, createMatchSession, normalizeReaction };
+  return { MATCH_MOMENTS, MATCH_WIDGETS, ANIMATIONS, CARDS, normalizeMatchAutomation, normalizeMatchesConfig, normalizeMatchTeams, createMatchSession, normalizeReaction };
 });

@@ -8,6 +8,8 @@
 const { isIP } = require("node:net");
 const { DEFAULT_PUBLIC_OVERLAY_BASE_URL, publicMediaUrl, createRelayMessage } = require("../../shared/public-overlay-protocol");
 const { matches, normalizeAnimationVariant } = require("../../../resources/overlays/overlay-catalog");
+const { normalizeMatchAutomation } = require("../../shared/matches-contract");
+const { CommandExecutor } = require("../commands/executor");
 
 const MATCH_MESSAGE_CHANNELS = new Set(["match", "match-media", "match-audio"]);
 const MATCH_MESSAGE_TTL_MS = 15_000;
@@ -35,6 +37,37 @@ function configuredMatchMediaUrls(state) {
     }
   };
   visit(state.customSounds); visit(state.customMedia); visit(state.settings?.matches?.automations);
+  for (const url of configuredMatchActionMediaUrls(state)) urls.add(url);
+  return urls;
+}
+
+/** Retirer un import du catalogue ne supprime pas les URL déjà enregistrées
+ * dans les actions. Seuls les médias atteignables par une référence Matchs
+ * valide du profil actif sont ajoutés, jamais toutes les URL des règles. */
+function configuredMatchActionMediaUrls(state) {
+  const urls = new Set(), actionIds = new Set();
+  for (const raw of (Array.isArray(state.settings?.matches?.automations) ? state.settings.matches.automations : []).slice(0, 100)) {
+    let item; try { item = normalizeMatchAutomation(raw); } catch { continue; }
+    const reactions = item.reaction.type === "bundle" ? item.reaction.reactions : [item.reaction];
+    for (const reaction of reactions) if (reaction.type === "action") actionIds.add(reaction.actionId);
+  }
+  if (!actionIds.size) return urls;
+  // Réutilisation de la validation synchrone des références ; aucun appel
+  // à execute/run, aucune lecture du store ni aucun effet n'est effectué.
+  const executor = new CommandExecutor({ actionRunner: {}, accessSection: "matches" });
+  for (const rootId of actionIds) {
+    try {
+      const root = executor.findAction(state, rootId).action;
+      const references = executor.collectAction(state, root);
+      const actions = [root, ...[...references.keys()].map((id) => executor.findAction(state, id).action)];
+      for (const action of actions) {
+        const config = action.config || {};
+        const values = action.type === "audio.play" && config.outputMode === "live" ? [config.url]
+          : ["overlay.media", "overlay.alert"].includes(action.type) ? [config.mediaUrl, config.soundUrl] : [];
+        for (const value of values) { const url = publicHttpsUrl(value); if (url) urls.add(url.href); }
+      }
+    } catch { /* Une référence invalide ou interdite n'autorise aucun média. */ }
+  }
   return urls;
 }
 

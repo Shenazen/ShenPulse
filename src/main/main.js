@@ -13,6 +13,10 @@ const {
   screen,
   dialog
 } = require("electron");
+const { desktopCapturer, ipcMain } = require("electron");
+const { MatchVisualService } = require("./matches/visual-service");
+const { createVisualCapture } = require("./matches/visual-capture");
+const { createWindowsOcr } = require("./matches/windows-ocr");
 const { ShenPulseCore } = require("./core");
 const { appPermissionAllowed } = require("./app-permissions");
 const { BackblazeMediaService } = require("./backblaze-media");
@@ -21,6 +25,7 @@ const { AdminService } = require("./admin-service");
 const { GameRuntimeService } = require("./game-runtime");
 const { runOriginalGamesSmoke } = require("./original-games-smoke");
 const { createInteractionAuditRunner } = require("./bootstrap/interaction-audit");
+const { createStartupWindow } = require("./bootstrap/startup-window");
 const { registerIpc } = require("./ipc");
 const { StateStore } = require("./store");
 const { StoreUpdateService } = require("./store-update-service");
@@ -37,6 +42,8 @@ let store = null;
 let accountService = null;
 let storeUpdateService = null;
 let ipcController = null;
+let startupWindow = null;
+let showMainWindowOnce = null;
 let quitting = false;
 const interactionAudit = createInteractionAuditRunner({
   getCore: () => core,
@@ -116,10 +123,11 @@ function createWindow() {
   let windowShown = false;
   const showWindow = () => {
     if (windowShown || !mainWindow || mainWindow.isDestroyed()) return;
+    if (startupWindow && !startupWindow.released) return;
     windowShown = true;
-    mainWindow.show();
-    mainWindow.focus();
+    focusMainWindow();
   };
+  showMainWindowOnce = showWindow;
   mainWindow.once("ready-to-show", showWindow);
   mainWindow.webContents.once("did-finish-load", showWindow);
   const notifyVisibility = () => {
@@ -130,7 +138,16 @@ function createWindow() {
   };
   for (const eventName of ["hide", "minimize", "show", "restore"]) mainWindow.on(eventName, notifyVisibility);
   mainWindow.webContents.on("did-finish-load", notifyVisibility);
-  mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+  const startupFailure = () => {
+    if (startupWindow && !startupWindow.released) {
+      startupWindow.fail(new Error("L'interface de ShenPulse n'a pas pu démarrer. Relancez l'application."));
+    }
+  };
+  mainWindow.webContents.on("did-fail-load", (_event, code, _description, _url, mainFrame) => {
+    if (mainFrame !== false && code !== -3) startupFailure();
+  });
+  mainWindow.webContents.on("render-process-gone", startupFailure);
+  mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html")).catch(startupFailure);
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) require("electron").shell.openExternal(url);
     return { action: "deny" };
@@ -140,7 +157,21 @@ function createWindow() {
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
+    if (startupWindow && !startupWindow.released && !quitting) app.quit();
   });
+}
+
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed() || (startupWindow && !startupWindow.released)) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show(); mainWindow.focus();
+}
+
+function applicationSmokeRequested() {
+  return process.env.SHENPULSE_SMOKE_TEST === "1" ||
+    process.argv.includes("--smoke-test") || app.commandLine.hasSwitch("smoke-test") ||
+    app.commandLine.hasSwitch("shenpulse-smoke-test") ||
+    fs.existsSync(path.join(__dirname, "..", "..", "release", "smoke.request"));
 }
 
 function notifyRenderer(channel, value) {
@@ -155,6 +186,7 @@ function notifyRenderer(channel, value) {
       ? snapshotForRenderer(value, store)
       : value;
   for (const window of BrowserWindow.getAllWindows()) {
+    if (startupWindow?.ownsWindow(window)) continue;
     if (window.isDestroyed() || window.webContents.isDestroyed()) continue;
     window.webContents.send(channel, rendererValue);
   }
@@ -212,7 +244,20 @@ async function bootstrap() {
     app.exit(0);
     return;
   }
-  store = new StateStore(app.getPath("userData"), safeStorage);
+  if (!applicationSmokeRequested()) {
+    startupWindow = createStartupWindow({ BrowserWindow,
+      splashPath: path.join(__dirname, "..", "renderer", "splash.html"),
+      onReady: () => showMainWindowOnce?.(),
+      onCancel: () => app.quit(),
+      onFailure: (error) => {
+        dialog.showErrorBox("Démarrage de ShenPulse", error.message);
+        app.quit();
+      }
+    });
+  }
+  store = new StateStore(app.getPath("userData"), safeStorage, {
+    onPersistenceStatus: (status) => notifyRenderer("persistence-status", status)
+  });
   store.load();
   accountService = new AccountService({
     store,
@@ -243,6 +288,13 @@ async function bootstrap() {
       core.handleMinecraftWinCounter(event)
   });
   core.gameHub.setMinecraftRuntime(gameRuntime);
+  core.matchVision = new MatchVisualService({ store, matches: core.matches,
+    getAccountGeneration: () => accountService.sessionGeneration,
+    createCapture: (callbacks) => createVisualCapture({ BrowserWindow, desktopCapturer, ipcMain, ...callbacks }),
+    createOcr: () => createWindowsOcr({ resourcePath: app.isPackaged
+      ? path.join(process.resourcesPath, "app.asar.unpacked", "resources", "match-vision", "ocr.ps1")
+      : path.join(resourcesDirectory, "match-vision", "ocr.ps1") })
+  });
   ipcController = registerIpc({
     core,
     store,
@@ -251,19 +303,14 @@ async function bootstrap() {
     adminService,
     gameRuntime,
     storeUpdateService,
-    getWindow: () => mainWindow
+    getWindow: () => mainWindow,
+    onStartupReady: () => startupWindow?.ready()
   });
   await core.initialize();
   setTimeout(() => {
     startInteractionAuditFromArgs(process.argv).catch(() => {});
   }, 500);
-  if (
-    process.env.SHENPULSE_SMOKE_TEST === "1" ||
-    process.argv.includes("--smoke-test") ||
-    app.commandLine.hasSwitch("smoke-test") ||
-    app.commandLine.hasSwitch("shenpulse-smoke-test") ||
-    fs.existsSync(path.join(__dirname, "..", "..", "release", "smoke.request"))
-  ) {
+  if (applicationSmokeRequested()) {
     await runSmokeTest();
   }
 }
@@ -281,22 +328,22 @@ async function runSmokeTest() {
   const target = path.join(app.getPath("temp"), "shenpulse-smoke.png");
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, image.toPNG());
-  await Promise.all([core.shutdown(), gameRuntime?.dispose()]);
+  await Promise.all([core.matchVision?.close(), core.shutdown(), gameRuntime?.dispose()]);
   quitting = true;
   app.exit(0);
 }
 
 app.on("second-instance", (_event, commandLine) => {
+  if (startupWindow?.focus()) return;
   if (!mainWindow) return;
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
+  focusMainWindow();
   setTimeout(() => {
     startInteractionAuditFromArgs(commandLine).catch(() => {});
   }, 250);
 });
 
 app.whenReady().then(bootstrap).catch((error) => {
+  startupWindow?.dispose();
   console.error(error);
   const outputArgument = process.argv.find((argument) =>
     argument.startsWith("--original-games-smoke-output=")
@@ -320,10 +367,12 @@ app.whenReady().then(bootstrap).catch((error) => {
 });
 
 app.on("before-quit", (event) => {
+  startupWindow?.dispose();
   if (quitting || !core) return;
   event.preventDefault();
   quitting = true;
   Promise.all([
+    core.matchVision?.close() || Promise.resolve(),
     core.shutdown(),
     gameRuntime?.dispose() || Promise.resolve()
   ])

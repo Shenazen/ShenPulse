@@ -307,13 +307,13 @@ function renderMediaScreensPanel(
   }
   return `<${wrapper} class="studio-panel panel-cyan media-screens-panel">
     <${heading} class="studio-panel-heading">
-      <div><span class="panel-accent"></span><div><h3>${title}</h3><p>${audioContext ? "Ces champs d’URL servent à préécouter dans ShenPulse et à faire entendre les sons et le TTS sur vos LIVE." : "Ces champs d’URL servent à visualiser les médias dans ShenPulse et à les afficher sur vos LIVE."}</p></div></div>
+      <div><span class="panel-accent"></span><div><h3>${title}</h3><p>${audioContext ? "Ces URL diffusent les sons et le TTS sur le LIVE. La préécoute dans ShenPulse fonctionne sans source navigateur." : "Ces champs d’URL servent à visualiser les médias dans ShenPulse et à les afficher sur vos LIVE."}</p></div></div>
       ${configureLabel}
     </${heading}>
     <div class="media-screens-intro">
       <strong>${audioContext ? "Écoutez dans l’interface, diffusez le son dans le LIVE" : "Visualisez dans l’interface, diffusez l’image dans le LIVE"}</strong>
       <p>${audioContext
-        ? "Chaque ligne est un champ de source navigateur : copiez l’URL HTTPS de l’écran choisi dans TikTok LIVE Studio ou OBS pour que les spectateurs entendent les sons. Vérifiez d’abord qu’elle n’est pas déjà présente : deux sources avec la même URL joueraient le son deux fois. Spotify reste lu par l’appareil Spotify actif et doit être capturé séparément."
+        ? "« Moi uniquement » et les préécoutes jouent dans ShenPulse sans envoyer de son à ces URL. « Tout le monde » conserve cette écoute locale et ajoute la source LIVE de l’écran choisi. Copiez son URL HTTPS une seule fois dans TikTok LIVE Studio ou OBS. Ne capturez pas également le son de ShenPulse ou du bureau : cela peut doubler la diffusion ou transmettre vos préécoutes privées. Spotify reste lu par l’appareil Spotify actif et doit être capturé séparément."
         : "Chaque ligne est un champ de source navigateur : copiez son URL HTTPS dans TikTok LIVE Studio ou OBS en 1920 × 1080, puis choisissez le même écran dans l’action Media pour le visualiser dans ShenPulse et sur le LIVE."}</p>
     </div>
     ${renderMediaScreensTable(rows)}

@@ -74,7 +74,12 @@ function resolveEffectCode(effect, runtimeEffect) {
 
 /** Paramètres initiaux communs aux associations automatiques et aux effets exécutés. */
 function defaultEffectParameters(effect) {
-  return Object.fromEntries((effect.parameters || []).map((parameter) => [parameter.id, Number(parameter.defaultValue || 0)]));
+  return Object.fromEntries((effect.parameters || []).map((parameter) => [
+    parameter.id,
+    parameter.type === "text"
+      ? safeString(parameter.defaultValue || "", Math.min(80, Number(parameter.maxLength) || 80))
+      : Number(parameter.defaultValue || 0)
+  ]));
 }
 
 module.exports = { validatePack, interpolateCommand, resolveEffectCode, defaultEffectParameters };

@@ -89,6 +89,31 @@ test("le connecteur transmet une bataille réelle une fois, jamais comme cadeau/
   await hub.stopAll(); lateListener({ ...packet, common: { msgId: "late-battle" } }); assert.equal(matches.length, 1);
 });
 
+test("le conteneur TikTok synchronise passivement les dates de match et se détache à la reconnexion", async (context) => {
+  const { hub, connectors } = workspace(context, [{ roomInfo: roomInfo() }, { roomInfo: roomInfo() }]);
+  const matches = []; hub.on("match-event", (event) => matches.push(event));
+  await hub.start("source_tiktok");
+  const connector = connectors[0], socket = new EventEmitter();
+  connector.emit(ControlEvent.WEBSOCKET_CONNECTED, socket);
+  assert.equal(socket.listenerCount("protoMessageFetchResult"), 1);
+  const receipt = Date.now(), remote = receipt + 2342;
+  socket.emit("protoMessageFetchResult", { now: String(remote) });
+  const observed = Date.now();
+  connector.emit("linkMicBattle", { common: { msgId: "clock-battle", roomId: "room-a" }, battleId: "clock", action: 4,
+    battleSetting: { startTimeMs: String(remote), endTimeMs: String(remote + 301000), duration: 301 } });
+  assert.equal(matches.length, 1);
+  assert.ok(matches[0].startsAtMs >= receipt && matches[0].startsAtMs <= observed);
+  assert.equal(matches[0].endsAtMs - matches[0].startsAtMs, 301000);
+  await hub.stopAll();
+  assert.equal(socket.listenerCount("protoMessageFetchResult"), 0);
+  socket.emit("protoMessageFetchResult", { now: String(Date.now() + 25000) });
+  await hub.start("source_tiktok");
+  const fresh = Date.now() + 2342;
+  connectors[1].emit("linkMicBattle", { common: { msgId: "clock-next", roomId: "room-a" }, battleId: "next", action: 4,
+    battleSetting: { startTimeMs: String(fresh), duration: 301 } });
+  assert.equal(matches[1].startsAtMs, fresh, "Le nouvel abonnement ne réutilise pas l'horloge du précédent");
+});
+
 test("le vrai SDK protobuf transmet début, scores et fin via callbacks ou DECODED_DATA sans doublon", async (context) => {
   const { WebcastLinkMicBattle, WebcastLinkMicArmies, BattleSetting, WebcastLinkMicBattle_BattleUserInfo_BattleBaseUserInfo } = require("tiktok-live-connector");
   const { hub, connectors } = workspace(context, [{ roomInfo: roomInfo() }]); const matches = [];
@@ -156,6 +181,66 @@ test("l’ID du diffuseur vient de room.owner vérifié et n’est jamais celui 
   const info = roomInfo(); info.data.owner.id_str = "1234567890123456789";
   assert.equal(tiktokRoomLiveMetadata(info, "creator", "room-a").broadcaster.userId, "1234567890123456789");
   assert.equal(tiktokRoomLiveMetadata({ data: { user: { id: "viewer" } } }, "creator")?.broadcaster, undefined);
+});
+
+test("l'identifiant texte exact du diffuseur est prioritaire au nombre JSON déjà arrondi", () => {
+  const exact = "1234567890123456789", info = roomInfo();
+  info.data.owner.id = Number(exact); info.data.owner.id_str = exact;
+  assert.notEqual(String(info.data.owner.id), exact, "La fixture reproduit la perte de précision du JSON numérique");
+  assert.equal(tiktokRoomLiveMetadata(info, "creator", "room-a").broadcaster.userId, exact);
+  delete info.data.owner.id_str; info.data.owner.userIdStr = exact;
+  assert.equal(tiktokRoomLiveMetadata(info, "creator", "room-a").broadcaster.userId, exact);
+});
+
+test("un UID TikTok numérique imprécis n'est jamais enregistré comme identité exacte du diffuseur", () => {
+  const info = roomInfo(); info.data.owner.id = Number("1234567890123456789");
+  assert.equal(tiktokRoomLiveMetadata(info, "creator", "room-a").broadcaster.userId, undefined);
+  for (const id of [0, -1, 1.5, NaN, Infinity, false]) {
+    info.data.owner.id = id;
+    assert.equal(tiktokRoomLiveMetadata(info, "creator", "room-a").broadcaster.userId, undefined, String(id));
+  }
+  info.data.owner.id = 123;
+  assert.equal(tiktokRoomLiveMetadata(info, "creator", "room-a").broadcaster.userId, "123");
+});
+
+test("les alias UID HTTP précis doivent tous s'accorder, sinon la preuve signale un conflit explicite", () => {
+  const own = "1234567890123456789", rival = "1234567890123456790";
+  for (const field of ["userIdStr", "user_id_str", "userId", "id"]) {
+    const info = roomInfo(); Object.assign(info.data.owner, { id_str: own, [field]: rival });
+    const metadata = tiktokRoomLiveMetadata(info, "creator", "room-a");
+    assert.equal(metadata.broadcaster, null, field);
+    assert.equal(metadata.ownerConflict, true, field);
+    assert.equal(metadata.roomId, "room-a");
+    assert.equal(metadata.currentViewers, 12, "An identity conflict must not fabricate or erase the independent measured audience");
+  }
+  const agreeing = roomInfo(); Object.assign(agreeing.data.owner,
+    { id_str: own, userIdStr: own, user_id_str: own, userId: own, id: Number(own) });
+  const metadata = tiktokRoomLiveMetadata(agreeing, "creator", "room-a");
+  assert.equal(metadata.broadcaster.userId, own);
+  assert.equal("ownerConflict" in metadata, false, "An already rounded numeric alias is not contradictory precise evidence");
+});
+
+test("un UID HTTP absent ou malformé reste partiel, jamais une identité ou un faux conflit", () => {
+  const values = [undefined, null, "", "0", "01", " 123", "123 ", "1e3", "-1", "1.5", "creator",
+    "18446744073709551616", "999999999999999999999999999", true, [], {}, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1];
+  for (const value of values) {
+    const info = roomInfo(); info.data.owner.id_str = value;
+    const metadata = tiktokRoomLiveMetadata(info, "creator", "room-a");
+    assert.equal(metadata.broadcaster.userId, undefined, String(value));
+    assert.equal("ownerConflict" in metadata, false, String(value));
+  }
+  const info = roomInfo(); info.data.owner.id_str = "18446744073709551615";
+  assert.equal(tiktokRoomLiveMetadata(info, "creator", "room-a").broadcaster.userId, "18446744073709551615");
+});
+
+test("un alias HTTP malformé ne masque ni ne contredit un autre UID texte exact valide", () => {
+  const own = "1234567890123456789";
+  for (const value of ["broken", "0", "01", null, false, Number(own)]) {
+    const info = roomInfo(); Object.assign(info.data.owner, { id_str: value, userIdStr: own });
+    const metadata = tiktokRoomLiveMetadata(info, "creator", "room-a");
+    assert.equal(metadata.broadcaster.userId, own);
+    assert.equal("ownerConflict" in metadata, false);
+  }
 });
 
 test("TikTok host metadata comes from room.owner, supports snake-case avatars, and rejects other hosts or rooms", () => {

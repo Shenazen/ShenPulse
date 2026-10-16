@@ -28,10 +28,14 @@ async function pickTarget(runtime, gameId, manifest) {
         detail: [
           detected,
           "",
-          "ShenPulse vérifiera une dernière fois le dossier avant de télécharger et d’installer les fichiers."
+          manifest.localArchiveOnly
+            ? "ShenPulse installera uniquement le mod ZIP que vous fournissez. Les fichiers remplacés seront sauvegardés et les autres réglages de override.cfg seront conservés. Aucun mod n’est téléchargé par ShenPulse. Fermez le jeu avant de continuer."
+            : manifest.setupOnly
+            ? "ShenPulse vérifiera puis mémorisera ce dossier dans votre profil. Aucun fichier du jeu ne sera téléchargé, ajouté ou modifié."
+            : "ShenPulse vérifiera une dernière fois le dossier avant de télécharger et d’installer les fichiers."
         ].join("\n"),
         buttons: [
-          "Oui, installer ici",
+          manifest.localArchiveOnly ? "Oui, installer le mod local ici" : manifest.setupOnly ? "Oui, associer ce dossier" : "Oui, installer ici",
           "Non, choisir un autre dossier",
           "Annuler"
         ],

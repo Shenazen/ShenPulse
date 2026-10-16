@@ -33,7 +33,17 @@ class MatchPublication {
     const context = readState(this.store, MATCH_WIDGET_CONTEXT_PATHS);
     if (!hasPublicMatchWidgetAccess(this.store, context)) return;
     const mediaContext = channel === "match" ? {} : readState(this.store,
-      ["settings.backblaze.publicBaseUrl", "customSounds", "customMedia", "settings.matches.automations"]);
+      ["settings.backblaze.publicBaseUrl", "customSounds", "customMedia", "settings.matches.automations", "settings.overlayConfigs.wheel"]);
+    // Les actions de l'espace actif restent des références de lecture valides
+    // après retrait du catalogue ; aucune copie des workspaces inactifs.
+    const hasAction = (reaction) => reaction?.type === "action" || reaction?.type === "bundle" &&
+      Array.isArray(reaction.reactions) && reaction.reactions.some((row) => row?.type === "action");
+    if ((mediaContext.settings?.matches?.automations || []).some((row) => hasAction(row?.reaction))) {
+      Object.assign(mediaContext, this.store.getRuleEngineState?.() || readState(this.store,
+        ["rules", "session.profileId", "session.game", "game.interactionRulesByPack"]));
+      mediaContext.commerce = context.commerce;
+      mediaContext.settings = { ...context.settings, ...mediaContext.settings };
+    }
     const message = createMatchRelayMessage(channel, payload, {
       baseUrl: this.configuration().publicBaseUrl,
       publicMediaBaseUrl: mediaContext.settings?.backblaze?.publicBaseUrl,

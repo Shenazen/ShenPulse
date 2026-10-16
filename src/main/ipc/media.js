@@ -3,14 +3,18 @@
 /** Catalogues et téléversement des médias.
  * Les canaux sont toujours enregistrés par le garde d’accès central injecté.
  */
-const { searchMyInstantsSounds, searchWikimediaMedia } = require("../catalogs");
-const { id, safeString } = require("../utils");
+const { SOUND_CATALOG, searchMyInstantsSounds, searchWikimediaMedia } = require("../catalogs");
+const { safeString } = require("../utils");
 const { notify } = require("./notifications");
 const { assertMediaAccount, currentMediaAccountUid } = require("../backblaze-media");
+const { readState } = require("../state-projection");
+const { giftCatalogScope, sameGiftCatalogScope } = require("../core/gift-scope");
 
 function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dialog, net }) {
   handle("catalog:gifts", async (_event, query, limit) => {
+    const scope = giftCatalogScope(store);
     await core.refreshGiftCatalog();
+    if (!sameGiftCatalogScope(scope, giftCatalogScope(store))) throw new Error("Le compte, le profil ou le LIVE a changé. Relancez la recherche de cadeaux.");
     return core.giftCatalog.search(safeString(query, 200), Number(limit));
   });
   
@@ -37,6 +41,34 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
       kind: safeString(incoming?.kind || "all", 20)
     })
   );
+
+  /** Retire seulement du catalogue du compte : aucune suppression du fichier
+   * Backblaze ni modification des actions, profils ou médias déjà configurés.
+   * L'UID est capturé par l'interface avant la confirmation de l'utilisateur.
+   */
+  handle("sound:remove", (_event, soundId, expectedUid) => {
+    if (typeof expectedUid !== "string") assertMediaAccount(store, "");
+    assertMediaAccount(store, expectedUid);
+    const invalid = () => {
+      const error = new Error("Ce son personnalisé n'existe plus dans la bibliothèque de ce compte.");
+      error.code = "CUSTOM_SOUND_NOT_FOUND";
+      return error;
+    };
+    if (typeof soundId !== "string" || !soundId.trim() || soundId.length > 160 ||
+        /[\u0000-\u001f\u007f]/.test(soundId)) throw invalid();
+    const sounds = readState(store, ["customSounds"]).customSounds;
+    const matches = Array.isArray(sounds) ? sounds.filter((sound) => sound?.id === soundId) : [];
+    if (matches.length !== 1 ||
+        (matches[0].source && matches[0].source !== "custom") ||
+        SOUND_CATALOG.some((sound) => sound.id === soundId) ||
+        core.soundCatalog?.some((sound) => sound.id === soundId)) throw invalid();
+    store.mutate((state) => {
+      state.customSounds = state.customSounds.filter((sound) => sound?.id !== soundId);
+    }, true);
+    const nextSnapshot = core.snapshot();
+    notify(core, "state-changed", nextSnapshot);
+    return { snapshot: nextSnapshot };
+  });
   
   handle("sound:upload", async () => {
     const expectedUid = currentMediaAccountUid(store);

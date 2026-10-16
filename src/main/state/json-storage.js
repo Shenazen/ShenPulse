@@ -5,6 +5,26 @@ const path = require("node:path");
 
 /** Persistance JSON atomique, validation, génération précédente et récupération non destructive. */
 class AtomicJsonStorage {
+  constructor({ renameSync = fs.renameSync, wait = (milliseconds) =>
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds) } = {}) {
+    this.renameSync = renameSync; this.wait = wait;
+  }
+
+  /** Windows scanners can briefly hold the destination. Never unlink it as
+   * a workaround: its last verified generation must survive every failure.
+   * Each rename waits at most 12 ms (24 ms for backup plus primary); longer contention is
+   * retried by the store's asynchronous checkpoint scheduler. */
+  renameVerified(source, destination) {
+    const delays = [2, 4, 6];
+    for (let attempt = 0; ; attempt += 1) {
+      try { this.renameSync(source, destination); return; }
+      catch (error) {
+        if (!["EPERM", "EACCES", "EBUSY"].includes(error?.code) || attempt >= delays.length) throw error;
+        this.wait(delays[attempt]);
+      }
+    }
+  }
+
   /** Lit le fichier valide ou récupère sa génération précédente, sans effacer le fichier corrompu. */
   readJson(filePath, fallback) {
     const primaryExists = fs.existsSync(filePath);
@@ -166,13 +186,13 @@ class AtomicJsonStorage {
         if (this.parseJsonFile(backupTemporaryPath).content !== previous) {
           throw new Error("The ShenPulse backup is incomplete.");
         }
-        fs.renameSync(backupTemporaryPath, backupPath);
+        this.renameVerified(backupTemporaryPath, backupPath);
       } catch {
         // Un fichier précédent invalide ne doit jamais remplacer une sauvegarde valide.
       }
     }
 
-    fs.renameSync(temporaryPath, filePath);
+    this.renameVerified(temporaryPath, filePath);
   }
 
   /** Création exclusive et synchronisation disque avec permissions limitées. */

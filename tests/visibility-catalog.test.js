@@ -67,7 +67,7 @@ test("l’inventaire admin reprend exactement les pages déclarées par ShenPuls
   assert.match(source, /function canAccessGame\(pack\)/);
   assert.match(
     source,
-    /pack\.ownerOnly !== true \|\| isVerifiedAdminSession\(\)/
+    /visibilityTools\.canAccessGame\(\s*siteVisibility,\s*pack,\s*isVerifiedAdminSession\(\)/
   );
   assert.match(source, /function canAccessActionType\(type\)/);
   assert.match(source, /function visibleNavigationEntries\(\)/);

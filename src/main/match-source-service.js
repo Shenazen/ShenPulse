@@ -12,6 +12,7 @@ const {
 } = require("./match-access");
 const { safeString, timingSafeToken } = require("./utils");
 const { readState } = require("./state-projection");
+const { versionLocalMatchDocument } = require("./overlay-code-version");
 const { MATCH_WIDGET_KEYS, MATCH_OVERLAY_STATE_PATHS, projectMatchesOverlayState } = require("./matches-overlay-state");
 
 const MATCH_MEDIA_TICKET_TTL_MS = 90_000;
@@ -328,13 +329,13 @@ class MatchSourceService {
     if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
       return this.#json(response, 404, { error: "Lecteur Match introuvable." });
     }
-    const document = fs
+    const document = versionLocalMatchDocument(fs
       .readFileSync(target, "utf8")
       // La base locale est injectée ci-dessous. Son ancien calcul inline
       // public est inutile ici et doit respecter la CSP script-src 'self'.
       // Seul ce script explicitement marqué est supprimé.
       .replace(/<script\s+data-overlay-base-path>[\s\S]*?<\/script>/i, "")
-      .replace("<head>", '<head>\n    <base href="/overlay/" />');
+      .replace("<head>", '<head>\n    <base href="/overlay/" />'), this.staticDirectory);
     response.writeHead(200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",

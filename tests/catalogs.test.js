@@ -396,11 +396,11 @@ test("apprend en direct un cadeau manquant sans créer de doublon", () => {
   assert.ok(catalog.gifts.every((gift) => gift.alternateIds.length === 0));
 });
 
-test("classe le cœur de communauté personnalisé sans utiliser son visuel", () => {
+test("un cadeau personnalisé détouré garde son identité et son nom distincts du cœur rouge", () => {
   const [gift] = dedupeLocalizedGifts([
     {
-      id: 601333,
-      name: "Nom du créateur",
+      id: 157842,
+      name: "Shenazen Pulse",
       diamond_count: 1,
       combo: true,
       type: 1,
@@ -411,10 +411,10 @@ test("classe le cœur de communauté personnalisé sans utiliser son visuel", ()
     }
   ]);
 
-  assert.equal(gift.giftFamily, "community-heart");
-  assert.equal(gift.id, "601333");
-  assert.equal(gift.name, "Cœur sur moi");
-  assert.equal(gift.originalName, "Nom du créateur");
+  assert.equal(gift.giftFamily, "");
+  assert.equal(gift.id, "157842");
+  assert.equal(gift.name, "Shenazen Pulse");
+  assert.equal(gift.imageUrl, "https://example.com/design-variable.png");
 });
 
 test("demande le catalogue français de la salle du créateur", async () => {

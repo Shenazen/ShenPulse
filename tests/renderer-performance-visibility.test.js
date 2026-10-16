@@ -28,6 +28,7 @@ async function rendererFixture(t) {
     timerRuntime: {}, overlayUrls: {}, localOverlayUrls: {}, publicOverlayRelay: {}, liveDirectory: { available: true, connected: true, rows: [] } };
   const handlers = new Map();
   const errors = [];
+  const intervals = [];
   const playback = { audio: 0, speech: [], paused: 0 };
   let visibility = "visible";
   const virtualConsole = new VirtualConsole();
@@ -35,6 +36,11 @@ async function rendererFixture(t) {
   const dom = new JSDOM(fs.readFileSync(file, "utf8"), {
     url: pathToFileURL(file).toString(), runScripts: "dangerously", resources: "usable", pretendToBeVisual: true, virtualConsole,
     beforeParse(window) {
+      const originalSetInterval = window.setInterval.bind(window);
+      window.setInterval = (callback, delay, ...args) => {
+        intervals.push({ callback, delay });
+        return originalSetInterval(callback, delay, ...args);
+      };
       Object.defineProperty(window.document, "visibilityState", { get: () => visibility });
       Object.defineProperty(window, "localStorage", { value: { getItem: () => null, setItem() {} } });
       window.shenPulse = {
@@ -64,7 +70,7 @@ async function rendererFixture(t) {
     render = (...args) => { window.perfCalls.render += 1; return originalPerfRender(...args); };
     creatorPageDataChanged = (...args) => { window.perfCalls.comparisons += 1; return originalPerfCompare(...args); };
     overlayPreviewSessionChanged = (...args) => { window.perfCalls.preview += 1; return originalPerfPreview(...args); };`);
-  return { window, handlers, errors, playback, state, setDocumentVisibility: (next) => {
+  return { window, handlers, errors, playback, state, intervals, setDocumentVisibility: (next) => {
     visibility = next;
     window.document.dispatchEvent(new window.Event("visibilitychange"));
   } };
@@ -108,6 +114,36 @@ test("minimiser suspend seulement le visuel, conserve les événements et repren
   assert.equal(window.document.querySelector("#audio-stage audio"), audio);
   audio.dispatchEvent(new window.Event("ended"));
   assert.equal(window.document.querySelector("#audio-stage audio"), null);
+  assert.equal(errors.length, 0, errors.map((error) => error.stack || error.message).join("\n"));
+});
+
+test("la boucle visuelle existante fait avancer Matchs chaque seconde sans nouveau paquet, timer ou IPC", async (t) => {
+  const { window, state, intervals, errors } = await rendererFixture(t);
+  let now = 500000;
+  window.Date.now = () => now;
+  state.commerce.subscription = { tier: "pro", status: "active", source: "own" };
+  Object.assign(state.matchSession, { status: "running", endsAtMs: now + 65000,
+    scope: { uid: "perf-user", profileId: state.session.profileId },
+    participants: [{ id: "own", own: true, username: "creator", score: 500 }] });
+  window.eval('currentPage = "matches"; creatorMatchesTab = "dashboard"; render();');
+  const visualTicks = intervals.filter(({ callback, delay }) => delay === 1000 && String(callback).includes("updateMinecraftRoundCountdowns"));
+  assert.equal(visualTicks.length, 1);
+  const tick = visualTicks[0].callback;
+  const intervalCount = intervals.length;
+  const clock = window.document.querySelector("[data-matches-time]");
+  const participant = window.document.querySelector("[data-matches-person]");
+  const before = JSON.stringify(state.matchSession);
+  window.perfCalls.render = 0;
+  for (let second = 1; second <= 3; second += 1) {
+    now += 1000;
+    tick();
+    assert.equal(clock.textContent, `1:0${5 - second}`);
+  }
+  assert.equal(window.document.querySelector("[data-matches-time]"), clock);
+  assert.equal(window.document.querySelector("[data-matches-person]"), participant);
+  assert.equal(window.perfCalls.render, 0);
+  assert.equal(intervals.length, intervalCount);
+  assert.equal(JSON.stringify(state.matchSession), before);
   assert.equal(errors.length, 0, errors.map((error) => error.stack || error.message).join("\n"));
 });
 

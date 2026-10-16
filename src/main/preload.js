@@ -7,6 +7,7 @@ const listeners = new Map();
 
 contextBridge.exposeInMainWorld("shenPulse", {
   getSnapshot: () => invoke("snapshot:get"),
+  startupReady: () => invoke("startup:ready"),
   liveDirectoryConfigure: (options) => invoke("live-directory:configure", options),
   chatbot: {
     transportStatus: () => invoke("chatbot:transport-status"),
@@ -14,6 +15,10 @@ contextBridge.exposeInMainWorld("shenPulse", {
   },
   matches: {
     status: () => invoke("matches:status"),
+    visualStatus: () => invoke("matches:visual-status"),
+    visualSources: () => invoke("matches:visual-sources"),
+    visualPreview: (sourceId, scope) => invoke("matches:visual-preview", sourceId, scope),
+    saveVisual: (config, scope) => invoke("matches:visual-save", config, scope),
     saveConfig: (config, scope) => invoke("matches:config-save", config, scope),
     saveAutomation: (automation, scope) => invoke("matches:automation-save", automation, scope),
     removeAutomation: (id, scope) => invoke("matches:automation-remove", id, scope),
@@ -93,6 +98,7 @@ contextBridge.exposeInMainWorld("shenPulse", {
   searchSounds: (options) => invoke("catalog:sounds", options),
   searchMedia: (options) => invoke("catalog:media", options),
   uploadCustomSound: () => invoke("sound:upload"),
+  removeCustomSound: (id, expectedUid) => invoke("sound:remove", id, expectedUid),
   uploadCustomMedia: (kind) => invoke("media:upload", kind),
   startSession: () => invoke("session:start"),
   stopSession: () => invoke("session:stop"),
@@ -175,6 +181,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
       "state-changed",
       "runtime-state-changed",
       "live-event",
+      "gift-catalog-updated",
+      "gift-room-catalog-updated",
       "users-changed",
       "song-requests-changed",
       "playback",
@@ -188,7 +196,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
       "public-overlay-relay-status",
       "live-directory-status",
       "chat-transport-changed",
-      "renderer-visibility"
+      "renderer-visibility",
+      "persistence-status"
     ]);
     if (!allowed.has(channel) || typeof callback !== "function") return () => {};
     const key = `${channel}:${Math.random()}`;

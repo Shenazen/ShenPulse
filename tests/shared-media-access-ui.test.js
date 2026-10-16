@@ -33,6 +33,7 @@ function contextFor(t, { authenticated = true, admin = false, tier = "free" } = 
     mediaLibraryUploadButton: dom.window.document.getElementById("upload"),
     mediaLibrarySearchInput: { value: "" }, mediaLibraryDialog: { close: (value) => { context.closedWith = value; } },
     mediaSessionEntries: new Map(), mediaLibrarySelected: null, mediaLibrarySource: "custom", mediaLibraryKind: "all",
+    activePreviewAudio: null, activePreviewAudioScope: "",
     api: { uploadCustomMedia: async () => { throw new Error("L'API doit être remplacée explicitement."); } },
     acceptSnapshot: (value) => { context.acceptedSnapshot = value; }
   });

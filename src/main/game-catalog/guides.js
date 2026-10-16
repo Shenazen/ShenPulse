@@ -48,6 +48,28 @@ const EXTERNAL_GUIDE_URLS = Object.freeze({
 });
 
 const GAME_GUIDES = Object.freeze({
+  "find-the-needle-demo": {
+    mode: "native",
+    summary: "Démo Steam V62 / build 25867630, mod S2E Find The Needle 1.2.7 fourni séparément. ShenPulse pilote ses 37 commandes sur ce PC, sans service supplémentaire.",
+    journey: ["installation", "interactions", "launch"],
+    steps: [
+      "Installez Find The Needle Demo depuis Steam (application 5165210), puis fermez le jeu.",
+      "Dans Installation, sélectionnez le ZIP du mod téléchargé ; ShenPulse conserve les réglages existants et sauvegarde les fichiers remplacés.",
+      "Personnalisez les 37 interactions : seules quatre associations du modèle sont préconfigurées, les autres attendent votre déclencheur.",
+      "Lancez la démo et chargez une partie. Vérifiez la connexion locale, puis testez les effets dans une sauvegarde dédiée avant le LIVE."
+    ],
+    notes: [
+      "Le jeu et ShenPulse doivent rester ouverts sur le même PC. Le mod écoute uniquement sur 127.0.0.1:55001 ; F8 affiche son panneau d’effets.",
+      "Par défaut, les effets temporisés attendent lorsque le jeu est en pause ou hors du premier plan : revenez dans la partie pour les voir avancer.",
+      "L’argent, le foin, les bâtiments et technologies peuvent être sauvegardés par le jeu. Effacer les effets ne restaure pas ces changements.",
+      "Les identifiants des technologies et bâtiments sont fournis par /technologies et /buildings ; random choisit une cible éligible. Certaines cibles sont indisponibles dans la démo.",
+      "Le mod tiers n’est pas redistribué par ShenPulse. Cette intégration est pour l’instant réservée au compte propriétaire."
+    ],
+    sources: [
+      { label: "Démo officielle sur Steam", url: "https://store.steampowered.com/app/5165210/" },
+      { label: "Fiche StreamToEarn", url: "https://streamtoearn.io/games/findtheneedledemo" }
+    ]
+  },
   thiercelieux: integratedGuide(
     "La régie sociale est intégrée à ShenPulse avec des illustrations originales et sans contenu graphique officiel non autorisé.",
     [

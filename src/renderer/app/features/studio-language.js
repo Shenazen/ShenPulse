@@ -3,6 +3,10 @@
 // Exact UI labels only: user messages, editable values, IDs, URLs and code are never translated.
 const STUDIO_ENGLISH = Object.freeze({
   "Commandes": "Commands",
+  "Supprimer ce son importé": "Delete this imported sound",
+  "Son retiré de la bibliothèque": "Sound removed from the library",
+  "Les actions déjà configurées restent inchangées.": "Existing actions remain unchanged.",
+  "Suppression impossible": "Could not delete",
   "Machines IRL": "IRL Machines",
   "Matchs": "Matches",
   "Vos batailles TikTok. Vos widgets. Vos temps forts.": "Your TikTok battles. Your widgets. Your highlights.",
@@ -67,6 +71,7 @@ const STUDIO_ENGLISH = Object.freeze({
   "Jeux vidéo, Interactions IRL et Commandes sont accessibles avec Pro ou Premium, y compris pendant un essai Pro actif ou avec un accès Pro offert. Pour les jeux compatibles, le jeu original et le pack adapté restent nécessaires. Les modules vendus séparément exigent aussi leur achat ou un essai produit actif.": "Video games, IRL Interactions and Commands are available with Pro or Premium, including active Pro trials and gifted Pro access. Compatible games still require the original game and matching pack. Separately sold modules also require a purchase or active product trial.",
   "Un accès Pro ou Premium actif est requis en plus de l’achat unique ou de l’essai produit actif.": "Active Pro or Premium access is required in addition to the one-time purchase or active product trial.",
   "ACHAT UNIQUE · ACCÈS PRO REQUIS": "ONE-TIME PURCHASE · PRO ACCESS REQUIRED",
+  "Achat unique": "One-time purchase",
   "ACCÈS PRO REQUIS": "PRO ACCESS REQUIRED",
   "INCLUS AVEC PRO": "INCLUDED WITH PRO",
   "Inclus avec Pro": "Included with Pro",
@@ -533,7 +538,7 @@ const STUDIO_ENGLISH = Object.freeze({
   "Moi uniquement": "Only me", "LIVE": "LIVE", "Une vue compacte, avec la bibliothèque complète disponible au moment de choisir le son.": "A compact view, with the full library available when you choose a sound.",
   "↑ Importer un son": "↑ Import sound", "＋ Créer une alerte": "＋ Create an alert", "Aucune alerte sonore. Créez votre première règle audio.": "No sound alerts yet. Create your first audio rule.",
   "Écrans audio du LIVE": "LIVE audio screens", "Configurer la diffusion": "Configure output", "TIKTOK LIVE STUDIO · OBS": "TIKTOK LIVE STUDIO · OBS",
-  "Ces champs d’URL servent à préécouter dans ShenPulse et à faire entendre les sons et le TTS sur vos LIVE.": "Use these source URLs to preview in ShenPulse and broadcast sounds and speech on your live.",
+  "Ces URL diffusent les sons et le TTS sur le LIVE. La préécoute dans ShenPulse fonctionne sans source navigateur.": "These URLs broadcast sounds and speech on your live. Previewing in ShenPulse works without a browser source.",
   "Écoutez dans l’interface, diffusez le son dans le LIVE": "Listen in the app, broadcast audio on your live",
   "Chaque ligne est un champ de source navigateur : copiez l’URL HTTPS de l’écran choisi dans TikTok LIVE Studio ou OBS pour que les spectateurs entendent les sons. Vérifiez d’abord qu’elle n’est pas déjà présente : deux sources avec la même URL joueraient le son deux fois. Spotify reste lu par l’appareil Spotify actif et doit être capturé séparément.": "Each row is a browser source. Copy its HTTPS URL into TikTok LIVE Studio or OBS so viewers can hear it. Check that it isn't already added: two sources with the same URL would play audio twice. Spotify plays on the active Spotify device and must be captured separately.",
   "Donnez le rythme à votre live.": "Set the rhythm of your live.", "Connectez Spotify, contrôlez la lecture et associez les demandes de titres à vos déclencheurs.": "Connect Spotify, control playback and link song requests to your triggers.",

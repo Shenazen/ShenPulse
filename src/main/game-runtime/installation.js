@@ -13,6 +13,7 @@ const { stopOrphanedManagedProcesses } = require("./processes");
 const { detectGtaEdition, deployGtaEnhancedSave } = require("./gta-save");
 const { commitInstallationDeployment, deployAdditionalInstallTargets } = require("./deployments");
 const { installationSlotPercent, cleanupStaleInstallerRuns } = require("./housekeeping");
+const { installFindTheNeedleMod } = require("./find-the-needle-mod-installation");
 
 async function installGame(runtime, gameId) {
     runtime.assertAccess(gameId);
@@ -61,6 +62,9 @@ async function installGame(runtime, gameId) {
     assertAccess();
     await runtime.validateTarget(targetPath, manifest);
     assertAccess();
+    if (manifest.localArchiveOnly) {
+      return await installFindTheNeedleMod(runtime, { gameId, manifest, targetPath, previousInstallation, assertAccess });
+    }
     if (manifest.setupOnly) {
       const installedAt = new Date().toISOString();
       runtime.store.mutate((state) => {

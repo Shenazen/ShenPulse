@@ -70,7 +70,7 @@ function creatorMatchesAutomationIcon(kind) {
 
 const CREATOR_MATCH_CARD_PRESENTATION = Object.freeze({
   battleStart: ["Début du match", "Le match commence.", "flag", "#dc2626", "Votre vidéo d’entrée « C’est parti ! » pour chauffer votre communauté."],
-  multiplierX2: ["Multiplicateur ×2 / ×3", "TikTok active le bonus ×2 ou ×3.", "bolt", "#f59e0b", "Un clip « ENVOYEZ TOUT ! » pendant le bonus de cadeaux."],
+  multiplierX2: ["Multiplicateur ×2 / ×3", "Votre bonus ×2 ou ×3 est confirmé par TikTok.", "bolt", "#f59e0b", "Un clip « ENVOYEZ TOUT ! » quand votre bonus de cadeaux est réellement actif."],
   card: ["Carte posée", "Un gant, une brume, un marteau ou du temps supplémentaire.", "card", "#ea580c", "Une vidéo de gants de boxe quand la carte est réellement reçue."],
   lead: ["Tu passes devant", "Tu reprends la tête au score.", "up", "#059669", "Un son de foule quand vous repassez devant."],
   comeback: ["Grosse remontée", "Tu reviens après avoir été largement derrière.", "flame", "#9333ea", "Un clip « LA REMONTADA » pour célébrer votre retour."],

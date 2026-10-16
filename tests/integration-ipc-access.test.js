@@ -39,12 +39,15 @@ function fixture() {
   });
   module.exports.registerIpc({
     core,
-    store: { getState: () => state, getSecret: () => "refresh-token", set: (key, value) => {
+    store: { getState: () => state, getSecret: () => "refresh-token", mutate: (mutator, immediate) => {
+      mutator(state); calls.push({ name: "store:mutate", args: [immediate] });
+    }, set: (key, value) => {
       if (key !== "settings.liveDirectory") throw new Error("Unexpected settings write");
       state.settings.liveDirectory = value;
     } },
     gameRuntime: { sendThiercelieuxCommand: operation("game:thiercelieux-command") },
-    getWindow: () => mainWindow
+    getWindow: () => mainWindow,
+    onStartupReady: operation("startup:ready")
   });
   return { handlers, calls, state, frame, contents, core, event: { sender: contents, senderFrame: frame }, setWindow: (window) => { mainWindow = window; } };
 }
@@ -58,6 +61,59 @@ test("tous les IPC IRL refusent Free et les sous-frames avant d’appeler un ser
     assert.throws(() => f.handlers.get(channel)(f.event, {}), { code: "PRO_FEATURE_REQUIRED" }, channel);
   }
   assert.equal(f.calls.length, 0);
+});
+
+test("sound:remove exige le document principal exact et un compte connecté avant tout retrait", () => {
+  const f = fixture();
+  const remove = f.handlers.get("sound:remove");
+  const secondFrame = { url: MAIN_RENDERER_URL };
+  const secondContents = { mainFrame: secondFrame, getURL: () => MAIN_RENDERER_URL, isDestroyed: () => false };
+  for (const event of [
+    undefined, {},
+    { sender: secondContents, senderFrame: secondFrame },
+    { sender: f.contents, senderFrame: secondFrame },
+    { sender: f.contents, senderFrame: null }
+  ]) assert.throws(() => remove(event, "custom:fixture", "creator"), { code: "IPC_SENDER_FORBIDDEN" });
+  for (const url of ["https://untrusted.example/", MAIN_RENDERER_URL + "?gameId=fixture", MAIN_RENDERER_URL + "#other"]) {
+    f.frame.url = url;
+    assert.throws(() => remove(f.event, "custom:fixture", "creator"), { code: "IPC_SENDER_FORBIDDEN" });
+  }
+  f.frame.url = MAIN_RENDERER_URL;
+  f.setWindow(null);
+  assert.throws(() => remove(f.event, "custom:fixture", "creator"), { code: "IPC_SENDER_FORBIDDEN" });
+  f.setWindow({ webContents: f.contents, isDestroyed: () => true });
+  assert.throws(() => remove(f.event, "custom:fixture", "creator"), { code: "IPC_SENDER_FORBIDDEN" });
+  f.setWindow({ webContents: f.contents, isDestroyed: () => false });
+  f.state.settings.account = {};
+  assert.throws(() => remove(f.event, "custom:fixture", "creator"), { code: "ACCOUNT_REQUIRED" });
+  assert.equal(f.calls.length, 0);
+});
+
+test("sound:remove est disponible pour tout compte authentifié, Free comme Pro", () => {
+  for (const tier of ["free", "pro"]) {
+    const f = fixture();
+    f.state.commerce = { subscription: { tier, status: tier === "pro" ? "active" : "free" } };
+    f.state.customSounds = [{ id: "ancien_import", name: "Son de test" }];
+    const response = f.handlers.get("sound:remove")(f.event, "ancien_import", "creator");
+    assert.deepEqual(f.state.customSounds, []);
+    assert.equal(response.snapshot.state, f.state);
+    assert.deepEqual(f.calls, [{ name: "store:mutate", args: [true] }]);
+  }
+});
+
+test("startup:ready accepte un seul signal invité du renderer principal, jamais du splash ou d'une sous-frame", () => {
+  const f = fixture(); f.state.settings.account = {};
+  const ready = f.handlers.get("startup:ready");
+  for (const event of [undefined, {}, { sender: f.contents, senderFrame: { url: MAIN_RENDERER_URL } }]) {
+    assert.throws(() => ready(event), { code: "IPC_SENDER_FORBIDDEN" });
+  }
+  const splash = { url: MAIN_RENDERER_URL.replace("index.html", "splash.html") };
+  const splashContents = { mainFrame: splash, getURL: () => splash.url, isDestroyed: () => false };
+  assert.throws(() => ready({ sender: splashContents, senderFrame: splash }), { code: "IPC_SENDER_FORBIDDEN" });
+  assert.equal(ready(f.event, { authenticated: true }).ready, true);
+  assert.equal(ready(f.event).ready, true);
+  assert.deepEqual(f.calls, [{ name: "startup:ready", args: [] }]);
+  assert.deepEqual(f.state.settings.account, {}, "le signal ne peut jamais connecter un compte");
 });
 
 test("les aperçus directs IRL et jeu ne contournent pas l’abonnement via action:test", () => {

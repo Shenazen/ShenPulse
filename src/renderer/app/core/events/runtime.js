@@ -189,6 +189,19 @@ api.on("renderer-visibility", ({ visible } = {}) => {
   if (typeof visible === "boolean") setRendererWindowVisibility(visible);
 });
 
+let persistenceWarningShown = false;
+api.on("persistence-status", (status) => {
+  if (!status || typeof status.pending !== "boolean") return;
+  if (status.pending) {
+    if (persistenceWarningShown) return;
+    persistenceWarningShown = true;
+    toast("Sauvegarde locale en attente", "Les derniers changements ne sont pas encore enregistrés sur ce PC. Gardez ShenPulse ouvert pour ne pas les perdre.", true);
+  } else if (persistenceWarningShown) {
+    persistenceWarningShown = false;
+    toast("Sauvegarde locale rétablie", "Vos réglages ont bien été enregistrés sur ce PC.");
+  }
+});
+
 api.on("song-requests-changed", acceptCreatorSongRequestsStatus);
 api.on("users-changed", () => {
   if (currentPage === "users" && isAccountAuthenticated()) void refreshCreatorUsersDatabase({ force: true });
@@ -208,6 +221,7 @@ storeUpdateButton.addEventListener("click", () => {
 
 setInterval(() => {
   if (!rendererVisualsActive()) return;
+  if (typeof syncCreatorMatchesClock === "function") syncCreatorMatchesClock();
   if (
     (gameInstallBusyId || gameLaunchBusyId) &&
     currentPage === "games" &&
@@ -233,6 +247,25 @@ if ("speechSynthesis" in window) {
   );
 }
 
+let rendererStartupNotified = false;
+let rendererStartupLoginShown = false;
+
+/** Le main ne reçoit qu'un signal de premier rendu, jamais de décision d'accès. */
+function notifyRendererStartupReady() {
+  if (rendererStartupNotified) return;
+  rendererStartupNotified = true;
+  if (typeof api.startupReady === "function") {
+    Promise.resolve(api.startupReady()).catch(() => {});
+  }
+}
+
+function prepareStartupAccountLogin() {
+  if (!isAccountAuthenticated() && !dialog.open && !rendererStartupLoginShown) {
+    rendererStartupLoginShown = true;
+    openAccountLogin();
+  }
+}
+
 api.getSnapshot()
   .then(async (initialSnapshot) => {
     acceptSnapshot(initialSnapshot);
@@ -249,16 +282,26 @@ api.getSnapshot()
       lastAuthenticatedAt: localAccount.lastAuthenticatedAt || "",
       offline: false
     };
-    await hydrateGiftCatalog();
     ensureCurrentPageAccess();
-    await restoreActiveGameInstallProgress("", {
-      renderWhenFound: false
-    });
-    render();
+    render({ prepareHidden: true });
+    prepareStartupAccountLogin();
+    notifyRendererStartupReady();
+    // Les catalogues distants et la reprise d'installation ne conditionnent
+    // ni la saisie du compte invité, ni la sortie du splash de cinq secondes.
+    hydrateGiftCatalog().catch(() => {});
+    restoreActiveGameInstallProgress("", { renderWhenFound: true }).catch(() => {});
     setTimeout(() => {
       refreshStoreUpdate();
     }, 1500);
 
+    let expectedStartupSession = accountSession;
+    const startupDialogSession = dialogSessionId;
+    const startupSessionCurrent = () => accountSession === expectedStartupSession && !(
+      dialog.open && dialog.dataset.variant === "account-auth" && (
+        dialogSessionId !== startupDialogSession || dialogForm.getAttribute("aria-busy") === "true" ||
+        dialogBody.querySelector('[data-account-command="google"]')?.disabled === true
+      )
+    );
     const [accountStatus, visibility] = await Promise.all([
       api.account
         .status()
@@ -275,10 +318,15 @@ api.getSnapshot()
         })),
       api.admin.visibility().catch(() => siteVisibility)
     ]);
+    // Le statut initial ne doit pas déconnecter une connexion/inscription
+    // commencée entre-temps, ni remplacer son dialogue ou son brouillon.
+    if (!startupSessionCurrent()) return;
     accountSession = accountStatus;
+    expectedStartupSession = accountStatus;
     siteVisibility = visibility;
     await refreshGameCheatAccess({ renderWhenChanged: false });
-    adminSession = await api.admin
+    if (!startupSessionCurrent()) return;
+    const startupAdminSession = await api.admin
       .status()
       .catch(() => ({
         authorized: false,
@@ -286,12 +334,18 @@ api.getSnapshot()
         uid: "",
         lastAuthenticatedAt: ""
     }));
-    acceptSnapshot(await api.getSnapshot());
+    if (!startupSessionCurrent()) return;
+    adminSession = startupAdminSession;
+    const refreshedSnapshot = await api.getSnapshot();
+    if (!startupSessionCurrent()) return;
+    acceptSnapshot(refreshedSnapshot);
     ensureCurrentPageAccess();
     await restoreActiveGameInstallProgress("", {
       renderWhenFound: false
     });
+    if (!startupSessionCurrent()) return;
     render();
+    prepareStartupAccountLogin();
     if (isVerifiedAdminSession()) {
       try {
         adminDashboard = await api.admin.dashboard();
@@ -306,5 +360,10 @@ api.getSnapshot()
     }
   })
   .catch((error) => {
+    if (rendererStartupNotified) {
+      console.warn("Synchronisation de démarrage différée :", error?.message || error);
+      return;
+    }
     content.innerHTML = `<div class="empty-state"><div><span class="empty-icon">!</span><h2>ShenPulse n’a pas pu démarrer</h2><p>${escapeHtml(error.message)}</p></div></div>`;
+    notifyRendererStartupReady();
   });

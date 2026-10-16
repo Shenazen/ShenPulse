@@ -1,17 +1,17 @@
-import { LEGAL_PAGES } from '/app/legal-pages.js?v=20261015-web1'
+import { LEGAL_PAGES } from '/app/legal-pages.js?v=20261016-web1'
 import {
   ACTION_TYPES,
   APP_TABS,
   CLIENT_RELEASE,
   OVERLAY_TYPES,
   POPUP_GROUPS
-} from '/content.js?v=20261015-web1'
-import { GAMES } from '/game-catalog.js?v=20261015-web1'
-import { productTour, screenshot, screenshotDialog, bindVisuals } from '/app/visual-tour.js?v=20261015-web1'
-import { escapeHtml } from '/app/html.js?v=20261015-web1'
+} from '/content.js?v=20261016-web1'
+import { GAMES } from '/game-catalog.js?v=20261016-web1'
+import { productTour, screenshot, screenshotDialog, bindVisuals } from '/app/visual-tour.js?v=20261016-web1'
+import { escapeHtml } from '/app/html.js?v=20261016-web1'
 
 const app = document.querySelector('#app')
-const DOWNLOAD_URL = '/downloads/ShenPulseSetup-2.0.2.exe'
+const DOWNLOAD_URL = '/downloads/ShenPulseSetup-2.0.3.exe'
 const SITE_ORIGIN = 'https://www.shenpulse.leuridan.fr'
 const RETIRED_ROUTES = ['/login', '/setup', '/admin', '/app']
 let pageController = null
@@ -23,7 +23,7 @@ const HOME_FAQ = [
   ['Puis-je tester sans être en live ?', 'Oui. Le simulateur du tableau de bord et les boutons de test permettent de vérifier tes règles. Attention : les actions associées peuvent réellement lancer un média, un effet ou une machine IRL. Prépare une configuration de test sans risque.'],
   ['Comment ajouter un overlay ?', 'Configure-le dans ShenPulse, copie la source proposée, puis ajoute une source navigateur dans OBS ou une source Lien dans TikTok LIVE Studio. Respecte les dimensions indiquées et garde ShenPulse ouvert.'],
   ['Quelles fonctions nécessitent Pro ?', 'Jeux vidéo, Machines IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Certains modules de jeux demandent aussi un achat supplémentaire. Les prix et droits de ton compte sont présentés dans l’application.'],
-  ['Mes profils sont-ils conservés ?', 'Oui, les profils et leurs réglages sont rattachés à ton compte sur ce PC. La version 2.0.2 renforce leur sauvegarde et leur restauration à la reconnexion. Cela ne constitue pas une synchronisation entre ordinateurs : conserve aussi tes exports.'],
+  ['Mes profils sont-ils conservés ?', 'Oui, les profils et leurs réglages sont rattachés à ton compte sur ce PC, avec sauvegarde et restauration à la reconnexion. Cela ne constitue pas une synchronisation entre ordinateurs : conserve aussi tes exports.'],
   ['Dois-je configurer Backblaze pour importer un son ?', 'Non. Le stockage média est géré par ShenPulse pour tous les comptes connectés, sans clé Backblaze personnelle. Tu peux importer les formats autorisés depuis l’application, dans la limite indiquée au moment de l’import.'],
   ['Les commandes répondent-elles dans le chat ?', 'L’onglet Commandes reçoit des messages commençant par ! et exécute l’effet configuré : musique, action ou overlay. Il n’envoie pas de réponse textuelle automatique au chat.'],
   ['Quels jeux sont présentés ?', `Les ${GAMES.length} fiches du catalogue public de l’application. Les fiches de référence sont distinguées des intégrations exécutables ; une fiche seule ne garantit pas qu’un mod tiers est installé ou compatible.`]
@@ -359,7 +359,7 @@ function docsPage() {
             <div class="field-table">
               ${[
                 ['Compte ShenPulse', 'Possède les profils, les bibliothèques importées, les intégrations et les droits d’accès. Il est distinct du compte TikTok dont tu suis le LIVE.'],
-                ['Profil actif', 'Restaure ses actions, déclencheurs, commandes, timers, overlays, réglages Matchs et interactions de jeux. En 2.0.2, les préférences TTS et des demandes musicales suivent aussi le profil.'],
+                ['Profil actif', 'Restaure ses actions, déclencheurs, commandes, timers, overlays, réglages Matchs et interactions de jeux. Les préférences TTS et des demandes musicales suivent aussi le profil.'],
                 ['Reconnexion sur ce PC', 'La sauvegarde locale retrouve les profils du compte et le profil précédemment sélectionné. Un autre utilisateur ne reçoit pas cette configuration.'],
                 ['Changement de PC', 'Cette sauvegarde n’est pas une synchronisation cloud. Conserve un export avant une réinstallation ou un changement d’ordinateur. Les secrets locaux ne sont pas transférés par un export de profil.'],
                 ['Sauvegardes', 'Les créations et modifications de profils sont enregistrées. Exporte régulièrement ton travail ; une copie encore présente est nécessaire pour récupérer des données déjà effacées.']

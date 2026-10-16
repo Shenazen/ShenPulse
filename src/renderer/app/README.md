@@ -34,6 +34,9 @@ utilitaires chargés avant lui. Il ne doit pas :
 - `core/automation-table.js` : listes compactes des actions, déclencheurs, voix,
   sons et règles Spotify ; sélection et tri locaux sans modifier le profil.
   Les événements restent délégués dans `core/events/content.js` ;
+- `core/audio-playback.js` : lecteur audio local unique, indépendant des sources
+  navigateur LIVE, avec résolution d'URL, erreurs de lecture et annulation des
+  préécoutes obsolètes après fermeture ou changement de compte/profil ;
 - `features/` : une page ou une capacité utilisateur par fichier ;
 - `features/media/` : sélecteurs cadeaux, médiathèque et intégration Spotify ;
 - `features/overlays/` : présentation des overlays uniquement. `catalog.js`
@@ -102,6 +105,21 @@ Les sources d'aperçu OBS ne sont chargées que dans la galerie visible ou un
 éditeur ouvert, puis détruites hors écran ; seuls leurs petits descripteurs et
 les brouillons sont conservés pour la reprise. Aucun iframe n'est préchargé à
 l'accueil.
+
+`overlays/warmup.js` prépare dès le premier snapshot le catalogue réutilisé par
+la galerie, puis ses images statiques exactes (design actuellement choisi,
+ornements et bannière). Une seule image charge/décode à la fois, en période
+d'inactivité ; le repli sans `requestIdleCallback` espace les tâches de 100 ms.
+La préparation est limitée à 24 images par configuration, sans parcourir toutes
+les variantes. Au maximum huit images et quatre mégapixels (environ 16 Mio de
+bitmaps) gardent une référence forte ; le cache compressé reste géré par Chromium.
+Seuls les assets embarqués ou leur route locale 127.0.0.1 sont acceptés : aucun
+service distant, média privé, déchiffrement, iframe, son ou vidéo n'est démarré.
+Le mode léger prépare seulement le catalogue, sans charger/décoder d'image
+supplémentaire. Masquer la fenêtre suspend la file ; changer de compte ou de
+jeton invalide son cache et ses tâches ; fermer la page libère les références.
+Les vrais lecteurs restent paresseux : ce préchargement accélère l'affichage
+fidèle des cartes, pas l'exécution de moteurs cachés en arrière-plan.
 
 La scène composite est persistée par profil, utilise un transport unique et
 fournit une URL OBS locale. Sa publication HTTPS nécessite encore le déploiement

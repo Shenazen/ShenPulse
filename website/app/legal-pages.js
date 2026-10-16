@@ -116,6 +116,10 @@ export const LEGAL_PAGES = {
         'Le site public ne propose ni compte, ni formulaire de profil, ni paiement. Il ne dépose pas de traceur publicitaire ou de mesure d’audience non nécessaire.',
         'L’hébergeur peut traiter des journaux techniques, notamment l’adresse IP, la date, la ressource demandée et des données de sécurité, pour fournir et protéger le service.'
       ]],
+      ['Lecture visuelle locale facultative', [
+        'Lorsqu’elle est proposée et activée explicitement dans Matchs, cette option lit deux zones délimitées dans une fenêtre choisie sur le PC : le bandeau du bonus et le pseudonyme du créateur. Un aperçu complet et temporaire de cette seule fenêtre sert au calibrage ; la surveillance utilise ensuite uniquement les deux zones choisies.',
+        'La reconnaissance utilise le moteur Windows local, sans capture sonore ni service cloud. Les images et le texte reconnu restent temporairement en mémoire : ils ne sont ni enregistrés, ni envoyés au réseau, au relais ou au journal. Seuls l’activation et les rectangles sont conservés dans le profil. La fenêtre doit être choisie à nouveau après redémarrage et le mode peut être désactivé à tout moment.'
+      ]],
       ['Compte ShenPulse', [
         'Lorsqu’un compte est créé depuis l’application, l’adresse e-mail, l’identifiant du compte, le nom d’affichage et l’état des droits peuvent être traités pour l’authentification, la synchronisation et l’assistance.',
         'Les droits d’abonnement, achats, essais et accès Premium offert sont rattachés à l’identifiant du compte et non au pseudonyme TikTok.'
@@ -125,7 +129,7 @@ export const LEGAL_PAGES = {
         'La plupart des automatismes et journaux fonctionnent localement. Un relais public ne reçoit que l’état nécessaire aux overlays activés, avec un identifiant révoquable.'
       ]],
       ['Données locales et secrets', [
-        'Les profils, règles, préférences, historiques et chemins de jeux sont conservés localement, dans un espace associé au compte ShenPulse sur ce PC. La version 2.0.2 ne synchronise pas ces profils entre ordinateurs.',
+        'Les profils, règles, préférences, historiques et chemins de jeux sont conservés localement, dans un espace associé au compte ShenPulse sur ce PC. ShenPulse ne synchronise pas ces profils entre ordinateurs.',
         'Les mots de passe du compte ne sont pas enregistrés par l’application. Les jetons et clés compatibles sont protégés par le coffre local Windows et ne doivent jamais être partagés.'
       ]],
       ['Médias importés', [

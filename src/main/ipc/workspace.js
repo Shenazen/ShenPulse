@@ -10,6 +10,7 @@ const { notify } = require("./notifications");
 const { readState } = require("../state-projection");
 const { normalizeChatbotCommand } = require("../../shared/chatbot-command");
 const { assertCommandsAccess } = require("../chatbot-service");
+const { synchronizeGiftCatalogScope } = require("../core/gift-scope");
 
 /** Une transition de profil appartient à une connexion précise, pas seulement
  * à un identifiant de profil que plusieurs comptes pourraient partager.
@@ -144,6 +145,7 @@ function registerWorkspaceIpc({ handle, core, store, accountService = null }) {
         username
       }
     });
+    synchronizeGiftCatalogScope(core);
     await core.refreshGiftCatalog({ force: true });
     notify(core, "state-changed", core.snapshot());
     return core.snapshot();

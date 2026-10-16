@@ -8,6 +8,8 @@
  */
 
 function renderGameInstallation(pack, unlocked) {
+  const userProvidedMod = pack.id === "find-the-needle-demo";
+  if (userProvidedMod) return renderSteamDemoModInstallation(pack, unlocked);
   const integrated = pack.guide?.mode === "integrated";
   if (MANAGED_BIZHAWK_GAME_IDS.has(pack.id)) {
     return renderBizHawkGameInstallation(pack, unlocked);
@@ -80,6 +82,37 @@ function renderGameInstallation(pack, unlocked) {
       <strong>Vous n’avez rien à configurer</strong>
       <p>Le téléchargement, la copie des éléments et la préparation sont automatisés. Une fenêtre de progression reste visible jusqu’à la fin.</p>
       ${installation ? `<small>Dernière installation : ${escapeHtml(formatAdminDate(installation.installedAt))}</small>` : ""}
+    </aside>
+  </div>`;
+}
+
+/** Le mod tiers est fourni par l’utilisateur : ShenPulse ne le télécharge ni ne le redistribue. */
+function renderSteamDemoModInstallation(pack, unlocked) {
+  const installation = snapshot.state.game.installations?.[pack.id];
+  const modReady = installation?.source === "user-provided-mod" && installation?.installerVersion === "1.1.0";
+  const busy = gameInstallBusyId === pack.id;
+  return `<div class="game-simple-step">
+    <section class="game-primary-panel game-install-simple">
+      <header><div><span>STEAM · MOD LOCAL</span><h3>${modReady ? "Mod de la démo installé" : "Installer votre mod local"}</h3><p>ShenPulse recherche votre démo Steam puis installe le ZIP Find The Needle v1 que vous fournissez. Fermez le jeu avant de commencer.</p></div><span class="game-step-count">${modReady ? "PRÊT" : "ZIP LOCAL"}</span></header>
+      ${renderGamePageMessage(pack, "installation")}
+      <div class="game-install-state ${modReady ? "ready" : ""}">
+        <span>${modReady ? "✓" : "⌁"}</span>
+        <div>
+          <strong>${modReady ? `Interactions locales de ${escapeHtml(pack.name)} préparées` : "La simple association du dossier ne suffit pas"}</strong>
+          <p>Les scripts du mod sont ajoutés au jeu et son autoload est fusionné dans override.cfg. Les autres réglages sont conservés et les fichiers remplacés sauvegardés.</p>
+        </div>
+      </div>
+      <footer class="game-panel-actions">
+        <button class="button primary game-install-button" data-action="install-game" data-id="${escapeHtml(pack.id)}" ${unlocked && !busy ? "" : "disabled"}>${busy ? "Installation du mod en cours…" : modReady ? "Vérifier ou réinstaller le mod local" : "Installer le mod local"}</button>
+        <button class="button ${modReady ? "primary" : ""}" data-action="game-step" data-value="interactions" ${unlocked && modReady && !busy ? "" : "disabled"}>Continuer vers les interactions →</button>
+      </footer>
+    </section>
+    <aside class="game-novice-note">
+      <span>⌁</span>
+      <strong>Votre ZIP, sans téléchargement supplémentaire</strong>
+      <p>La démo Steam V62 et le ZIP original Find The Needle v1 sont nécessaires. ShenPulse ne contient et ne distribue pas ce mod tiers.</p>
+      <small>Après installation, lancez la démo depuis Steam puis chargez une partie. Aucun logiciel StreamToEarn n’a besoin de rester ouvert.</small>
+      ${modReady ? `<small>Mod installé le ${escapeHtml(formatAdminDate(installation.installedAt))}</small>` : ""}
     </aside>
   </div>`;
 }
@@ -177,7 +210,7 @@ function renderInputGameInstallation(pack, unlocked) {
     </section>
     <aside class="game-novice-note">
       <span>⌁</span>
-      <strong>${pack.ownerOnly ? "Réservé au propriétaire" : "Fenêtre ciblée uniquement"}</strong>
+      <strong>${visibilityTools.gameScopeFor(siteVisibility, pack) === "admin" ? "Réservé au propriétaire" : "Fenêtre ciblée uniquement"}</strong>
       <p>Le connecteur reconnaît exclusivement ${escapeHtml(processName)} et ne transmet aucune commande à une autre application.</p>
       <small>Lancez ${escapeHtml(pack.name)} et chargez une partie avant de tester un effet.</small>
     </aside>

@@ -4,6 +4,7 @@ const { normalizeEvent } = require("../event-normalizer");
 const { enrichGiftEvent, findCatalogGift } = require("../../shared/gift-identity");
 const { readState } = require("../state-projection");
 const { resolveLikeGoalCompletionChange } = require("./trigger-policy");
+const { trustedRoomGiftContext } = require("./gift-scope");
 
 /** Flux LIVE : observation et statistiques d'abord, interactions autorisées ensuite.
  * Les participants bloqués sont comptabilisés, mais aucune émission brute n'est
@@ -17,6 +18,12 @@ async function ingestCreatorEvent(core, hooks, raw, source) {
   const normalized = raw?.type && raw?.user && raw?.data
     ? { ...raw, source: source ?? raw.source ?? "manual" }
     : normalizeEvent(raw, source ?? "manual");
+  if (normalized.type === "gift" && core.giftCatalog.acceptRoomLiveGift) {
+    const context = trustedRoomGiftContext(core, normalized);
+    if (context && core.giftCatalog.acceptRoomLiveGift(normalized.data || {}, context)) {
+      core.notifyRenderer("gift-room-catalog-updated", core.giftCatalog.getRoomCatalog());
+    }
+  }
   if (normalized.type === "gift" && core.giftCatalog.mergeLiveGift(normalized.data || {}) === true) {
     // Uniquement les métadonnées réellement nouvelles : un cadeau public, pas
     // toute la liste ni les données du viewer. Les sauvegardes sont regroupées.

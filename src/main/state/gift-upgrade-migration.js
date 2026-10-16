@@ -4,6 +4,11 @@ const { findCatalogGift, giftIdentity, giftVisualUrl, normalizeGiftName } = requ
 
 const INTEGRATED_GIFT_KEYS = new Set(["guardGift", "mysteryCube", "tickets", "giftRules"]);
 const HISTORY_KEYS = new Set(["queue", "activePlayers", "participants", "history", "events"]);
+const GIFT_IDENTITY_CORRECTION_REASON = "heart-identity-v2";
+const TRUE_HEART_IDS = new Set(["7934", "heart-me"]);
+const OLD_HEART_ALIASES = new Set(["7934", "heart-me", "17712", "62816", "601333", "community-heart"]);
+const LEGACY_HEART_NAMES = new Set(["coeur sur moi", "heart me", "envoie moi un coeur", "coeur de la communaute", "community heart"]);
+const cleanGiftId = (value) => String(value || "").trim().toLowerCase();
 
 /**
  * Prépare une réparation sans écrire ni modifier l'état. Seuls un identifiant
@@ -31,9 +36,60 @@ function collectGiftReferenceUpdates(state, gifts = [], { confirmedVariants = []
   }
   const updates = [];
   const visited = new WeakSet();
+  const exactGifts = new Map();
+  for (const gift of gifts) {
+    const id = cleanGiftId(gift?.id ?? gift?.giftId);
+    if (id) exactGifts.set(id, exactGifts.has(id) ? null : gift);
+  }
 
-  function propose(target, key, value) {
-    if (JSON.stringify(target[key]) !== JSON.stringify(value)) updates.push({ target, key, value });
+  function propose(target, key, value, reason) {
+    if (JSON.stringify(target[key]) !== JSON.stringify(value)) {
+      updates.push({ target, key, value, ...(reason ? { reason } : {}) });
+    }
+  }
+
+  function exactCatalogGift(id) {
+    return exactGifts.get(id) || null;
+  }
+
+  function repairHeartIdentity(target, { name, imageKey, nameTarget = target, nameKey = "" }) {
+    // The old catalogue used 17712 as a merged family representative. It is
+    // not enough to authorize a new identity correction: require the newly
+    // separated exact 7934 row, never a match obtained through stale aliases.
+    const heart = exactCatalogGift("7934");
+    if (!heart || giftIdentity(heart).family !== "community-heart") return false;
+    const id = cleanGiftId(target.giftId);
+    const aliases = Array.isArray(target.giftIds) ? target.giftIds : [];
+    const legacyFamily = cleanGiftId(target.giftFamily) === "community-heart";
+    const legacyName = LEGACY_HEART_NAMES.has(normalizeGiftName(name || target.giftName || target.name));
+    const patch = (object, key, value) => propose(object, key, value, GIFT_IDENTITY_CORRECTION_REASON);
+    const setName = (value) => {
+      if (nameKey) patch(nameTarget, nameKey, value);
+      for (const key of ["giftName", "name"]) {
+        if (Object.prototype.hasOwnProperty.call(target, key)) patch(target, key, value);
+      }
+    };
+    if (id === "157842" && (legacyFamily || legacyName && aliases.some((alias) => OLD_HEART_ALIASES.has(cleanGiftId(alias))))) {
+      const custom = exactCatalogGift(id), identity = custom && giftIdentity(custom);
+      // This exact public gift was falsely identified by the saliency image
+      // heuristic. An unknown/custom user ID or an ambiguous catalogue is not
+      // proof and must never be reassigned by its old label alone.
+      if (!identity || identity.family || !identity.name || LEGACY_HEART_NAMES.has(normalizeGiftName(identity.name))) return false;
+      setName(String(custom.name ?? custom.giftName ?? identity.name));
+      if (legacyFamily) patch(target, "giftFamily", "");
+      patch(target, "giftIds", aliases.filter((alias) => !OLD_HEART_ALIASES.has(cleanGiftId(alias))));
+      if (identity.imageUrl) patch(target, imageKey, identity.imageUrl);
+      return true;
+    }
+    const retiredMergedHeart = id === "17712" && (legacyName && legacyFamily || aliases.some((alias) => cleanGiftId(alias) === "7934"));
+    if (!(TRUE_HEART_IDS.has(id) && legacyFamily) && !retiredMergedHeart) return false;
+    const primary = retiredMergedHeart ? "7934" : id;
+    if (retiredMergedHeart) patch(target, "giftId", primary);
+    patch(target, "giftFamily", "community-heart");
+    patch(target, "giftIds", [...TRUE_HEART_IDS].filter((alias) => alias !== primary));
+    if (giftIdentity(heart).imageUrl) patch(target, imageKey, giftIdentity(heart).imageUrl);
+    if (retiredMergedHeart && legacyName) setName(String(heart.name ?? heart.giftName));
+    return true;
   }
 
   function resolve(candidate) {
@@ -48,8 +104,9 @@ function collectGiftReferenceUpdates(state, gifts = [], { confirmedVariants = []
     return gift;
   }
 
-  function repair(target, { name = "", imageKey = "giftImageUrl", cost } = {}) {
+  function repair(target, { name = "", imageKey = "giftImageUrl", cost, nameTarget = target, nameKey = "" } = {}) {
     if (!target || typeof target !== "object" || Array.isArray(target)) return;
+    if (!onlyConfirmed && repairHeartIdentity(target, { name, imageKey, nameTarget, nameKey })) return;
     const candidate = {
       giftId: target.giftId,
       giftIds: target.giftIds,
@@ -97,7 +154,7 @@ function collectGiftReferenceUpdates(state, gifts = [], { confirmedVariants = []
     for (const rule of Array.isArray(entries) ? entries : []) {
       for (const condition of Array.isArray(rule?.conditions) ? rule.conditions : []) {
         if (condition?.field === "data.giftName" && condition.operator === "equals") {
-          repair(condition, { name: condition.value });
+          repair(condition, { name: condition.value, nameKey: "value" });
         }
       }
     }
@@ -128,7 +185,7 @@ function collectGiftReferenceUpdates(state, gifts = [], { confirmedVariants = []
       // sélecteur spécifique subsiste dans la configuration de la roue.
       if (wheel?.giftValueFilter || !String(wheel?.trigger || "").trim()) continue;
       if (wheel.triggerGift && typeof wheel.triggerGift === "object") {
-        repair(wheel.triggerGift, { name: wheel.trigger });
+        repair(wheel.triggerGift, { name: wheel.trigger, nameTarget: wheel, nameKey: "trigger" });
       } else {
         const confirmed = confirmations.get(normalizeGiftName(wheel.trigger));
         if (onlyConfirmed && !confirmed) continue;
@@ -171,4 +228,4 @@ function applyGiftReferenceUpdates(updates) {
   return updates.length;
 }
 
-module.exports = { collectGiftReferenceUpdates, applyGiftReferenceUpdates };
+module.exports = { GIFT_IDENTITY_CORRECTION_REASON, collectGiftReferenceUpdates, applyGiftReferenceUpdates };

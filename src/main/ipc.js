@@ -40,7 +40,8 @@ function registerIpc({
   adminService,
   gameRuntime,
   storeUpdateService,
-  getWindow
+  getWindow,
+  onStartupReady = () => {}
 }) {
   const guestAllowedChannels = new Set([
     "account:login",
@@ -56,6 +57,7 @@ function registerIpc({
     "catalog:sounds",
     "external:open",
     "snapshot:get",
+    "startup:ready",
     "updates:check",
     "updates:install",
     "window:close",
@@ -65,7 +67,7 @@ function registerIpc({
   const handle = (channel, listener) => {
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, (...args) => {
-      if (["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:"].some((prefix) => channel.startsWith(prefix))) {
+      if (["sound:remove", "startup:ready"].includes(channel) || ["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:"].some((prefix) => channel.startsWith(prefix))) {
         assertIntegrationIpcSender(channel, args[0], getWindow());
       }
       if (["entity:upsert", "entity:remove"].includes(channel) && args[1] === "commands") {
@@ -82,6 +84,13 @@ function registerIpc({
       return listener(...args);
     });
   };
+  let startupReadyAccepted = false;
+  // Signal visuel sans identité ni données : la vraie autorité d'accès reste
+  // le compte vérifié côté main. Une seule transition est autorisée par fenêtre.
+  handle("startup:ready", () => {
+    if (!startupReadyAccepted) { startupReadyAccepted = true; onStartupReady(); }
+    return { ready: true };
+  });
   const requireGameAccess = (packId) =>
     core.gameHub.assertAccess(safeString(packId, 160));
   const integrationChange = async (operation) => {

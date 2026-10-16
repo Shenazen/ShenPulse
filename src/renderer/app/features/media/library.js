@@ -1,3 +1,6 @@
+// Une confirmation en cours ne doit pas pouvoir supprimer deux fois le même import.
+const mediaLibraryPendingRemovals = new Set();
+
 function soundPickerField(
   name,
   selectedUrl = "",
@@ -207,6 +210,7 @@ function openMediaLibrary(trigger) {
 }
 
 function closeMediaLibrary() {
+  stopMediaLibraryPreview();
   clearTimeout(mediaLibrarySearchTimer);
   mediaLibraryRequestSequence += 1;
   mediaLibraryContext = null;
@@ -283,7 +287,6 @@ function mediaLibraryItems() {
 
 function renderMediaLibrary() {
   if (!mediaLibraryContext) return;
-  const items = mediaLibraryItems();
   const filters = mediaLibraryFilterOptions(
     mediaLibraryContext.kind === "sound"
       ? SOUND_LIBRARY.filter((item) => item.source === "custom")
@@ -294,6 +297,7 @@ function renderMediaLibrary() {
   if (!filters.some(([value]) => value === mediaLibraryKind)) {
     mediaLibraryKind = "all";
   }
+  const items = mediaLibraryItems();
   mediaLibrarySources.innerHTML = mediaLibrarySourceOptions();
   mediaLibraryFilters.innerHTML =
     mediaLibrarySource === "web" &&
@@ -342,6 +346,9 @@ function soundLibraryResultMarkup(item) {
   const selected =
     mediaLibrarySelected?.id === item.id ||
     mediaLibrarySelected?.url === item.url;
+  const removable = item.source === "custom" &&
+    snapshot?.state?.customSounds?.some((sound) => sound.id === item.id);
+  const removing = mediaLibraryPendingRemovals.has(mediaLibrarySoundRemovalKey(item.id));
   return `<article class="media-sound-row ${selected ? "selected" : ""}" data-media-card data-media-id="${escapeHtml(item.id || item.url)}">
     <button type="button" class="sound-preview-button" data-media-preview-url="${escapeHtml(item.url)}" title="Écouter ${escapeHtml(item.name)}">▶</button>
     <button type="button" class="media-sound-select" data-media-select="${escapeHtml(item.id || item.url)}">
@@ -349,7 +356,62 @@ function soundLibraryResultMarkup(item) {
       <span class="badge cyan">${escapeHtml(item.category || "audio")}</span>
       <span class="media-choice-mark">${selected ? "✓ Sélectionné" : "Choisir"}</span>
     </button>
+    ${removable ? `<button type="button" class="button danger small media-sound-delete" data-remove-custom-sound="${escapeHtml(item.id)}" title="Supprimer ${escapeHtml(item.name)} de mes sons importés" aria-label="Supprimer ${escapeHtml(item.name)} de mes sons importés" ${removing ? "disabled" : ""}>${automationTableIcon("trash")}<span>Supprimer</span></button>` : ""}
   </article>`;
+}
+
+function mediaLibrarySoundRemovalKey(id, owner = captureCreatorPrivateOperation()) {
+  return JSON.stringify([owner.uid, owner.generation, id]);
+}
+
+/** Retire une entrée du compte, jamais les URL déjà affectées aux actions.
+ * Le contexte et la session sont revérifiés après chaque attente : confirmer
+ * sous un autre compte ou dans un nouveau sélecteur ne doit rien y changer.
+ */
+async function removeImportedSound(id) {
+  if (mediaLibraryContext?.kind !== "sound" || mediaLibrarySource !== "custom") return;
+  const item = snapshot?.state?.customSounds?.find((sound) => sound.id === id);
+  if (!item) return;
+  const context = mediaLibraryContext;
+  const owner = captureCreatorPrivateOperation();
+  const pendingKey = mediaLibrarySoundRemovalKey(id, owner);
+  const active = () => creatorPrivateOperationActive(owner) && mediaLibraryContext === context;
+  if (!active() || mediaLibraryPendingRemovals.has(pendingKey)) return;
+  mediaLibraryPendingRemovals.add(pendingKey);
+  renderMediaLibrary();
+  try {
+    if (!(await confirmAction(
+      `Supprimer « ${item.name} » de vos sons importés ? Les actions et profils qui l’utilisent conserveront leur son.`,
+      { title: "Supprimer ce son importé", confirmLabel: "Supprimer", danger: true }
+    )) || !active()) return;
+    const result = await api.removeCustomSound(id, owner.uid);
+    if (!creatorPrivateOperationActive(owner)) return;
+    if (result?.snapshot) acceptSnapshot(result.snapshot);
+    for (const [key, entry] of mediaSessionEntries) {
+      if (entry.id === item.id || entry.url === item.url) mediaSessionEntries.delete(key);
+    }
+    if (mediaLibraryContext === context) stopMediaLibraryPreview(item.url);
+    if (mediaLibrarySelected?.id === item.id || mediaLibrarySelected?.url === item.url) {
+      mediaLibrarySelected = null;
+    }
+    toast("Son retiré de la bibliothèque", "Les actions déjà configurées restent inchangées.");
+  } catch (error) {
+    if (creatorPrivateOperationActive(owner)) toast("Suppression impossible", error.message || String(error), true);
+  } finally {
+    mediaLibraryPendingRemovals.delete(pendingKey);
+    if (creatorPrivateOperationActive(owner)) renderMediaLibrary();
+  }
+}
+
+/** Ne coupe que l’aperçu du sélecteur, jamais une alerte ou une sortie LIVE. */
+function stopMediaLibraryPreview(url = "") {
+  if (activePreviewAudioScope !== "media-library" || !activePreviewAudio ||
+      (url && ![url, resolvedMediaUrl(url)].includes(activePreviewAudio.getAttribute("src")))) return;
+  const audio = activePreviewAudio;
+  activePreviewAudio = null;
+  activePreviewAudioScope = "";
+  audio.pause();
+  audio.remove();
 }
 
 function visualLibraryResultMarkup(item) {
@@ -518,6 +580,7 @@ function updateCompactMediaPicker(root, item) {
 
 function confirmMediaLibrarySelection() {
   if (!mediaLibraryContext || !mediaLibrarySelected) return;
+  stopMediaLibraryPreview();
   updateCompactMediaPicker(mediaLibraryContext.root, mediaLibrarySelected);
   mediaLibraryContext = null;
   mediaLibrarySelected = null;
@@ -573,6 +636,7 @@ const globalMediaLibrary = Object.freeze({
   clear: clearMediaPicker,
   confirm: confirmMediaLibrarySelection,
   refresh: renderMediaLibrary,
+  removeSound: removeImportedSound,
   upload: uploadMediaFromLibrary
 });
 window.ShenPulseMediaLibrary = globalMediaLibrary;

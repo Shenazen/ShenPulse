@@ -30,9 +30,15 @@ function registerAdminIpc({ handle, core, store, adminService }) {
     return dashboard;
   });
   
-  handle("admin:site-save", (_event, incoming) =>
-    adminService.saveSiteSettings(sanitizeEntity(incoming || {}))
-  );
+  handle("admin:site-save", async (_event, incoming) => {
+    const settings = await adminService.saveSiteSettings(
+      sanitizeEntity(incoming || {})
+    );
+    // La projection des jeux et les droits du profil suivent immédiatement
+    // les portées enregistrées, sans attendre un redémarrage de l'application.
+    notify(core, "state-changed", core.snapshot());
+    return settings;
+  });
   
   handle("admin:commerce-save", (_event, incoming) =>
     adminService.saveCommerce(sanitizeEntity(incoming || {}))

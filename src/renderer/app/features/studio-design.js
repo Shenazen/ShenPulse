@@ -33,6 +33,7 @@ function studioLocale() {
 }
 
 function syncStudioPreferences() {
+  if (typeof synchronizeOverlayAssetWarmup === "function") synchronizeOverlayAssetWarmup();
   document.documentElement.lang = studioLocale().startsWith("en") ? "en" : "fr";
   document.body.classList.toggle("studio-light-mode", studioLightMode);
   const language = document.getElementById("studio-language");

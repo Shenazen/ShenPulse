@@ -3,6 +3,9 @@
 const { EventEmitter } = require("node:events");
 const { readState } = require("./state-projection");
 const { EVENTS: TIKTOK_MATCH_EVENTS, DECODED: TIKTOK_MATCH_DECODED, normalizeTikTokBattle, tiktokBattleEventKind } = require("./matches/tiktok-battle");
+const { TikTokMatchClock } = require("./matches/tiktok-clock");
+const { normalizeTikTokGiftBonus } = require("./matches/tiktok-gift-bonus");
+const { tiktokMatchOwnerMetadata, reconcileTikTokOwnerMetadata } = require("./matches/tiktok-match-owner");
 const { hasAuthenticatedAccount } = require("./account-access");
 const tls = require("node:tls");
 const {
@@ -213,7 +216,13 @@ class SourceHub extends EventEmitter {
       seenTikTokEventIds: new Set(),
       seenTikTokEventObjects: new WeakMap(),
       reconnectTimer: null,
+      matchClock: new TikTokMatchClock(),
+      detachMatchClock: null,
+      verifiedMatchOwner: null,
+      matchOwnerConflict: false,
       stop: async () => {
+        runtime.verifiedMatchOwner = null; runtime.matchOwnerConflict = false;
+        runtime.detachMatchClock?.(); runtime.detachMatchClock = null; runtime.matchClock.reset();
         runtime.chatDelivery.reset();
         const connector = runtime.connector;
         runtime.connector = null;
@@ -241,6 +250,7 @@ class SourceHub extends EventEmitter {
         });
       }
       let payload = tiktokConnectorPayload(type, event, username);
+      payload.roomId = String(runtime.roomId || runtime.connector?.roomId || "");
       if (type === "like") {
         payload = applyTikTokLikeDelta(runtime, payload);
         if (!payload) return;
@@ -272,9 +282,11 @@ class SourceHub extends EventEmitter {
 
     const connectionDropped = (connector, reason) => {
       if (runtime.closed || runtime.connector !== connector) return;
+      runtime.detachMatchClock?.(); runtime.detachMatchClock = null; runtime.matchClock.reset();
       runtime.connector = null;
       runtime.connecting = false;
       runtime.roomId = "";
+      runtime.verifiedMatchOwner = null; runtime.matchOwnerConflict = false;
       runtime.chatDelivery.reset();
       connector.removeAllListeners?.();
       connector.disconnect?.().catch(() => {});
@@ -284,6 +296,13 @@ class SourceHub extends EventEmitter {
       scheduleReconnect(true);
     };
 
+    const applyOwnerMetadata = (metadata) => {
+      const result = reconcileTikTokOwnerMetadata(metadata, runtime,
+        readState(this.store, ["settings.tiktok"]).settings?.tiktok, username);
+      runtime.verifiedMatchOwner = result.cache; runtime.matchOwnerConflict = result.conflict;
+      if (result.metadata) this.#tiktokLiveMetadata(connection.id, runtime, username, result.metadata);
+      return result.metadata;
+    };
     const bind = (connector) => {
       const isCurrent = () => !runtime.closed && runtime.connector === connector &&
         this.runtimes.get(connection.id) === runtime;
@@ -291,12 +310,36 @@ class SourceHub extends EventEmitter {
         if (isCurrent()) emitEvent(type, event);
       };
       const emitCurrentMatch = (kind, event) => {
-        if (!isCurrent() || !shouldEmitTikTokEvent(runtime, kind, event)) return;
-        const match = normalizeTikTokBattle(kind, event, { roomId: runtime.roomId || connector.roomId, channelUsername: username });
-        if (match) this.emit("match-event", { ...match, source: connection.id });
+        if (!isCurrent()) return;
+        const match = normalizeTikTokBattle(kind, event, { roomId: runtime.roomId || connector.roomId, channelUsername: username,
+          clockOffsetMs: runtime.matchClock.offsetMs });
+        if (match) {
+          const metadata = match.phase === "start" ? tiktokMatchOwnerMetadata(event,
+            { roomId: runtime.roomId || connector.roomId, channelUsername: username }) : null;
+          if (metadata) applyOwnerMetadata(metadata);
+          // A reconnect can replay the same OPEN while its owner cache was
+          // cleared. Re-establish exact identity without replaying the match.
+          if (shouldEmitTikTokEvent(runtime, kind, event)) this.emit("match-event", { ...match, source: connection.id });
+        }
       };
+      const emitCurrentGiftBonus = (event) => {
+        if (!isCurrent()) return;
+        const match = normalizeTikTokGiftBonus(event, { roomId: runtime.roomId || connector.roomId,
+          channelUsername: username, clockOffsetMs: runtime.matchClock.offsetMs });
+        if (match && shouldEmitTikTokEvent(runtime, "giftBonus", event)) this.emit("match-event", { ...match, source: connection.id });
+      };
+      connector.on(ControlEvent.WEBSOCKET_CONNECTED, (client) => {
+        if (!isCurrent() || typeof client?.prependListener !== "function") return;
+        runtime.detachMatchClock?.();
+        const observeClock = (batch) => { if (isCurrent()) runtime.matchClock.observe(batch?.now, Date.now()); };
+        // The SDK exposes its decoded container before dispatching messages.
+        // Read only its server clock; no duplicate decoding or extra request.
+        client.prependListener("protoMessageFetchResult", observeClock);
+        runtime.detachMatchClock = () => client.removeListener("protoMessageFetchResult", observeClock);
+      });
       for (const kind of Object.keys(TIKTOK_MATCH_EVENTS)) connector.on(kind, (event) => emitCurrentMatch(kind, event));
       connector.on(WebcastEvent.GIFT, (event) => {
+        emitCurrentGiftBonus(event);
         if (tiktokGiftIsFinal(event)) emitCurrentEvent("gift", event);
       });
       connector.on(WebcastEvent.LIKE, (event) => emitCurrentEvent("like", event));
@@ -321,6 +364,7 @@ class SourceHub extends EventEmitter {
         queueMicrotask(() => {
           if (TIKTOK_MATCH_DECODED[messageType]) { emitCurrentMatch(TIKTOK_MATCH_DECODED[messageType], event); return; }
           const type = tiktokDecodedEventType(messageType, event);
+          if (type === "gift") emitCurrentGiftBonus(event);
           if (!type || (type === "gift" && !tiktokGiftIsFinal(event))) return;
           emitCurrentEvent(type, event);
         });
@@ -355,6 +399,8 @@ class SourceHub extends EventEmitter {
         username,
         tiktokDirectConnectionOptions()
       );
+      runtime.verifiedMatchOwner = null; runtime.matchOwnerConflict = false;
+      runtime.matchClock.reset();
       runtime.connector = connector;
       bind(connector);
 
@@ -369,23 +415,19 @@ class SourceHub extends EventEmitter {
         runtime.attempts = 0;
         runtime.roomId = String(state?.roomId || state?.roomInfo?.roomId || connector.roomId || "");
         this.#status(connection.id, "connected");
-        this.#tiktokStatus(connection.id, "live", {
-          roomId: String(
-            state?.roomId ||
-              state?.roomInfo?.roomId ||
-              connector.roomId ||
-              ""
-          )
-        });
+        this.#tiktokStatus(connection.id, "live", { roomId: runtime.roomId });
+        if (runtime.verifiedMatchOwner?.roomId !== runtime.roomId) runtime.verifiedMatchOwner = null;
+        if (runtime.verifiedMatchOwner && !runtime.matchOwnerConflict) {
+          this.#tiktokLiveMetadata(connection.id, runtime, username, runtime.verifiedMatchOwner);
+        }
         this.refreshChatCapabilities(connection.id);
-        const roomId = String(state?.roomId || connector.roomId || "");
+        const roomId = runtime.roomId;
         const applyRoomInfo = (roomInfo) => {
           if (runtime.closed || runtime.connector !== connector) return;
           const metadata = tiktokRoomLiveMetadata(roomInfo, username, roomId);
           // A push update received meanwhile is newer than the HTTP room snapshot.
           if (metadata && runtime.roomUserReceived) delete metadata.currentViewers;
-          if (metadata) this.#tiktokLiveMetadata(connection.id, runtime, username, metadata);
-          return metadata;
+          return applyOwnerMetadata(metadata);
         };
         const roomInfo = state?.roomInfo || connector.roomInfo;
         const initialMetadata = roomInfo ? applyRoomInfo(roomInfo) : null;
@@ -399,6 +441,7 @@ class SourceHub extends EventEmitter {
         if (runtime.closed || runtime.connector !== connector) return;
         runtime.connecting = false;
         runtime.connector = null;
+        runtime.verifiedMatchOwner = null; runtime.matchOwnerConflict = false;
         connector.removeAllListeners?.();
         await connector.disconnect?.().catch(() => {});
         const offline = isTikTokOfflineError(error);

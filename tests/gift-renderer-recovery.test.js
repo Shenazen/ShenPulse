@@ -98,6 +98,34 @@ test("une mise à jour du cache conserve les alias et affiche le visuel actualis
   assert.equal(context.GIFT_CATALOG.length, 1);
 });
 
+test("Cœur sur moi remplace l'image dorée dans les badges et sélecteurs sans réattribuer le cadeau", (t) => {
+  const { context, form } = renderer(t);
+  const oldImage = "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/dad7a63955f98891958e37071bb067f3.png~tplv-obj.webp";
+  const selected = savedGift({ value: "Heart Me", giftId: "7934", giftIds: ["7934", "17712", "heart-me"],
+    giftCost: 1, giftFamily: "community-heart", giftImageUrl: oldImage });
+  const before = JSON.stringify(selected);
+  context.rememberGifts([{ id: "7934", alternateIds: ["17712", "heart-me"], name: "Heart Me", cost: 1,
+    giftFamily: "community-heart", imageUrl: oldImage }]);
+  context.triggerLabel = () => "Cadeau · Cœur sur moi";
+  form.innerHTML = '<input name="title" value="Ma saisie conservée">' + context.giftTriggerConditionFields([selected]);
+  const rule = { trigger: { type: "gift" }, conditions: [selected] };
+  context.content.innerHTML = context.triggerPill(rule) + context.overlayTriggerPickerVisual(rule);
+  assert.equal(form.querySelector("[data-gift-selected] img").getAttribute("src"), identity.COMMUNITY_HEART_IMAGE_URL);
+  context.rememberGifts(new GiftCatalog(path.join(__dirname, "..", "resources")).gifts);
+  context.updateAllGiftPickerSelections();
+  context.refreshGiftVisuals();
+  assert.equal(form.querySelector("[data-gift-selected] img").getAttribute("src"), identity.COMMUNITY_HEART_IMAGE_URL);
+  assert.ok([...context.content.querySelectorAll("img")].every((image) => image.getAttribute("src") === identity.COMMUNITY_HEART_IMAGE_URL));
+  assert.equal(form.querySelector('[name="title"]').value, "Ma saisie conservée");
+  assert.equal(form.querySelector("[data-gift-id-input]").value, "7934");
+  const saved = context.buildTriggerConditions([selected], new context.FormData(form))[0];
+  assert.equal(saved.giftId, "7934");
+  assert.equal(saved.giftCost, 1);
+  assert.equal(saved.value, "Heart Me");
+  assert.equal(saved.giftImageUrl, identity.COMMUNITY_HEART_IMAGE_URL);
+  assert.equal(JSON.stringify(selected), before);
+});
+
 test("le picker et l'enregistrement DOM conservent une ancienne référence non résolue", (t) => {
   const { context, form } = renderer(t);
   const existing = savedGift();

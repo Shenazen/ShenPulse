@@ -44,11 +44,11 @@ const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 49);
-  assert.equal(new Set(games.map((game) => game.id)).size, 49);
+  assert.equal(games.length, 50);
+  assert.equal(new Set(games.map((game) => game.id)).size, 50);
   assert.equal(
     games.filter((game) => !["fortnite", "thiercelieux"].includes(game.id)).length,
-    47
+    48
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(
@@ -109,11 +109,11 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
       thiercelieux: 4.99,
       "coin-pusher": 4.99,
       "connect-four": 4.99,
-      "clash-of-live": 19.99,
+      "clash-of-live": 12.99,
       "color-strike": 19.99,
-      "tiklive-climb": 19.99,
-      "tiklive-cube-wars": 19.99,
-      "tiklive-stack-tower": 19.99,
+      "tiklive-climb": 9.99,
+      "tiklive-cube-wars": 9.99,
+      "tiklive-stack-tower": 9.99,
       "deal-or-no-deal": 4.99,
       "diamond-drop": 4.99
     }

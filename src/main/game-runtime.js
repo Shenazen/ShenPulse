@@ -51,6 +51,7 @@ const { detectInstalledGame, steamGameInstallCandidates } = require("./game-runt
 
 
 const { installGame } = require("./game-runtime/installation");
+const { launchSteamDemo } = require("./game-runtime/steam-launch");
 const { pickTarget, showInvalidTarget, validateTarget } = require("./game-runtime/target-selection");
 const { downloadAsset } = require("./game-runtime/asset-download");
 const { installAsset } = require("./game-runtime/asset-deployment");
@@ -304,6 +305,7 @@ class GameRuntimeService {
       manifest.launchExecutables || manifest.executables || []
     );
     assertAccess();
+    if (gameId === "find-the-needle-demo") return launchSteamDemo({ gameId, manifest, executable, shell, assertAccess });
     if (!executable) {
       await shell.openPath(installation.path);
       return {

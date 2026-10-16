@@ -18,7 +18,7 @@ const DEDUPLICATED_TIKTOK_EVENT_TYPES = new Set([
   "join",
   "like",
   "share",
-  "subscribe", "linkMicBattle", "linkMicArmies", "linkMicBattleTask", "linkMicBattlePunishFinish"
+  "subscribe", "linkMicBattle", "linkMicArmies", "linkMicBattleTask", "linkMicBattlePunishFinish", "giftBonus"
 ]);
 
 function parseTikTokRelayStatus(raw) {
@@ -71,6 +71,21 @@ function normalizeTikTokMetadataUsername(value) {
   return safeString(value, 80).trim().replace(/^@+/, "").toLowerCase();
 }
 
+function tiktokRoomOwnerId(owner) {
+  // Les UID TikTok dépassent couramment la précision entière de JavaScript.
+  // room.owner fournit aussi id_str : le nombre JSON arrondi ne doit jamais
+  // masquer cette identité exacte, ni être conservé comme preuve d'identité.
+  const ids = new Set();
+  for (const value of [owner.id_str, owner.userIdStr, owner.user_id_str, owner.userId, owner.id]) {
+    if (typeof value === "number") {
+      if (Number.isSafeInteger(value) && value > 0) ids.add(String(value));
+    } else if (typeof value === "string" && /^[1-9]\d{0,19}$/.test(value) && BigInt(value) <= 18446744073709551615n) ids.add(value);
+  }
+  // Missing/unsafe aliases are not exact proof. Two contradictory precise
+  // aliases are an explicit conflict, not permission to choose the first.
+  return ids.size > 1 ? null : ids.values().next().value || "";
+}
+
 function tiktokMetadataRoomId(value) {
   if (!value || typeof value !== "object") return "";
   return safeString(value.roomId || value.room_id || value.common?.roomId || "", 160);
@@ -104,22 +119,28 @@ function tiktokRoomLiveMetadata(roomInfo, username, expectedRoomId = "") {
     // Some room responses omit the public @. Accept an owner only when its room
     // id proves this is the room already bound to the configured broadcaster.
     if (ownerUsername || (roomId && roomId === expectedRoomId)) {
-      let avatarUrl = preferredImageUrl(
-        owner.avatar_thumb?.url_list, owner.avatarThumb,
-        owner.avatar_medium?.url_list, owner.avatarMedium,
-        owner.avatar_large?.url_list, owner.avatarLarge,
-        owner.profilePicture, owner.profilePictureUrl, owner.avatarUrl
-      );
-      try {
-        const avatar = new URL(avatarUrl);
-        if (avatar.protocol !== "https:" || avatar.username || avatar.password) avatarUrl = "";
-      } catch { avatarUrl = ""; }
-      metadata.broadcaster = {
-        username: ownerUsername || configuredUsername,
-        ...(owner.id || owner.id_str || owner.userId ? { userId: safeString(owner.id || owner.id_str || owner.userId, 120) } : {}),
-        nickname: safeString(owner.nickname || owner.displayName || ownerUsername || configuredUsername, 160),
-        avatarUrl
-      };
+      const ownerId = tiktokRoomOwnerId(owner);
+      if (ownerId === null) {
+        metadata.broadcaster = null;
+        metadata.ownerConflict = true;
+      } else {
+        let avatarUrl = preferredImageUrl(
+          owner.avatar_thumb?.url_list, owner.avatarThumb,
+          owner.avatar_medium?.url_list, owner.avatarMedium,
+          owner.avatar_large?.url_list, owner.avatarLarge,
+          owner.profilePicture, owner.profilePictureUrl, owner.avatarUrl
+        );
+        try {
+          const avatar = new URL(avatarUrl);
+          if (avatar.protocol !== "https:" || avatar.username || avatar.password) avatarUrl = "";
+        } catch { avatarUrl = ""; }
+        metadata.broadcaster = {
+          username: ownerUsername || configuredUsername,
+          ...(ownerId ? { userId: ownerId } : {}),
+          nickname: safeString(owner.nickname || owner.displayName || ownerUsername || configuredUsername, 160),
+          avatarUrl
+        };
+      }
     }
   }
   const currentViewers = nonnegativeViewerCount(room.user_count ?? room.userCount ?? room.viewerCount ?? room.viewer_count);
@@ -139,6 +160,15 @@ function tiktokRelayLiveMetadata(raw, username, expectedRoomId = "") {
   if (!["status", "livestatus", "roomstatus", "roominfo", "live"].includes(kind)) return null;
   const roomInfo = data.roomInfo || raw.roomInfo || data;
   return tiktokRoomLiveMetadata(roomInfo, username, expectedRoomId);
+}
+
+function tiktokGiftRecipientIds(event = {}) {
+  return [...new Set([event.toUser?.id_str, event.toUser?.userIdStr, event.toUser?.user_id_str,
+    event.toUser?.userId, event.toUser?.id, event.giftExtra?.toUserId,
+    event.toMemberId, event.toMemberIdInt, event.toUserId, event.receiverUserId].flatMap((value) => {
+    const id = typeof value === "number" ? Number.isSafeInteger(value) && value > 0 ? String(value) : "" : value;
+    return typeof id === "string" && /^[1-9]\d{0,19}$/.test(id) && BigInt(id) <= 18446744073709551615n ? [id] : [];
+  }))];
 }
 
 function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
@@ -178,6 +208,8 @@ function tiktokConnectorPayload(type, event = {}, channelUsername = "") {
       160
     ),
     channelUsername: safeString(channelUsername, 80),
+    ...(type === "gift" ? { giftRecipientIds: tiktokGiftRecipientIds(event),
+      giftMessageRoomId: safeString(event.common?.roomId || "", 160) } : {}),
     userId,
     uniqueId,
     nickname,
@@ -468,6 +500,7 @@ module.exports = {
   tiktokDirectConnectionOptions,
   tiktokGiftIsFinal,
   tiktokConnectorPayload,
+  tiktokGiftRecipientIds,
   tiktokSocialEventType,
   normalizeTikTokMetadataUsername,
   tiktokMetadataRoomId,

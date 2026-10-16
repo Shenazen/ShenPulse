@@ -157,7 +157,9 @@ test("Diffusion LIVE garde huit sources et le comptage audio/media du module com
   assert.equal(rows[1].querySelector(".media-screen-count").textContent, "2 actions");
   assert.equal(rows[3].querySelector(".media-screen-count").textContent, "1 action");
   assert.equal(rows[0].querySelector('[data-action="copy"]').dataset.value, "https://example.invalid/screen/1");
-  assert.match(page.textContent, /deux sources avec la même URL joueraient le son deux fois/);
+  assert.match(page.textContent, /Copiez son URL HTTPS une seule fois/);
+  assert.match(page.textContent, /cela peut doubler la diffusion ou transmettre vos préécoutes privées/);
+  assert.match(page.textContent, /La préécoute dans ShenPulse fonctionne sans source navigateur/);
   for (const tab of ["voice", "sounds"]) {
     context.renderTab(tab);
     assert.equal(page.querySelector(".media-screens-panel").tagName, "DETAILS");

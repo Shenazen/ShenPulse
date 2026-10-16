@@ -10,6 +10,7 @@ const GAME_INSTALLERS = Object.freeze({
   "tiklive-cube-wars": require("./game-installers/tiklive-cube-wars"),
   "tiklive-stack-tower": require("./game-installers/tiklive-stack-tower"),
   demonologist: require("./game-installers/demonologist"),
+  "find-the-needle-demo": require("./game-installers/find-the-needle-demo"),
   "euro-truck-simulator-2": require("./game-installers/euro-truck-simulator-2"),
   "resident-evil-3": require("./game-installers/resident-evil-3"),
   "gtav-montchiliad": require("./game-installers/gtav-montchiliad"),

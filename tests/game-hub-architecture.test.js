@@ -94,11 +94,12 @@ test("les paramètres initiaux mutualisés servent à la règle et à la charge 
   assert.equal(rule.actions[0].config.parameters.count, 4);
 });
 
-test("les cinq passerelles HTTP réutilisent le même registre pour diagnostic et exécution", async () => {
+test("les six passerelles HTTP réutilisent le même registre pour diagnostic et exécution", async () => {
   const mappings = [
     ["color-strike-http", "colorStrikeBridge"], ["tiklive-climb-http", "tikLiveClimbBridge"],
     ["tiklive-cube-wars-http", "tikLiveCubeWarsBridge"],
-    ["tiklive-stack-tower-http", "tikLiveStackTowerBridge"], ["clash-of-live-http", "clashOfLiveBridge"]
+    ["tiklive-stack-tower-http", "tikLiveStackTowerBridge"], ["clash-of-live-http", "clashOfLiveBridge"],
+    ["find-the-needle-http", "findTheNeedleBridge"]
   ];
   for (const [type, property] of mappings) {
     const calls = [];

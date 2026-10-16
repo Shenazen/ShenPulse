@@ -58,11 +58,17 @@ test("les alias et la famille persistés survivent à la normalisation et au mat
   assert.equal(coinPusher.coinPusherDesignatedGiftMatches({ giftId: "10001", name: "Nouveau nom" }, normalized.guardGift), true);
 });
 
-test("les anciens IDs de Cœur sur moi fonctionnent avec le cadeau actuel et sa famille personnalisée", () => {
+test("seuls 7934 et heart-me désignent le cœur, les cadeaux personnels ne deviennent pas ses alias", () => {
   const rule = { giftId: "7934", name: "Cœur sur moi", giftFamily: "community-heart", coinCount: 2, enabled: true };
-  assert.equal(coinPusher.findCoinPusherGiftRule({ giftId: "17712", name: "Cœur du jour" }, { giftRules: [rule] }).coinCount, 2);
-  assert.equal(coinPusher.coinPusherDesignatedGiftMatches({ giftId: "creator-specific", giftFamily: "community-heart", name: "Mon cœur" }, rule), true);
-  assert.equal(gifts.triggerMatchesGift("gift:7934", { giftId: "creator-specific", giftFamily: "community-heart" }), true);
+  assert.equal(coinPusher.findCoinPusherGiftRule({ giftId: "heart-me", name: "Heart Me" }, { giftRules: [rule] }).coinCount, 2);
+  for (const giftId of ["17712", "62816", "601333", "157842", "creator-specific"]) {
+    const gift = { giftId, giftFamily: "community-heart", name: "Cœur sur moi", giftIds: [giftId, "7934", "heart-me"] };
+    assert.equal(coinPusher.findCoinPusherGiftRule(gift, { giftRules: [rule] }), undefined);
+    assert.equal(coinPusher.coinPusherDesignatedGiftMatches(gift, rule), false);
+    for (const trigger of ["gift:7934", "7934", "heart-me", "gift-name:coeur-sur-moi"]) {
+      assert.equal(gifts.triggerMatchesGift(trigger, gift), false, `${giftId} / ${trigger}`);
+    }
+  }
 });
 
 test("les données normalisées du LIVE gardent aussi le coût, le dessin et les IDs connus", () => {
@@ -70,5 +76,63 @@ test("les données normalisées du LIVE gardent aussi le coût, le dessin et les
   assert.equal(gift.cost, 1);
   assert.equal(gift.imageUrl, "heart.webp");
   assert.deepEqual(Array.from(gift.giftIds), ["old", "new"]);
+  assert.equal(gift.giftFamily, undefined, "a precise unrelated ID rejects an old automatic heart family");
   assert.equal(gifts.triggerMatchesGift("gift:old", gift), true);
+});
+
+test("les nouvelles listes cachent le bretzel et les cadeaux non sélectionnables, mais les références historiques restent lisibles", () => {
+  const rows = [{ id: "17712", name: "Cœur de la communauté", cost: 1, imageUrl: "pretzel.webp" },
+    { id: "10001", name: "Hidden", selectable: false, cost: 1 },
+    { id: "7934", name: "Cœur sur moi", cost: 1, imageUrl: "red.webp" },
+    { id: "157842", name: "Shenazen Pulse", cost: 1, imageUrl: "blue.webp" }];
+  const options = gifts.createGiftTriggerOptions(rows);
+  assert.equal(gifts.findGiftTriggerOption("gift:17712", options), undefined);
+  assert.equal(gifts.findGiftTriggerOption("gift:10001", options), undefined);
+  assert.equal(gifts.findGiftTriggerOption("gift:7934", options).name, "Cœur sur moi");
+  assert.equal(gifts.findGiftTriggerOption("gift:157842", options).name, "Shenazen Pulse");
+  const historical = gifts.normalizeGiftTriggerOption({ id: "gift:17712", name: "Cœur de la communauté", selectable: false });
+  assert.equal(gifts.findGiftTriggerOption("gift:17712", [historical]).name, "Cœur de la communauté");
+  assert.equal(gifts.createGiftTriggerOptionList([historical]).length, 0);
+  assert.equal(gifts.triggerMatchesGift("gift:17712", { giftId: "17712" }), true);
+});
+
+test("les alias erronés traversant le cœur et un cadeau personnel ne fusionnent plus les options", () => {
+  const options = gifts.createGiftTriggerOptions([
+    { id: "7934", name: "Cœur sur moi", alternateIds: ["heart-me", "17712", "157842"], cost: 1, imageUrl: "red.webp" },
+    { id: "157842", name: "Shenazen Pulse", giftIds: ["7934", "157842"], cost: 1, imageUrl: "blue.webp" }
+  ]);
+  const heart = gifts.findGiftTriggerOption("gift:7934", options), custom = gifts.findGiftTriggerOption("gift:157842", options);
+  assert.ok(heart); assert.ok(custom); assert.notEqual(heart, custom);
+  assert.equal(heart.name, "Cœur sur moi"); assert.equal(custom.name, "Shenazen Pulse");
+  assert.equal(gifts.findGiftTriggerOption("gift:heart-me", options).id, "gift:7934");
+  assert.equal(gifts.findGiftTriggerOption("gift:17712", options), undefined);
+  assert.equal(heart.alternateIds.includes("gift:157842"), false);
+  assert.equal(custom.alternateIds.includes("gift:7934"), false);
+});
+
+test("Coin Pusher refuse les fausses familles même dans une désignation sans ID et garde les règles exactes du cadeau bleu", () => {
+  const blue = { giftId: "157842", giftName: "Shenazen Pulse", giftFamily: "community-heart", cost: 1, giftImageUrl: "blue.webp" };
+  const heart = { giftId: "7934", giftName: "Cœur sur moi", cost: 1 };
+  const blueRule = { giftId: "157842", giftIds: ["157842", "7934"], giftFamily: "community-heart", name: "Shenazen Pulse", coinCount: 7, enabled: true };
+  assert.equal(coinPusher.findCoinPusherGiftRule(blue, { giftRules: [blueRule] }).coinCount, 7);
+  assert.equal(coinPusher.findCoinPusherGiftRule(heart, { giftRules: [blueRule] }), undefined);
+  assert.equal(coinPusher.coinPusherDesignatedGiftMatches(blue, { giftFamily: "community-heart", name: "Shenazen Pulse" }), false);
+  assert.equal(coinPusher.coinPusherDesignatedGiftMatches(heart, { giftFamily: "community-heart", name: "Cœur sur moi" }), true);
+  const normalized = gifts.normalizeLiveGift(blue);
+  assert.equal(normalized.name, "Shenazen Pulse"); assert.equal(normalized.imageUrl, "blue.webp");
+  assert.equal(normalized.giftFamily, undefined);
+});
+
+test("une famille cœur sans ID principal ne peut importer un cadeau personnel par ses alias persistés", () => {
+  const designation = { giftId: "", giftIds: ["7934", "157842"], giftFamily: "community-heart", name: "Cœur sur moi", coinCount: 9, enabled: true };
+  const blue = { giftId: "157842", giftName: "Shenazen Pulse", giftFamily: "community-heart" };
+  assert.equal(coinPusher.findCoinPusherGiftRule(blue, { giftRules: [designation] }), undefined);
+  assert.equal(coinPusher.coinPusherDesignatedGiftMatches(blue, designation), false);
+  assert.equal(coinPusher.coinPusherDesignatedGiftMatches({ giftId: "7934", giftName: "Cœur sur moi" }, designation), true);
+  const normalized = gifts.normalizeLiveGift({ giftIds: ["7934", "157842"], giftFamily: "community-heart", name: "Cœur sur moi" });
+  assert.deepEqual(Array.from(normalized.giftIds), ["7934"]);
+  assert.equal(gifts.triggerMatchesGift("gift:157842", normalized), false);
+  const option = gifts.normalizeGiftTriggerOption({ id: "", name: "Cœur sur moi", giftIds: ["7934", "157842"], giftFamily: "community-heart" });
+  assert.deepEqual(Array.from(option.giftIds), ["7934"]);
+  assert.equal(gifts.giftTriggerOptionMatches(option, "gift:157842"), false);
 });

@@ -191,7 +191,7 @@ test("branche le catalogue ShenPulse, l’achat et l’overlay Cube Wars", async
   assert.equal(pack.connector.type, "tiklive-cube-wars-http");
   assert.equal(pack.connector.url, "http://127.0.0.1:7811");
   assert.equal(pack.accessMode, "purchase");
-  assert.equal(pack.price, 19.99);
+  assert.equal(pack.price, 9.99);
   assert.equal(pack.requiresPro, false);
   assert.equal(pack.artwork, "catalog/shenpulse-cube-wars.png");
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");

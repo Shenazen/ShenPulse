@@ -16,10 +16,12 @@ const fresh = () => ({ matchSource: { accountNumber: account, enabled: true, loc
 
 /** Exécute la vraie entrée sans navigation, réseau, application ou compte réel. */
 async function entry({ value = fresh(), search = "?transport=local", pathname = route,
-  protocol = "https:", embedded = false, bootstrapChannel = channel, bootstrap = true } = {}) {
-  const navigation = [], nodes = [], timers = new Map();
+  protocol = "https:", embedded = false, bootstrapChannel = channel, bootstrap = true,
+  streaming = false, bootstrapRequest, waitForReady = true } = {}) {
+  const navigation = [], nodes = [], timers = new Map(), streams = [], windowListeners = new Map();
   let timerId = 0;
   const window = {}; window.top = embedded ? {} : window; window.self = window;
+  window.addEventListener = (name, listener) => windowListeners.set(name, listener);
   const context = { window, URL, URLSearchParams, Promise, Date: class extends Date { static now() { return now; } },
     location: { pathname, search, protocol, replace: (url) => navigation.push(url) },
     document: { body: { appendChild: (node) => nodes.push(node) },
@@ -27,12 +29,132 @@ async function entry({ value = fresh(), search = "?transport=local", pathname = 
       createElement: () => ({ style: {}, setAttribute: () => {} }) },
     setTimeout: (callback, delay) => { timers.set(++timerId, { callback, delay }); return timerId; },
     clearTimeout: (id) => timers.delete(id),
-    ...(bootstrap ? { shenPulseRelayBootstrap: { channel: bootstrapChannel, request: Promise.resolve(value), cachedDocument: fresh() } } : {}) };
+    ...(streaming ? { EventSource: class {
+      constructor(url) { this.url = url; this.closed = false; this.listeners = new Map(); streams.push(this); }
+      addEventListener(name, listener) { this.listeners.set(name, listener); }
+      close() { this.closed = true; }
+      emit(name, value, raw = false) { this.listeners.get(name)?.({ data: raw ? value : JSON.stringify(value) }); }
+    } } : {}),
+    ...(bootstrap ? { shenPulseRelayBootstrap: { channel: bootstrapChannel,
+      request: bootstrapRequest || Promise.resolve(value), cachedDocument: fresh() } } : {}) };
   vm.createContext(context);
   vm.runInContext(read("runtime/match-local-entry.js"), context);
-  await context.shenPulseMatchLocalEntry?.ready;
-  return { navigation, nodes, timers, context, state: context.shenPulseMatchLocalEntry };
+  if (waitForReady) await context.shenPulseMatchLocalEntry?.ready;
+  return { navigation, nodes, timers, streams, windowListeners, context, state: context.shenPulseMatchLocalEntry };
 }
+
+test("l'entrée HTTPS ouverte avant ShenPulse reprend sur une présence fraîche sans actualiser", async () => {
+  const offline = fresh(); offline.presence.connected = false;
+  const result = await entry({ value: offline, streaming: true });
+  assert.deepEqual(result.navigation, []);
+  assert.equal(result.streams.length, 1, "un seul flux Firebase doit attendre le démarrage de ShenPulse");
+  result.streams[0].emit("put", { path: "/", data: offline });
+  assert.deepEqual(result.navigation, [], "le cache ou une présence hors ligne n'autorise rien");
+  result.streams[0].emit("patch", { path: "/presence", data: fresh().presence });
+  assert.deepEqual(result.navigation, [`http://127.0.0.1:17654/match-bridge/${account}/${channel}`]);
+  assert.equal(result.streams[0].closed, true, "aucun flux Firebase supplémentaire après navigation locale");
+});
+
+test("une panne de la lecture initiale ne transforme jamais le cache en autorisation", async () => {
+  for (const bootstrapRequest of [Promise.resolve(null), Promise.reject(new Error("réseau indisponible"))]) {
+    const result = await entry({ bootstrapRequest, streaming: true });
+    assert.deepEqual(result.navigation, [], "le cachedDocument pourtant valide n'est pas utilisé");
+    assert.equal(result.streams.length, 1);
+    assert.match(result.streams[0].url, /\.firebaseio\.com\/publicOverlayRelay\/studio_fixture_public_capability\.json$/);
+    result.streams[0].emit("put", { path: "/", data: fresh() });
+    assert.equal(result.navigation.length, 1);
+    result.streams[0].emit("put", { path: "/", data: fresh() });
+    assert.equal(result.navigation.length, 1, "une seule navigation malgré les trames déjà en attente");
+    assert.equal(result.timers.size, 0, "aucune boucle de scrutation HTTP");
+  }
+});
+
+test("une présence périmée attend sa vraie mise à jour sans accumuler les messages d'état", async () => {
+  const stale = fresh(); stale.presence.updatedAt = new Date(now - 120001).toISOString();
+  const result = await entry({ value: stale, streaming: true }), stream = result.streams[0];
+  stream.emit("put", { path: "/", data: stale });
+  stream.emit("patch", { path: "/presence", data: { updatedAt: "invalid" } });
+  assert.equal(result.navigation.length, 0); assert.equal(result.nodes.length, 1);
+  stream.emit("patch", { path: "/", data: { "presence/updatedAt": fresh().presence.updatedAt } });
+  assert.equal(result.navigation.length, 1); assert.equal(stream.closed, true);
+});
+
+test("le délai initial borné reprend par SSE et une réponse GET tardive ne rétablit pas un accès supprimé", async () => {
+  let resolveRequest;
+  const bootstrapRequest = new Promise((resolve) => { resolveRequest = resolve; });
+  const result = await entry({ bootstrapRequest, streaming: true, waitForReady: false });
+  const [timerId, timeout] = [...result.timers][0];
+  assert.equal(timeout.delay, 6000); result.timers.delete(timerId); timeout.callback();
+  await result.state.ready;
+  assert.equal(result.streams.length, 1); assert.equal(result.navigation.length, 0);
+  result.streams[0].emit("put", { path: "/", data: null });
+  assert.equal(result.streams[0].closed, true);
+  resolveRequest(fresh()); await Promise.resolve(); await Promise.resolve();
+  assert.equal(result.navigation.length, 0, "une ancienne preuve ne remplace jamais la suppression fraîche de l'alias");
+});
+
+test("la suppression, révocation Pro, mauvaise identité ou mauvaise version arrêtent toute reprise", async () => {
+  for (const mutate of [
+    () => null,
+    (value) => { value.matchSource.enabled = false; return value; },
+    (value) => { value.matchSource.accountNumber = "999999999999"; return value; },
+    (value) => { value.matchSource.localEntryVersion = 0; return value; },
+    (value) => { value.matchSource.localPort = "17654/hostile"; return value; }
+  ]) {
+    const result = await entry({ value: null, streaming: true }), stream = result.streams[0];
+    stream.emit("put", { path: "/", data: mutate(fresh()) });
+    assert.equal(stream.closed, true); assert.equal(result.navigation.length, 0);
+    stream.emit("put", { path: "/", data: fresh() });
+    assert.equal(result.navigation.length, 0, "une révocation ne peut pas être annulée par un callback tardif");
+    assert.equal(result.streams.length, 1); assert.equal(result.timers.size, 0);
+  }
+});
+
+test("une suppression par PATCH n'est jamais fusionnée avec les anciennes autorisations", async () => {
+  for (const patch of [{ matchSource: null, presence: fresh().presence },
+    { "matchSource/enabled": false, presence: fresh().presence }]) {
+    const offline = fresh(); offline.presence.connected = false;
+    const result = await entry({ value: offline, streaming: true }), stream = result.streams[0];
+    stream.emit("put", { path: "/", data: offline });
+    stream.emit("patch", { path: "/", data: patch });
+    assert.equal(result.navigation.length, 0); assert.equal(stream.closed, true);
+  }
+});
+
+test("une coupure SSE efface sa preuve et exige un nouveau document complet après reconnexion", async () => {
+  const offline = fresh(); offline.presence.connected = false;
+  const result = await entry({ value: offline, streaming: true }), stream = result.streams[0];
+  stream.emit("put", { path: "/", data: offline }); stream.emit("error", {});
+  assert.equal(stream.closed, false, "EventSource assure lui-même la reconnexion, sans deuxième abonnement");
+  stream.emit("patch", { path: "/presence", data: fresh().presence });
+  assert.equal(result.navigation.length, 0, "la présence seule ne ressuscite pas une ancienne autorisation");
+  stream.emit("put", { path: "/", data: fresh() });
+  assert.equal(result.navigation.length, 1); assert.equal(result.streams.length, 1);
+});
+
+test("cancel, auth_revoked et pagehide ferment le flux et ignorent tous les callbacks suivants", async () => {
+  for (const event of ["cancel", "auth_revoked", "pagehide"]) {
+    const result = await entry({ value: null, streaming: true }), stream = result.streams[0];
+    if (event === "pagehide") result.windowListeners.get(event)();
+    else stream.emit(event, {});
+    assert.equal(stream.closed, true);
+    stream.emit("put", { path: "/", data: fresh() }); assert.equal(result.navigation.length, 0);
+    assert.equal(result.timers.size, 0); assert.equal(result.streams.length, 1);
+  }
+});
+
+test("quitter l'entrée pendant le premier GET annule aussi son délai sans démarrer un flux tardif", async () => {
+  const result = await entry({ bootstrapRequest: new Promise(() => {}), streaming: true, waitForReady: false });
+  assert.equal(result.timers.size, 1); result.windowListeners.get("pagehide")();
+  await result.state.ready;
+  assert.equal(result.timers.size, 0); assert.equal(result.streams.length, 0); assert.equal(result.navigation.length, 0);
+});
+
+test("un document immédiatement autorisé n'ajoute aucun abonnement distant", async () => {
+  const result = await entry({ streaming: true });
+  assert.equal(result.navigation.length, 1); assert.equal(result.streams.length, 0);
+  assert.equal(result.timers.size, 0);
+});
 
 test("Studio conserve une entrée HTTPS puis navigue explicitement vers le lecteur local protégé", async () => {
   const result = await entry();

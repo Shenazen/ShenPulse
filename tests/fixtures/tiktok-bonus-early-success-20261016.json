@@ -1,0 +1,32 @@
+{
+  "provenance": "Relevant-field projection of public TikTok packets observed on 2026-10-16 Europe/Paris; all identifiers replaced by synthetic numeric literals.",
+  "start": {
+    "common": { "roomId": "1001", "msgId": "2001" },
+    "battleId": "9001",
+    "battleTaskMessageType": 0,
+    "taskStart": {
+      "battleBonusConfig": {
+        "taskPeriodConfig": { "targetType": 1, "taskStartTime": "150", "duration": "50", "progressTarget": "1" },
+        "rewardPeriodConfig": { "rewardStartTime": "94", "rewardStartTimestamp": "1792104085", "duration": "50", "rewardMultiple": 2 }
+      }
+    }
+  },
+  "settle": {
+    "common": { "roomId": "1001", "msgId": "2002" },
+    "battleId": "9001",
+    "battleTaskMessageType": 2,
+    "taskSettle": {}
+  },
+  "update": {
+    "common": { "roomId": "1001", "msgId": "2003" },
+    "battleId": "9001",
+    "battleTaskMessageType": 1,
+    "taskUpdate": { "taskProgress": "1", "fromUserUid": "3001" }
+  },
+  "end": {
+    "common": { "roomId": "1001", "msgId": "2004" },
+    "battleId": "9001",
+    "battleTaskMessageType": 3,
+    "rewardSettle": { "status": 0 }
+  }
+}

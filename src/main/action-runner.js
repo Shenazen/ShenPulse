@@ -136,12 +136,7 @@ class ActionRunner {
           playbackId: randomUUID(),
           screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };
-        if (config.outputMode === "live") {
-          this.overlayServer.publish("tts", payload);
-          return { queued: true, output: "live", screen: payload.screen };
-        }
-        this.notifyRenderer("playback", { type: "tts", ...payload });
-        return { queued: true };
+        return this.#queueAudioPlayback("tts", payload, config, context);
       }
       case "audio.play": {
         const packId = safeString(config.packId || "", 160);
@@ -160,12 +155,7 @@ class ActionRunner {
           playbackId: randomUUID(),
           screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };
-        if (config.outputMode === "live") {
-          this.overlayServer.publish(context.overlayTarget === "match" ? "match-audio" : "audio", payload);
-          return { queued: true, output: "live", screen: payload.screen };
-        }
-        this.notifyRenderer("playback", { type: "audio", ...payload });
-        return { queued: true };
+        return this.#queueAudioPlayback("audio", payload, config, context);
       }
       case "goal.add": {
         const amount = Number(config.amount || 1);
@@ -420,6 +410,22 @@ class ActionRunner {
       default:
         throw new Error(`Action inconnue : ${action.type}`);
     }
+  }
+
+  /** Une écoute privée reste locale. Le LIVE ajoute la source navigateur,
+   * sans retirer le retour local. Les Matchs gardent leur source dédiée pour
+   * ne pas doubler le son de leurs vidéos ; les aperçus ne sont jamais diffusés.
+   */
+  #queueAudioPlayback(type, payload, config, context) {
+    const preview = Boolean(config.previewScope) || context.source === "manual-preview";
+    const live = config.outputMode === "live" && !preview;
+    if (!live || context.overlayTarget !== "match") {
+      this.notifyRenderer("playback", { type, ...payload });
+    }
+    if (!live) return { queued: true };
+    const channel = type === "audio" && context.overlayTarget === "match" ? "match-audio" : type;
+    this.overlayServer.publish(channel, payload);
+    return { queued: true, output: "live", screen: payload.screen };
   }
 
   #localMediaUrl(value) {

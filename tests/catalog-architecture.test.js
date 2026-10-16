@@ -13,8 +13,16 @@ const digest = (value) => createHash("sha256").update(JSON.stringify(value)).dig
 // Références capturées avant extraction ; une évolution volontaire demande une revue de leur mise à jour.
 test("le découpage garde exactement les catalogues de jeux et Minecraft", () => {
   const catalog = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
-  assert.equal(catalog.length, 49);
-  assert.equal(digest(catalog), "321abf4ad034de1611c0811daafadc082da990d4ca2f37766bc9eb40d216aba1");
+  assert.equal(catalog.length, 50);
+  // Évolution commerciale demandée le 15/10/2026 : seule cette différence
+  // est retirée de la comparaison historique, aucun autre champ n'est ignoré.
+  const prices = { "tiklive-climb": 9.99, "clash-of-live": 12.99, "tiklive-cube-wars": 9.99, "tiklive-stack-tower": 9.99 };
+  const historical = structuredClone(catalog.filter(pack => pack.id !== "find-the-needle-demo"));
+  for (const pack of historical) if (Object.hasOwn(prices, pack.id)) {
+    assert.equal(pack.price, prices[pack.id]);
+    pack.price = 19.99;
+  }
+  assert.equal(digest(historical), "321abf4ad034de1611c0811daafadc082da990d4ca2f37766bc9eb40d216aba1");
   assert.equal(digest(minecraft), "2e91e74d5a5c4715d75052353ab3ceb1d395ed7c263981995581b3bc6aa63315");
   const next = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
   catalog[0].name = "test isolé";
@@ -22,7 +30,12 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
 });
 
 test("le manifeste garde versions, URLs, empreintes, ordre et gel de son API", () => {
-  assert.equal(digest(require("../src/main/game-installer-manifest")), "599221e57439434c9502c6ea512329aea4eebca3e603412957b770b6cc868092");
+  // Seule l'association de la nouvelle démo est ajoutée. Les installateurs
+  // historiques restent comparés champ par champ par leur empreinte complète.
+  const { "find-the-needle-demo": demo, ...historicalInstallers } = GAME_INSTALLERS;
+  assert.ok(demo, "le nouvel installateur privé est ajouté séparément");
+  const historicalManifest = { ...require("../src/main/game-installer-manifest"), GAME_INSTALLERS: historicalInstallers };
+  assert.equal(digest(historicalManifest), "599221e57439434c9502c6ea512329aea4eebca3e603412957b770b6cc868092");
   assert.ok(Object.isFrozen(GAME_INSTALLERS));
   for (const [id, manifest] of Object.entries(GAME_INSTALLERS)) assert.equal(installerForGame(id), manifest);
   assert.equal(installerForGame("inconnu"), null);

@@ -10,13 +10,17 @@ const { StateStore } = require("../src/main/store");
 const { GiftCatalog } = require("../src/main/catalogs");
 const { accountWorkspaceKey } = require("../src/main/state/account-workspace");
 const { collectGiftReferenceUpdates, applyGiftReferenceUpdates } = require("../src/main/state/gift-upgrade-migration");
+const { COMMUNITY_HEART_IMAGE_URL } = require("../src/shared/gift-identity");
+const { reconcileGiftReferencesSafely } = require("../src/main/core/gift-recovery");
 
 const catalog = [
-  { id: "17712", alternateIds: ["7934", "community-heart"], name: "Cœur sur moi", cost: 1,
+  { id: "7934", alternateIds: ["heart-me"], name: "Cœur sur moi", cost: 1,
     giftFamily: "community-heart", imageUrl: "https://example.com/heart-current.webp" },
   { id: "6267", alternateIds: ["corgi"], alternateNames: ["Chien Corgi"], name: "Corgi", cost: 299,
     imageUrl: "https://example.com/corgi.webp" },
-  { id: "5655", alternateIds: ["rose"], name: "Rose", cost: 1, imageUrl: "https://example.com/rose.webp" }
+  { id: "5655", alternateIds: ["rose"], name: "Rose", cost: 1, imageUrl: "https://example.com/rose.webp" },
+  { id: "17712", name: "Cœur de la communauté", cost: 1, selectable: false,
+    imageUrl: "https://example.com/retired-intertwined.webp" }
 ];
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -72,7 +76,7 @@ test("la préparation ne modifie aucun réglage avant sauvegarde", () => {
   assert.equal(state.rules[0].conditions[0].giftImageUrl, catalog[0].imageUrl);
   assert.equal(state.rules[0].conditions[0].giftId, "7934");
   assert.equal(state.rules[0].conditions[0].giftFamily, "community-heart");
-  assert.ok(state.rules[0].conditions[0].giftIds.includes("17712"));
+  assert.ok(state.rules[0].conditions[0].giftIds.includes("heart-me"));
 });
 
 test("actions, sons, jeux, roues et réglages intégrés sont réparés sans changer leur logique", () => {
@@ -178,6 +182,58 @@ test("le store conserve une sauvegarde permanente avant changement et ne réécr
     assert.equal(store.reconcileGiftReferences(catalog).changed, 0);
     assert.equal(fs.readFileSync(result.backupPath, "utf8"), backupContent);
     assert.equal(fs.readFileSync(store.filePath, "utf8"), writtenContent);
+  } finally {
+    store.flush();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("une installation déjà migrée et redémarrée remplace encore le cœur doré dans les profils, jeux et roues", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "shenpulse-heart-red-upgrade-"));
+  let store = new StateStore(directory, { isEncryptionAvailable: () => false });
+  try {
+    store.load();
+    const refreshTokenSecretId = store.setSecret("", "fixture-heart-session-only");
+    store.activateAccount("fixture-heart-account", { uid: "fixture-heart-account", refreshTokenSecretId });
+    const active = workspace("active");
+    store.mutate((state) => {
+      state.rules = active.rules;
+      state.game = { ...state.game, ...active.game };
+      state.settings.overlayConfigs = active.overlayConfigs;
+      state.profiles = [
+        { id: "active", name: "Profil actif", workspace: workspace("active-profile") },
+        { id: "sleep", name: "Profil conservé", workspace: workspace("sleep-profile") }
+      ];
+      state.session.profileId = "active";
+    }, true);
+    const gifts = new GiftCatalog(path.join(__dirname, "..", "resources")).gifts;
+    const previousGifts = gifts.map((gift) => gift.giftFamily === "community-heart" ? { ...gift,
+      imageUrl: "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/dad7a63955f98891958e37071bb067f3.png~tplv-obj.webp" } : gift);
+    const previousRepair = store.reconcileGiftReferences(previousGifts);
+    assert.ok(previousRepair.changed > 0);
+    const backup = fs.readFileSync(previousRepair.backupPath, "utf8");
+    store.flush();
+    store = new StateStore(directory, { isEncryptionAvailable: () => false });
+    store.load();
+    const before = clone(store.state.rules[0]);
+    // Même point d'entrée qu'initialize()/resumeAccountWorkspace(), sans ouvrir
+    // de compte réel, de socket, de serveur, de service de jeu ni de LIVE.
+    const result = reconcileGiftReferencesSafely({ store, giftCatalog: { gifts } });
+    assert.ok(result.changed > 0);
+    assert.equal(store.state.rules[0].conditions[0].giftImageUrl, COMMUNITY_HEART_IMAGE_URL);
+    assert.equal(store.state.rules[0].conditions[0].giftId, before.conditions[0].giftId);
+    assert.equal(store.state.rules[0].conditions[0].giftCost, before.conditions[0].giftCost);
+    assert.deepEqual(store.state.rules[0].actions, before.actions);
+    assert.equal(store.state.game.interactionRulesByPack.gta[0].conditions[0].giftImageUrl, COMMUNITY_HEART_IMAGE_URL);
+    assert.equal(store.state.game.connectorOverrides["coin-pusher"].guardGift.image, COMMUNITY_HEART_IMAGE_URL);
+    assert.equal(store.state.settings.overlayConfigs.wheel.wheels[0].triggerGift.giftImageUrl, COMMUNITY_HEART_IMAGE_URL);
+    const dormant = store.state.profiles.find((profile) => profile.id === "sleep").workspace;
+    assert.equal(dormant.rules[0].conditions[0].giftImageUrl, COMMUNITY_HEART_IMAGE_URL);
+    assert.equal(dormant.game.connectorOverrides["coin-pusher"].guardGift.image, COMMUNITY_HEART_IMAGE_URL);
+    assert.equal(fs.readFileSync(previousRepair.backupPath, "utf8"), backup);
+    assert.equal(store.reconcileGiftReferences(gifts).changed, 0);
+    const persisted = JSON.parse(fs.readFileSync(store.filePath, "utf8"));
+    assert.equal(persisted.rules[0].conditions[0].giftImageUrl, COMMUNITY_HEART_IMAGE_URL);
   } finally {
     store.flush();
     fs.rmSync(directory, { recursive: true, force: true });

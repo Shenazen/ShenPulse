@@ -179,7 +179,7 @@ test("branche le catalogue, la roue et le pont Clash Of ShenPulse", async () => 
   assert.equal(pack.name, "Clash Of ShenPulse");
   assert.equal(pack.connector.type, "clash-of-live-http");
   assert.equal(pack.connector.url, "http://127.0.0.1:4244");
-  assert.equal(pack.price, 19.99);
+  assert.equal(pack.price, 12.99);
   assert.equal(pack.requiresPro, false);
   assert.equal(pack.installerVersion, "1.0.0-shenpulse1");
 

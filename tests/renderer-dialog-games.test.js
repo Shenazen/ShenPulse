@@ -35,7 +35,7 @@ test("Minecraft utilise une seule jaquette puis propose ses trois modes", () => 
   assert.match(styles, /\.minecraft-mode-card/);
 });
 
-test("les cartes de jeu affichent le titre, les plateformes puis le bouton", () => {
+test("les cartes de jeu partagent un titre, les plateformes et le prix avant le bouton", () => {
   const app = readRendererSource();
   const styles = readRendererStyles();
   const renderStart = app.indexOf("function renderGamesV2()");
@@ -52,10 +52,10 @@ test("les cartes de jeu affichent le titre, les plateformes puis le bouton", () 
     app,
     /"gtav-montchiliad": \["rockstar-games", "steam", "epic-games"\]/
   );
-  assert.match(
-    catalog,
-    /<div class="tile-caption"><h3>\$\{escapeHtml\(pack\.name\)\}<\/h3>\$\{gamePlatformLogos\(pack\)\}<\/div>/
-  );
+  assert.match(catalog, /\$\{gameTileCaption\(pack\)\}/);
+  assert.match(app, /function gameTileCaption\(pack\)/);
+  assert.match(app, /<div class="tile-caption"><h3>\$\{escapeHtml\(pack\.name\)\}<\/h3><div class="tile-details">\$\{gamePlatformLogos\(pack\)\}/);
+  assert.match(styles, /\.game-gallery-tile \.tile-purchase-price/);
   assert.doesNotMatch(catalog, /pack\.source \|\| pack\.connector\.type/);
   assert.doesNotMatch(catalog, /pack\.effects\.length.*gamePrice\(pack\)/);
   assert.match(styles, /\.game-gallery-tile \.tile-platforms/);

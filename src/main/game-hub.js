@@ -13,6 +13,7 @@ const { TikLiveClimbBridge } = require("./tiklive-climb-bridge");
 const { TikLiveCubeWarsBridge } = require("./tiklive-cube-wars-bridge");
 const { TikLiveStackTowerBridge } = require("./tiklive-stack-tower-bridge");
 const { ClashOfLiveBridge } = require("./clash-of-live-bridge");
+const { FindTheNeedleBridge } = require("./find-the-needle-bridge");
 const interactions = require("./game-hub/interaction-management");
 const { validatePack, interpolateCommand, resolveEffectCode } = require("./game-hub/commands");
 const { rconPacket, readRconPacket, rconRequest } = require("./game-hub/rcon");
@@ -36,6 +37,7 @@ class GameHub extends EventEmitter {
     tikLiveCubeWarsBridge,
     tikLiveStackTowerBridge,
     clashOfLiveBridge,
+    findTheNeedleBridge,
     giftCatalog
   }) {
     super();
@@ -59,6 +61,9 @@ class GameHub extends EventEmitter {
     this.tikLiveStackTowerBridge =
       tikLiveStackTowerBridge || new TikLiveStackTowerBridge();
     this.clashOfLiveBridge = clashOfLiveBridge || new ClashOfLiveBridge();
+    this.findTheNeedleBridge = findTheNeedleBridge || new FindTheNeedleBridge({
+      getToken: (connector) => connector.secretId ? this.store.getSecret(connector.secretId) : ""
+    });
     this.giftCatalog = giftCatalog || null;
     this.transports = new GameTransports(this);
   }
@@ -104,12 +109,13 @@ class GameHub extends EventEmitter {
     const state = assertProFeatureAccess(this.store, "games");
     const account = state.settings?.account || {};
     const admin = account.emailVerified === true && String(account.email || "").trim().toLowerCase() === ADMIN_OWNER_EMAIL;
-    if (!visibility.canAccessScope(visibility.scopeFor(state.settings?.siteVisibility, "games", pack.id), admin)) {
+    const scope = visibility.gameScopeFor(state.settings?.siteVisibility, pack);
+    if (pack.ownerOnly === true && scope === "admin") assertAdminAccount(this.store);
+    if (!visibility.canAccessScope(scope, admin)) {
       const error = new Error("Ce jeu est désactivé ou réservé par l’administrateur.");
       error.code = "FEATURE_ACCESS_FORBIDDEN";
       throw error;
     }
-    if (pack.ownerOnly === true) assertAdminAccount(this.store);
     return assertGameAccess(readState(this.store, ["commerce.subscription", "commerce.gameEntitlements"]), pack);
   }
 

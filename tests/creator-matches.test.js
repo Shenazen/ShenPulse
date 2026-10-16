@@ -171,6 +171,107 @@ test("les scores et likes actualisent les nœuds sans reconstruire bannière, ph
   assert.equal(donor.querySelector(".matches-donor-likes").textContent, "25 likes");
 });
 
+test("un snapshot inchangé laisse le chronomètre avancer sans recréer le match ni simuler des données", (t) => {
+  const { window, state, calls } = context(t);
+  let now = 500000;
+  window.Date.now = () => now;
+  Object.assign(state.matchSession, { status: "running", endsAtMs: now + 65000,
+    participants: [{ id: "own", own: true, username: "creator", score: 125 }] });
+  const original = JSON.stringify(state.matchSession);
+  window.render();
+  window.syncCreatorMatchesRuntime();
+  const timer = window.content.querySelector("[data-matches-time]");
+  const participant = window.content.querySelector("[data-matches-person]");
+  const correction = window.content.querySelector('[data-action="matches-correct-wins"]');
+  correction.focus();
+  assert.equal(timer.textContent, "1:05");
+  now += 1000;
+  window.syncCreatorMatchesRuntime();
+  assert.equal(timer.textContent, "1:04");
+  assert.equal(window.content.querySelector("[data-matches-time]"), timer);
+  assert.equal(window.content.querySelector("[data-matches-person]"), participant);
+  assert.equal(window.document.activeElement, correction);
+  assert.equal(JSON.stringify(state.matchSession), original);
+  assert.deepEqual(calls, []);
+});
+
+test("le seul texte de l’aperçu chrono avance, atteint zéro et respecte une fin ou une échéance absente", async (t) => {
+  const { window, state, calls, click } = context(t);
+  let now = 500000;
+  window.Date.now = () => now;
+  Object.assign(state.matchSession, { status: "running", endsAtMs: now + 2001 });
+  window.render();
+  await click("matches-tab", { value: "widgets" });
+  const preview = window.content.querySelector('[data-matches-widget-preview="timer"]');
+  const clock = preview.querySelector(".matches-widget-value");
+  const poster = window.content.querySelector(".matches-animation-poster");
+  const configure = window.content.querySelector('[data-action="matches-widget-edit"]');
+  configure.focus();
+  assert.equal(clock.textContent, "0:03");
+  now += 1001;
+  window.syncCreatorMatchesClock();
+  assert.equal(clock.textContent, "0:01");
+  now += 5000;
+  window.syncCreatorMatchesClock();
+  assert.equal(clock.textContent, "0:00");
+  assert.equal(state.matchSession.status, "running", "Le visuel ne confirme jamais un résultat ni un événement TikTok.");
+  state.matchSession.status = "finished";
+  window.syncCreatorMatchesClock();
+  assert.equal(clock.textContent, "—");
+  state.matchSession.status = "running";
+  for (const endsAtMs of [0, null, undefined, Infinity, NaN]) {
+    state.matchSession.endsAtMs = endsAtMs;
+    window.syncCreatorMatchesClock();
+    assert.equal(clock.textContent, "—");
+  }
+  assert.equal(window.content.querySelector('[data-matches-widget-preview="timer"]'), preview);
+  assert.equal(preview.querySelector(".matches-widget-value"), clock);
+  assert.equal(window.content.querySelector(".matches-animation-poster"), poster);
+  assert.equal(window.document.activeElement, configure);
+  assert.equal(window.content.querySelector("iframe, video, audio"), null);
+  assert.deepEqual(calls, []);
+});
+
+test("un tick ne traverse ni compte, profil, accès, page ou fenêtre masquée et reprend le dernier chrono", (t) => {
+  const { window, state, account, calls } = context(t);
+  let now = 500000, visible = true;
+  window.Date.now = () => now;
+  window.rendererVisualsActive = () => visible;
+  Object.assign(state.matchSession, { status: "running", endsAtMs: now + 65000,
+    scope: { uid: account.uid, profileId: state.session.profileId },
+    participants: [{ id: "own", own: true, username: "creator", score: 500 }] });
+  window.render();
+  const clock = window.content.querySelector("[data-matches-time]");
+  now += 1000;
+  visible = false;
+  assert.equal(window.syncCreatorMatchesClock(), false);
+  assert.equal(clock.textContent, "1:05");
+  visible = true;
+  window.currentPage = "home";
+  assert.equal(window.syncCreatorMatchesClock(), false);
+  window.currentPage = "matches";
+  account.authenticated = false;
+  assert.equal(window.syncCreatorMatchesClock(), false);
+  account.authenticated = true;
+  state.commerce.subscription = { tier: "free", status: "free" };
+  assert.equal(window.syncCreatorMatchesClock(), false);
+  state.commerce.subscription = { tier: "pro", status: "active", source: "own" };
+  state.session.profileId = "new-profile";
+  state.matchSession.scope.profileId = "new-profile";
+  state.matchSession.endsAtMs = now + 90000;
+  assert.equal(window.syncCreatorMatchesClock(), false, "L’ancien panneau attend la réconciliation du profil.");
+  assert.equal(clock.textContent, "1:05");
+  window.syncCreatorMatchesRuntime();
+  assert.equal(window.content.querySelector("[data-matches-time]").textContent, "1:30");
+  now += 1000;
+  window.syncCreatorMatchesClock();
+  assert.equal(window.content.querySelector("[data-matches-time]").textContent, "1:29");
+  account.uid = "another-user";
+  assert.equal(window.syncCreatorMatchesClock(), false);
+  assert.equal(window.content.querySelector("[data-matches-time]").textContent, "1:29");
+  assert.deepEqual(calls, []);
+});
+
 test("Widgets présente les six widgets de parité, le scoreboard bonus et huit configurations d’animations", async (t) => {
   const { window, click, calls } = context(t);
   window.render();

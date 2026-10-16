@@ -109,7 +109,7 @@ test("les sons de jeu utilisent la sortie audio globale choisie pour leur pack",
   assert.equal(published[0].payload.outputDeviceId, "virtual-cable-output");
 });
 
-test("un son LIVE est routé uniquement vers l'écran navigateur choisi", async () => {
+test("un son LIVE garde le retour local et ajoute l'écran navigateur choisi", async () => {
   const published = [];
   const runner = createRunner(published);
 
@@ -127,14 +127,19 @@ test("un son LIVE est routé uniquement vers l'écran navigateur choisi", async 
   );
 
   assert.deepEqual(result, { queued: true, output: "live", screen: 4 });
-  assert.equal(published.length, 1);
-  assert.equal(published[0].transport, "overlay");
-  assert.equal(published[0].event, "audio");
-  assert.equal(published[0].payload.screen, 4);
-  assert.match(published[0].payload.playbackId, /\S/);
+  assert.equal(published.length, 2);
+  assert.equal(published[0].transport, "renderer");
+  assert.equal(published[0].event, "playback");
+  assert.equal(published[0].payload.type, "audio");
+  assert.equal(published[1].transport, "overlay");
+  assert.equal(published[1].event, "audio");
+  assert.equal(published[1].payload.screen, 4);
+  assert.equal(published[1].payload.volume, 0.65);
+  assert.equal(published[0].payload.playbackId, published[1].payload.playbackId);
+  assert.match(published[1].payload.playbackId, /\S/);
 });
 
-test("un TTS LIVE est routé vers l'écran choisi sans lecture locale", async () => {
+test("un TTS LIVE reste audible localement et sur l'écran choisi", async () => {
   const published = [];
   const runner = createRunner(published);
 
@@ -158,11 +163,71 @@ test("un TTS LIVE est routé vers l'écran choisi sans lecture locale", async ()
   );
 
   assert.deepEqual(result, { queued: true, output: "live", screen: 7 });
-  assert.equal(published.length, 1);
-  assert.equal(published[0].transport, "overlay");
-  assert.equal(published[0].event, "tts");
-  assert.equal(published[0].payload.text, "Bonjour le LIVE");
-  assert.equal(published[0].payload.screen, 7);
+  assert.equal(published.length, 2);
+  assert.equal(published[0].transport, "renderer");
+  assert.equal(published[0].event, "playback");
+  assert.equal(published[0].payload.type, "tts");
+  assert.equal(published[1].transport, "overlay");
+  assert.equal(published[1].event, "tts");
+  assert.equal(published[1].payload.text, "Bonjour le LIVE");
+  assert.equal(published[1].payload.screen, 7);
+  assert.equal(published[0].payload.playbackId, published[1].payload.playbackId);
+});
+
+test("un aperçu de son LIVE ne sort jamais sur la source navigateur", async () => {
+  for (const preview of [
+    { config: { previewScope: "media-library" }, context: {} },
+    { config: { previewScope: "editor-dialog" }, context: {} },
+    { config: {}, context: { source: "manual-preview" } }
+  ]) {
+    const published = [];
+    const result = await createRunner(published).run({
+      type: "audio.play",
+      config: { url: "https://cdn.example.test/preview.mp3", volume: 0.3, outputMode: "live", liveScreen: 4, ...preview.config }
+    }, preview.context);
+    assert.deepEqual(result, { queued: true });
+    assert.deepEqual(published.map((entry) => entry.transport), ["renderer"]);
+    assert.equal(published[0].payload.type, "audio");
+    assert.equal(published[0].payload.volume, 0.3);
+  }
+});
+
+test("un aperçu TTS reste privé même avec une configuration LIVE", async () => {
+  const published = [];
+  const result = await createRunner(published).run({
+    type: "tts.speak", config: { outputMode: "live", liveScreen: 2 }
+  }, {
+    source: "manual-preview",
+    event: { id: "chat_preview", type: "chat", user: { id: "alice" }, data: { message: "Aperçu privé" } }
+  });
+  assert.deepEqual(result, { queued: true });
+  assert.deepEqual(published.map((entry) => entry.transport), ["renderer"]);
+  assert.equal(published[0].payload.type, "tts");
+  assert.equal(published[0].payload.text, "Aperçu privé");
+});
+
+test("les sons Matchs LIVE conservent leur source dédiée sans retour local", async () => {
+  const published = [];
+  const result = await createRunner(published).run({
+    type: "audio.play", config: { url: "https://cdn.example.test/match.mp3", outputMode: "live", liveScreen: 3 }
+  }, { overlayTarget: "match", source: "match-automation" });
+  assert.deepEqual(result, { queued: true, output: "live", screen: 3 });
+  assert.deepEqual(published.map((entry) => [entry.transport, entry.event]), [["overlay", "match-audio"]]);
+});
+
+test("les sons Matchs locaux et les aperçus restent dans ShenPulse", async () => {
+  for (const options of [
+    { config: { outputMode: "local" }, context: { source: "match-automation" } },
+    { config: { outputMode: "live", previewScope: "media-library" }, context: { source: "match-preview" } },
+    { config: { outputMode: "live" }, context: { source: "manual-preview" } }
+  ]) {
+    const published = [];
+    const result = await createRunner(published).run({
+      type: "audio.play", config: { url: "https://cdn.example.test/match.mp3", ...options.config }
+    }, { overlayTarget: "match", ...options.context });
+    assert.deepEqual(result, { queued: true });
+    assert.deepEqual(published.map((entry) => [entry.transport, entry.event]), [["renderer", "playback"]]);
+  }
 });
 
 test("un événement chat sans commentaire ne lance aucune lecture", async () => {

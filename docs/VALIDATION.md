@@ -1,126 +1,121 @@
-# Rapport de validation — ShenPulse 2.0.2
+# Rapport de validation — ShenPulse 2.0.3
 
-Date : 15 octobre 2026.
-Environnement : Windows 11 Famille x64 10.0.26200, Node.js 24.14.0,
+Date : 16 octobre 2026.
+Environnement : Windows 11 x64 10.0.26200, Node.js 24.14.0,
 npm 11.9.0, Electron 43.2.0 et electron-builder 26.15.3.
 
-Les rapports [2.0.0](validation/2.0.0.fr.md) et
-[2.0.1](validation/2.0.1.fr.md) sont conservés.
-Voir les [notes 2.0.2](releases/2.0.2.fr.md) et
-le [contrat de stockage](architecture-etat.md).
+Voir les [notes 2.0.3](releases/2.0.3.fr.md) et le
+[rapport 2.0.2 archivé](validation/2.0.2.fr.md). Les preuves de qualification
+des versions précédentes ne sont pas réutilisées pour cette version.
 
-## Périmètre et preuves
+## Périmètre
 
-Correction de la conservation des profils après reconnexion sur le même PC :
-récupération d'un espace local manquant sous son UID identifié, transitions
-identité/espace atomiques, sauvegarde immédiate des profils, rejet des réponses
-d'authentification ou de sélection périmées et synchronisation des catalogues
-du rendu. TTS et préférences des demandes musicales sont isolés par profil.
-Les intégrations, bibliothèques et droits restent rattachés au compte.
+Cadeaux propres au créateur, suppression des doublons de présentation et
+séparation stricte du cœur rouge et des cadeaux personnels ; réparation ciblée
+des anciennes références avec sauvegarde préalable. Suivi Matchs/cohébergement,
+chronomètre et périodes de bonus renforcés, cache du lecteur Studio renouvelé,
+lecture visuelle locale Windows facultative. Préécoute audio locale indépendante
+de Studio, retrait des sons importés, introduction et préchargement des overlays,
+prix visibles, intégration privée Find The Needle Demo et visibilité des jeux.
 
-Quatre scénarios de défaillance reproduits avant correction échouaient :
-cache de compte absent avec/sans session lisible et panne disque pendant
-activation/déconnexion. Le cycle normal passait déjà. Ces reproductions
-ne prouvent pas la cause précise rencontrée par le client : ses données
-n'ont pas été consultées. Une mise à jour ne recrée pas des données déjà
-effacées de toutes les sauvegardes. Aucune synchronisation entre PC ajoutée.
-
-La restriction propriétaire Administration/Contrôleurs/Paramètres préparée
-précédemment est incluse. La configuration partagée avait déjà été restreinte ;
-le code de cette version renforce aussi le contrôle local et les opérations
-d'infrastructure. Les imports créateur ne remplacent plus ces réglages sensibles.
+Le premier bonus court ne doit pas être présenté comme universellement résolu :
+la réception dépend des données TikTok ; le secours visuel exige un bandeau
+lisible sur le PC et n'est pas une solution autonome Android/iPhone.
+Les notes détaillent les limites fonctionnelles.
 
 ## Contrôles réussis
 
-- `npm ci` : dépendances verrouillées installées sans mise à jour forcée.
-- Audit des dépendances distribuées : zéro vulnérabilité connue. L'outillage
-  conserve 19 alertes préexistantes (8 modérées, 11 élevées).
-- Lint final : 675 fichiers JavaScript et 994 sources, imports sans cycle.
-- Suite complète finale du build installateur : **1 902 tests réussis**,
-  aucun échec. Le build Store avait validé 1 900 tests ; les deux tests
-  supplémentaires ne modifient pas les sources applicatives déjà construites.
-- Test d'intégration avec vrai StateStore temporaire et AccountService :
-  deux profils A1/A2, voix et politiques musicales distinctes, son importé,
-  déconnexion/redémarrage/reconnexion, compte B vierge puis retour A.
-  Les réponses Firebase et droits sont entièrement simulées ; chaque écriture
-  vérifie la cohérence UID actif / identité.
-- Gardes testées pour refresh/lookup/Google/droits retardés, reconnexion au
-  même UID et changement A/B, arrêts/reprises IPC et sélection de profils.
-  L'annulation Google libère immédiatement le port du retour local.
-- Builds Store/AppXUpload et EXE réussis.
-- Installation, lancement et désinstallation isolés 2.0.2 : réussis.
-- Mise à jour isolée 2.0.1 → 2.0.2 : réussie, marqueur utilisateur conservé.
-- Site construit et validé : 19 fichiers, routes publiques conformes.
-- Audit package : 1 805 sources vérifiées, 21 vidéos Match chiffrées, zéro
-  vidéo brute et zéro fichier privé décompressé. Pont Store PE32+ AMD64 valide ;
-  seules les métadonnées de compilation qualifiées diffèrent.
-- Manifeste AppX : `ShenPulse.ShenPulse`, éditeur réservé,
-  version `2.0.2.0`, architecture x64. AppXUpload : un seul AppX attendu.
-- Relais public Firebase : smoke réel réussi, canal temporaire nettoyé.
-- Stockage média de production : endpoint public valide, bucket configuré,
-  limite 209 715 200 octets. Aucun nouvel envoi de média client ni effet LIVE.
+- Version applicative 2.0.3, racines du lock synchronisées ; références actives,
+  téléchargement, documentation Store et notes actualisés.
+- `npm ci` réussi, 402 paquets installés. Zéro vulnérabilité connue dans les
+  dépendances distribuées ; 19 alertes d'outillage préexistantes (8 modérées,
+  11 élevées), sans mise à jour forcée pendant la release.
+- `npm run verify`, puis vérifications complètes des builds Store et EXE :
+  **2 470 tests réussis**, zéro échec/ignoré ; lint 757 fichiers JavaScript,
+  1 083 sources, imports sans cycle.
+- Audit ciblé supplémentaire : 137 tests de sécurité réussis. Aucun secret réel
+  ni nouveau binaire tiers identifié dans les ajouts destinés à Git.
+  Fixture TikTok anonymisée ; mod tiers non redistribué.
+- Builds Store/AppXUpload et installateur EXE réussis.
+- Installation, lancement et désinstallation isolés 2.0.3 réussis.
+- Mise à jour isolée 2.0.2 → 2.0.3 réussie, marqueur utilisateur conservé.
+  Les tests n'utilisent pas le profil ni les médias du compte réel.
+- Audit du paquet : 1 837 sources vérifiées, 21 vidéos Match chiffrées,
+  zéro vidéo brute, zéro ressource privée décompressée.
+  Pont Store PE32+ AMD64 et exports N-API conformes ; seuls les timestamps
+  COFF/debug et le GUID RSDS de recompilation diffèrent entre builds.
+- Manifeste AppX : identité `ShenPulse.ShenPulse`, éditeur réservé,
+  version `2.0.3.0`, x64, capacité `runFullTrust`.
+  AppXUpload : exactement l'AppX attendu, empreinte interne identique.
+- Vérifications Chromium réelles isolées : lecture PCM locale HTTP, chemin
+  relatif et data: sans politique autoplay forcée ; cache Match renouvelé après
+  changement de code ; introduction, petit format et mouvement réduit.
+  Aucun son matériel, compte réel, Studio ou événement LIVE utilisé.
+- Site : 31 fichiers validés, routes conformes ; QA responsive : 34 captures,
+  zéro échec. Captures marketing existantes conservées à leur ratio d'origine.
+- Relais public Firebase : smoke réel réussi avec canal de test temporaire.
+- Runtime public préparé en `2.0.3-overlay1`.
+- `tmp/` ajouté aux exclusions Git. Le fichier racine vide `=`, les profils,
+  secrets, médias bruts et artefacts ne font pas partie du commit de release.
+- Application réelle fermée proprement avant construction ; aucun test manuel
+  d'animation, son ou machine IRL envoyé au LIVE.
 
-Les tests fonctionnels de persistance utilisent des profils fictifs isolés,
-pas la bibliothèque ou les réglages d'un client réel.
+Un premier passage après changement de version avait un test lié à une ancienne
+constante du loader. Le test vérifie maintenant la cohérence du loader avec le
+manifeste public ; toutes les suites finales sont vertes. Un vérificateur
+temporaire ASAR a également été corrigé pour ses chemins Windows ; l'audit
+officiel du paquet et sa relance sont réussis.
 
-## Artefacts
+## Artefacts qualifiés
 
 | Fichier | Taille en octets | SHA-256 |
 |---|---:|---|
-| `ShenPulseSetup-2.0.2-x64.exe` | 512 541 217 | `B322E2DED6E97A46F242BC7F589D6E6C1ADD198565E5805FE073AF4027AEC7BE` |
-| `ShenPulseSetup-2.0.2.exe` | 512 541 217 | `B322E2DED6E97A46F242BC7F589D6E6C1ADD198565E5805FE073AF4027AEC7BE` |
-| `ShenPulse-2.0.2-x64.appx` | 565 713 109 | `632477ABC0A43CFCEE354A733B2FF555BFF62C30B4AE9D87657CAA0604687031` |
-| `ShenPulse-2.0.2-x64.appxupload` | 565 551 356 | `1E1E17523641AEA78775932796389F8CF777E876B2F240201EA8A820E977D413` |
+| `ShenPulseSetup-2.0.3-x64.exe` | 512 659 659 | `FC2ADB84E8DB736F1746A3A051C974D0073AF7666C7D11E5B48F526C1195DF1D` |
+| `ShenPulseSetup-2.0.3.exe` | 512 659 659 | `FC2ADB84E8DB736F1746A3A051C974D0073AF7666C7D11E5B48F526C1195DF1D` |
+| `ShenPulse-2.0.3-x64.appx` | 565 843 238 | `89C8AD963D895DE276323E6563FB7C56C1CDF8FE1A6D4F714B63CDF0669FC580` |
+| `ShenPulse-2.0.3-x64.appxupload` | 565 686 498 | `1BB97707935BBA711D594178F3B9E740E85DD566474BCB2A19DD6DF4CCEA7CD2` |
 
-Les deux EXE sont identiques. Le programme porte ProductVersion `2.0.2.0`.
-Les artefacts 2.0.1 restent conservés pour retour arrière. Les artefacts,
-profils, rapports bruts et secrets sont exclus de Git.
+Les deux EXE sont identiques. ProductVersion Windows : `2.0.3.0`.
+Les artefacts 2.0.2 sont conservés pour retour arrière.
 
-## Signature et qualification Store
+## Signature et canal Microsoft Store
 
-L'EXE et le programme restent `NotSigned`, aucun certificat Authenticode
-public n'étant configuré. Un avertissement SmartScreen reste possible.
+EXE `NotSigned` : aucun certificat Authenticode public configuré identifié.
+Les certificats de test locaux ne sont pas employés comme signature publique.
+Un avertissement SmartScreen reste possible.
 
-WACK exécuté sur l'AppX 2.0.2 : **OVERALL_RESULT=PASS**,
-`APP_VERSION=2.0.2.0`, `PARTIAL_RUN=FALSE`, sortie du processus 0.
-23 sous-tests PASS ; un sous-test **optionnel** « Fichiers exécutables
-bloqués » est FAIL, signalant les références de lancement de processus
-d'Electron et de l'archive applicative. Ce point doit être expliqué avec
-la capacité `runFullTrust` lors de la soumission, pas présenté comme absent.
-Tous les tests obligatoires sont réussis.
+**WACK 2.0.3 non exécuté, Store non envoyé et non publié.**
+Le compte Windows courant possède déjà une vraie installation Store 1.0.14
+du même PFN. Le profil Roaming réel contient une session et une source activée.
+Lancer WACK avec le nouvel AppX dans ce compte peut modifier l'installation
+existante et ouvrir des données réelles : aucune isolation n'est supposée.
 
-Rapport local : `.artifacts/wack-2.0.2.xml`, SHA-256
-`60EAF0926971BE401D7BFB6E6937D65B30B65CBD6F4CE1DCE3BDDF2AC269E51C`.
-Le blocage d'élévation observé en 2.0.1 n'est pas réutilisé pour cette version.
+Microsoft documente le recours possible aux fichiers AppData réels existants
+dans [le fonctionnement MSIX](https://learn.microsoft.com/en-us/windows/msix/desktop/desktop-to-uwp-behind-the-scenes).
+Le [WACK](https://learn.microsoft.com/en-us/windows/uwp/debug-test-perf/windows-app-certification-kit)
+doit être exécuté dans un environnement de test isolé et qualifié.
+Aucune installation AppX, mutation du profil Store ou création de compte Windows
+n'a été effectuée pour contourner ce blocage.
 
-Partner Center reste sur la page de connexion Microsoft, sans session
-authentifiée disponible. Le package est construit mais **non envoyé**.
-Restent : connexion humaine Partner Center, envoi, vol privé, installation
-et smoke de la version Store, puis seulement soumission publique.
+Restent pour le Store : WACK isolé, session Partner Center authentifiée,
+envoi de l'AppXUpload au produit `9NDR71Z41ZJG`, vol privé, installation et
+smoke de cette version Store, puis seulement soumission publique.
+Cela ne constitue pas une certification de l'EXE indépendant.
 
 ## Publication
 
-- Git : commit applicatif `178c71a51382900efa91932938ca523ce9d70efd` et tag
-  annoté `v2.0.2` poussés sur `origin`, références distantes vérifiées.
-- EXE versionné publié avant les fichiers statiques. Empreintes vérifiées
-  côté VPS puis par HTTPS pour les 19 fichiers de `website/dist`.
-- Accueil, documentation et cinq routes légales : 7/7 en HTTP 200 ; liens
-  et notes annoncent 2.0.2, sans ancienne référence de téléchargement active.
-- Téléchargement HTTPS intégral de l'EXE : **512 541 217 octets**, SHA-256
-  `B322E2DED6E97A46F242BC7F589D6E6C1ADD198565E5805FE073AF4027AEC7BE`,
-  identique à l'artefact qualifié. L'installateur 2.0.1 reste en HTTP 200
-  avec ses 512 540 484 octets d'origine.
-- Sauvegarde de vitrine :
-  `/var/www/shenpulse/.public-site-backups/pre-public-site-2.0.2-20261015T135626Z-08fbb1f0`.
-  Backend, PM2, jeux, données privées et anciens installateurs préservés.
-- Firebase : déploiement `database,hosting` terminé sur `shenazenoverlay`.
-  Runtime et index publics relus en HTTPS : `2.0.2-overlay1`, HTTP 200.
-  Les règles de base n'ont pas changé dans cette release ; le contrôle
-  anonyme supplémentaire de `/users` n'a pas été relancé après déploiement.
-- Aucun effet LIVE, son ni commande de machine IRL déclenché. L'application
-  réelle a été fermée proprement avant construction ; les lancements de
-  qualification ont utilisé des environnements de test isolés.
+Au moment du commit de release : artefacts EXE/site qualifiés, plan VPS validé,
+publication Git/VPS/Firebase et contrôles HTTPS encore à réaliser.
+Ce statut sera complété après les opérations effectives ; construire les paquets
+ne vaut pas publication.
 
-Le canal EXE/site est publié. Le Microsoft Store attend l'authentification
-humaine et les étapes de vol privé décrites plus haut : aucune soumission
-Store ne doit être annoncée comme effectuée.
+## Journaux et incident de préparation
+
+Journaux ignorés sous `.artifacts/release-2.0.3-*.log`, et vérification initiale
+dans `.artifacts/verify-2.0.3.log`. Aucune clé ni URL protégée n'est publiée.
+
+Le disque était initialement limité à environ 1,1–1,5 Go libres. Les commandes
+de suppression des anciennes compilations temporaires ont été refusées par
+l'outil, y compris après autorisation explicite. Aucune suppression par l'agent
+n'a réussi. Une libération d'espace externe a ensuite porté la marge à environ
+130 Go et permis les constructions. Données et installateurs publiés conservés.

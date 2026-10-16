@@ -1,5 +1,6 @@
 "use strict";
 const { createMatchSession, normalizeMatchesConfig } = require("../shared/matches-contract");
+const visibility = require("../shared/visibility-catalog");
 
 const PRIVATE_RENDERER_CHANNELS = new Set([
   "deal-host-state",
@@ -9,6 +10,8 @@ const PRIVATE_RENDERER_CHANNELS = new Set([
   "game-install-progress",
   "game-round-timeout",
   "live-event",
+  "gift-catalog-updated",
+  "gift-room-catalog-updated",
   "overlay-completion-fired",
   "playback",
   "public-overlay-relay-status",
@@ -91,7 +94,7 @@ function assertAdminAccount(store) {
 function snapshotForRenderer(snapshot, store) {
   const visibleSnapshot = canUseOwnerOnlyCatalog(store)
     ? snapshot
-    : withoutOwnerOnlyPacks(snapshot);
+    : withoutRestrictedGamePacks(snapshot, store);
   const lightweightSnapshot = withoutAccountWorkspaces(visibleSnapshot);
   return hasAuthenticatedAccount(store)
     ? lightweightSnapshot
@@ -114,14 +117,11 @@ function canUseOwnerOnlyCatalog(store) {
   }
 }
 
-function withoutOwnerOnlyPacks(snapshot = {}) {
-  if (!(snapshot.packs || []).some((pack) => pack?.ownerOnly === true)) {
-    return snapshot;
-  }
-  return {
-    ...snapshot,
-    packs: snapshot.packs.filter((pack) => pack?.ownerOnly !== true)
-  };
+function withoutRestrictedGamePacks(snapshot = {}, store) {
+  const source = store?.getStateProjection?.(["settings.siteVisibility"])?.settings?.siteVisibility ??
+    store?.getState?.()?.settings?.siteVisibility ?? snapshot.state?.settings?.siteVisibility;
+  const packs = (snapshot.packs || []).filter(pack => visibility.canAccessGame(source, pack, false));
+  return packs.length === (snapshot.packs || []).length ? snapshot : { ...snapshot, packs };
 }
 
 function createGuestSnapshot(snapshot = {}) {

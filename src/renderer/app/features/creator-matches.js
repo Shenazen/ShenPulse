@@ -7,8 +7,8 @@ let creatorMatchesStatusOwner = "";
 
 const CREATOR_MATCH_MOMENT_LABELS = Object.freeze({
   battleStart: ["Début du match", "Quand TikTok annonce une nouvelle manche.", "play"],
-  multiplierX2: ["Bonus ×2", "Quand le multiplicateur du match passe à ×2.", "bolt"],
-  multiplierX3: ["Bonus ×3", "Quand le multiplicateur du match passe à ×3.", "bolt"],
+  multiplierX2: ["Bonus ×2", "Quand TikTok confirme votre bonus ×2.", "bolt"],
+  multiplierX3: ["Bonus ×3", "Quand TikTok confirme votre bonus ×3.", "bolt"],
   card: ["Carte de match", "Gants, brume, marteau ou temps supplémentaire.", "card"],
   lead: ["Passe devant", "Quand votre score dépasse celui de l’adversaire.", "up"],
   comeback: ["Remontée", "Quand vous reprenez la tête après avoir été mené.", "up"],
@@ -70,6 +70,32 @@ function creatorMatchesScore(value) {
     ? "—" : creatorMatchesNumber(value);
 }
 
+/** L’échéance TikTok est une horloge locale, pas un compteur de paquets reçus. */
+function creatorMatchesCountdown(runtime, now = Date.now(), fallback = "—") {
+  const endsAtMs = Number(runtime.endsAtMs);
+  if (runtime.status !== "running" || !Number.isFinite(endsAtMs) || endsAtMs <= 0) return fallback;
+  const remaining = Math.max(0, Math.ceil((endsAtMs - now) / 1000));
+  return `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
+}
+
+/** Uniquement deux textes : ni calcul de scores, ni IPC, ni minuterie par page. */
+function syncCreatorMatchesClock() {
+  if (currentPage !== "matches" || !isAccountAuthenticated() || !hasProAccess() ||
+      typeof rendererVisualsActive === "function" && !rendererVisualsActive()) return false;
+  const panel = content.querySelector("[data-creator-matches-panel]");
+  if (!panel || panel.dataset.matchesOwner !== creatorMatchesOwnerKey()) return false;
+  const { runtime } = creatorMatchesModel();
+  const now = Date.now();
+  for (const [selector, fallback] of [["[data-matches-time]", "Scores reçus de TikTok"],
+    ['[data-matches-widget-preview="timer"] .matches-widget-value', "—"]]) {
+    const field = panel.querySelector(selector);
+    if (!field) continue;
+    const value = creatorMatchesCountdown(runtime, now, fallback);
+    if (field.textContent !== value) field.textContent = value;
+  }
+  return true;
+}
+
 function creatorMatchesAvatar(person, className = "") {
   const name = String(person.displayName || person.username || "Participant");
   const url = String(person.avatarUrl || "");
@@ -110,7 +136,6 @@ function creatorMatchesDashboardMarkup() {
   const { runtime, participants, capabilities } = creatorMatchesModel();
   const summary = runtime.session || {};
   const running = runtime.status === "running";
-  const remaining = Math.max(0, Math.ceil((Number(runtime.endsAtMs || 0) - Date.now()) / 1000));
   const maxScore = Math.max(0, ...participants.map((person) => Number(person.score || 0)));
   const resultLabel = { win: "Victoire", lose: "Défaite", draw: "Égalité" }[runtime.result];
   const donors = (runtime.liveContributors || []).slice().sort((left, right) => Number(right.diamonds || 0) - Number(left.diamonds || 0) || Number(right.likes || 0) - Number(left.likes || 0)).slice(0, 200);
@@ -124,7 +149,7 @@ function creatorMatchesDashboardMarkup() {
   ].map(([icon, label, value]) => `<article class="matches-stat"><span>${creatorMatchesIcon(icon)}</span><strong>${creatorMatchesNumber(value)}</strong><small>${label}</small></article>`).join("")}</section>
     <div class="matches-dashboard-grid"><section class="matches-panel matches-current" data-matches-dashboard-slot="current" data-matches-roster="${escapeHtml(roster)}"><header class="matches-panel-heading"><div><span class="matches-eyebrow">TIKTOK LIVE</span><h3>Le match en direct</h3></div><span class="matches-state ${running ? "is-running" : ""}">${running ? "EN MATCH" : resultLabel || "EN ATTENTE"}</span></header>
       <div class="matches-rounds-control"><div><small>${rivalRounds != null ? "MANCHES · PAIRE IDENTIFIÉE" : "COMPTEUR DE MANCHES"}</small><strong data-matches-rounds>${creatorMatchesNumber(ownRounds)} <span>– ${rivalRounds != null ? creatorMatchesNumber(rivalRounds) : "—"}</span></strong></div><button type="button" class="button small ghost" data-action="matches-correct-wins">Corriger</button></div>
-      ${participants.length ? `<div class="matches-duel-topline"><span data-matches-time>${running && runtime.endsAtMs ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}` : "Scores reçus de TikTok"}</span><span class="matches-multiplier">×${Math.max(1, Number(runtime.multiplier) || 1)}</span></div><div class="matches-participant-list">${participants.map((person) => creatorMatchesParticipant(person, maxScore)).join("")}</div>` : `<div class="matches-empty"><span>${creatorMatchesIcon("trophy")}</span><h4>${detection.emptyTitle}</h4><p>Les scores, participants et résultats apparaissent lorsqu’une bataille est réellement reçue.</p></div>`}
+      ${participants.length ? `<div class="matches-duel-topline"><span data-matches-time>${creatorMatchesCountdown(runtime, Date.now(), "Scores reçus de TikTok")}</span><span class="matches-multiplier">×${Math.max(1, Number(runtime.multiplier) || 1)}</span></div><div class="matches-participant-list">${participants.map((person) => creatorMatchesParticipant(person, maxScore)).join("")}</div>` : `<div class="matches-empty"><span>${creatorMatchesIcon("trophy")}</span><h4>${detection.emptyTitle}</h4><p>Les scores, participants et résultats apparaissent lorsqu’une bataille est réellement reçue.</p></div>`}
       <footer class="matches-live-note"><strong data-matches-detection-label>${detection.label}</strong><span data-matches-detection-detail>${detection.detail}</span><span>La détection ne demande aucune automatisation activée. Les effets restent désactivés par défaut. Les points TikTok du match sont distincts des compteurs de cadeaux et de likes du tableau de bord.</span></footer></section>
     <section class="matches-panel matches-donors" data-matches-dashboard-slot="donors"><header class="matches-panel-heading"><div><span class="matches-eyebrow">LES FORCES DU LIVE</span><h3>Donateurs du LIVE</h3></div><button type="button" class="button small ghost" data-action="matches-clear-donors" ${donors.length ? "" : "disabled"}>Vider</button></header>${donors.length ? `<ol>${donors.map((donor, index) => `<li data-matches-donor="${escapeHtml(donor.id)}"><span class="matches-donor-rank">${index + 1}</span>${creatorMatchesAvatar(donor)}<div><strong data-studio-user-content>${escapeHtml(donor.displayName || donor.username || "Donateur")}</strong><small data-studio-user-content>${donor.username ? `@${escapeHtml(String(donor.username).replace(/^@/, ""))}` : ""}</small></div><b><span class="matches-donor-coins">${creatorMatchesNumber(donor.diamonds)} ◇</span><small class="matches-donor-likes">${creatorMatchesNumber(donor.likes)} likes</small><small class="matches-donor-gifts">${creatorMatchesNumber(donor.gifts)} cadeaux</small></b></li>`).join("")}</ol>` : '<div class="matches-muted-empty">Les contributions du LIVE apparaîtront ici lorsqu’elles sont reçues.</div>'}</section></div>
     <section class="matches-panel matches-history" data-matches-dashboard-slot="history"><header class="matches-panel-heading"><div><h3>Historique récent</h3><p>Les dernières manches de ce compte et de ce profil.</p></div><button type="button" class="button small ghost" data-action="matches-reset-wins">Remettre les victoires à zéro</button></header>${history.length ? `<div class="matches-history-list">${history.map((entry) => `<article><span class="matches-result is-${escapeHtml(entry.result || "unknown")}">${escapeHtml({ win: "Victoire", lose: "Défaite", draw: "Égalité" }[entry.result] || "Résultat indisponible")}</span><span>${entry.ownScore != null && entry.rivalScore != null ? `${creatorMatchesNumber(entry.ownScore)} – ${creatorMatchesNumber(entry.rivalScore)}` : "Match TikTok"}</span><time>${entry.endedAtMs ? escapeHtml(new Date(entry.endedAtMs).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })) : ""}</time></article>`).join("")}</div>` : '<p class="matches-muted-empty">Aucune manche enregistrée sur ce profil.</p>'}</section>
@@ -148,7 +173,7 @@ function creatorMatchesStructureSignature(config, capabilities) {
 function renderCreatorMatches() {
   if (!isAccountAuthenticated()) return renderPrivateDataPlaceholder("Vos matchs TikTok", "Connectez votre compte ShenPulse pour retrouver les matchs et les réglages de votre profil.");
   const { config, capabilities } = creatorMatchesModel();
-  return `<div class="reference-page creator-matches-page">${renderStudioHero("matches", "Matchs", "Vos batailles TikTok. Vos widgets. Vos temps forts.")}<section class="matches-control-bar"><div><span class="matches-platform">TikTok LIVE</span><p>Un espace dédié au profil actif, sans automatisation activée par défaut.</p></div><button type="button" class="button small" data-action="matches-refresh">${creatorMatchesIcon("refresh")}Actualiser</button></section>${creatorMatchesTabsMarkup()}<div id="creator-matches-panel" data-creator-matches-panel data-matches-structure="${escapeHtml(creatorMatchesStructureSignature(config, capabilities))}">${creatorMatchesPanelMarkup()}</div></div>`;
+  return `<div class="reference-page creator-matches-page">${renderStudioHero("matches", "Matchs", "Vos batailles TikTok. Vos widgets. Vos temps forts.")}<section class="matches-control-bar"><div><span class="matches-platform">TikTok LIVE</span><p>Un espace dédié au profil actif, sans automatisation activée par défaut.</p></div><button type="button" class="button small" data-action="matches-refresh">${creatorMatchesIcon("refresh")}Actualiser</button></section>${creatorMatchesTabsMarkup()}<div id="creator-matches-panel" data-creator-matches-panel data-matches-owner="${escapeHtml(creatorMatchesOwnerKey())}" data-matches-structure="${escapeHtml(creatorMatchesStructureSignature(config, capabilities))}">${creatorMatchesPanelMarkup()}</div></div>`;
 }
 
 function creatorMatchesPatchCurrent(current, next) {
@@ -266,7 +291,10 @@ function syncCreatorMatchesRuntime() {
   const structure = creatorMatchesStructureSignature(config, capabilities);
   const signature = JSON.stringify([structure, creatorMatchesTab === "automations" ? null : runtime,
     creatorMatchesTab === "dashboard" ? creatorMatchesLiveConnected() : null]);
-  if (panel.dataset.matchesSignature === signature) return true;
+  if (panel.dataset.matchesSignature === signature) {
+    syncCreatorMatchesClock();
+    return true;
+  }
   if (creatorMatchesTab === "dashboard" && panel.querySelector(".matches-dashboard")) {
     const template = document.createElement("template");
     template.innerHTML = creatorMatchesDashboardMarkup();
@@ -283,6 +311,8 @@ function syncCreatorMatchesRuntime() {
   } else panel.innerHTML = creatorMatchesPanelMarkup();
   panel.dataset.matchesStructure = structure;
   panel.dataset.matchesSignature = signature;
+  panel.dataset.matchesOwner = creatorMatchesOwnerKey();
+  syncCreatorMatchesClock();
   if (typeof applyStudioLanguage === "function") applyStudioLanguage(panel);
   return true;
 }

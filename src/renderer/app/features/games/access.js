@@ -192,6 +192,13 @@ function gamePrice(pack) {
   }).format(Number(pack.price || 0));
 }
 
+/** Prix du même catalogue que le dialogue d'achat, sans changer les droits.
+ * Un jeu déjà acquis ou en essai n'est jamais présenté comme à racheter. */
+function gameTileCaption(pack) {
+  const purchaseRequired = pack.accessMode === "purchase" && !hasGameEntitlement(pack);
+  return `<div class="tile-caption"><h3>${escapeHtml(pack.name)}</h3><div class="tile-details">${gamePlatformLogos(pack)}${purchaseRequired ? `<span class="tile-purchase-price"><strong>${escapeHtml(gamePrice(pack))}</strong><small>Achat unique</small></span>` : ""}</div></div>`;
+}
+
 function gameTileActionLabel(pack) {
   if (isGameUnlocked(pack)) {
     return pack.modeSelector ? "Choisir le mode" : "Entrer dans le jeu";
@@ -426,7 +433,7 @@ function renderGamesCatalogLegacy() {
           <article class="game-gallery-tile ${selected.id === pack.id ? "selected" : ""} ${isGameUnlocked(pack) ? "" : "locked"}" data-action="select-game" data-id="${escapeHtml(pack.id)}">
             <div class="game-tile-art" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(gameArtwork(pack))}')"></div>
             <span class="tile-status ${isGameUnlocked(pack) ? "unlocked" : "locked"}">${isGameUnlocked(pack) ? "✓ " : "🔒 "}${escapeHtml(gameAccessLabel(pack))}</span>
-            <div class="tile-caption"><h3>${escapeHtml(pack.name)}</h3>${gamePlatformLogos(pack)}</div>
+            ${gameTileCaption(pack)}
             <button class="tile-action-button" data-action="select-game" data-id="${escapeHtml(pack.id)}">Ouvrir</button>
           </article>`).join("")}
       </section>
@@ -483,7 +490,7 @@ function renderGamesV2() {
           <article class="game-gallery-tile ${isGameUnlocked(pack) ? "" : "locked"}" data-action="open-game" data-id="${escapeHtml(pack.id)}" tabindex="0">
             <div class="game-tile-art" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(gameArtwork(pack))}')"></div>
             <span class="tile-status ${isGameUnlocked(pack) ? "unlocked" : "locked"}">${isGameUnlocked(pack) ? "✓ " : "🔒 "}${escapeHtml(gameAccessLabel(pack))}</span>
-            <div class="tile-caption"><h3>${escapeHtml(pack.name)}</h3>${gamePlatformLogos(pack)}</div>
+            ${gameTileCaption(pack)}
             <button class="tile-action-button" type="button" data-action="open-game" data-id="${escapeHtml(pack.id)}">${escapeHtml(gameTileActionLabel(pack))}</button>
           </article>`).join("")}
       </section>

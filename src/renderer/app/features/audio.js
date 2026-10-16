@@ -12,10 +12,10 @@ function audioOutputSwitchMarkup(rule, action, actionIndex) {
   const screen = normalizedLiveScreen(action.config);
   const attributes = `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
   return `<div class="audio-output-control ${live ? "is-live" : "is-local"}">
-    <label class="audio-output-switch" title="Choisir entre une écoute locale et la diffusion dans le LIVE">
+    <label class="audio-output-switch" title="Moi uniquement : dans ShenPulse. Tout le monde : dans ShenPulse et sur la source LIVE.">
       <small class="audio-output-local">Moi uniquement</small>
       <span class="switch"><input type="checkbox" data-action="set-audio-output" ${attributes} ${live ? "checked" : ""}><span></span></span>
-      <small class="audio-output-live">LIVE${live ? ` · Écran ${screen}` : ""}</small>
+      <small class="audio-output-live">Tout le monde${live ? ` · Écran ${screen}` : ""}</small>
     </label>
     ${live ? `<button class="audio-output-configure" title="Changer l’écran de diffusion" data-action="configure-audio-output" ${attributes}>Configurer</button>` : ""}
   </div>`;
@@ -30,11 +30,10 @@ function soundVolumeControl(rule, action, actionIndex) {
   return `<label class="audio-volume-control"><span>Volume <output data-sound-volume-output>${Math.round(volume * 100)} %</output></span><input class="volume-slider" type="range" min="0" max="1" step="0.05" value="${escapeHtml(volume)}" data-sound-volume data-action="set-sound-volume" ${soundRowAttributes(rule, action, actionIndex)}></label>`;
 }
 
-/** Outils communs aux alertes et à la voix ; le test garde sa sortie configurée. */
+/** Outils communs aux alertes et à la voix ; une préécoute ne part jamais en LIVE. */
 function soundTableCommands(rule, action, actionIndex, editorAction) {
   const attributes = soundRowAttributes(rule, action, actionIndex);
-  const live = isLiveAudioOutput(action.config);
-  const testLabel = `${action.type === "tts.speak" ? "Tester la voix" : "Écouter le son"}${live ? " dans le LIVE" : " uniquement sur cet ordinateur"}`;
+  const testLabel = `${action.type === "tts.speak" ? "Tester la voix" : "Écouter le son"} uniquement sur cet ordinateur`;
   return `${renderAutomationIconButton({ action: "test-action", label: testLabel, attributes, icon: "play", tone: "success" })}
     ${renderAutomationIconButton({ action: editorAction, label: "Modifier", attributes, icon: "edit" })}
     ${renderAutomationIconButton({ action: "duplicate-action", label: "Dupliquer", attributes, icon: "copy" })}

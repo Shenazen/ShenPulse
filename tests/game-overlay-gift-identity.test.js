@@ -114,3 +114,41 @@ test("la normalisation d'export ne modifie pas les options données par les prof
   normalizeGiftTriggerOptions(input);
   assert.equal(JSON.stringify(input), before);
 });
+
+test("les anciens alias cœur empoisonnés ne fusionnent ni le cadeau personnel ni le bretzel lors de l'export", async () => {
+  const { normalizeGiftTriggerOptions, findGiftTriggerOption } = await api;
+  const input = [
+    { id: "gift:7934", name: "Cœur sur moi", alternateIds: ["gift:heart-me", "gift:157842"], giftIds: ["17712"], cost: 1 },
+    { id: "gift:157842", name: "Shenazen Pulse", alternateIds: ["7934"], giftIds: ["heart-me"], cost: 1 },
+    { id: "gift:17712", name: "Cœur de la communauté", alternateIds: ["7934"], giftIds: ["heart-me"], selectable: false, cost: 1 }
+  ];
+  const before = JSON.stringify(input), options = normalizeGiftTriggerOptions(input);
+  assert.equal(options.length, 3);
+  const heart = findGiftTriggerOption("gift:7934", options), custom = findGiftTriggerOption("gift:157842", options);
+  assert.equal(heart.name, "Cœur sur moi"); assert.equal(custom.name, "Shenazen Pulse");
+  assert.equal(findGiftTriggerOption("gift:heart-me", options).id, "gift:7934");
+  assert.deepEqual(heart.giftIds, []); assert.deepEqual(custom.alternateIds, []); assert.deepEqual(custom.giftIds, []);
+  const historical = findGiftTriggerOption("gift:17712", options);
+  assert.equal(historical.name, "Cœur de la communauté"); assert.equal(historical.selectable, false,
+    "Historical export lookup is not a new-choice picker and must not destroy a saved reference");
+  assert.equal(JSON.stringify(input), before);
+});
+
+test("le matcher brut filtre alternateIds et giftIds sans dépendre d'une normalisation préalable", async () => {
+  const { giftTriggerOptionMatches, dedupeOptions } = await api;
+  const heart = { id: "gift:7934", name: "Cœur sur moi", alternateIds: ["157842"], giftIds: ["17712", "heart-me"] };
+  const custom = { id: "gift:157842", name: "Shenazen Pulse", alternateIds: ["7934"], giftIds: ["heart-me"] };
+  for (const trigger of ["gift:157842", "157842", "gift:17712", "17712"]) assert.equal(giftTriggerOptionMatches(heart, trigger), false);
+  for (const trigger of ["gift:7934", "7934", "gift:heart-me", "heart-me", "Heart Me"]) assert.equal(giftTriggerOptionMatches(custom, trigger), false);
+  assert.equal(giftTriggerOptionMatches(heart, "gift:heart-me"), true);
+  assert.equal(giftTriggerOptionMatches(custom, "gift:157842"), true);
+  assert.equal(dedupeOptions([heart, custom]).length, 2);
+});
+
+test("une ancienne option de famille cœur sans ID primaire ne prête pas son alias au cadeau personnel", async () => {
+  const { giftTriggerOptionMatches, normalizeGiftTriggerOption } = await api;
+  const option = { id: "", name: "Cœur sur moi", giftFamily: "community-heart", giftIds: ["7934", "157842"] };
+  assert.equal(giftTriggerOptionMatches(option, "gift:157842"), false);
+  assert.equal(giftTriggerOptionMatches(option, "gift:7934"), true);
+  assert.deepEqual(normalizeGiftTriggerOption(option).giftIds, ["7934"]);
+});

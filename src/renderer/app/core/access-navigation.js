@@ -32,10 +32,10 @@ function canAccessOverlay(item) {
 }
 
 function canAccessGame(pack) {
-  return Boolean(
-    pack?.id &&
-      (pack.ownerOnly !== true || isVerifiedAdminSession()) &&
-      canAccessCatalogItem("games", pack.id)
+  return visibilityTools.canAccessGame(
+    siteVisibility,
+    pack,
+    isVerifiedAdminSession()
   );
 }
 
@@ -462,8 +462,8 @@ function syncAccountChrome() {
   syncCreatorAccountChrome();
 }
 
-function syncChrome() {
-  if (typeof rendererVisualsActive === "function" && !rendererVisualsActive()) return;
+function syncChrome({ prepareHidden = false } = {}) {
+  if (!prepareHidden && typeof rendererVisualsActive === "function" && !rendererVisualsActive()) return;
   ensureCurrentPageAccess();
   const page =
     pages.find((item) => item.id === currentPage) ||
@@ -539,9 +539,9 @@ function syncChrome() {
   appVersion.textContent = `Version : ${snapshot.appVersion || "—"}`;
 }
 
-function render() {
+function render({ prepareHidden = false } = {}) {
   if (!snapshot) return;
-  if (typeof rendererVisualsActive === "function" && !rendererVisualsActive()) {
+  if (!prepareHidden && typeof rendererVisualsActive === "function" && !rendererVisualsActive()) {
     scheduleRendererRefresh({ redraw: true });
     return;
   }
@@ -553,7 +553,7 @@ function render() {
   const adminScrollState = captureAdminScrollState();
   ensureCurrentPageAccess();
   renderNavigation();
-  syncChrome();
+  syncChrome({ prepareHidden });
   syncStudioPreferences();
   applyStudioLanguage(navigation);
   applyStudioLanguage(document.querySelector(".topbar"));

@@ -1,7 +1,7 @@
 "use strict";
 
 /** Commandes Matchs explicites, bornées au compte/profil de départ. */
-const CREATOR_MATCHES_ACTIONS = new Set(["matches-tab", "matches-refresh", "matches-reset-wins", "matches-correct-wins", "matches-clear-donors", "matches-automation-add", "matches-automation-edit", "matches-automation-toggle", "matches-automation-delete", "matches-automation-test", "matches-automation-animation", "matches-automation-output", "matches-automation-setting", "matches-automation-group-output", "matches-automation-group-toggle", "matches-automation-group-test", "matches-automation-multiplier-mode", "matches-widget-edit", "matches-widget-copy", "matches-widget-test", "matches-player-copy"]);
+const CREATOR_MATCHES_ACTIONS = new Set(["matches-tab", "matches-refresh", "matches-visual-configure", "matches-reset-wins", "matches-correct-wins", "matches-clear-donors", "matches-automation-add", "matches-automation-edit", "matches-automation-toggle", "matches-automation-delete", "matches-automation-test", "matches-automation-animation", "matches-automation-output", "matches-automation-setting", "matches-automation-group-output", "matches-automation-group-toggle", "matches-automation-group-test", "matches-automation-multiplier-mode", "matches-widget-edit", "matches-widget-copy", "matches-widget-test", "matches-player-copy"]);
 const creatorMatchesPending = new Set();
 
 function creatorMatchesAcceptResult(result, owner) {
@@ -47,6 +47,7 @@ async function handleCreatorMatchesAction({ action, target, id }) {
     return;
   }
   if (action === "matches-refresh") return creatorMatchesPerform(target, owner, action, async () => ({ status: await api.matches.status() }), "Matchs actualisés");
+  if (action === "matches-visual-configure") return openCreatorMatchesVisualEditor();
   if (action === "matches-correct-wins") return openCreatorMatchesWinsEditor();
   if (action === "matches-clear-donors") {
     if (!(await confirmAction("Vider la liste des donateurs du LIVE pour ce profil ? Les scores et l’historique des matchs restent inchangés.", { title: "Vider les donateurs du LIVE", confirmLabel: "Vider", danger: true }))) return;

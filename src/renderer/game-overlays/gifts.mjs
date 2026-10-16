@@ -62,6 +62,19 @@ function normalizeGiftTriggerOptions(options = []) {
   return dedupeOptions((Array.isArray(options) ? options : []).map(normalizeGiftTriggerOption).filter(Boolean));
 }
 
+function isHeartGiftReference(value) {
+  const id = String(value || "").trim().replace(/^(?:gift:|gift-name:)/i, "").toLowerCase();
+  return id === "7934" || id === "heart-me" || giftAliasLookup.get(slugify(id)) === "heart-me";
+}
+
+function compatibleHeartAlias(option, alias) {
+  const primary = String(option.id ?? option.value ?? "").trim();
+  if (primary && !primary.startsWith("gift-name:")) return isHeartGiftReference(primary) === isHeartGiftReference(alias);
+  const namedHeart = option.giftFamily === "community-heart" || isHeartGiftReference(primary) ||
+    ["coeur-sur-moi", "coeur-de-la-communaute", "community-heart", "envoie-moi-un-coeur"].includes(slugify(option.name || option.label));
+  return !namedHeart || isHeartGiftReference(alias);
+}
+
 function normalizeGiftTriggerOption(option) {
   if (!option || typeof option !== "object") return null;
   const id = String(option.id ?? option.value ?? "").trim();
@@ -72,7 +85,8 @@ function normalizeGiftTriggerOption(option) {
   const colors = Array.isArray(option.colors) && option.colors.length >= 2 ? option.colors : colorPair(id || name);
   return {
     ...option,
-    alternateIds: uniqueOptionStrings(option.alternateIds, option.giftIds),
+    alternateIds: uniqueOptionStrings(option.alternateIds, option.giftIds).filter((alias) => compatibleHeartAlias(option, alias)),
+    ...(Array.isArray(option.giftIds) ? { giftIds: uniqueOptionStrings(option.giftIds).filter((alias) => compatibleHeartAlias(option, alias)) } : {}),
     alternateNames: uniqueOptionStrings(option.alternateNames),
     coinCost: Number.isFinite(parsedCost) && parsedCost > 0 ? parsedCost : void 0,
     colors,
@@ -107,6 +121,9 @@ function giftTriggerOptionMatches(option, triggerId) {
   const triggerKeys = giftLookupKeys(value);
   if (!triggerKeys.size) return false;
   if (option.id === value) return true;
+  // Raw callers need the same boundary as normalized options. An exact blue
+  // creator gift cannot match Heart Me through old aliases or its old label.
+  if (isHeartGiftReference(value) && !compatibleHeartAlias(option, value)) return false;
   const isNameReference = value.startsWith("gift-name:");
   if (!isNameReference && giftLookupKeysIntersect(optionTechnicalKeys(option), triggerKeys)) return true;
   // Une référence numérique, ou gift:<ID>, reste technique même si son ID
@@ -194,7 +211,7 @@ function uniqueOptionStrings(...groups) {
 function optionTechnicalKeys(option) {
   const keys = new Set();
   for (const id of [option.id, ...(option.alternateIds || []), ...(option.giftIds || [])]) {
-    if (!id || String(id).startsWith("gift-name:")) continue;
+    if (!id || String(id).startsWith("gift-name:") || !compatibleHeartAlias(option, id)) continue;
     for (const key of giftLookupKeys(id)) keys.add(key);
   }
   return keys;

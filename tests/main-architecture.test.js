@@ -119,9 +119,12 @@ const HISTORICAL_CHANNELS = [
 ];
 
 const NEW_CHANNELS = [
+  "startup:ready",
+  "sound:remove",
   "users:block", "users:block-list", "users:cleanup", "users:clear", "users:export", "users:import", "users:merge", "users:remove", "users:snapshot", "users:unblock",
   "chatbot:transport-status", "chatbot:transport-configure",
   "matches:status", "matches:config-save", "matches:automation-save", "matches:automation-remove", "matches:automation-test",
+  "matches:visual-status", "matches:visual-sources", "matches:visual-preview", "matches:visual-save",
   "matches:widget-test", "matches:wins-reset", "matches:wins-adjust", "matches:contributors-reset"
 ];
 
@@ -163,17 +166,28 @@ test("la façade conserve les 104 canaux IPC utiles, sans export vidéo, et le c
 
 test("tous les domaines IPC non publics gardent leur garde d’authentification", () => {
   const { handlers, trustedEvent } = registeredHandlers();
-  const publicChannels = new Set(["account:login", "account:login-browser", "account:logout", "account:password-reset", "account:register", "account:status", "admin:status", "admin:visibility-public", "catalog:gifts", "catalog:media", "catalog:sounds", "external:open", "snapshot:get", "updates:check", "updates:install", "window:close", "window:maximize", "window:minimize"]);
+  const publicChannels = new Set(["account:login", "account:login-browser", "account:logout", "account:password-reset", "account:register", "account:status", "admin:status", "admin:visibility-public", "catalog:gifts", "catalog:media", "catalog:sounds", "external:open", "snapshot:get", "startup:ready", "updates:check", "updates:install", "window:close", "window:maximize", "window:minimize"]);
   for (const [channel, handler] of handlers) {
     if (publicChannels.has(channel)) continue;
     assert.throws(() => handler(trustedEvent, {}), { code: "ACCOUNT_REQUIRED" }, channel);
   }
 });
 
+test("les quatre canaux de lecture visuelle restent explicites, authentifiés et réservés à la fenêtre principale", () => {
+  const { handlers, trustedEvent } = registeredHandlers();
+  const channels = ["matches:visual-status", "matches:visual-sources", "matches:visual-preview", "matches:visual-save"];
+  for (const channel of channels) {
+    assert.equal(NEW_CHANNELS.filter((entry) => entry === channel).length, 1, channel);
+    assert.equal(handlers.has(channel), true, channel);
+    assert.throws(() => handlers.get(channel)(trustedEvent, {}), { code: "ACCOUNT_REQUIRED" }, channel);
+    assert.throws(() => handlers.get(channel)({}, {}), { code: "IPC_SENDER_FORBIDDEN" }, channel);
+  }
+});
+
 test("les intégrations et les commandes ChatBot refusent également un expéditeur non autorisé", () => {
   const { handlers } = registeredHandlers();
   for (const [channel, handler] of handlers) {
-    if (!/^(kick|controllers|live-directory|users|spotify|chatbot|irl|matches):/.test(channel)) continue;
+    if (!["sound:remove", "startup:ready"].includes(channel) && !/^(kick|controllers|live-directory|users|spotify|chatbot|irl|matches):/.test(channel)) continue;
     assert.throws(() => handler({}, {}), { code: "IPC_SENDER_FORBIDDEN" }, channel);
   }
   for (const channel of ["entity:upsert", "entity:remove"]) {

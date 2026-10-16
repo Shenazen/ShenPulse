@@ -166,6 +166,10 @@ function gameEffectParameterFields(effect, config) {
         `max="${Number(parameter.max ?? 100000)}"`,
         `step="${Number(parameter.step ?? 1)}"`
       ].join(" ");
+      if (parameter.type === "text") {
+        return field(name, parameter.label || parameter.id, value, "text",
+          `maxlength="${Math.min(80, Math.max(1, Number(parameter.maxLength) || 80))}" pattern="[a-zA-Z0-9_-]+"`);
+      }
       return field(
         name,
         parameter.label || parameter.id,
@@ -180,6 +184,12 @@ function gameEffectParameterFields(effect, config) {
 function gameEffectParametersFromForm(effect, data) {
   return Object.fromEntries(
     (effect.parameters || []).map((parameter) => {
+      if (parameter.type === "text") {
+        const value = String(data.get(`effectParameter_${parameter.id}`) ?? parameter.defaultValue ?? "")
+          .trim().slice(0, Math.min(80, Math.max(1, Number(parameter.maxLength) || 80)));
+        if (!/^[a-zA-Z0-9_-]+$/.test(value)) throw new Error("Identifiant invalide : utilisez des lettres, chiffres, tirets, ou random.");
+        return [parameter.id, value];
+      }
       const raw = Number(data.get(`effectParameter_${parameter.id}`));
       const minimum = Number(parameter.min ?? 0);
       const maximum = Number(parameter.max ?? 100000);
@@ -337,7 +347,7 @@ function openGameInteractionEditor(pack, effect, row = null) {
       parameters: Object.fromEntries(
         (effect.parameters || []).map((parameter) => [
           parameter.id,
-          Number(parameter.defaultValue || 0)
+          parameter.type === "text" ? String(parameter.defaultValue || "") : Number(parameter.defaultValue || 0)
         ])
       ),
       ...(effect.winCounter

@@ -162,12 +162,13 @@ test("fermer l'éditeur arrête uniquement le son testé dans cette fenêtre", (
     dialogPreviewStart
   );
   const dialogPreview = app.slice(dialogPreviewStart, dialogPreviewEnd);
-  const closeStart = app.indexOf('dialog.addEventListener("close"');
-  const closeEnd = app.indexOf(
+  const dialogEvents = fs.readFileSync(path.join(__dirname, "..", "src", "renderer", "app", "core", "events", "chrome-dialogs.js"), "utf8");
+  const closeStart = dialogEvents.indexOf('dialog.addEventListener("close"');
+  const closeEnd = dialogEvents.indexOf(
     'dialog.addEventListener("click"',
     closeStart
   );
-  const closeHandler = app.slice(closeStart, closeEnd);
+  const closeHandler = dialogEvents.slice(closeStart, closeEnd);
 
   assert.match(dialogPreview, /previewScope: "editor-dialog"/);
   assert.match(app, /function stopEditorAudioPreview\(\)/);
@@ -428,7 +429,8 @@ test("les actions visuelles sont fusionnees en Media et proposent huit ecrans OB
   assert.match(app, /data-media-screen-url="true"/);
   assert.match(app, /ready \? "Prêt" : "Hors ligne"/);
   assert.match(app, /Ces champs d’URL servent à visualiser les médias/);
-  assert.match(app, /faire entendre les sons et le TTS sur vos LIVE/);
+  assert.match(app, /Ces URL diffusent les sons et le TTS sur le LIVE/);
+  assert.match(app, /La préécoute dans ShenPulse fonctionne sans source navigateur/);
   assert.match(app, /name="mediaScreen"/);
   assert.match(app, /Écrans Media/);
   assert.match(styles, /\.media-screens-panel/);

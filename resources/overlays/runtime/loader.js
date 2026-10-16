@@ -6,7 +6,11 @@
  * compteur. OBS télécharge et compile ainsi beaucoup moins de JavaScript.
  */
 (async function loadActiveOverlayRuntime() {
-  const VERSION = "2.0.2-overlay1";
+  // Le document Match local porte l'empreinte du code réellement installé.
+  // La version publique reste le repli des anciens documents sans métadonnée.
+  const VERSION = encodeURIComponent(String(
+    document.querySelector?.('meta[name="shenpulse-overlay-version"]')?.content || "2.0.3-overlay1"
+  ).trim());
   const query = new URLSearchParams(location.search);
   if (globalThis.shenPulseMatchLocalEntry) {
     // Une entrée Studio explicite ne démarre pas un second lecteur Firebase,

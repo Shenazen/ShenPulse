@@ -4,11 +4,18 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { safeString } = require("../utils");
-const { COMMUNITY_HEART_IMAGE_URL, canonicalGiftName, findCatalogGift, giftFamily, giftImageIdentity } = require("../../shared/gift-identity");
+const { COMMUNITY_HEART_IMAGE_URL, canonicalGiftName, findCatalogGift, giftFamily, giftImageIdentity, normalizeGiftName } = require("../../shared/gift-identity");
 const { normalizeSearch } = require("./common");
 
 const LOCALIZED_GIFT_REFRESH_MS = 6 * 60 * 60 * 1000;
 const MAX_GIFT_CATALOG_RESULTS = 10000;
+const MAX_ROOM_GIFT_CACHES = 12;
+const roomUsername = (value) => safeString(value, 200).trim().replace(/^@+/, "").toLowerCase();
+const roomIdentifier = (value) => safeString(value, 160).trim();
+const roomKey = (username, roomId) => JSON.stringify([username, roomId]);
+const TRUE_HEART_IDS = new Set(["7934", "heart-me"]);
+const SEPARATE_GIFT_IDS = new Set(["17712", "62816", "601333", "157842"]);
+const OLD_HEART_NAMES = new Set(["coeur sur moi", "coeur de la communaute", "community heart", "heart me", "envoie moi un coeur"]);
 // Correspondance vérifiée avec l'ID 8259 du catalogue TikTok embarqué :
 // « Amour en langage des signes » / « Sign language love ». Ce libellé
 // historique de ShenPulse ne doit pas devenir un autre cadeau par proximité.
@@ -33,6 +40,12 @@ class GiftCatalog {
     this.localizedAtMs = 0;
     this.localizedUsername = "";
     this.refreshPromise = null;
+    this.roomScope = { username: "", roomId: "" };
+    this.roomGeneration = 0;
+    this.roomRefreshSequence = 0;
+    this.roomCache = new Map();
+    this.roomPending = new Map();
+    this.roomObserved = [];
     this.load();
   }
 
@@ -62,25 +75,63 @@ class GiftCatalog {
     return this.gifts;
   }
 
-  async refreshLocalized(username = "", { force = false } = {}) {
-    const targetUsername = String(username || "tiktok")
-      .trim()
-      .replace(/^@+/, "") || "tiktok";
-    if (
-      !force &&
-      this.localizedUsername === targetUsername &&
-      Date.now() - this.localizedAtMs < LOCALIZED_GIFT_REFRESH_MS
-    ) {
-      return this.gifts;
+  setRoomScope(username = "", { roomId = "", force = false } = {}) {
+    const next = { username: roomUsername(username), roomId: roomIdentifier(roomId) };
+    if (!next.username) next.roomId = "";
+    if (force || roomKey(next.username, next.roomId) !== roomKey(this.roomScope.username, this.roomScope.roomId)) {
+      this.roomGeneration += 1;
+      this.roomScope = next;
+      this.roomObserved = [];
     }
-    if (this.refreshPromise && !force) return this.refreshPromise;
-    const refresh = Promise.resolve(
-      this.fetchLocalizedGifts(targetUsername)
-    ).then((values) => {
+    return this.roomSnapshot();
+  }
+
+  roomSnapshot(query = "", limit = MAX_GIFT_CATALOG_RESULTS) {
+    const scope = this.roomScope, cached = this.roomCache.get(roomKey(scope.username, scope.roomId));
+    const available = Boolean(scope.username && cached?.available && cached.roomId &&
+      Date.now() - cached.fetchedAtMs < LOCALIZED_GIFT_REFRESH_MS);
+    const byId = new Map((available ? cached.gifts : []).map((gift) => [gift.id, gift]));
+    // A verified gift actually received in this room is fresher than its
+    // panel artwork, even when TikTok changed the asset's filename format.
+    for (const gift of this.roomObserved) byId.set(gift.id, mergeRoomGiftEntries(byId.get(gift.id), gift, true));
+    const rows = [...byId.values()].filter((gift) => gift.selectable !== false).sort(compareGifts);
+    const needle = normalizeSearch(query), matching = needle ? rows.filter((gift) => giftSearchText(gift).includes(needle)) : rows;
+    return { room: { username: scope.username, roomId: scope.roomId || cached?.roomId || "",
+      available, partial: !available && this.roomObserved.length > 0, fetchedAt: available ? cached.fetchedAt : "",
+      total: rows.length }, roomGifts: matching.slice(0, limit).map((gift) => ({ ...gift,
+      alternateIds: [...gift.alternateIds], alternateNames: [...gift.alternateNames] })) };
+  }
+
+  getRoomCatalog() { return this.roomSnapshot(); }
+
+  async refreshLocalized(username = "", { force = false, roomId = "" } = {}) {
+    const targetUsername = roomUsername(username || "tiktok") || "tiktok";
+    const targetRoomId = roomIdentifier(roomId);
+    this.setRoomScope(targetUsername, { roomId: targetRoomId });
+    const scopeKey = roomKey(targetUsername, targetRoomId), generation = this.roomGeneration;
+    const cached = this.roomCache.get(scopeKey);
+    if (!force && cached && Date.now() - cached.fetchedAtMs < LOCALIZED_GIFT_REFRESH_MS) return this.gifts;
+    const previous = this.roomPending.get(scopeKey);
+    if (!force && previous?.generation === generation) return previous.promise;
+    const sequence = ++this.roomRefreshSequence;
+    const current = () => generation === this.roomGeneration &&
+      roomKey(this.roomScope.username, this.roomScope.roomId) === scopeKey && this.roomPending.get(scopeKey)?.sequence === sequence;
+    // Defer the call so a synchronous implementation cannot publish before
+    // the operation and its scope have been registered.
+    const refresh = Promise.resolve().then(() => this.fetchLocalizedGifts(targetUsername, { roomId: targetRoomId })).then((response) => {
+      if (!current()) return this.gifts;
+      const values = Array.isArray(response) ? response : response?.gifts;
+      const resolvedRoomId = roomIdentifier(response?.roomId || targetRoomId);
+      if (targetRoomId && resolvedRoomId !== targetRoomId) throw new Error("La salle TikTok du catalogue a changé.");
       const gifts = dedupeLocalizedGifts(values);
       if (!gifts.length) {
         throw new Error("Le catalogue TikTok de la salle est vide.");
       }
+      const fetchedAtMs = Date.now(), fetchedAt = new Date(fetchedAtMs).toISOString();
+      this.roomCache.delete(scopeKey);
+      this.roomCache.set(scopeKey, { available: Boolean(resolvedRoomId), roomId: resolvedRoomId,
+        gifts: dedupeRoomGifts(values), fetchedAtMs, fetchedAt });
+      while (this.roomCache.size > MAX_ROOM_GIFT_CACHES) this.roomCache.delete(this.roomCache.keys().next().value);
       // Une salle peut ne renvoyer qu'une partie des cadeaux. Les cadeaux déjà
       // identifiés restent disponibles pour les règles et les sélections
       // historiques ; la réponse la plus récente enrichit les mêmes ID.
@@ -93,16 +144,32 @@ class GiftCatalog {
         ...this.learnedGifts,
         ...this.localizedGifts
       ]);
-      this.generatedAt = new Date().toISOString();
-      this.localizedAtMs = Date.now();
+      this.generatedAt = fetchedAt;
+      this.localizedAtMs = fetchedAtMs;
       this.localizedUsername = targetUsername;
       return this.gifts;
     });
     const pending = refresh.finally(() => {
+      if (this.roomPending.get(scopeKey)?.sequence === sequence) this.roomPending.delete(scopeKey);
       if (this.refreshPromise === pending) this.refreshPromise = null;
     });
+    this.roomPending.set(scopeKey, { generation, sequence, promise: pending });
     this.refreshPromise = pending;
     return pending;
+  }
+
+  acceptRoomLiveGift(value = {}, context = {}) {
+    if (context.verified !== true || !this.roomScope.username || !this.roomScope.roomId ||
+      roomUsername(context.username) !== this.roomScope.username || roomIdentifier(context.roomId) !== this.roomScope.roomId) return false;
+    const id = safeString(value.id ?? value.giftId ?? value.gift_id, 160);
+    const previous = this.roomObserved.find((row) => row.id === id);
+    const cached = this.roomCache.get(roomKey(this.roomScope.username, this.roomScope.roomId))?.gifts.find((row) => row.id === id);
+    const [gift] = dedupeRoomGifts([{ ...value, name: value.name ?? value.giftName ?? previous?.name ?? cached?.name }]);
+    if (!gift) return false;
+    const merged = mergeRoomGiftEntries(previous || cached, gift, true);
+    if ((previous || cached) && sameGiftCatalogEntry(previous || cached, merged)) return false;
+    this.roomObserved = [...this.roomObserved.filter((row) => row.id !== gift.id), merged].slice(-MAX_GIFT_CATALOG_RESULTS);
+    return true;
   }
 
   mergeLiveGift(value = {}) {
@@ -185,24 +252,21 @@ class GiftCatalog {
     const max = Math.min(MAX_GIFT_CATALOG_RESULTS, Math.max(1, Number(limit) || 80));
     const source = needle
       ? this.gifts.filter((gift) =>
-          normalizeSearch(
-            `${gift.name} ${gift.originalName || ""} ${gift.id} ${gift.cost} ` +
-              `${(gift.alternateNames || []).join(" ")} ` +
-              `${(gift.alternateIds || []).join(" ")}`
-          ).includes(needle)
+          giftSearchText(gift).includes(needle)
         )
       : this.gifts;
     return {
       generatedAt: this.generatedAt,
       total: source.length,
-      gifts: source.slice(0, max)
+      gifts: source.slice(0, max),
+      ...this.roomSnapshot(query, max)
     };
   }
 }
 
 async function fetchFrenchTikTokGifts(
   username = "tiktok",
-  { createConnection } = {}
+  { createConnection, roomId: expectedRoomId = "" } = {}
 ) {
   const connectionOptions = {
     processInitialData: false,
@@ -232,11 +296,65 @@ async function fetchFrenchTikTokGifts(
   if (!roomId) {
     throw new Error("La salle TikTok du créateur est introuvable.");
   }
+  if (expectedRoomId && String(roomId) !== String(expectedRoomId)) throw new Error("La salle TikTok du créateur a changé.");
   // fetchAvailableGifts() n'associe pas la salle tout seul dans la version
   // embarquée du connecteur. Sans room_id, TikTok renvoie son catalogue
   // mondial générique au lieu des cadeaux rattachés au créateur.
   connection.clientParams.room_id = String(roomId);
-  return connection.fetchAvailableGifts();
+  const gifts = await connection.fetchAvailableGifts();
+  // Keep the historical array API while carrying the exact public room that
+  // supplied this response. No account, session or credentials are included.
+  const result = Array.isArray(gifts) ? [...gifts] : [];
+  Object.defineProperty(result, "roomId", { value: String(roomId) });
+  return result;
+}
+
+function giftSearchText(gift) {
+  return normalizeSearch(`${gift.name} ${gift.originalName || ""} ${gift.id} ${gift.cost} ` +
+    `${(gift.alternateNames || []).join(" ")} ${(gift.alternateIds || []).join(" ")}`);
+}
+
+function roomGiftValue(value = {}) {
+  return { ...value,
+    id: value.id ?? value.giftId ?? value.gift_id,
+    name: value.name ?? value.giftName,
+    cost: value.cost ?? value.giftCost ?? value.value ?? value.diamondCount ?? value.diamond_count,
+    imageUrl: value.imageUrl || value.giftImageUrl || value.giftPictureUrl || value.image?.url_list?.[0] ||
+      value.image?.urlList?.[0] || value.icon?.url_list?.[0] || value.icon?.urlList?.[0],
+    imageUri: value.imageUri ?? value.giftImageUri ?? value.image?.uri ?? value.icon?.uri,
+    combo: value.combo ?? value.giftCombo ?? value.isCombo,
+    giftType: value.giftType ?? value.type,
+    primaryEffectId: value.primaryEffectId ?? value.primary_effect_id,
+    isGlobalGift: value.isGlobalGift ?? value.is_global_gift,
+    isDisplayedOnPanel: value.isDisplayedOnPanel ?? value.is_displayed_on_panel,
+    source: "tiktok-room" };
+}
+
+function mergeRoomGiftEntries(previous, gift, preferIncomingArtwork = false) {
+  if (!previous) return gift;
+  const artworkRank = (row) => (/(?:composed\.|saliency_seg_)/i.test(`${row.imageUri} ${row.imageUrl}`) ? 4 : 0) +
+    (row.isDisplayedOnPanel ? 2 : 0) + (row.imageUrl ? 1 : 0);
+  const artwork = !preferIncomingArtwork && artworkRank(previous) > artworkRank(gift) ? previous : gift;
+  return normalizeGift({ ...previous, ...gift, cost: gift.cost || previous.cost,
+    imageUrl: artwork.imageUrl || gift.imageUrl || previous.imageUrl,
+    imageUri: artwork.imageUri || gift.imageUri || previous.imageUri,
+    giftType: gift.giftType || previous.giftType, combo: gift.combo || previous.combo,
+    name: gift.name || previous.name,
+    alternateNames: uniqueStrings([...previous.alternateNames, previous.name, ...gift.alternateNames], 200) });
+}
+
+function dedupeRoomGifts(values = []) {
+  const byId = new Map();
+  // A creator's returned panel is an availability list, not evidence that two
+  // gift IDs are aliases. Keep even same-name/same-image family members apart.
+  for (const value of (Array.isArray(values) ? values : []).slice(0, MAX_GIFT_CATALOG_RESULTS)) {
+    // A second normalization retains the original localized name as a search
+    // alias immediately; repeated identical LIVE events then stay idempotent.
+    const gift = normalizeGift(normalizeGift(roomGiftValue(value)));
+    if (!gift.id || !gift.name || gift.selectable === false) continue;
+    byId.set(gift.id, mergeRoomGiftEntries(byId.get(gift.id), gift));
+  }
+  return [...byId.values()].sort(compareGifts);
 }
 
 function dedupeLocalizedGifts(values = []) {
@@ -266,19 +384,27 @@ function dedupeLocalizedGifts(values = []) {
 }
 
 function normalizeGift(value = {}) {
-  const originalName = safeString(value.name ?? value.giftName, 200);
   const rawId = safeString(value.id ?? value.giftId ?? value.gift_id, 160);
+  const rawName = safeString(value.name ?? value.giftName, 200);
+  const savedOriginalName = safeString(value.originalName, 200);
+  const trueHeart = TRUE_HEART_IDS.has(rawId);
+  // Restore a name actually retained alongside the former automatic label;
+  // never guess a missing creator name from its image, price or gift ID.
+  const originalName = !trueHeart && normalizeGiftName(rawName) === "coeur sur moi" &&
+    savedOriginalName && !OLD_HEART_NAMES.has(normalizeGiftName(savedOriginalName)) ? savedOriginalName : rawName;
+  const oldFalseFamily = !trueHeart && (SEPARATE_GIFT_IDS.has(rawId) || value.giftFamily === "community-heart" || value.family === "community-heart");
   const inferredNumericId = inferNumericGiftId(rawId);
   const alternateIds = uniqueStrings([
     ...(Array.isArray(value.alternateIds) ? value.alternateIds : []),
     ...(Array.isArray(value.giftIds) ? value.giftIds : []),
     inferredNumericId
-  ], 160).filter((id) => id !== rawId);
+  ], 160).filter((id) => id !== rawId && !(trueHeart && SEPARATE_GIFT_IDS.has(id)) &&
+    !(oldFalseFamily && (TRUE_HEART_IDS.has(id) || SEPARATE_GIFT_IDS.has(id))));
   const alternateNames = uniqueStrings([
     ...(Array.isArray(value.alternateNames) ? value.alternateNames : []),
     value.originalName,
     ...([rawId, ...alternateIds].flatMap((id) => LEGACY_GIFT_NAMES_BY_ID[id] || []))
-  ], 200).filter((name) => name !== originalName);
+  ], 200).filter((name) => name !== originalName && !(oldFalseFamily && OLD_HEART_NAMES.has(normalizeGiftName(name))));
   const gift = {
     id: rawId,
     alternateIds,
@@ -307,15 +433,15 @@ function normalizeGift(value = {}) {
   const family = giftFamily(gift);
   return {
     ...gift,
-    // Un regroupement d'identifiants ne doit pas remettre le dessin historique
-    // de Heart Me à la place du cœur de communauté actuel. Les visuels reçus
-    // dans les événements LIVE restent intacts ; seul le catalogue est harmonisé.
+    // Heart Me is always the same red heart. A creator's separate segmented
+    // gift keeps its own exact name/art; segmentation is not a gift identity.
     imageUrl: family === "community-heart" ? COMMUNITY_HEART_IMAGE_URL : gift.imageUrl,
+    selectable: rawId !== "17712",
     name: family ? canonicalGiftName(gift, originalName) : originalName,
     originalName:
       family && originalName !== canonicalGiftName(gift, originalName)
         ? originalName
-        : safeString(value.originalName, 200),
+        : oldFalseFamily && OLD_HEART_NAMES.has(normalizeGiftName(savedOriginalName)) ? "" : savedOriginalName,
     giftFamily: family
   };
 }
@@ -513,5 +639,5 @@ function compareGifts(left, right) {
   );
 }
 
-module.exports = { LOCALIZED_GIFT_REFRESH_MS, GiftCatalog, fetchFrenchTikTokGifts, dedupeLocalizedGifts, normalizeGift, dedupeGiftCatalog, dedupeGiftCatalogPass, giftCatalogSignature, giftDedupeKeys, mergeGiftEntries, giftQuality, uniqueStrings, inferNumericGiftId, compareGifts };
+module.exports = { LOCALIZED_GIFT_REFRESH_MS, MAX_ROOM_GIFT_CACHES, GiftCatalog, fetchFrenchTikTokGifts, dedupeLocalizedGifts, dedupeRoomGifts, normalizeGift, dedupeGiftCatalog, dedupeGiftCatalogPass, giftCatalogSignature, giftDedupeKeys, mergeGiftEntries, giftQuality, uniqueStrings, inferNumericGiftId, compareGifts };
 

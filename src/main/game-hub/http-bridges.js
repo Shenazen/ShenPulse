@@ -5,7 +5,8 @@ const HTTP_BRIDGE_PROPERTIES = Object.freeze({
   "tiklive-climb-http": "tikLiveClimbBridge",
   "tiklive-cube-wars-http": "tikLiveCubeWarsBridge",
   "tiklive-stack-tower-http": "tikLiveStackTowerBridge",
-  "clash-of-live-http": "clashOfLiveBridge"
+  "clash-of-live-http": "clashOfLiveBridge",
+  "find-the-needle-http": "findTheNeedleBridge"
 });
 
 /** Registre partagé par diagnostics et exécution des passerelles HTTP natives. */

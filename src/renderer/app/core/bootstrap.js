@@ -508,6 +508,7 @@ const AUTOMATED_GAME_INSTALLERS = new Set([
   "tiklive-cube-wars",
   "tiklive-stack-tower",
   "demonologist",
+  "find-the-needle-demo",
   "euro-truck-simulator-2",
   "resident-evil-3",
   "gtav-montchiliad",

@@ -7,11 +7,19 @@
  * Il partage uniquement les contrats globaux documentés dans README.md.
  */
 
+let preparedOverlayDefinitions = null;
+
 function overlayDefinitions() {
-  return overlayCatalog.definitionsWithUrls({
-    publicUrls: snapshot.overlayUrls || {},
-    localUrls: snapshot.localOverlayUrls || {}
-  });
+  const publicUrls = snapshot?.overlayUrls;
+  const localUrls = snapshot?.localOverlayUrls;
+  const signature = JSON.stringify([publicUrls || {}, localUrls || {}]);
+  if (!preparedOverlayDefinitions || preparedOverlayDefinitions.signature !== signature) {
+    preparedOverlayDefinitions = {
+      signature,
+      items: overlayCatalog.definitionsWithUrls({ publicUrls: publicUrls || {}, localUrls: localUrls || {} })
+    };
+  }
+  return preparedOverlayDefinitions.items;
 }
 
 function overlayUnlocked(item) {

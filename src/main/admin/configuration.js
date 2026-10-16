@@ -6,6 +6,15 @@ const { ADMIN_EMAIL, PUBLIC_VISIBILITY_SECTIONS, VISIBILITY_SECTIONS } = require
 const { normalizeScope, cleanKey, cleanUsername, normalizeEmail } = require("./validation");
 const { migrateVisibility } = require("../../shared/visibility-catalog");
 
+/** Une portée de jeu invalide ne doit jamais devenir une publication explicite.
+ * L'absence de réglage conserve le défaut du catalogue (notamment propriétaire).
+ */
+function hasValidVisibilityEntry(section, value) {
+  if (section !== "games") return true;
+  const scope = value && typeof value === "object" ? value.scope : value;
+  return ["public", "admin", "hidden", false].includes(scope);
+}
+
 function normalizeSiteSettings(value) {
   const candidate = value && typeof value === "object" ? value : {};
   const result = {
@@ -21,7 +30,7 @@ function normalizeSiteSettings(value) {
     result[section] = {};
     for (const [rawId, rawConfig] of Object.entries(source).slice(0, 500)) {
       const id = cleanKey(rawId);
-      if (!id) continue;
+      if (!id || !hasValidVisibilityEntry(section, rawConfig)) continue;
       result[section][id] = { scope: normalizeScope(rawConfig) };
     }
   }
@@ -83,7 +92,7 @@ function normalizePublicVisibility(value) {
     result[section] = {};
     for (const [rawId, rawConfig] of Object.entries(source).slice(0, 500)) {
       const id = cleanKey(rawId);
-      if (!id) continue;
+      if (!id || !hasValidVisibilityEntry(section, rawConfig)) continue;
       result[section][id] = { scope: normalizeScope(rawConfig) };
     }
   }

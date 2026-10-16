@@ -14,6 +14,7 @@ const { LiveEventActionService } = require("./core/live-event-actions");
 const { createCoreMatches } = require("./matches/core-integration");
 const { ingestCreatorEvent } = require("./core/ingestion");
 const { reconcileGiftReferencesSafely } = require("./core/gift-recovery");
+const { giftCatalogScope, sameGiftCatalogScope, synchronizeGiftCatalogScope } = require("./core/gift-scope");
 const { normalizeEvent } = require("./event-normalizer");
 const { ViewerService } = require("./viewer-service");
 const { createCoreRuntimeSnapshot } = require("./core/runtime-snapshot");
@@ -415,13 +416,18 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async refreshGiftCatalog({ force = false } = {}) {
-    const username =
-      readState(this.store, ["settings.tiktok.username"]).settings?.tiktok?.username || "tiktok";
+    const scope = synchronizeGiftCatalogScope(this);
+    if (!scope.username) return this.giftCatalog.gifts;
     try {
-      await this.giftCatalog.refreshLocalized(username, { force });
+      await this.giftCatalog.refreshLocalized(scope.username, { force, roomId: scope.roomId });
     } catch {
       // Le catalogue fusionné embarqué reste disponible hors ligne.
     }
+    if (!sameGiftCatalogScope(scope, giftCatalogScope(this.store))) {
+      synchronizeGiftCatalogScope(this);
+      return this.giftCatalog.gifts;
+    }
+    this.notifyRenderer?.("gift-room-catalog-updated", this.giftCatalog.getRoomCatalog());
     reconcileGiftReferencesSafely(this);
     return this.giftCatalog.gifts;
   }
@@ -696,7 +702,8 @@ class ShenPulseCore extends EventEmitter {
       onGameBridgeMessage: (pack, message) => this.liveEventActions.handleGameBridgeMessage(pack, message),
       ingest: (event, source) => this.ingest(event, source),
       handleKickStatus: (status) => this.handleKickStatus(status),
-      refreshGiftCatalog: (options) => this.refreshGiftCatalog(options)
+      refreshGiftCatalog: (options) => this.refreshGiftCatalog(options),
+      synchronizeGiftCatalogScope: () => synchronizeGiftCatalogScope(this)
     });
   }
 

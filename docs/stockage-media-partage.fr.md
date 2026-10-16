@@ -49,6 +49,22 @@ existantes. Un durcissement serveur pourra être traité séparément.
 
 ## Qualification
 
+### Suppression des sons importés
+
+Chaque ligne de « Mes sons importés » comporte un bouton « Supprimer » avec
+confirmation. Le retrait concerne la bibliothèque du compte connecté et se
+conserve après redémarrage ou reconnexion. Les actions et les réglages des
+profils ne sont pas modifiés : un son déjà affecté reste utilisable par son URL.
+Le fichier Backblaze n’est donc pas effacé ; le courtier n’expose pas de
+suppression distante. Ce bouton ne libère pas d’espace dans le bucket.
+
+Le canal dédié `sound:remove` n’accepte qu’un identifiant de la bibliothèque
+active, jamais une URL ou une clé Backblaze fournie par l’interface. Le compte
+est capturé avant confirmation et revérifié côté interface et processus
+principal. Les sons publics et les bibliothèques des autres comptes sont exclus.
+La suppression annule la sélection en attente et arrête uniquement l’aperçu
+du son concerné, sans supprimer les champs déjà choisis dans l’éditeur.
+
 Les tests couvrent un compte gratuit sans clés B2, les formats, les erreurs,
 les réponses et destinations invalides, les changements de compte, les droits
 hérités et la conservation des anciennes bibliothèques.

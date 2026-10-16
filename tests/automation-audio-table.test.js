@@ -79,7 +79,9 @@ test("les alertes affichent une ligne de tableau compacte et gardent toutes leur
     assert.ok(remove.querySelector('svg[aria-hidden="true"]'));
   }
   assert.match(rendered[0].querySelector('[data-action="test-action"]').title, /uniquement sur cet ordinateur/);
-  assert.match(rendered[1].querySelector('[data-action="test-action"]').title, /dans le LIVE/);
+  assert.match(rendered[1].querySelector('[data-action="test-action"]').title, /uniquement sur cet ordinateur/);
+  assert.match(rendered[1].querySelector('.audio-output-live').textContent, /Tout le monde · Écran 3/);
+  assert.match(rendered[0].querySelector('.audio-output-switch').title, /Tout le monde : dans ShenPulse et sur la source LIVE/);
   assert.equal(rendered[0].querySelector('[data-action="set-audio-output"]').checked, false);
   assert.equal(rendered[1].querySelector('[data-action="set-audio-output"]').checked, true);
   assert.equal(rendered[0].querySelector('[data-action="configure-audio-output"]'), null);
@@ -99,7 +101,7 @@ test("les règles vocales utilisent le même tableau sans perdre voix, sorties o
   const rendered = context.page.querySelector("tr.tts-rule-card");
   assert.ok(rendered);
   assert.match(rendered.textContent, /Lecture du commentaire/);
-  assert.match(rendered.querySelector("details.audio-row-settings").textContent, /VOIX.*Paul.*60 %.*LIVE · Écran 3/s);
+  assert.match(rendered.querySelector("details.audio-row-settings").textContent, /VOIX.*Paul.*60 %.*Tout le monde · Écran 3/s);
   for (const action of ["test-action", "edit-tts", "duplicate-action", "delete-action", "set-audio-output", "configure-audio-output"]) {
     assert.equal(rendered.querySelector(`[data-action="${action}"]`).dataset.id, "voice_action");
   }

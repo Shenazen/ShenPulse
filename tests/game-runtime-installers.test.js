@@ -21,6 +21,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       "cult-of-the-lamb",
       "demonologist",
       "euro-truck-simulator-2",
+      "find-the-needle-demo",
       "gtav-montchiliad",
       "minecraft-bedrock-box",
       "minecraft-sandbox-3",
@@ -38,7 +39,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
   assert.ok(
     Object.values(GAME_INSTALLERS).every(
       (installer) =>
-        (installer.setupOnly === true || installer.assets.length > 0) &&
+        (installer.setupOnly === true || installer.localArchiveOnly === true || installer.assets.length > 0) &&
         installer.assets.every(
           (asset) => asset.id && asset.fileName && asset.action
         )

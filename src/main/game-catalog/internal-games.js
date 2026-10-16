@@ -22,8 +22,22 @@ const { THIERCELIEUX_EXTENSION_PRODUCTS } = require("../../shared/thiercelieux-p
 const { GTA_LOCAL_BRIDGE, CULT_OF_THE_LAMB_BRIDGE, STARDEW_VALLEY_BRIDGE, TERRARIA_BRIDGE, EURO_TRUCK_SIMULATOR_2_BRIDGE, RESIDENT_EVIL_3_BRIDGE } = require("./connectors");
 const { COIN_PUSHER_EFFECTS, COIN_PUSHER_DEFAULT_MAPPINGS } = require("./coin-pusher");
 const { game } = require("./builders");
+const { FIND_THE_NEEDLE_CONNECTOR, FIND_THE_NEEDLE_EFFECTS, FIND_THE_NEEDLE_DEFAULT_MAPPINGS, FIND_THE_NEEDLE_INTERACTION_CATALOG_VERSION } = require("../find-the-needle-catalog");
 
 const INTERNAL_GAMES = [
+  game("find-the-needle-demo", "Find The Needle Demo", {
+    included: true,
+    ownerOnly: true,
+    artwork: "catalog/find-the-needle-demo.jpg",
+    source: "Steam · FindTheNeedleDev / HayPassionates · mod local StreamToEarn",
+    description: "Les 37 interactions de la démo V62, pilotées localement depuis ShenPulse. Démo Steam gratuite et mod compatible fourni séparément nécessaires.",
+    tags: ["inclus", "Steam", "démo gratuite", "privé", "mod local"],
+    connector: FIND_THE_NEEDLE_CONNECTOR,
+    effects: FIND_THE_NEEDLE_EFFECTS,
+    defaultMappings: FIND_THE_NEEDLE_DEFAULT_MAPPINGS,
+    interactionCatalogVersion: FIND_THE_NEEDLE_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.1.0"
+  }),
   game("thiercelieux", "Les Loups-Garous de Thiercelieux", {
     artwork: "catalog/thiercelieux-landscape.png",
     price: 4.99,
@@ -104,7 +118,7 @@ const INTERNAL_GAMES = [
   }),
   game("tiklive-climb", "Climb", {
     artwork: "catalog/shenpulse-climb.jpg",
-    price: 19.99,
+    price: 9.99,
     requiresPro: true,
     source: "ShenPulse · Climb autonome",
     description:
@@ -128,7 +142,7 @@ const INTERNAL_GAMES = [
   }),
   game("tiklive-cube-wars", "ShenPulse Cube Wars", {
     artwork: "catalog/shenpulse-cube-wars.png",
-    price: 19.99,
+    price: 9.99,
     requiresPro: true,
     source: "ShenPulse · Cube Wars autonome",
     description:
@@ -152,7 +166,7 @@ const INTERNAL_GAMES = [
   }),
   game("tiklive-stack-tower", "ShenPulse Stack Tower", {
     artwork: "catalog/shenpulse-stack-tower.png",
-    price: 19.99,
+    price: 9.99,
     requiresPro: true,
     source: "ShenPulse · Stack Tower autonome",
     description:
@@ -176,7 +190,7 @@ const INTERNAL_GAMES = [
   }),
   game("clash-of-live", "Clash Of ShenPulse", {
     artwork: "catalog/clash-of-shenpulse.jpg",
-    price: 19.99,
+    price: 12.99,
     requiresPro: true,
     source: "ShenPulse · Clash Of ShenPulse autonome",
     description:

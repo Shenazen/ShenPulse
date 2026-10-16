@@ -12,12 +12,12 @@ const { cleanAccountUid, accountWorkspaceKey, createAccountWorkspaceFromState, n
 const { normalizeRules, normalizeRuleActionSelection } = require("./state/rule-normalization");
 const { normalizeWheelSegmentActions } = require("./state/overlay-configs");
 const projections = require("./state/projections");
-const { collectGiftReferenceUpdates, applyGiftReferenceUpdates } = require("./state/gift-upgrade-migration");
+const { collectGiftReferenceUpdates, applyGiftReferenceUpdates, GIFT_IDENTITY_CORRECTION_REASON } = require("./state/gift-upgrade-migration");
 const { settingsForProfileImport } = require("./settings-access");
 
 /** Façade de l'état local : API stable, mutations, secrets et cadence des sauvegardes. */
 class StateStore {
-  constructor(userDataDirectory, safeStorage) {
+  constructor(userDataDirectory, safeStorage, { onPersistenceStatus } = {}) {
     this.directory = userDataDirectory;
     this.storage = new AtomicJsonStorage();
     this.workspaces = new WorkspaceManager(this);
@@ -28,6 +28,11 @@ class StateStore {
     this.secrets = {};
     this.writeTimer = null;
     this.runtimeWriteTimer = null;
+    this.persistenceRetryTimer = null;
+    this.persistenceFailure = null;
+    this.persistenceRetryAttempts = 0;
+    this.onPersistenceStatus = typeof onPersistenceStatus === "function" ? onPersistenceStatus : null;
+    this.persistenceStatusSignature = "";
     this.giftReferenceCatalog = [];
   }
 
@@ -45,6 +50,19 @@ class StateStore {
 
   /** Copie uniquement les chemins explicitement demandés par un service interne. */
   getStateProjection(paths) { return projections.getStateProjection(this.state, this.secrets, paths); }
+
+  /** Runtime-only diagnostic: no filesystem paths, state data or secrets. */
+  getPersistenceStatus() {
+    return { pending: Boolean(this.persistenceFailure), errorCode: this.persistenceFailure?.code || "",
+      retryScheduled: Boolean(this.persistenceRetryTimer), attempts: this.persistenceRetryAttempts };
+  }
+
+  #notifyPersistenceStatus() {
+    const status = this.getPersistenceStatus(), signature = JSON.stringify(status);
+    if (signature === this.persistenceStatusSignature) return;
+    this.persistenceStatusSignature = signature;
+    try { this.onPersistenceStatus?.(status); } catch { /* Diagnostics must never prevent a safe disk write. */ }
+  }
 
   /** Résumé visuel fréquent : top 5 donateurs, pas la base complète de l'audience. */
   getRuntimeState() { return projections.getRuntimeState(this.state, this.secrets); }
@@ -71,7 +89,10 @@ class StateStore {
     this.giftReferenceCatalog = Array.isArray(gifts) ? gifts : [];
     const updates = collectGiftReferenceUpdates(this.state, this.giftReferenceCatalog);
     if (!updates.length) return { changed: 0 };
-    const backupPath = this.#preserveGiftReferenceBackup();
+    let backupPath = this.#preserveGiftReferenceBackup();
+    if (updates.some((update) => update.reason === GIFT_IDENTITY_CORRECTION_REASON)) {
+      backupPath = this.#preserveGiftReferenceBackup("shenpulse-state.before-gift-identity-v2.json");
+    }
     // Une sauvegarde impossible interdit la migration ; aucune référence n'a
     // encore été modifiée lorsque l'écriture/validation précédente échoue.
     const changed = applyGiftReferenceUpdates(updates);
@@ -80,10 +101,10 @@ class StateStore {
   }
 
   /** Conserve l'état original une seule fois ; une sauvegarde invalide n'est jamais écrasée. */
-  #preserveGiftReferenceBackup() {
-    const backupPath = path.join(this.directory, "shenpulse-state.before-gift-references-v1.json");
+  #preserveGiftReferenceBackup(fileName = "shenpulse-state.before-gift-references-v1.json", state = this.state) {
+    const backupPath = path.join(this.directory, fileName);
     if (fs.existsSync(backupPath)) this.storage.parseJsonFile(backupPath);
-    else this.storage.atomicWrite(backupPath, JSON.stringify(this.state, null, 2), false);
+    else this.storage.atomicWrite(backupPath, JSON.stringify(state, null, 2), false);
     return backupPath;
   }
 
@@ -148,10 +169,9 @@ class StateStore {
     new WorkspaceManager({ state: nextState }).syncActiveAccountWorkspace();
     nextState.updatedAt = new Date().toISOString();
     this.storage.atomicWrite(this.filePath, JSON.stringify(nextState, null, 2));
-    if (this.writeTimer) clearTimeout(this.writeTimer);
-    if (this.runtimeWriteTimer) clearTimeout(this.runtimeWriteTimer);
-    this.writeTimer = null;
-    this.runtimeWriteTimer = null;
+    this.#clearWriteTimers();
+    this.persistenceFailure = null; this.persistenceRetryAttempts = 0;
+    this.#notifyPersistenceStatus();
     this.state = nextState;
     return this.getState();
   }
@@ -398,6 +418,9 @@ class StateStore {
     nextWorkspaces.loadAccountWorkspace(uid);
     const updates = collectGiftReferenceUpdates(nextState, this.giftReferenceCatalog);
     if (updates.length) this.#preserveGiftReferenceBackup();
+    if (updates.some((update) => update.reason === GIFT_IDENTITY_CORRECTION_REASON)) {
+      this.#preserveGiftReferenceBackup("shenpulse-state.before-gift-identity-v2.json", nextState);
+    }
     applyGiftReferenceUpdates(updates);
     nextWorkspaces.syncActiveProfileWorkspace();
     nextWorkspaces.syncActiveAccountWorkspace(false);
@@ -405,10 +428,9 @@ class StateStore {
     // Écrire avant le commit mémoire interdit qu'un import annoncé en échec
     // remplace la configuration actuelle lors d'un prochain flush automatique.
     this.storage.atomicWrite(this.filePath, JSON.stringify(nextState, null, 2));
-    if (this.writeTimer) clearTimeout(this.writeTimer);
-    if (this.runtimeWriteTimer) clearTimeout(this.runtimeWriteTimer);
-    this.writeTimer = null;
-    this.runtimeWriteTimer = null;
+    this.#clearWriteTimers();
+    this.persistenceFailure = null; this.persistenceRetryAttempts = 0;
+    this.#notifyPersistenceStatus();
     this.state = nextState;
     return this.getState();
   }
@@ -423,10 +445,10 @@ class StateStore {
     } else if (syncWorkspace) {
       // Les événements LIVE ne repoussent jamais une sauvegarde de configuration.
       if (this.writeTimer) clearTimeout(this.writeTimer);
-      this.writeTimer = setTimeout(() => this.#writeState(), 200);
+      this.writeTimer = setTimeout(() => this.#writeStateDeferred(), 200);
     } else if (!this.runtimeWriteTimer) {
       // Échéance fixe : un flux continu reste sauvegardé sans réécrire le fichier à chaque événement.
-      this.runtimeWriteTimer = setTimeout(() => this.#writeState(), RUNTIME_CHECKPOINT_MS);
+      this.runtimeWriteTimer = setTimeout(() => this.#writeStateDeferred(), RUNTIME_CHECKPOINT_MS);
       this.runtimeWriteTimer.unref?.();
     }
   }
@@ -438,12 +460,43 @@ class StateStore {
   }
 
   #writeState() {
+    this.#clearWriteTimers();
+    try {
+      this.workspaces.syncActiveAccountWorkspace();
+      this.storage.atomicWrite(this.filePath, JSON.stringify(this.state, null, 2));
+      this.persistenceFailure = null; this.persistenceRetryAttempts = 0;
+      this.#notifyPersistenceStatus();
+    } catch (error) {
+      const code = typeof error?.code === "string" && /^[A-Z0-9_]{1,40}$/.test(error.code) ? error.code : "PERSISTENCE_WRITE_FAILED";
+      if (!this.persistenceFailure) console.warn(`[ShenPulse] Sauvegarde locale en attente (${code}). Les donnees restent en memoire.`);
+      this.persistenceFailure = { code };
+      this.#notifyPersistenceStatus();
+      throw error; // Explicit saves/imports/flush must never report a false success.
+    }
+  }
+
+  #clearWriteTimers() {
     if (this.writeTimer) clearTimeout(this.writeTimer);
     if (this.runtimeWriteTimer) clearTimeout(this.runtimeWriteTimer);
+    if (this.persistenceRetryTimer) clearTimeout(this.persistenceRetryTimer);
     this.writeTimer = null;
     this.runtimeWriteTimer = null;
-    this.workspaces.syncActiveAccountWorkspace();
-    this.storage.atomicWrite(this.filePath, JSON.stringify(this.state, null, 2));
+    this.persistenceRetryTimer = null;
+  }
+
+  #writeStateDeferred() {
+    try { this.#writeState(); }
+    catch (error) {
+      // A timer exception would open Electron's blocking error dialog. Keep
+      // the failure visible in diagnostics and retry only filesystem locks,
+      // always serializing the newest in-memory state, never a stale snapshot.
+      const delays = [250, 1000, 3000];
+      if (!["EPERM", "EACCES", "EBUSY"].includes(error?.code) || this.persistenceRetryAttempts >= delays.length) return;
+      const delay = delays[this.persistenceRetryAttempts++];
+      this.persistenceRetryTimer = setTimeout(() => this.#writeStateDeferred(), delay);
+      this.persistenceRetryTimer.unref?.();
+      this.#notifyPersistenceStatus();
+    }
   }
 
   #writeSecrets() {
