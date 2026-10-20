@@ -30,11 +30,14 @@ dans [VALIDATION.md](VALIDATION.md) ; construire le package ne vaut pas soumissi
 4. Décrire et justifier la capacité `runFullTrust` : elle est requise pour les
    connexions locales aux jeux, OBS et périphériques choisis par l'utilisateur.
 5. Charger le package dans le produit Store `9NDR71Z41ZJG`.
-6. Lancer le Windows App Certification Kit puis un vol privé Partner Center.
+6. Lancer le Windows App Certification Kit et les essais locaux d’installation,
+   de lancement et de mise à jour.
 7. Tester la connexion de chaque plateforme avec de vrais identifiants de
    production et vérifier leurs conditions d'utilisation.
 
-La publication s’effectue dans le produit Partner Center déjà authentifié, depuis le navigateur intégré. Importer l’AppXUpload, actualiser les nouveautés françaises avec la version et les changements réels, vérifier les informations héritées de la fiche, puis contrôler le récapitulatif avant l’envoi. Les étapes de vol privé et de qualification restent requises ; l’import seul ne vaut pas soumission publique.
+La publication s’effectue dans le produit Partner Center déjà authentifié, depuis le navigateur intégré. Importer l’AppXUpload, actualiser les nouveautés françaises avec la version et les changements réels, vérifier les informations héritées de la fiche, puis contrôler le récapitulatif avant l’envoi. L’import seul ne vaut pas soumission publique.
+
+Consigne de distribution du propriétaire : application publique, détectable dans le Store, disponible sur tous les marchés proposés compatibles, notamment la France et la Belgique. Valider la sélection des pays dans sa fenêtre avec **OK**, puis enregistrer le brouillon et relire la sélection sauvegardée. Les vols privés ne font pas partie de la publication demandée ; en créer un uniquement sur demande explicite distincte. Les contrôles locaux et WACK restent nécessaires avant la soumission publique.
 
 ## Signature locale
 

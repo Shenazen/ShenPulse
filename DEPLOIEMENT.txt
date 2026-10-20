@@ -71,8 +71,11 @@ Prérequis :
    - Envoyer le fichier .appxupload dans le produit ShenPulse de Partner Center.
    - Mettre à jour la fiche Store, les captures et la classification d'âge.
    - Justifier la capacité runFullTrust.
-   - Publier d'abord sur un vol privé, installer et tester cette version.
-   - Soumettre en production seulement après validation du vol privé.
+   - Conserver une audience publique et une application détectable dans le Store.
+   - Sélectionner et valider tous les marchés proposés compatibles, dont la
+     France et la Belgique, puis relire le réglage enregistré.
+   - Après WACK et qualification locale, soumettre la version publique.
+     Les vols privés ne sont utilisés que sur demande explicite distincte.
    - Distribuer l'installateur .exe uniquement par le canal officiel prévu.
 
 Documents utiles :
