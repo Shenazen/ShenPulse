@@ -340,6 +340,7 @@ function registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog,
     requireGameAccess(targetId);
     await core.gameHub.prepareConnection(targetId);
     const result = await gameRuntime.launch(targetId);
+    await core.gameHub.waitForConnection(targetId);
     const nextSnapshot = await core.startGameSession(targetId);
     return { ...result, snapshot: nextSnapshot };
   });

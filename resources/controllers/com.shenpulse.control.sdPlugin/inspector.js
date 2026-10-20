@@ -15,6 +15,7 @@ function sendInspectorRequest(command, values = {}) {
 }
 
 function displayTargets(targets) {
+  document.getElementById("active-profile").textContent = targets.activeProfile?.name ? `Profil actif : ${targets.activeProfile.name}` : "Aucun profil actif";
   const entries = inspectorAction.endsWith(".profile") ? targets.profiles || [] : targets.actions || [];
   targetSelect.replaceChildren();
   const empty = document.createElement("option");
@@ -35,7 +36,7 @@ targetSelect.addEventListener("change", () => {
   inspectorSocket?.send(JSON.stringify({ event: "setSettings", context: inspectorContext, payload: inspectorSettings }));
 });
 document.getElementById("refresh").addEventListener("click", () => sendInspectorRequest("targets"));
-document.getElementById("pair").addEventListener("click", () => sendInspectorRequest("pair", { code: document.getElementById("code").value.trim(), endpoint: document.getElementById("endpoint").value.trim() }));
+setInterval(() => sendInspectorRequest("targets"), 5000);
 
 window.connectElgatoStreamDeckSocket = function (port, uuid, registerEvent, info, actionInfo) {
   const parsed = JSON.parse(actionInfo);
@@ -52,9 +53,9 @@ window.connectElgatoStreamDeckSocket = function (port, uuid, registerEvent, info
     try { message = JSON.parse(event.data); } catch { return; }
     if (message.event !== "sendToPropertyInspector") return;
     const payload = message.payload || {};
-    if (payload.error) { inspectorStatus.textContent = payload.error; return; }
-    inspectorStatus.textContent = payload.paired ? "ShenPulse connecté" : "Appairage nécessaire";
+    if (payload.error) { inspectorStatus.textContent = payload.error; document.getElementById("active-profile").textContent = "Profil indisponible"; targetSelect.disabled = true; return; }
+    targetSelect.disabled = false;
+    inspectorStatus.textContent = payload.paired ? "Connexion automatique à ShenPulse" : "Ouvrez ShenPulse sur ce PC";
     if (payload.targets) displayTargets(payload.targets);
-    else if (payload.paired) { document.getElementById("code").value = ""; sendInspectorRequest("targets"); }
   };
 };

@@ -64,6 +64,72 @@ fonction devait lire un état plus récent après l’opération.
 - La visibilité de l’annuaire est modifiée uniquement par le contrôle explicite
   prévu. Les identifiants chiffrés des intégrations passent par leurs API dédiées.
 
+## Livraison progressive des cadeaux TikTok
+
+`sources/tiktok-gift-delivery.js` suit les séries du connecteur direct avant la
+normalisation et avant la déduplication générique des messages. Les callbacks
+SDK typés et décodés partagent la même instance. Une série est identifiée par
+la salle, le spectateur, le cadeau, les destinataires et le `groupId` TikTok.
+
+Seule la hausse du compteur cumulatif est livrée : `1 → 2 → 5 → fin 5` produit
+des quantités `1, 1, 3`, puis aucune livraison supplémentaire. Si le total final
+passe de 2 à 5, les trois unités manquantes sont livrées. Un compteur ancien ou
+répété est ignoré, même si son `msgId` change. Chaque progression reçoit un ID
+distinct pour ne pas être confondue avec un autre incrément en aval.
+
+Les règles, seuils, roues, statistiques et overlays consomment ainsi des
+quantités supplémentaires dans `data.count`. Le cumul et l’identité de la série
+restent dans `data.raw.giftComboTotal` et `data.raw.giftComboId`. Les preuves de
+bonus Match conservent leur canal et leur déduplication indépendants.
+
+Le suivi reste en mémoire pendant la vie du runtime, y compris une reconnexion
+automatique. Une fermeture ou un redémarrage explicite de la source le détruit.
+Il conserve au plus 10 000 séries et n’évince jamais une série déjà livrée : à
+capacité, les nouvelles séries utilisent le total final historique. Une série
+sans `groupId` fiable conserve aussi ce repli, afin de ne pas fusionner deux
+combos successifs du même spectateur. Les cadeaux hors combo restent immédiats.
+
+## Préchargement des cadeaux
+
+Le catalogue complet est préchargé en mémoire à l’ouverture du renderer et dès
+qu’un compte, profil, @ TikTok ou identifiant de salle validé change. Les champs
+partagent cette copie et filtrent localement par nom, identifiant, alias ou prix.
+Une recherche ne bloque plus sur TikTok : le moteur renvoie son catalogue local
+et actualise les cadeaux du créateur en arrière-plan. La validation d’un nouveau
+@ lance aussi ce rafraîchissement sans attendre le réseau.
+
+Les notifications de cadeaux et de catalogue de salle mettent à jour le cache,
+y compris pendant le préchargement. Une réponse d’un ancien contexte est ignorée.
+Le cache reste uniquement en mémoire et conserve les références enregistrées dans
+les règles ; il ne remplace pas le stockage des profils.
+
+## Contrôleurs Stream Deck et MIDI
+
+`controller-plugin.js` installe le plugin par lecture et écriture des fichiers,
+y compris depuis `app.asar`. Il évite `fs.cpSync`, dont la résolution de dossiers
+virtuels échoue dans l'exécutable compilé. Le statut indique si le plugin est
+installé ; les commandes de page affichent leurs confirmations ou erreurs.
+
+Le plugin 1.1 utilise une connexion automatique par utilisateur Windows. ShenPulse
+remet une identité locale au plugin installé dans `local-connection.js`, sans code
+à saisir ni découverte anonyme par HTTP. Le plugin relit cette identité avant
+chaque requête. La révocation la retire, et l'arrêt du service vide le fichier.
+Les contrôles de compte, les jetons et les limites HTTP restent obligatoires.
+`/targets` expose le profil actif ; l'inspecteur actualise ses commandes toutes
+les cinq secondes et le serveur valide chaque action dans le profil courant.
+
+Le MIDI reste réservé au document principal authentifié. Chromium transmet
+également les demandes MIDI ordinaires sous le nom `midiSysex` : cet alias reçoit
+la même vérification d'origine, tandis que l'interface demande `sysex: false`.
+Les accès et ports sont libérés lors d'une déconnexion ou d'un changement de
+compte ; une demande tardive ne peut pas rétablir l'ancienne connexion.
+
+`controllers-page.test.js` couvre les clics et les vrais formulaires avec un
+service en mémoire. `controller-plugin.test.js` vérifie une installation depuis
+une archive ASAR sous Electron. `scripts/verify-controller-page.js` vérifie le
+rendu complet, les IPC, le plugin et l'autorisation Web MIDI dans Chromium,
+avec un profil et des données artificiels, sans produire d'effet matériel.
+
 ## Vérification
 
 `npm run verify` contrôle les imports, la syntaxe et les régressions. Les tests

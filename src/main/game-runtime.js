@@ -744,6 +744,7 @@ class GameRuntimeService {
 
   #installationContext() {
     return {
+      resourcesDirectory: path.join(__dirname, "..", "..", "resources"),
       app: this.app, store: this.store, dialog, getWindow: () => this.getWindow(),
       assertAccess: (...args) => this.assertAccess(...args), activeInstalls: this.activeInstalls,
       createAccessGuard: (gameId) => this.#accessGuard(gameId),
@@ -760,7 +761,6 @@ class GameRuntimeService {
       startMinecraftServer: (...args) => this.#startMinecraftServer(...args)
     };
   }
-
   #progress(gameId, progress) {
     const occurredAt = new Date().toISOString();
     const previous = this.installProgress.get(gameId) || {};

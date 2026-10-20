@@ -480,6 +480,7 @@ function refreshRendererStateComparison(previous, value) {
 api.on("state-changed", handleRendererStateChanged);
 
 api.on("gift-room-catalog-updated", (result) => {
+  updateGiftPickerCatalogCache(result);
   if (!rememberRoomGifts(result?.roomGifts, result?.room)) return;
   if (!rendererVisualsActive()) return;
   updateAllGiftPickerSelections();
@@ -491,6 +492,7 @@ api.on("gift-room-catalog-updated", (result) => {
 api.on("gift-catalog-updated", (gifts) => {
   if (!Array.isArray(gifts) || !gifts.length) return;
   rememberGifts(gifts);
+  updateGiftPickerCatalogCache({ gifts });
   if (rendererVisualsActive()) {
     updateAllGiftPickerSelections();
     refreshGiftVisuals();
@@ -498,7 +500,7 @@ api.on("gift-catalog-updated", (gifts) => {
   // Le lot est limité aux cadeaux modifiés. Le regroupement existant protège
   // les rafales et les fenêtres masquées ; les formulaires ouverts sont préservés.
   scheduleRendererRefresh({
-    redraw: ["actions", "rules", "sounds", "voice", "music", "games", "overlays", "live"].includes(currentPage)
+    redraw: ["actions", "rules", "sounds", "voice", "music", "games", "overlays"].includes(currentPage)
       && !dialog.open && !content.querySelector("form"),
     dashboard: currentPage === "dashboard"
   });
@@ -585,7 +587,6 @@ api.on("live-event", (event) => {
   rememberCreatorAudienceEvent(event);
   postOverlayPreviewEvent("event", event);
   scheduleRendererRefresh({
-    redraw: currentPage === "live",
     dashboard: currentPage === "dashboard",
     users: currentPage === "users"
   });

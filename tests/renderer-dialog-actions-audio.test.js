@@ -381,7 +381,7 @@ test("les médias, sons et cadeaux utilisent des bibliothèques recherchables", 
   assert.doesNotMatch(sourceOptions, /Inclus dans ShenPulse|Inclus & animations/);
   assert.match(renderer, /function giftPickerField/);
   assert.match(renderer, /data-gift-results/);
-  assert.match(renderer, /api\.searchGifts\(query, String\(query \|\| ""\)\.trim\(\) \? 1000 : 10000\)/);
+  assert.match(renderer, /api\.searchGifts\("", 10000\)/);
   assert.match(renderer, /data-gift-selected/);
   assert.match(renderer, /function updateGiftPickerSelection/);
   assert.match(renderer, /gift\.imageUrl/);

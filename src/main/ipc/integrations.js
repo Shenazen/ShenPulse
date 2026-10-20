@@ -26,6 +26,7 @@ function registerIntegrationsIpc({ handle, core, store, integrationChange }) {
   handle("controllers:status", () => core.controllerService.status());
   
   handle("controllers:pair", () => core.controllerService.pairingCode());
+  handle("controllers:connect-local", () => integrationChange(() => core.controllerService.connectLocalPlugin()));
   
   handle("controllers:install", () => core.controllerService.installPlugin());
   

@@ -10,6 +10,8 @@ const { assertAdminAccount } = require("./account-access");
 const { safeString, timingSafeToken } = require("./utils");
 const { jsonResponse, readRequestBody, listenLoopback, closeServer } = require("./integration-http");
 const { normalizeMidiMessage, controllerActionTargets } = require("../shared/controller-contract");
+const { installStreamDeckPlugin, streamDeckPluginDestination } = require("./controller-plugin");
+const { writeLocalControllerConnection } = require("./controller-local-connection");
 
 const DEFAULT_CONTROLLER_PORT = 21217;
 
@@ -39,12 +41,13 @@ function normalizeMapping(incoming = {}) {
 }
 
 class ControllerService {
-  constructor({ store, executeAction, selectProfile, pluginDirectory, pluginIconPath = "", authorize = () => assertAdminAccount(store) }) {
+  constructor({ store, executeAction, selectProfile, pluginDirectory, pluginIconPath = "", localPluginDirectory = streamDeckPluginDestination(), authorize = () => assertAdminAccount(store) }) {
     this.store = store;
     this.executeAction = executeAction;
     this.selectProfile = selectProfile;
     this.pluginDirectory = pluginDirectory;
     this.pluginIconPath = pluginIconPath;
+    this.localPluginDirectory = localPluginDirectory;
     this.authorize = authorize;
     this.server = null;
     this.pendingPairing = null;
@@ -65,6 +68,14 @@ class ControllerService {
   async start() {
     this.authorize();
     if (this.server?.listening) return this.status();
+    if (this.startPromise) return this.startPromise;
+    this.startPromise = this.startServer().finally(() => { this.startPromise = null; });
+    return this.startPromise;
+  }
+
+  async startServer() {
+    this.authorize();
+    if (this.server?.listening) return this.status();
     const server = http.createServer((request, response) => {
       this.handleRequest(request, response).catch((error) => {
         if (!response.headersSent) jsonResponse(response, error.statusCode || 400, { error: error.message });
@@ -76,10 +87,14 @@ class ControllerService {
     try { this.authorize(); }
     catch (error) { await closeServer(server); throw error; }
     this.server = server;
+    try { this.syncLocalConnection(); }
+    catch (error) { await closeServer(server); this.server = null; throw error; }
     return this.status();
   }
 
   async stop() {
+    if (this.startPromise) await this.startPromise.catch(() => {});
+    if (this.pluginDirectory) writeLocalControllerConnection(this.localPluginDirectory, null);
     this.pendingPairing = null;
     this.lastExecuted.clear();
     this.rateWindows.clear();
@@ -95,7 +110,9 @@ class ControllerService {
       endpoint: `http://127.0.0.1:${this.port()}`,
       devices: (settings.devices || []).map(({ secretId, ...device }) => device),
       mappings: settings.mappings || [],
-      pluginAvailable: Boolean(this.pluginDirectory && fs.existsSync(this.pluginDirectory))
+      pluginAvailable: Boolean(this.pluginDirectory && fs.existsSync(this.pluginDirectory)),
+      pluginInstalled: Boolean(this.localPluginDirectory && fs.existsSync(path.join(this.localPluginDirectory, "manifest.json"))),
+      automaticConnection: this.settings().autoConnectDisabled !== true && (settings.devices || []).some((device) => device.mode === "local-plugin")
     };
   }
 
@@ -139,8 +156,10 @@ class ControllerService {
     if (device?.secretId) this.store.setSecret(device.secretId, "");
     this.store.set("settings.controllers", {
       ...this.settings(),
+      ...(device?.mode === "local-plugin" ? { autoConnectDisabled: true } : {}),
       devices: (this.settings().devices || []).filter((item) => item.id !== deviceId)
     });
+    if (device?.mode === "local-plugin") writeLocalControllerConnection(this.localPluginDirectory, null);
     return this.status();
   }
 
@@ -201,21 +220,37 @@ class ControllerService {
     return this.executeTarget(mapping);
   }
 
-  installPlugin() {
+  async installPlugin() {
     this.authorize();
-    if (!this.pluginDirectory || !fs.existsSync(this.pluginDirectory)) throw new Error("Le plugin Stream Deck est introuvable.");
-    const appData = process.env.APPDATA;
-    if (!appData) throw new Error("Le dossier utilisateur Windows est indisponible.");
-    const destination = path.join(appData, "Elgato", "StreamDeck", "Plugins", "com.shenpulse.control.sdPlugin");
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.cpSync(this.pluginDirectory, destination, { recursive: true });
-    const iconPath = this.pluginIconPath || path.resolve(this.pluginDirectory, "../../../src/renderer/assets/brand/shenpulse-512.png");
-    if (fs.existsSync(iconPath)) {
-      const images = path.join(destination, "images");
-      fs.mkdirSync(images, { recursive: true });
-      for (const icon of ["plugin.png", "plugin@2x.png", "action.png", "action@2x.png"]) fs.copyFileSync(iconPath, path.join(images, icon));
+    const result = installStreamDeckPlugin(this.pluginDirectory, this.pluginIconPath);
+    await this.connectLocalPlugin();
+    return result;
+  }
+
+  async connectLocalPlugin() {
+    this.authorize();
+    if (!this.status().pluginInstalled) throw new Error("Installez d’abord le plugin Stream Deck depuis ShenPulse.");
+    this.store.set("settings.controllers", { ...this.settings(), autoConnectDisabled: false });
+    await this.start();
+    this.syncLocalConnection();
+    return this.status();
+  }
+
+  syncLocalConnection() {
+    if (!this.pluginDirectory || !this.status().pluginInstalled) return;
+    this.authorize();
+    if (this.settings().autoConnectDisabled === true) {
+      writeLocalControllerConnection(this.localPluginDirectory, null);
+      return;
     }
-    return { installed: true, path: destination, restartRequired: true };
+    let device = (this.settings().devices || []).find((entry) => entry.mode === "local-plugin");
+    let token = device && this.store.getSecret(device.secretId);
+    if (!token) {
+      token = crypto.randomBytes(32).toString("base64url");
+      device = { id: device?.id || `controller_${crypto.randomUUID()}`, name: "Stream Deck de ce PC", mode: "local-plugin", secretId: this.store.setSecret(device?.secretId || "", token), pairedAt: new Date().toISOString() };
+      this.store.set("settings.controllers", { ...this.settings(), devices: [...(this.settings().devices || []).filter((entry) => entry.id !== device.id), device] });
+    }
+    writeLocalControllerConnection(this.localPluginDirectory, { endpoint: this.status().endpoint, token, deviceId: device.id });
   }
 
   async handleRequest(request, response) {
@@ -256,8 +291,9 @@ class ControllerService {
     this.rateWindows.set(device.id, window);
     if (window.count > 12) return jsonResponse(response, 429, { error: "Trop de commandes par seconde." });
     if (url.pathname === "/targets" && request.method === "GET") {
-      const state = readState(this.store, ["rules", "profiles"]);
+      const state = readState(this.store, ["rules", "profiles", "session.profileId"]);
       return jsonResponse(response, 200, {
+        activeProfile: (state.profiles || []).filter((profile) => profile.id === state.session?.profileId).map(({ id, name }) => ({ id, name }))[0] || null,
         actions: controllerActionTargets(state).filter((item) => item.enabled).map(({ id, name }) => ({ id, name })),
         profiles: (state.profiles || []).map(({ id, name }) => ({ id, name }))
       });

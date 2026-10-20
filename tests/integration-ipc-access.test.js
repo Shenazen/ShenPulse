@@ -18,7 +18,7 @@ function fixture() {
   const operation = (name) => (...args) => { calls.push({ name, args }); return { ok: true, operation: name }; };
   const core = {
     kickService: Object.fromEntries(["status", "configure", "connect", "disconnect"].map((name) => [name, operation(`kick:${name}`)])),
-    controllerService: Object.fromEntries(["status", "pairingCode", "installPlugin", "revoke", "saveMapping", "removeMapping", "executeMapping"].map((name) => [name, operation(`controllers:${name}`)])),
+    controllerService: Object.fromEntries(["status", "pairingCode", "connectLocalPlugin", "installPlugin", "revoke", "saveMapping", "removeMapping", "executeMapping"].map((name) => [name, operation(`controllers:${name}`)])),
     liveDirectory: {
       suspendPublication: operation("directory:suspend"),
       resumePublication: operation("directory:resume"),
@@ -128,7 +128,7 @@ test("les aperçus directs IRL et jeu ne contournent pas l’abonnement via acti
 
 const integrationChannels = [
   "kick:status", "kick:configure", "kick:connect", "kick:disconnect",
-  "controllers:status", "controllers:pair", "controllers:install", "controllers:revoke",
+  "controllers:status", "controllers:pair", "controllers:connect-local", "controllers:install", "controllers:revoke",
   "controllers:mapping-save", "controllers:mapping-remove", "controllers:execute"
 ];
 

@@ -289,7 +289,7 @@ api.getSnapshot()
     notifyRendererStartupReady();
     // Les catalogues distants et la reprise d'installation ne conditionnent
     // ni la saisie du compte invité, ni la sortie du splash de cinq secondes.
-    hydrateGiftCatalog().catch(() => {});
+    preloadGiftPickerCatalog().catch(() => {});
     restoreActiveGameInstallProgress("", { renderWhenFound: true }).catch(() => {});
     setTimeout(() => {
       refreshStoreUpdate();

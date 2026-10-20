@@ -50,6 +50,39 @@ Le TCP client conserve le JSON terminé par NUL et la corrélation
 configurées. HTTP reste annulable ; UDP utilise un socket ponctuel.
 RCON conserve ses identifiants d'authentification et de commande.
 
+The Mortuary Assistant utilise `websocket-server` : ShenPulse écoute uniquement
+sur `127.0.0.1:58434` et le mod s'y connecte directement. Les effets sont envoyés
+en JSON (`type: 1`), avec une durée convertie de secondes en millisecondes.
+Seuls les accusés `type: 0` corrélés à la demande confirment le déclenchement ;
+les états du jeu et mises à jour des effets restent des événements séparés.
+La fermeture ou reconnexion rejette les demandes en attente sans les rejouer.
+
+Le ZIP versionné du mod est livré dans `resources/installer-assets`, contrôlé
+en taille et SHA-256 avant extraction. `scripts/build-the-mortuary-assistant-mod.ps1`
+reconstruit l'adaptation à partir de deux entrées épinglées, conserve les licences
+du chargeur et l'attribution, supprime la détection du logiciel compagnon et les
+mentions à l'écran. Les gardes et implémentations d'effets sont conservées.
+L'installation sauvegarde puis retire l'ancien DLL pour éviter deux mods actifs.
+Le prérequis .NET 6 est installé seulement s'il manque.
+
+Unturned réutilise `tcp-server` sur `127.0.0.1:58435`. Son module original
+ShenPulse utilise le chargeur natif `IModuleNexus`, sans logiciel compagnon.
+Les 27 commandes passent par une file bornée et sont exécutées sur le fil Unity
+avant confirmation. Le harnais C# vérifie la fragmentation, les bornes,
+la déduplication et la reconnexion. L’archive n’embarque aucune DLL du jeu.
+Voir [le contrat et la construction Unturned](unturned.fr.md).
+
+Crash Bandicoot N. Sane Trilogy utilise `tcp-server` sur `127.0.0.1:58436`.
+Son pont autonome rejoint le jeu Steam, vérifie la version et les emplacements
+mémoire, exécute 26 commandes et restaure les modifications temporaires.
+Voir [la qualification Crash](crash-bandicoot.fr.md).
+
+Les illustrations sont résolues par `game-catalog/interaction-art.js` à partir
+du registre local `resources/catalogs/game-interaction-art.json`. Seul le champ
+`image` des effets sans visuel est ajouté ; les identifiants, paramètres,
+transports et règles restent inchangés. Le même catalogue alimente les cartes,
+l’éditeur et les exports d’overlays. Voir [les visuels des interactions](interaction-art.fr.md).
+
 ## Tests et extensions
 
 `game-hub.test.js` et les tests d'intégration des jeux couvrent les vrais

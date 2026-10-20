@@ -14,6 +14,14 @@ const MINECRAFT_MODE_IDS = [
 ]
 
 const PUBLIC_GAME_GUIDES = {
+  unturned: {
+    description: 'Transformez votre survie Unturned en partie interactive : les spectateurs influencent les zombies, animaux, véhicules, objets, statistiques de survie et météo. ShenPulse installe son module autonome pour le mode solo sans BattlEye.',
+    interactions: 'Les 27 interactions couvrent les apparitions, les cadeaux d’objets, la vie, la nourriture, l’eau, l’immunité, l’endurance, l’oxygène, l’expérience, les largages aériens, l’inventaire, les projections et les explosions.'
+  },
+  'the-mortuary-assistant': {
+    description: 'Transformez le service de nuit de Rebecca en expérience interactive : vos spectateurs influencent l’embaumement, les hantises et la possession. ShenPulse installe le mod et communique directement avec le jeu sur votre PC. Jeu complet Steam requis.',
+    interactions: 'Les 22 interactions permettent notamment de révéler les indices du démon, préparer le mélange, modifier la vitesse de déplacement, inverser les commandes, éteindre les lumières et contrôler la progression de la possession.'
+  },
   thiercelieux: {
     description: 'Un jeu social de rôles cachés pour 3 à 8 participants, pensé pour faire entrer les spectateurs dans une partie animée en direct. ShenPulse gère la file d’attente, la distribution privée des rôles, les phases de jeu et les pronostics.',
     interactions: 'Le public peut ouvrir ou fermer les inscriptions, prolonger une phase et déclencher un hurlement. Le maître du jeu conserve la main sur le rythme, les rôles et la progression de la partie.'
@@ -179,8 +187,8 @@ const PUBLIC_GAME_GUIDES = {
     interactions: 'Les catégories référencées concernent l’argent, les services, la circulation, les citoyens, les catastrophes et la progression. Aucun effet n’est encore exécuté par ShenPulse.'
   },
   'crash-bandicoot-n-sane-trilogy': {
-    description: 'Une compilation de jeux de plateforme où Crash traverse des niveaux remplis de caisses, de pièges et de passages chronométrés. La fiche décrit les interactions recensées pour perturber ou aider une tentative.',
-    interactions: 'Les catégories documentées portent sur les vies, les fruits, les masques, la vitesse, les obstacles et la progression. Elles sont actuellement proposées à titre de référence.'
+    description: 'Une compilation de jeux de plateforme où Crash traverse des niveaux remplis de caisses, de pièges et de passages chronométrés. ShenPulse installe automatiquement son pont local pour la version Steam Windows.',
+    interactions: '26 interactions exécutables : vies, fruits Wumpa, caisses, sauts, vitesse, lumière, caméra, couleurs et taille du personnage. Les effets temporaires sont restaurés à expiration et à la déconnexion.'
   },
   'kingdom-come-deliverance-2': {
     description: 'Un jeu de rôle historique en monde ouvert où la santé, l’énergie, la nourriture, l’argent et la réputation structurent la progression. La passerelle locale permet au live de modifier ces paramètres pendant la partie.',

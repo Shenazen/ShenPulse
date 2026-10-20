@@ -185,10 +185,10 @@ function openTikTokEditor() {
       </div>
     </div>`,
     onSubmit: async (data) => {
-      snapshot = await api.saveTikTok({
+      acceptSnapshot(await api.saveTikTok({
         username: data.get("username")
-      });
-      snapshot = await api.startTikTok();
+      }));
+      acceptSnapshot(await api.startTikTok());
     }
   });
 }

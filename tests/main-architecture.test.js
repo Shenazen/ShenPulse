@@ -119,6 +119,7 @@ const HISTORICAL_CHANNELS = [
 ];
 
 const NEW_CHANNELS = [
+  "controllers:connect-local",
   "startup:ready",
   "sound:remove",
   "users:block", "users:block-list", "users:cleanup", "users:clear", "users:export", "users:import", "users:merge", "users:remove", "users:snapshot", "users:unblock",

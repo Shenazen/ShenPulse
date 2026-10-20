@@ -5,6 +5,26 @@ let pluginId = "";
 let integrationSettings = {};
 const actionSettings = new Map();
 const pendingCommands = new Set();
+let localConnectionPromise = null;
+
+function refreshLocalConnection() {
+  if (!window.document?.createElement) return Promise.resolve();
+  if (localConnectionPromise) return localConnectionPromise;
+  localConnectionPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `local-connection.js?t=${Date.now()}`;
+    script.onload = () => {
+      script.remove();
+      const connection = window.ShenPulseLocalConnection;
+      integrationSettings = connection?.token ? connection : {};
+      if (!integrationSettings.token) reject(new Error("Ouvrez ShenPulse et connectez Stream Deck depuis la page Contrôleurs."));
+      else resolve();
+    };
+    script.onerror = () => { script.remove(); integrationSettings = {}; reject(new Error("Installez le plugin depuis ShenPulse pour activer la connexion automatique.")); };
+    document.head.append(script);
+  }).finally(() => { localConnectionPromise = null; });
+  return localConnectionPromise;
+}
 
 function streamDeckSend(event, context, payload) {
   if (streamDeckSocket?.readyState !== WebSocket.OPEN) return;
@@ -19,6 +39,7 @@ function controllerEndpoint() {
 }
 
 async function controllerRequest(route, options = {}) {
+  if (route !== "/pair") await refreshLocalConnection();
   const response = await fetch(`${controllerEndpoint()}${route}`, {
     method: options.method || "GET",
     headers: { "Content-Type": "application/json", ...(integrationSettings.token && route !== "/pair" ? { Authorization: `Bearer ${integrationSettings.token}` } : {}) },
@@ -44,7 +65,7 @@ async function receiveStreamDeckEvent(message) {
     if (pendingCommands.has(context)) return;
     pendingCommands.add(context);
     try {
-      if (!settings.targetId || !integrationSettings.token) throw new Error("Appairez ce contrôleur et sélectionnez une commande.");
+      if (!settings.targetId) throw new Error("Sélectionnez une commande ShenPulse pour cette touche.");
       await controllerRequest("/execute", { method: "POST", body: { targetType: settings.targetType || (message.action?.endsWith(".profile") ? "profile" : "action"), targetId: settings.targetId } });
       streamDeckSend("showOk", context);
     } catch {

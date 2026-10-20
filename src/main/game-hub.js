@@ -23,6 +23,7 @@ const { httpBridgeFor } = require("./game-hub/http-bridges");
 const { assertProFeatureAccess, createProFeatureGuard } = require("./pro-feature-access");
 const visibility = require("../shared/visibility-catalog");
 const { ADMIN_OWNER_EMAIL } = require("./account-access");
+const { waitForGameConnection } = require("./game-hub/connection-ready");
 
 /** Façade compatible des jeux : accès, catalogue, connexions, exécution et événements. */
 class GameHub extends EventEmitter {
@@ -179,7 +180,7 @@ class GameHub extends EventEmitter {
       }
       return this.gameRuntime.superMarioKartConnectionStatus(pack.id);
     }
-    if (connector.type === "tcp-server") {
+    if (["tcp-server", "websocket-server"].includes(connector.type)) {
       const bridge = await this.#getServerBridge(pack, connector);
       const status = bridge.status();
       if (!status.connected) {
@@ -197,12 +198,14 @@ class GameHub extends EventEmitter {
   async prepareConnection(packId) {
     const pack = this.assertAccess(packId);
     const connector = this.#connector(pack);
-    if (connector.type !== "tcp-server") {
+    if (!["tcp-server", "websocket-server"].includes(connector.type)) {
       return { ok: true, listening: false, type: connector.type };
     }
     const bridge = await this.#getServerBridge(pack, connector);
     return { ...bridge.status(), type: connector.type };
   }
+
+  waitForConnection(packId, options) { return waitForGameConnection(this, packId, options); }
 
   /** Transmet les commandes au runtime Minecraft géré du pack. */
   async executeMinecraftCommands(packId, commands, { shouldExecute } = {}) {
@@ -257,7 +260,7 @@ class GameHub extends EventEmitter {
     let result;
     if (connector.type === "demo") {
       result = { status: "success", message: "Effet simulé." };
-    } else if (connector.type === "tcp-server") {
+    } else if (["tcp-server", "websocket-server"].includes(connector.type)) {
       result = await this.#sendTcpServer(pack, connector, payload, { assertAccess });
     } else if (connector.type === "tcp") {
       result = await this.#sendTcp(pack, connector, payload, { assertAccess });

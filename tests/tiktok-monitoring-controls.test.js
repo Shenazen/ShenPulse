@@ -166,11 +166,15 @@ test("stopping TikTok monitoring preserves manual and Kick-owned sessions", asyn
   }
 });
 
-test("saving an explicitly entered TikTok username normalizes and persists it before the separate start command", async (context) => {
+test("saving a TikTok username persists it and preloads gifts without waiting for the network or starting the source", { timeout: 5000 }, async (context) => {
   const { store, core, handlers } = workspace(context);
   let refreshes = 0;
   let starts = 0;
-  core.refreshGiftCatalog = async ({ force }) => { assert.equal(force, true); refreshes += 1; };
+  let finishRefresh;
+  core.refreshGiftCatalog = ({ force }) => {
+    assert.equal(force, true); refreshes += 1;
+    return new Promise((resolve) => { finishRefresh = resolve; });
+  };
   core.sourceHub.start = async () => { starts += 1; };
   await handlers.get("tiktok:save")({}, { username: "  @@New.Creator_42 !  " });
   const state = store.getState();
@@ -178,6 +182,7 @@ test("saving an explicitly entered TikTok username normalizes and persists it be
   assert.equal(state.connections.find((entry) => entry.id === "source_tiktok").config.username, "New.Creator_42");
   assert.equal(refreshes, 1);
   assert.equal(starts, 0);
+  finishRefresh();
   await handlers.get("tiktok:start")({});
   assert.equal(starts, 1);
 });

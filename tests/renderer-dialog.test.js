@@ -134,7 +134,7 @@ test("le tableau de bord utilise le bilan du LIVE, jamais les cumuls locaux ni l
   const app = readRendererSource();
   const dashboard = app.slice(
     app.indexOf("function renderDashboard"),
-    app.indexOf("function renderLive")
+    app.indexOf("function statCard")
   );
 
   assert.match(dashboard, /dashboardLiveSummary\(\)/);

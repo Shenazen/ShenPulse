@@ -23,8 +23,50 @@ const { GTA_LOCAL_BRIDGE, CULT_OF_THE_LAMB_BRIDGE, STARDEW_VALLEY_BRIDGE, TERRAR
 const { COIN_PUSHER_EFFECTS, COIN_PUSHER_DEFAULT_MAPPINGS } = require("./coin-pusher");
 const { game } = require("./builders");
 const { FIND_THE_NEEDLE_CONNECTOR, FIND_THE_NEEDLE_EFFECTS, FIND_THE_NEEDLE_DEFAULT_MAPPINGS, FIND_THE_NEEDLE_INTERACTION_CATALOG_VERSION } = require("../find-the-needle-catalog");
+const { THE_MORTUARY_ASSISTANT_BRIDGE } = require("./connectors");
+const { THE_MORTUARY_ASSISTANT_EFFECTS, THE_MORTUARY_ASSISTANT_DEFAULT_MAPPINGS, THE_MORTUARY_ASSISTANT_INTERACTION_CATALOG_VERSION } = require("../the-mortuary-assistant-catalog");
+const { UNTURNED_BRIDGE } = require("./connectors");
+const { UNTURNED_EFFECTS, UNTURNED_DEFAULT_MAPPINGS, UNTURNED_INTERACTION_CATALOG_VERSION } = require("../unturned-catalog");
+const { CRASH_BANDICOOT_EFFECTS, CRASH_BANDICOOT_DEFAULT_MAPPINGS, CRASH_BANDICOOT_INTERACTION_CATALOG_VERSION } = require("../crash-bandicoot-catalog");
 
 const INTERNAL_GAMES = [
+  game("crash-bandicoot-n-sane-trilogy", "Crash Bandicoot N. Sane Trilogy", {
+    included: true,
+    artwork: "catalog/crash-bandicoot-n-sane-trilogy.jpg",
+    source: "ShenPulse · pont local",
+    description: "26 interactions locales : vies, fruits Wumpa, caisses, sauts, vitesse, caméra et transformations visuelles.",
+    tags: ["inclus", "Steam", "plateforme", "pont local"],
+    connector: { type: "tcp-server", host: "127.0.0.1", port: 58436, timeoutMs: 12000, expectResponse: true, launchConnectionTimeoutMs: 30000, focusProcessOnManualTrigger: "CrashBandicootNSaneTrilogy" },
+    effects: CRASH_BANDICOOT_EFFECTS,
+    defaultMappings: CRASH_BANDICOOT_DEFAULT_MAPPINGS,
+    interactionCatalogVersion: CRASH_BANDICOOT_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.1"
+  }),
+  game("unturned", "Unturned", {
+    included: true,
+    artwork: "catalog/unturned.jpg",
+    source: "ShenPulse · module local",
+    description: "27 interactions locales pour la survie, les apparitions, l’inventaire et la météo. Jeu Steam gratuit, partie solo sans BattlEye.",
+    tags: ["inclus", "Steam", "survie", "solo", "module local"],
+    connector: UNTURNED_BRIDGE,
+    effects: UNTURNED_EFFECTS,
+    defaultMappings: UNTURNED_DEFAULT_MAPPINGS,
+    interactionCatalogVersion: UNTURNED_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.1"
+  }),
+  game("the-mortuary-assistant", "The Mortuary Assistant", {
+    included: true,
+    requiresPro: true,
+    artwork: "catalog/the-mortuary-assistant.jpg",
+    source: "ShenPulse · mod local",
+    description: "22 interactions locales pour influencer l’embaumement, les hantises et la possession de Rebecca. Jeu complet Steam requis.",
+    tags: ["inclus", "Steam", "horreur", "mod local"],
+    connector: THE_MORTUARY_ASSISTANT_BRIDGE,
+    effects: THE_MORTUARY_ASSISTANT_EFFECTS,
+    defaultMappings: THE_MORTUARY_ASSISTANT_DEFAULT_MAPPINGS,
+    interactionCatalogVersion: THE_MORTUARY_ASSISTANT_INTERACTION_CATALOG_VERSION,
+    installerVersion: "1.0.0"
+  }),
   game("find-the-needle-demo", "Find The Needle Demo", {
     included: true,
     ownerOnly: true,

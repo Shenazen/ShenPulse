@@ -12,12 +12,18 @@ async function commitInstallationDeployment({
   targetPath,
   backupRoot,
   tempRoot,
+  retiredFiles = [],
   assertAccess = () => {}
 }) {
   assertAccess();
   const source = path.resolve(deploymentRoot);
   const target = path.resolve(targetPath);
   const backup = path.resolve(backupRoot);
+  // Seuls des fichiers explicites sont retirés, avec sauvegarde préalable.
+  for (const relative of retiredFiles) {
+    safeChildPath(target, relative);
+    safeChildPath(backup, relative);
+  }
   const sourceStat = await fs.promises.stat(source).catch(() => null);
   if (!sourceStat?.isDirectory()) {
     throw new Error("Les fichiers préparés pour l’installation sont absents.");
@@ -29,6 +35,7 @@ async function commitInstallationDeployment({
   if (await canWriteToDirectory(target)) {
     assertAccess();
     await copyTreeWithBackup(source, target, target, backup, { assertAccess });
+    await retireInstallationFiles(target, backup, retiredFiles, assertAccess);
     return { elevated: false, fileCount: files.length };
   }
   assertAccess();
@@ -37,6 +44,7 @@ async function commitInstallationDeployment({
     targetPath: target,
     backupRoot: backup,
     tempRoot,
+    retiredFiles,
     fileCount: files.length,
     assertAccess
   });
@@ -64,6 +72,7 @@ async function commitInstallationDeploymentElevated({
   backupRoot,
   tempRoot,
   fileCount,
+  retiredFiles = [],
   assertAccess = () => {}
 }) {
   const elevationRoot = path.join(tempRoot, "elevated-commit");
@@ -108,6 +117,18 @@ async function commitInstallationDeploymentElevated({
     "    [IO.File]::Copy($fullSource, $destination, $true)",
     "    if ((Get-Item -LiteralPath $destination).Length -ne $file.Length) { throw ('Copy verification failed: ' + $relative) }",
     "  }",
+    ...retiredFiles.flatMap((relative) => [
+      `  $relative = Decode '${encode(relative)}'`,
+      "  $old = [IO.Path]::GetFullPath((Join-Path $targetRoot $relative))",
+      "  $saved = [IO.Path]::GetFullPath((Join-Path $backupRoot $relative))",
+      "  if (-not $old.StartsWith($targetPrefix, [StringComparison]::OrdinalIgnoreCase) -or -not $saved.StartsWith($backupPrefix, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe retired path.' }",
+      "  if ([IO.Directory]::Exists($old)) { throw 'A folder blocks mod migration.' }",
+      "  if ([IO.File]::Exists($old)) {",
+      "    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($saved)) | Out-Null",
+      "    [IO.File]::Copy($old, $saved, $true)",
+      "    [IO.File]::Delete($old)",
+      "  }"
+    ]),
     "  [IO.File]::WriteAllText($resultPath, 'OK', [Text.UTF8Encoding]::new($false))",
     "  exit 0",
     "} catch {",
@@ -175,6 +196,24 @@ async function collectFiles(directory) {
     }
   }
   return result;
+}
+
+async function retireInstallationFiles(target, backup, files, assertAccess) {
+  for (const relative of files) {
+    assertAccess();
+    const old = safeChildPath(target, relative);
+    const stat = await fs.promises.lstat(old).catch((error) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    });
+    if (!stat) continue;
+    if (!stat.isFile()) throw new Error("Un dossier ou lien bloque la migration du mod local.");
+    const saved = safeChildPath(backup, relative);
+    await fs.promises.mkdir(path.dirname(saved), { recursive: true });
+    await fs.promises.copyFile(old, saved);
+    assertAccess();
+    await fs.promises.unlink(old);
+  }
 }
 
 async function copyTreeWithBackup(

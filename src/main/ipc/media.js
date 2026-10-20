@@ -13,7 +13,8 @@ const { giftCatalogScope, sameGiftCatalogScope } = require("../core/gift-scope")
 function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dialog, net }) {
   handle("catalog:gifts", async (_event, query, limit) => {
     const scope = giftCatalogScope(store);
-    await core.refreshGiftCatalog();
+    // La recherche sert le cache local ; TikTok l'actualise en arrière-plan.
+    void core.refreshGiftCatalog().catch(() => {});
     if (!sameGiftCatalogScope(scope, giftCatalogScope(store))) throw new Error("Le compte, le profil ou le LIVE a changé. Relancez la recherche de cadeaux.");
     return core.giftCatalog.search(safeString(query, 200), Number(limit));
   });

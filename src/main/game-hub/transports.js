@@ -3,6 +3,7 @@
 const dgram = require("node:dgram");
 const net = require("node:net");
 const { SimpleTcpServerBridge } = require("../simple-tcp-server-bridge");
+const { SimpleWebSocketGameBridge } = require("../simple-websocket-game-bridge");
 
 /** Transports réseau isolés ; caches et événements restent ceux du hub. */
 class GameTransports {
@@ -20,7 +21,8 @@ class GameTransports {
       if (connector.closeCrowdControlOnConflict === true) {
         await this.crowdControlPortReleaser(connector.port);
       }
-      bridge = new SimpleTcpServerBridge({
+      const Bridge = connector.type === "websocket-server" ? SimpleWebSocketGameBridge : SimpleTcpServerBridge;
+      bridge = new Bridge({
         host: connector.host || "127.0.0.1",
         port: Number(connector.port),
         timeoutMs: Number(connector.timeoutMs || 12000),

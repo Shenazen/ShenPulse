@@ -146,7 +146,7 @@ function registerWorkspaceIpc({ handle, core, store, accountService = null }) {
       }
     });
     synchronizeGiftCatalogScope(core);
-    await core.refreshGiftCatalog({ force: true });
+    void core.refreshGiftCatalog({ force: true }).catch(() => {});
     notify(core, "state-changed", core.snapshot());
     return core.snapshot();
   });

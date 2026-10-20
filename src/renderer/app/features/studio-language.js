@@ -448,7 +448,7 @@ const STUDIO_ENGLISH = Object.freeze({
   "Donnez le rythme": "Set the rhythm", "Préparez la musique et les demandes de titres.": "Set up music and song requests.",
   "Gardez le contrôle": "Stay in control", "Pilotez vos actions avec Stream Deck et MIDI.": "Control your actions with Stream Deck and MIDI.",
   "PILOTAGE": "LIVE CONTROL", "CRÉATION": "CREATION", "SYSTÈME": "SYSTEM",
-  "Tableau de bord": "Dashboard", "Vue d’ensemble": "Dashboard", "Session en direct": "Live session",
+  "Tableau de bord": "Dashboard", "Vue d’ensemble": "Dashboard",
   "Studio Live": "Live Studio", "Utilisateurs": "Users", "Voix & sons": "Voice & sounds",
   "Musique": "Music", "Contrôleurs": "Controllers", "Jeux vidéo": "Video games",
   "Jeux & effets": "Games & effects", "Actions & déclencheurs": "Actions & triggers",

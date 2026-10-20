@@ -248,6 +248,7 @@ async function installGame(runtime, gameId) {
         targetPath,
         backupRoot,
         tempRoot,
+        retiredFiles: manifest.retiredFiles,
         assertAccess
       });
       assertAccess();

@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld("shenPulse", {
   controllers: {
     status: () => invoke("controllers:status"),
     pair: () => invoke("controllers:pair"),
+    connectLocal: () => invoke("controllers:connect-local"),
     install: () => invoke("controllers:install"),
     revoke: (id) => invoke("controllers:revoke", id),
     saveMapping: (mapping) => invoke("controllers:mapping-save", mapping),

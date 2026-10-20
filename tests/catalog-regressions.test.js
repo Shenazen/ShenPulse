@@ -173,10 +173,10 @@ test("tous les jeux réutilisent le générateur historique ShenazenOverlay", ()
   assert.match(gameOverlayGenerator, /PressStart2P-Regular\.ttf/);
 });
 
-test("Cult of the Lamb, Stardew Valley et Terraria affichent uniquement le générateur de cadeaux", () => {
+test("les jeux avec mod, dont Mortuary, affichent uniquement le générateur de cadeaux", () => {
   assert.match(
     renderer,
-    /const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set\(\[\s*"cult-of-the-lamb",\s*"stardew-valley",\s*"terraria"\s*\]\)/
+    /const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set\(\[\s*"crash-bandicoot-n-sane-trilogy",\s*"unturned",\s*"the-mortuary-assistant",\s*"cult-of-the-lamb",\s*"stardew-valley",\s*"terraria"\s*\]\)/
   );
   const branchStart = renderer.indexOf(
     "if (GAME_OVERLAY_GENERATOR_ONLY_IDS.has(pack.id))"

@@ -284,7 +284,7 @@ dialogBody.addEventListener("input", (event) => {
 
 document.addEventListener("focusin", (event) => {
   if (event.target.matches("[data-gift-picker]")) {
-    hydrateGiftCatalog(event.target.value, event.target);
+    openGiftPicker(event.target);
   }
 });
 
@@ -442,6 +442,11 @@ document.body.addEventListener("click", (event) => {
   if (!event.target.closest(".account-control")) {
     accountMenu.hidden = true;
     accountMenuButton.setAttribute("aria-expanded", "false");
+  }
+  const giftInput = event.target.closest(".gift-picker-input")?.querySelector("[data-gift-picker]");
+  if (giftInput && !giftInput.matches(":disabled") && !event.target.closest("[data-gift-clear]")) {
+    giftInput.focus({ preventScroll: true });
+    openGiftPicker(giftInput);
   }
   if (!event.target.closest("[data-gift-picker-root]")) {
     document.querySelectorAll("[data-gift-results]").forEach((results) => {

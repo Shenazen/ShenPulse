@@ -125,6 +125,75 @@ function giftPickerCatalogContext() {
     roomId: String(state?.settings?.tiktok?.roomId || "") };
 }
 
+let giftPickerCatalogCache = null;
+
+function giftPickerSearchText(gift) {
+  return normalizeGiftName(`${gift.name} ${gift.originalName || ""} ${gift.id} ${gift.cost} ` +
+    `${(gift.alternateNames || []).join(" ")} ${(gift.alternateIds || []).join(" ")}`);
+}
+
+function indexGiftPickerCatalog(entry, result) {
+  entry.result = { ...result, gifts: (result.gifts || []).slice(0, 10000), roomGifts: (result.roomGifts || []).slice(0, 10000) };
+  entry.gifts = entry.result.gifts.map((gift) => ({ gift, text: giftPickerSearchText(gift) }));
+  entry.roomGifts = entry.result.roomGifts.map((gift) => ({ gift, text: giftPickerSearchText(gift) }));
+}
+
+function cachedGiftPickerCatalog(query = "") {
+  const entry = giftPickerCatalogCache;
+  if (!entry?.result || entry.scope !== JSON.stringify(giftPickerCatalogContext())) return null;
+  const needle = normalizeGiftName(query), limit = needle ? 1000 : 10000;
+  const matching = (rows) => rows.filter(({ text }) => !needle || text.includes(needle)).map(({ gift }) => gift);
+  const gifts = matching(entry.gifts);
+  return { ...entry.result, total: gifts.length, gifts: gifts.slice(0, limit), roomGifts: matching(entry.roomGifts).slice(0, limit) };
+}
+
+async function preloadGiftPickerCatalog() {
+  const scope = JSON.stringify(giftPickerCatalogContext());
+  if (giftPickerCatalogCache?.scope !== scope) {
+    giftPickerCatalogCache = { scope, result: null, pending: null };
+    document.querySelectorAll("[data-gift-results]").forEach((results) => { results.hidden = true; });
+  }
+  const entry = giftPickerCatalogCache;
+  if (entry.result) return entry.result;
+  if (entry.pending) return entry.pending;
+  entry.pending = (async () => {
+    const result = await api.searchGifts("", 10000);
+    if (entry !== giftPickerCatalogCache || scope !== JSON.stringify(giftPickerCatalogContext())) return null;
+    const latest = mergeGiftPickerCatalog(result, entry.updates);
+    acceptGiftCatalogResult(latest);
+    indexGiftPickerCatalog(entry, latest);
+    entry.updates = null;
+    updateAllGiftPickerSelections();
+    return entry.result;
+  })();
+  try { return await entry.pending; }
+  finally { entry.pending = null; }
+}
+
+function synchronizeGiftPickerCatalog() {
+  if (giftPickerCatalogCache?.scope === JSON.stringify(giftPickerCatalogContext())) return;
+  void preloadGiftPickerCatalog().catch(() => {});
+}
+
+function mergeGiftPickerCatalog(source, update) {
+  const { gifts, room, roomGifts } = update || {};
+  const result = { ...source };
+  if (Array.isArray(gifts)) {
+    const byId = new Map((result.gifts || []).map((gift) => [String(gift.id), gift]));
+    gifts.forEach((gift) => byId.set(String(gift.id), gift));
+    result.gifts = [...byId.values()].slice(-10000);
+  }
+  if (giftPickerRoomMatches(room)) Object.assign(result, { room, roomGifts: roomGifts || [] });
+  return result;
+}
+
+function updateGiftPickerCatalogCache(update) {
+  const entry = giftPickerCatalogCache;
+  if (!entry || entry.scope !== JSON.stringify(giftPickerCatalogContext())) return;
+  if (!entry.result) entry.updates = mergeGiftPickerCatalog(entry.updates, update);
+  else indexGiftPickerCatalog(entry, mergeGiftPickerCatalog(entry.result, update));
+}
+
 function giftPickerRoomMatches(room) {
   const current = giftPickerCatalogContext();
   return Boolean(current.username && room && typeof room.username === "string" &&
@@ -152,6 +221,22 @@ function giftPickerResultButton(gift, variant = false) {
     ${gift.imageUrl ? `<img src="${escapeHtml(gift.imageUrl)}" alt="" loading="lazy">` : '<span class="gift-result-fallback">🎁</span>'}
     <span><strong>${escapeHtml(gift.name)}</strong><small>${escapeHtml(gift.cost)} pièce${gift.cost > 1 ? "s" : ""}${variant ? ` · ID ${escapeHtml(gift.id || "non précisé")}` : ""}</small></span>
     <span class="gift-result-select">Choisir</span></button>`;
+}
+
+function openGiftPicker(input) {
+  if (!input || input.matches(":disabled")) return;
+  synchronizeGiftPickerCatalog();
+  const root = input.closest("[data-gift-picker-root]");
+  const results = root?.querySelector("[data-gift-results]");
+  if (!results || !results.hidden) return;
+  document.querySelectorAll("[data-gift-results]").forEach((other) => {
+    other.hidden = true;
+  });
+  clearTimeout(giftSearchTimer);
+  results.innerHTML = '<p class="picker-empty">Chargement des cadeaux…</p>';
+  results.hidden = false;
+  positionGiftResults(root);
+  void hydrateGiftCatalog(input.value, input);
 }
 
 function renderGiftCatalogResults(result, input, query = "") {
@@ -195,10 +280,14 @@ async function hydrateGiftCatalog(query = "", input = null) {
   const current = () => requestId === String(giftRequestSequence) && JSON.stringify(giftPickerCatalogContext()) === scope &&
     (!input || document.contains(input) && input.dataset.giftRequestId === requestId);
   try {
-    // Keep the complete identity cache; only the visible options are grouped.
-    const result = await api.searchGifts(query, String(query || "").trim() ? 1000 : 10000);
-    if (!current()) return;
-    acceptGiftCatalogResult(result); renderGiftCatalogResults(result, input, query);
+    // Une ouverture et une recherche utilisent le catalogue complet préchargé.
+    let result = cachedGiftPickerCatalog(query);
+    if (!result) {
+      await preloadGiftPickerCatalog();
+      result = cachedGiftPickerCatalog(query);
+    }
+    if (!result || !current()) return;
+    renderGiftCatalogResults(result, input, query);
     if (input) updateGiftPickerSelection(input.closest("[data-gift-picker-root]"));
     else updateAllGiftPickerSelections();
   } catch {
@@ -292,6 +381,10 @@ function scheduleGiftCatalog(input) {
   }
   updateGiftPickerSelection(root);
   clearTimeout(giftSearchTimer);
+  if (cachedGiftPickerCatalog()) {
+    void hydrateGiftCatalog(input?.value || "", input);
+    return;
+  }
   giftSearchTimer = setTimeout(
     () => hydrateGiftCatalog(input?.value || "", input),
     160

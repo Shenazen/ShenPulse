@@ -23,7 +23,6 @@ const EXTERNAL_GAMES = [
   external("vampire-survivors", "Vampire Survivors", "https://resources.crowdcontrol.live/images/VampireSurvivors/box.jpg", "Crowd Control"),
   external("ark-survival-ascended", "ARK: Survival Ascended", "https://resources.crowdcontrol.live/images/ARKSurvivalAscended/box.jpg", "Crowd Control"),
   external("cities-skylines", "Cities Skylines", "https://resources.crowdcontrol.live/images/CitiesSkylines/box.jpg", "Crowd Control"),
-  external("crash-bandicoot-n-sane-trilogy", "Crash Bandicoot N. Sane Trilogy", "https://resources.crowdcontrol.live/images/CrashBandicootNSaneTrilogy/box.jpg", "Crowd Control"),
   external("kingdom-come-deliverance-2", "Kingdom Come: Deliverance II", "https://resources.crowdcontrol.live/images/KingdomComeDeliverance2/box.jpg", "Crowd Control"),
   external("deep-rock-galactic-survivor", "Deep Rock Galactic: Survivor", "https://d1jl7r3beoolrj.cloudfront.net/public/images/1750320384724_Deep%20Rock%20Galactic%20Survivor.png", "StreamToEarn"),
   external("hades-ii", "Hades II", "https://d1jl7r3beoolrj.cloudfront.net/public/images/1761054320515_Hades2_v2_.png", "StreamToEarn"),

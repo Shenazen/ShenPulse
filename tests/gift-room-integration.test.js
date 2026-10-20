@@ -57,18 +57,21 @@ test("gift recipient proof is preserved losslessly and never inferred from the s
   assert.deepEqual(payload.giftRecipientIds, [own]); assert.equal(payload.giftMessageRoomId, "123");
 });
 
-test("a gift search completed after a creator/account/profile/room switch is rejected", async () => {
+test("gift searches return the current local catalogue before a TikTok refresh completes", async () => {
   for (const key of ["creator", "account", "profile", "room"]) {
     const f = stateFixture(), handlers = new Map(); let release, searches = 0;
     registerMediaIpc({ handle: (channel, callback) => handlers.set(channel, callback), store: f.store,
       core: { refreshGiftCatalog: () => new Promise((done) => { release = done; }),
         giftCatalog: { search: () => { searches += 1; return {}; } } } });
-    const result = handlers.get("catalog:gifts")({}, "Rose", 100);
+    const result = await handlers.get("catalog:gifts")({}, "Rose", 100);
+    assert.deepEqual(result, {});
+    assert.equal(searches, 1, "La recherche locale n'attend pas le réseau TikTok.");
     if (key === "creator") f.state.settings.tiktok.username = "other";
     if (key === "account") f.state.settings.account.uid = "other";
     if (key === "profile") f.state.session.profileId = "other";
     if (key === "room") f.state.settings.tiktok.roomId = "456";
-    release(); await assert.rejects(result, /changé/); assert.equal(searches, 0);
+    release(); await Promise.resolve();
+    assert.equal(searches, 1, "Le rafraîchissement tardif ne rejoue pas une recherche pour l'ancien compte.");
   }
 });
 

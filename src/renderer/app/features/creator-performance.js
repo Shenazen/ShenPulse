@@ -145,7 +145,7 @@ function creatorPageStateParts(value, page = currentPage) {
     case "goals":
       return [state.goals, ...access];
     case "controllers":
-      return [state.settings?.controllers, state.rules, state.profiles, ...access];
+      return [state.settings?.controllers, state.session?.profileId, state.rules, state.profiles, ...access];
     case "settings":
       return [state.settings, ...access];
     case "games":

@@ -134,7 +134,7 @@ function workspace(context) {
   return { hub, connectors, matches, ordinary };
 }
 
-test("SourceHub emits proof immediately before streak completion; typed/decoded copies only emit once", async (context) => {
+test("SourceHub emits proof immediately; a gift without combo identity retains final-only delivery", async (context) => {
   const { hub, connectors, matches, ordinary } = workspace(context);
   await hub.start("source_tiktok"); const connector = connectors[0];
   const data = { ...packet(), giftType: 1, repeatEnd: false, repeatCount: 1 };

@@ -126,7 +126,7 @@ function canAccessPage(page) {
  * effet n'est lancé. Les restrictions de visibilité explicites restent prioritaires.
  */
 function showProNavigationOffers(pageId) {
-  const canonicalId = { rules: "actions", sounds: "voice", studio: "games" }[pageId] || pageId;
+  const canonicalId = { live: "dashboard", rules: "actions", sounds: "voice", studio: "games" }[pageId] || pageId;
   const page = pages.find((entry) => entry.id === canonicalId);
   if (!page || !canDisplayPage(page) || !ShenPulseProAccess.requiresProSection(canonicalId) ||
       isAccountAuthenticated() && hasProAccess()) return false;
@@ -189,6 +189,7 @@ function firstAccessiblePageId() {
 }
 
 function ensureCurrentPageAccess() {
+  if (currentPage === "live") currentPage = "dashboard";
   if (currentPage === "studio") currentPage = "games";
   const current = pages.find((page) => page.id === currentPage);
   if (!current || !canAccessPage(current)) {
@@ -197,7 +198,7 @@ function ensureCurrentPageAccess() {
 }
 
 function canNavigateTo(pageId) {
-  pageId = { rules: "actions", sounds: "voice", studio: "games" }[pageId] || pageId;
+  pageId = { live: "dashboard", rules: "actions", sounds: "voice", studio: "games" }[pageId] || pageId;
   return canAccessPage(pages.find((page) => page.id === pageId));
 }
 
@@ -560,9 +561,7 @@ function render({ prepareHidden = false } = {}) {
   const renderers = {
     home: renderCreatorHome,
     dashboard: renderDashboard,
-    live: renderLive,
     actions: renderActions,
-    rules: renderRules,
     overlays: renderOverlaysV2,
     sounds: renderSounds,
     irl: renderIrl,

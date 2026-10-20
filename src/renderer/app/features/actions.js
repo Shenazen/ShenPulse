@@ -1,56 +1,11 @@
 "use strict";
 
 /**
- * Pages LIVE, actions, déclencheurs et sorties média.
+ * Actions, déclencheurs et sorties média.
  *
  * Ce module est chargé comme script classique dans l'ordre déclaré par la page.
  * Il partage uniquement les contrats globaux documentés dans README.md.
  */
-
-function renderLive() {
-  if (!isAccountAuthenticated()) {
-    return renderPrivateDataPlaceholder(
-      "Session en direct protégée",
-      "Connectez-vous pour voir les événements reçus, les statistiques de session et les sources actives."
-    );
-  }
-  const state = snapshot.state;
-  return `
-    <div class="page-grid">
-      <div class="section-toolbar">
-        <div><h2>Flux temps réel</h2><p>Les derniers événements normalisés par le moteur.</p></div>
-        <div class="toolbar-actions">
-          <button class="button" data-action="test-event" data-type="chat">Tester le chat</button>
-          <button class="button" data-action="test-event" data-type="follow">Tester un follow</button>
-          <button class="button primary" data-action="test-event" data-type="gift">Tester un cadeau</button>
-        </div>
-      </div>
-      <section class="stats-grid">
-        ${statCard("Durée", formatDuration(state.session.startedAt), "◷", "var(--cyan)", state.session.running ? "LIVE" : "hors ligne")}
-        ${statCard("Événements", state.statistics.sessionEvents, "⌁", "var(--violet)", "session")}
-        ${statCard("Actions", state.statistics.sessionActions, "⎇", "var(--green)", "exécutées")}
-        ${statCard("Sources actives", state.connections.filter((item) => item.status === "connected").length, "◉", "var(--amber)", "connectées")}
-      </section>
-      <section class="card">
-        <header class="card-header"><div><p class="eyebrow">LIVE FEED</p><h3>Événements entrants</h3></div><span class="badge ${state.session.running ? "success" : ""}">${state.session.running ? "ÉCOUTE ACTIVE" : "EN PAUSE"}</span></header>
-        <div class="card-body list">
-          ${liveEvents.length ? liveEvents.map(liveEventRow).join("") : emptyInline("Démarrez la session ou envoyez un événement de test.")}
-        </div>
-      </section>
-    </div>`;
-}
-
-function liveEventRow(event) {
-  const detail = event.type === "chat" ? event.data.message : event.type === "gift" ? `${event.data.giftName} ×${event.data.count}` : event.type;
-  return `<div class="list-row">
-    <span class="event-icon">${eventIconMarkup(event.type, {
-      ...event.data,
-      giftName: event.data?.giftName
-    })}</span>
-    <div data-studio-user-content><h4>${escapeHtml(event.user?.displayName || "Viewer")}</h4><p>${escapeHtml(detail)} · ${escapeHtml(event.source)}</p></div>
-    <span class="event-time">${formatTime(event.timestamp)}</span>
-  </div>`;
-}
 
 let flattenedActionsSource = null;
 let flattenedActionsRows = [];

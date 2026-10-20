@@ -7,6 +7,7 @@ const { INTERNAL_GAMES } = require("./game-catalog/internal-games");
 const { EXTERNAL_GAMES } = require("./game-catalog/external-games");
 const { buildGameGuide } = require("./game-catalog/guides");
 const { interactionEffects } = require("./game-catalog/effects");
+const { interactionArtwork } = require("./game-catalog/interaction-art");
 
 function loadShenazenGameCatalog(resourcesDirectory) {
   const interactionsDirectory = path.join(resourcesDirectory, "game-interactions");
@@ -26,7 +27,7 @@ function loadShenazenGameCatalog(resourcesDirectory) {
       guide: buildGameGuide(entry, entry.effects)
     })),
     ...external
-  ].map((entry) => structuredClone(entry));
+  ].map(interactionArtwork(resourcesDirectory)).map((entry) => structuredClone(entry));
 }
 
 module.exports = { loadShenazenGameCatalog };

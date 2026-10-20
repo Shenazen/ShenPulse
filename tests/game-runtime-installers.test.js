@@ -18,6 +18,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
     [
       "clash-of-live",
       "color-strike",
+      "crash-bandicoot-n-sane-trilogy",
       "cult-of-the-lamb",
       "demonologist",
       "euro-truck-simulator-2",
@@ -31,9 +32,11 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       "stardew-valley",
       "super-mario-kart",
       "terraria",
+      "the-mortuary-assistant",
       "tiklive-climb",
       "tiklive-cube-wars",
-      "tiklive-stack-tower"
+      "tiklive-stack-tower",
+      "unturned"
     ]
   );
   assert.ok(

@@ -315,21 +315,11 @@ const NAVIGATION_ICONS = {
     <rect width="7" height="5" x="14" y="3" rx="1"></rect>
     <rect width="7" height="9" x="14" y="12" rx="1"></rect>
     <rect width="7" height="5" x="3" y="16" rx="1"></rect>`,
-  live: `
-    <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
-    <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path>
-    <circle cx="12" cy="12" r="2"></circle>
-    <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path>
-    <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"></path>`,
   actions: `
     <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path>`,
   sounds: `
     <circle cx="8" cy="18" r="4"></circle>
     <path d="M12 18V2l7 4"></path>`,
-  rules: `
-    <rect width="8" height="8" x="3" y="3" rx="2"></rect>
-    <path d="M7 11v4a2 2 0 0 0 2 2h4"></path>
-    <rect width="8" height="8" x="13" y="13" rx="2"></rect>`,
   overlays: `
     <path d="M10 7.75a.75.75 0 0 1 1.142-.638l3.664 2.249a.75.75 0 0 1 0 1.278l-3.664 2.25a.75.75 0 0 1-1.142-.64z"></path>
     <path d="M12 17v4"></path>
@@ -393,9 +383,7 @@ const pages = [
   { section: "PILOTAGE" },
   { id: "home", label: "Accueil", icon: "⌂", title: "Accueil", kicker: "BIENVENUE CHEZ SHENPULSE" },
   { id: "dashboard", label: "Vue d’ensemble", icon: "⌁", title: "Vue d’ensemble", kicker: "CENTRE DE CONTRÔLE" },
-  { id: "live", label: "Session en direct", icon: "◉", title: "Session en direct", kicker: "ÉVÉNEMENTS TEMPS RÉEL", count: () => isAccountAuthenticated() ? liveEvents.length : null },
   { section: "CRÉATION" },
-  { id: "rules", label: "Automatisations", icon: "⎇", title: "Automatisations", kicker: "MOTEUR DE RÈGLES", count: () => snapshot?.state.rules.length },
   { id: "overlays", label: "Overlays", icon: "▱", title: "Overlays & widgets", kicker: "SOURCES NAVIGATEUR" },
   { id: "games", label: "Jeux & effets", icon: "◇", title: "Jeux & effets", kicker: "INTERACTIONS EN JEU", count: () => snapshot?.packs.length },
   {
@@ -428,7 +416,7 @@ const pages = [
   }
 ];
 
-const creationPageIndex = pages.findIndex((page) => page.id === "rules");
+const creationPageIndex = pages.findIndex((page) => page.id === "overlays");
 pages.splice(
   creationPageIndex < 0 ? pages.length : creationPageIndex,
   0,
@@ -450,8 +438,7 @@ pages.splice(
   }
 );
 
-// Keep legacy routes for saved links, but present one creator workflow in navigation.
-pages.find((page) => page.id === "rules").hidden = () => true;
+// L’ancienne bibliothèque audio redirige vers Voix & sons.
 pages.find((page) => page.id === "sounds").hidden = () => true;
 Object.assign(pages.find((page) => page.id === "dashboard"), { label: "Tableau de bord", title: "Tableau de bord" });
 Object.assign(pages.find((page) => page.id === "games"), { label: "Jeux vidéo", title: "Jeux vidéo compatibles" });
@@ -502,6 +489,9 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  "crash-bandicoot-n-sane-trilogy",
+  "unturned",
+  "the-mortuary-assistant",
   "clash-of-live",
   "color-strike",
   "tiklive-climb",
@@ -528,6 +518,9 @@ const MANAGED_BIZHAWK_GAME_IDS = new Set([
 ]);
 
 const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set([
+  "crash-bandicoot-n-sane-trilogy",
+  "unturned",
+  "the-mortuary-assistant",
   "cult-of-the-lamb",
   "stardew-valley",
   "terraria"

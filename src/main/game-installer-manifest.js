@@ -4,6 +4,8 @@
 const { INTEGRATED_GAME_IDS } = require("./game-installers/constants");
 
 const GAME_INSTALLERS = Object.freeze({
+  "crash-bandicoot-n-sane-trilogy": require("./game-installers/crash-bandicoot-n-sane-trilogy"),
+  unturned: require("./game-installers/unturned"),
   "clash-of-live": require("./game-installers/clash-of-live"),
   "color-strike": require("./game-installers/color-strike"),
   "tiklive-climb": require("./game-installers/tiklive-climb"),
@@ -17,6 +19,7 @@ const GAME_INSTALLERS = Object.freeze({
   "cult-of-the-lamb": require("./game-installers/cult-of-the-lamb"),
   "stardew-valley": require("./game-installers/stardew-valley"),
   terraria: require("./game-installers/terraria"),
+  "the-mortuary-assistant": require("./game-installers/the-mortuary-assistant"),
   "minecraft-bedrock-box": require("./game-installers/minecraft-bedrock-box"),
   "minecraft-sandbox-3": require("./game-installers/minecraft-sandbox-3"),
   "minecraft-survival-plugin": require("./game-installers/minecraft-survival-plugin"),

@@ -49,7 +49,7 @@ test("le premier chargement apporte tout le catalogue, y compris les cadeaux apr
     assert.ok(gift?.imageUrl, `${name} doit retrouver son visuel`);
   }
   await context.hydrateGiftCatalog("Rose");
-  assert.equal(requests[1].limit, 1000);
+  assert.equal(requests.length, 1, "La recherche filtre le catalogue complet déjà préchargé en mémoire.");
 });
 
 test("les homonymes ne sont pas départagés par l'ordre d'arrivée ou seulement le prix", (t) => {

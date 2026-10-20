@@ -8,7 +8,7 @@
  */
 
 const ADMIN_VISIBILITY_SECTIONS = [
-  ["navigation", "Pages ShenPulse", "Les pages actuelles de ShenPulse et les routes conservées pour vos configurations"],
+  ["navigation", "Pages ShenPulse", "Les pages actuelles de ShenPulse"],
   ["features", "Fonctionnalités", "Les services réellement disponibles dans l’application"],
   ["actionTypes", "Actions disponibles", "Les actions proposées dans les éditeurs ShenPulseNew"],
   ["overlays", "Overlays", "Les 17 overlays réellement présents dans la galerie"],

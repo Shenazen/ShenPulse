@@ -34,9 +34,6 @@ const EXTERNAL_GUIDE_URLS = Object.freeze({
   "vampire-survivors": ["https://crowdcontrol.live/guides/vampiresurvivors/"],
   "ark-survival-ascended": ["https://crowdcontrol.live/game/ark-survival-ascended/"],
   "cities-skylines": ["https://crowdcontrol.live/guides/citiesskylines/"],
-  "crash-bandicoot-n-sane-trilogy": [
-    "https://crowdcontrol.live/guides/crashbandicootnsanetrilogy/"
-  ],
   "kingdom-come-deliverance-2": [
     "https://crowdcontrol.live/guides/kingdomcomedeliverance2/"
   ],
@@ -48,6 +45,67 @@ const EXTERNAL_GUIDE_URLS = Object.freeze({
 });
 
 const GAME_GUIDES = Object.freeze({
+  "crash-bandicoot-n-sane-trilogy": {
+    mode: "native",
+    summary: "ShenPulse installe son pont autonome et pilote 26 interactions dans Crash Bandicoot N. Sane Trilogy sur Steam.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Installez Crash Bandicoot N. Sane Trilogy depuis Steam et ouvrez-le une première fois.",
+      "Dans Installation, laissez ShenPulse détecter le dossier Steam et installer son pont local.",
+      "Associez vos cadeaux aux interactions et choisissez les quantités ou durées souhaitées.",
+      "Lancez le jeu depuis ShenPulse, Steam ouvert, puis chargez un niveau jouable. Si le jeu est déjà ouvert, le lancement depuis ShenPulse y connecte le pont."
+    ],
+    notes: [
+      "La version Windows Steam 2964270 est prise en charge. Un exécutable différent est refusé avant toute interaction.",
+      "Le pont fonctionne sur ce PC et ne modifie pas l’exécutable du jeu sur disque. Aucun autre logiciel d’interactions n’est requis.",
+      "Le lancement passe par Steam et attend la fenêtre du jeu ainsi que sa connexion à ShenPulse. Les éventuelles demandes de Steam doivent être validées pour poursuivre.",
+      "Les interactions demandent un personnage contrôlable, hors pause, chargement, cinématique et salle de téléportation.",
+      "Les effets temporaires sont restaurés pendant les pauses et reprennent au retour en jeu. Leur durée avance uniquement dans une phase jouable. Une déconnexion de ShenPulse les arrête et les restaure.",
+      "Deux envois du même effet prolongent sa durée. Pour les variantes incompatibles (saut, vitesse, lumière, caméra, taille), le dernier effet prend le relais en conservant le temps restant, dans la limite d’une heure.",
+      "Les compteurs respectent les limites du jeu : vies 0–99, fruits 0–255, caisses jusqu’au total du niveau. Une variation impossible est refusée ; les variations acceptées peuvent être sauvegardées par le jeu."
+    ],
+    sources: []
+  },
+  unturned: {
+    mode: "native",
+    summary: "ShenPulse installe son module autonome et pilote directement 27 interactions dans une partie solo Unturned.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Installez gratuitement Unturned depuis Steam, lancez-le une fois, puis fermez le jeu.",
+      "Dans Installation, laissez ShenPulse détecter le dossier Steam et installer son module. Les fichiers remplacés sont sauvegardés.",
+      "Associez les cadeaux ou autres déclencheurs aux interactions souhaitées. Les 27 interactions attendent vos associations.",
+      "Lancez Unturned depuis ShenPulse, sans BattlEye, puis chargez une partie solo et vérifiez la connexion avant le LIVE."
+    ],
+    notes: [
+      "Le module fonctionne en partie solo sur ce PC. Les serveurs multijoueurs et dédiés ne sont pas pris en charge.",
+      "Si vous lancez le jeu depuis Steam, choisissez le lancement sans BattlEye : les modules du client sont désactivés lorsque l’anti-triche est actif.",
+      "Les zombies apparaissent et poursuivent le joueur aussi hors des villes. Hors des zones de navigation, ils se déplacent au sol avec les collisions du jeu ; les murs et obstacles peuvent les bloquer. La carte doit contenir des modèles de zombies.",
+      "Le largage aérien vise la position du joueur. Une cargaison de largage doit être définie sur la carte.",
+      "L’ID 0 choisit un objet, animal ou véhicule aléatoire parmi les ressources chargées. Vous pouvez préciser un ID du jeu ou d’un mod installé.",
+      "Le mélange d’inventaire conserve les objets : ceux qui ne rentrent plus sont déposés au sol. L’explosion préserve les bâtiments et conteneurs.",
+      "Les apparitions sont limitées à 50 par commande. Testez les interactions dans une sauvegarde dédiée avant votre LIVE."
+    ],
+    sources: []
+  },
+  "the-mortuary-assistant": {
+    mode: "native",
+    summary: "Jeu complet Steam requis. ShenPulse installe le mod local et pilote directement les 22 interactions depuis ce PC.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Installez le jeu complet The Mortuary Assistant depuis Steam, puis fermez-le.",
+      "Dans Installation, laissez ShenPulse détecter le dossier du jeu et installer le mod ainsi que ses prérequis. Les fichiers remplacés sont sauvegardés.",
+      "Associez vos cadeaux ou autres déclencheurs aux interactions souhaitées, puis configurez vos overlays.",
+      "Lancez le jeu depuis ShenPulse et chargez une partie. Attendez la connexion locale, puis testez les interactions avant le LIVE."
+    ],
+    notes: [
+      "Le jeu et ShenPulse doivent rester ouverts sur le même PC. Le premier lancement du mod peut prendre plusieurs minutes pour préparer les fichiers du jeu.",
+      "Les interactions démoniaques nécessitent que le démon soit éveillé : elles sont indisponibles pendant le tutoriel d’ouverture.",
+      "Revenez dans la partie pour les interactions : le jeu doit être au premier plan, hors pause, menus, chargements et cinématiques. Certaines actions demandent un corps, une étape d’embaumement ou une place libre dans l’inventaire.",
+      "F8 affiche ou masque l’indicateur ShenPulse. F9 relance la connexion locale.",
+      "L’intégration cible le jeu complet Steam sous Windows. La démo n’est pas prise en charge."
+    ],
+    sources: []
+  },
   "find-the-needle-demo": {
     mode: "native",
     summary: "Démo Steam V62 / build 25867630, mod S2E Find The Needle 1.2.7 fourni séparément. ShenPulse pilote ses 37 commandes sur ce PC, sans service supplémentaire.",
@@ -478,7 +536,6 @@ function buildGameGuide(entry, effects) {
     "supermarket-simulator": "La mise à jour coopérative actuelle peut nécessiter une ancienne version prise en charge.",
     hades: "La version Microsoft Store/Game Pass peut limiter les mods : valide le pack localement.",
     "vampire-survivors": "Cette intégration cible une ancienne version du jeu.",
-    "crash-bandicoot-n-sane-trilogy": "La compatibilité du mod est partielle et doit être validée localement."
   };
   return {
     mode: native ? "native" : "reference",

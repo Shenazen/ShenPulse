@@ -141,20 +141,102 @@ test("a connection-status transition alone cannot discard a valid catalogue for 
   }
 });
 
-test("out-of-order and detached-picker responses cannot replace newer results or warm a stale identity cache", async (context) => {
+test("concurrent searches share one full preload and only the newest attached picker renders", async (context) => {
   const f = renderer(context), complete = [];
   f.sandbox.api.searchGifts = () => new Promise((resolve) => complete.push(resolve));
-  const first = f.sandbox.hydrateGiftCatalog("old", f.input), second = f.sandbox.hydrateGiftCatalog("new", f.input);
-  complete[1](result()); await second; complete[0](result({ gifts: [{ id: "stale", name: "Stale", cost: 1 }] })); await first;
-  assert.equal(f.sandbox.giftForIdentity("Stale", "stale"), null); assert.equal(f.list.options.length, 1);
-  const pending = f.sandbox.hydrateGiftCatalog("detached", f.input); f.root.remove(); complete[2](result({ gifts: [{ id: "detached", name: "Detached", cost: 1 }] }));
-  await pending; assert.equal(f.sandbox.giftForIdentity("Detached", "detached"), null);
+  const first = f.sandbox.hydrateGiftCatalog("1001", f.input), second = f.sandbox.hydrateGiftCatalog("1002", f.input);
+  assert.equal(complete.length, 1);
+  complete[0](result()); await Promise.all([first, second]);
+  assert.equal(f.list.options.length, 1); assert.equal(f.list.options[0].value, "Main Rose");
+  f.sandbox.snapshot.state.settings.tiktok.username = "next";
+  const pending = f.sandbox.hydrateGiftCatalog("detached", f.input); f.root.remove();
+  complete[1](result({ gifts: [{ id: "detached", name: "Detached", cost: 1 }] }));
+  await pending;
+  assert.equal(f.list.options[0].value, "Main Rose", "Un champ retiré ne reçoit aucun rendu tardif.");
+  assert.ok(f.sandbox.cachedGiftPickerCatalog(), "Le préchargement reste disponible même après fermeture du champ.");
 });
 
 test("failed lookups retain the saved technical gift and clearly report catalogue unavailability", async (context) => {
   const f = renderer(context); f.sandbox.api.searchGifts = async () => { throw new Error("fixture-only"); };
   await f.sandbox.hydrateGiftCatalog("", f.input); assert.match(f.results.textContent, /Catalogue indisponible/);
   assert.equal(f.input.value, "Cadeau historique"); assert.equal(f.root.querySelector("[data-gift-id-input]").value, "retired-id");
+});
+
+test("a full preload opens every picker and filters locally without waiting for another lookup", async (context) => {
+  const f = renderer(context), requests = [];
+  f.sandbox.api.searchGifts = async (...args) => { requests.push(args); return result(); };
+  await f.sandbox.preloadGiftPickerCatalog();
+  assert.deepEqual(requests, [["", 10000]]);
+  assert.equal(f.results.hidden, true, "Précharger n'ouvre aucun sélecteur.");
+  f.input.value = "";
+  f.sandbox.openGiftPicker(f.input);
+  assert.equal(f.results.hidden, false);
+  assert.ok(f.results.querySelector("[data-gift-choice]"), "Le rendu est immédiat, sans attendre une promesse.");
+  assert.doesNotMatch(f.results.textContent, /Chargement/);
+  f.input.value = "1002";
+  f.sandbox.scheduleGiftCatalog(f.input);
+  assert.equal(f.results.querySelector("[data-gift-choice]").dataset.giftId, "1002");
+  f.form.insertAdjacentHTML("beforeend", f.sandbox.giftPickerField("other", "Autre cadeau"));
+  const other = f.form.querySelector('[name="other"]');
+  f.sandbox.openGiftPicker(other);
+  assert.ok(other.closest("[data-gift-picker-root]").querySelector("[data-gift-choice]"));
+  assert.equal(f.results.hidden, true);
+  assert.equal(requests.length, 1, "Les différents champs partagent le même cache.");
+  assert.equal(f.form.querySelector('[name="draft"]').value, "Unrelated unsaved draft");
+});
+
+test("accepting a saved new username immediately preloads its catalogue and retires the former one", async (context) => {
+  const f = renderer(context);
+  await f.sandbox.preloadGiftPickerCatalog();
+  f.input.value = ""; f.sandbox.openGiftPicker(f.input);
+  const pending = [];
+  f.sandbox.api.searchGifts = () => new Promise((resolve) => pending.push(resolve));
+  const next = currentState(); next.settings.tiktok = { username: "@Next.Creator", roomId: "9002" };
+  f.sandbox.acceptSnapshot({ state: next });
+  assert.equal(pending.length, 1, "La validation lance le préchargement avant tout clic sur un cadeau.");
+  assert.equal(f.sandbox.cachedGiftPickerCatalog(), null);
+  assert.equal(f.results.hidden, true);
+  f.sandbox.openGiftPicker(f.input);
+  assert.equal(pending.length, 1, "Une ouverture pendant le préchargement partage sa requête.");
+  pending[0](result({ room: { username: "next.creator", roomId: "9002", available: true },
+    roomGifts: [{ id: "new-gift", name: "Cadeau du nouveau compte", cost: 2 }] }));
+  await f.sandbox.preloadGiftPickerCatalog();
+  await Promise.resolve();
+  assert.match(f.results.textContent, /next.creator/);
+  assert.equal(f.results.querySelector("[data-gift-choice]").dataset.giftId, "new-gift");
+  assert.equal(f.root.querySelector("[data-gift-id-input]").value, "retired-id", "Un changement de créateur conserve les références des règles.");
+});
+
+test("a newer creator preload wins even when the previous creator finishes last", async (context) => {
+  const f = renderer(context), pending = [];
+  f.sandbox.api.searchGifts = () => new Promise((resolve) => pending.push(resolve));
+  const previous = f.sandbox.preloadGiftPickerCatalog();
+  const next = currentState(); next.settings.tiktok = { username: "next", roomId: "9002" };
+  f.sandbox.acceptSnapshot({ state: next });
+  pending[1](result({ gifts: [{ id: "new", name: "Nouveau", cost: 2 }], room: null, roomGifts: [] }));
+  await f.sandbox.preloadGiftPickerCatalog();
+  pending[0](result({ gifts: [{ id: "old", name: "Ancien", cost: 1 }] }));
+  await previous;
+  assert.deepEqual(Array.from(f.sandbox.cachedGiftPickerCatalog().gifts, (gift) => gift.id), ["new"]);
+  assert.equal(f.sandbox.giftForIdentity("Ancien", "old"), null);
+});
+
+test("room and gift notifications arriving during or after preload update the cache without a network search", async (context) => {
+  const f = renderer(context); let complete, requests = 0;
+  f.sandbox.api.searchGifts = () => { requests++; return new Promise((resolve) => { complete = resolve; }); };
+  const pending = f.sandbox.preloadGiftPickerCatalog();
+  const room = { username: "creator", roomId: "8001", available: true };
+  f.sandbox.updateGiftPickerCatalogCache({ room, roomGifts: [{ id: "fresh", name: "Cadeau récent", cost: 12 }] });
+  complete(result({ room: { ...room, available: false }, roomGifts: [] }));
+  await pending;
+  assert.equal(f.sandbox.cachedGiftPickerCatalog().roomGifts[0].id, "fresh");
+  f.sandbox.updateGiftPickerCatalogCache({ gifts: [{ id: "fresh", name: "Cadeau récent", alternateNames: ["Alias cadeau"], alternateIds: ["old-id"], cost: 12 }] });
+  for (const query of ["Cadeau recent", "Alias cadeau", "old-id", "12"]) {
+    assert.equal(f.sandbox.cachedGiftPickerCatalog(query).gifts[0].id, "fresh");
+  }
+  f.sandbox.updateGiftPickerCatalogCache({ room: { username: "other", roomId: "9002", available: true }, roomGifts: [] });
+  assert.equal(f.sandbox.cachedGiftPickerCatalog().roomGifts[0].id, "fresh");
+  assert.equal(requests, 1);
 });
 
 test("both application and historical game host load the pure grouping module before their gift controls", () => {

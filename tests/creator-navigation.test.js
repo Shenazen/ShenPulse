@@ -92,6 +92,21 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     assert.equal(errors.length, 0, errors.map((error) => error.stack || error.message).join("\n"));
     const navigation = dom.window.document.getElementById("navigation");
     const pageOrder = dom.window.eval("pages.map(page => page.id).filter(Boolean)");
+    for (const retired of ["live", "rules"]) {
+      assert.equal(pageOrder.includes(retired), false);
+      assert.equal(navigation.querySelector(`[data-navigate="${retired}"]`), null);
+      assert.equal(dom.window.eval(`adminVisibilityCatalog().navigation.some(page => page.id === "${retired}")`), false);
+    }
+    const visibility = dom.window.eval(`canonicalAdminSiteSettings({ navigation: {
+      live: { scope: "hidden" }, lives: { scope: "admin" },
+      rules: { scope: "hidden" }, interactions: { scope: "admin" },
+      dashboard: { scope: "public" }, actions: { scope: "public" }
+    } })`);
+    for (const retired of ["live", "lives", "rules", "interactions"]) {
+      assert.equal(Object.hasOwn(visibility.navigation, retired), false);
+    }
+    assert.equal(visibility.navigation.dashboard.scope, "public");
+    assert.equal(visibility.navigation.actions.scope, "public");
     assert.equal(pageOrder.indexOf("music"), pageOrder.indexOf("voice") + 1,
       "Voix & sons et Musique restent côte à côte");
     assert.equal(pageOrder.indexOf("commands"), pageOrder.indexOf("irl") + 1,
@@ -289,6 +304,20 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     homeDashboardButton.click();
     await waitUntil(() => dom.window.document.querySelector("#simulator-form"), "Le bouton Accueil n’ouvre pas le dashboard.");
     assert.equal(dashboardNavigation.classList.contains("active"), true);
+    dom.window.eval('currentPage = "live"; render();');
+    assert.equal(dom.window.eval("currentPage"), "dashboard", "Un ancien accès Session en direct ouvre le tableau de bord.");
+    assert.ok(dom.window.document.querySelector("#simulator-form"));
+    const canNavigateToLive = dom.window.eval('canNavigateTo("live")');
+    dom.window.eval('siteVisibility = { navigation: { dashboard: { scope: "hidden" } } };');
+    assert.equal(dom.window.eval('canNavigateTo("live")'), false, "Le raccourci historique respecte les droits du tableau de bord.");
+    dom.window.eval('currentPage = "live"; ensureCurrentPageAccess();');
+    assert.equal(dom.window.eval("currentPage"), "home");
+    dom.window.eval('siteVisibility = snapshot.state.settings.siteVisibility;');
+    assert.equal(canNavigateToLive, true);
+    dom.window.eval('currentPage = "rules"; render();');
+    assert.equal(dom.window.eval("currentPage"), "actions");
+    assert.ok(dom.window.document.querySelector('[data-automation-table="advanced-rules"]'), "Les automatisations avancées restent disponibles dans Actions.");
+    dom.window.eval('actionsSection = "actions";');
     homeNavigation.click();
     await waitUntil(() => dom.window.document.querySelector(".creator-home-page"), "Le retour à l’accueil échoue.");
     assert.equal(homeNavigation.classList.contains("active"), true);
@@ -335,6 +364,26 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     await waitUntil(() => dom.window.document.querySelector('[data-action="add-sound"]'), "L'atelier de sons doit rester accessible.");
     dom.window.document.querySelector('#navigation [data-navigate="dashboard"]').click();
     await waitUntil(() => dom.window.document.querySelector("#simulator-form"), "Le dashboard n’est pas rendu après navigation explicite.");
+    const giftInput = dom.window.document.querySelector('#simulator-form [data-gift-picker]');
+    const giftRoot = giftInput.closest("[data-gift-picker-root]");
+    const giftResults = giftRoot.querySelector("[data-gift-results]");
+    giftInput.click();
+    assert.equal(giftResults.hidden, false, "Un clic dans le champ ouvre immédiatement le sélecteur.");
+    await waitUntil(() => giftResults.querySelector("[data-gift-choice]"), "Les cadeaux ne se chargent pas après un seul clic.");
+    giftInput.focus();
+    giftResults.querySelector("[data-gift-choice]").click();
+    assert.equal(giftResults.hidden, true);
+    assert.equal(giftRoot.querySelector("[data-gift-id-input]").value, "5655");
+    giftInput.click();
+    assert.equal(giftResults.hidden, false, "Le champ déjà actif se rouvre aussi d’un seul clic.");
+    await waitUntil(() => giftResults.querySelector("[data-gift-choice]"), "Le sélecteur ne se rouvre pas après un choix.");
+    giftRoot.querySelector("[data-gift-clear]").click();
+    assert.equal(giftResults.hidden, true, "Effacer ferme le sélecteur et ne provoque pas une réouverture.");
+    assert.equal(giftInput.value, "");
+    giftRoot.querySelector("[data-gift-selected]").click();
+    assert.equal(giftResults.hidden, false, "L’icône fait partie de la même zone de saisie.");
+    await waitUntil(() => giftResults.querySelector("[data-gift-choice]"), "Le catalogue ne se charge pas depuis la zone de saisie.");
+    giftRoot.querySelector("[data-gift-clear]").click();
     const username = dom.window.document.querySelector('#simulator-form [name="username"]');
     username.value = "alice_en_test";
     username.focus();

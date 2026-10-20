@@ -319,7 +319,7 @@ class ShenPulseCore extends EventEmitter {
 
   async startCreatorIntegrations() {
     if (!hasAuthenticatedAccount(this.store)) return;
-    if (readState(this.store, ["settings.controllers.devices"]).settings?.controllers?.devices?.length) {
+    if (this.controllerService.status().pluginInstalled || readState(this.store, ["settings.controllers.devices"]).settings?.controllers?.devices?.length) {
       try { await this.controllerService.start(); }
       catch (error) { this.#activity("warning", "controller", "Contrôleurs indisponibles", error.message); }
     }

@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.0.3',
-  title: 'Des cadeaux justes, un LIVE plus fluide.',
-  summary: 'Retrouve les cadeaux du créateur suivi, une écoute locale indépendante de Studio et un suivi des périodes de bonus Matchs renforcé.',
+  version: '2.0.4',
+  title: 'Des interactions plus rapides, de nouveaux jeux.',
+  summary: 'Déclenche les interactions pendant les combos de cadeaux, prépare tes cadeaux plus vite et retrouve de nouveaux jeux avec des visuels pour leurs interactions.',
   highlights: [
-    ['Choisis le bon cadeau', 'Le sélecteur privilégie les cadeaux du créateur et distingue les variantes sans confondre leurs identifiants. Cœur sur moi reste rouge ; les cadeaux personnels gardent leur nom.'],
-    ['Écoute avant de diffuser', 'Les préécoutes restent dans ShenPulse, sans source Studio à ajouter. Retire aussi un son de ta bibliothèque importée sans modifier les actions qui l’utilisent.'],
-    ['Prépare les temps forts', 'Le chronomètre Matchs avance chaque seconde et les périodes ×2/×3 confirmées sont suivies séparément. Un secours visuel Windows facultatif est proposé pour les bandeaux non transmis par TikTok.']
+    ['Accélère les cadeaux', 'Les interactions partent pendant les combos, avec suivi des quantités et déduplication. Le sélecteur de cadeaux s’ouvre en un clic et prépare la liste du créateur en mémoire.'],
+    ['Découvre les nouveaux jeux', 'Crash Bandicoot N. Sane Trilogy, The Mortuary Assistant et Unturned rejoignent les intégrations. Les interactions disposent de visuels adaptés à leur jeu et à leur effet.'],
+    ['Pilote ton profil', 'Les contrôleurs locaux peuvent retrouver automatiquement le profil actif. Les boutons de la page Contrôleurs permettent de connecter le plugin et de gérer ses commandes.']
   ]
 }
 

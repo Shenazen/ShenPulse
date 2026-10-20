@@ -9,8 +9,10 @@ const { Readable, Transform } = require("node:stream");
 const { ASSET_ORIGIN, ASSET_SECRET, LAUNCHER_VERSION } = require("./constants");
 const { safeInstallerAssetUrl, sha256File } = require("./paths");
 const { installationSlotPercent } = require("./housekeeping");
+const { stageBundledAsset } = require("./bundled-assets");
 
 async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 0, total = 1 } = {}) {
+    if (asset.bundledPath) return stageBundledAsset(runtime, gameId, asset, destinationPath, { index, total });
     const pathname = `/api/installer-assets/${encodeURIComponent(
       gameId
     )}/${encodeURIComponent(asset.id)}`;

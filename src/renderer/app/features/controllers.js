@@ -1,13 +1,14 @@
 "use strict";
 
 let controllerStatus = null;
-let controllerPairing = null;
 let midiAccess = null;
 let midiLearnActive = false;
 let midiLearnedMessage = null;
 let midiLastMessage = null;
 let kickConnectionStatus = null;
 let controllerWorkspaceUid = "";
+let midiConnectionPromise = null;
+let midiConnectionGeneration = 0;
 
 function ensureControllerWorkspace() {
   const uid = String(snapshot?.state.settings.account?.uid || "");
@@ -15,7 +16,6 @@ function ensureControllerWorkspace() {
   disconnectMidiController();
   controllerWorkspaceUid = uid;
   controllerStatus = null;
-  controllerPairing = null;
   kickConnectionStatus = null;
   return true;
 }
@@ -30,19 +30,23 @@ function renderControllers() {
   const settings = snapshot.state.settings.controllers || {};
   const devices = controllerStatus?.devices || settings.devices || [];
   const mappings = controllerStatus?.mappings || settings.mappings || [];
+  const activeProfile = snapshot.state.profiles?.find((profile) => profile.id === snapshot.state.session?.profileId);
+  const automatic = controllerStatus?.automaticConnection ?? (settings.autoConnectDisabled !== true && devices.some((device) => device.mode === "local-plugin"));
   const inputs = midiAccess ? [...midiAccess.inputs.values()].filter((input) => input.state !== "disconnected") : [];
   return `${renderStudioHero("controllers", "Votre régie, au bout des doigts", "Lancez vos actions et changez de profil depuis votre matériel.")}<div class="section-toolbar"><span class="eyebrow">STREAM DECK & MIDI</span><button class="button" data-action="controller-refresh">Actualiser</button></div>
     <div class="settings-layout">
-      <section class="card"><header class="card-header"><div><p class="eyebrow">STREAM DECK</p><h3>Un bouton, une réaction</h3></div><span class="badge ${devices.length ? "success" : ""}">${devices.length} appairé${devices.length > 1 ? "s" : ""}</span></header>
-        <div class="card-body"><p>Installez le plugin ShenPulse, ajoutez une commande dans Stream Deck, puis saisissez le code d’appairage. Choisissez une action ou un profil pour chaque touche.</p>
-          <div class="button-row"><button class="button primary" data-action="controller-install">Installer le plugin</button><button class="button" data-action="controller-pair">Appairer un appareil</button></div>
-          ${controllerPairing && controllerPairing.expiresAt > Date.now() ? `<div class="notice" style="margin-top:16px"><strong style="font-size:24px;letter-spacing:4px">${escapeHtml(controllerPairing.code)}</strong><p>Code valable 2 minutes. Saisissez-le dans les réglages de la touche Stream Deck.</p><small>${escapeHtml(controllerPairing.endpoint)}</small></div>` : ""}
+      <section class="card"><header class="card-header"><div><p class="eyebrow">STREAM DECK</p><h3>Un bouton, une réaction</h3></div><span class="badge ${devices.length ? "success" : ""}">${automatic ? "Connexion automatique" : `${devices.length} appareil${devices.length > 1 ? "s" : ""}`}</span></header>
+        <div class="card-body"><p>Installez le plugin ShenPulse, puis ajoutez une touche dans Stream Deck. La connexion à ce PC est automatique, sans code. Les commandes suivent le profil ouvert dans ShenPulse.</p>
+          <p class="muted">Profil actif : ${escapeHtml(activeProfile?.name || "Aucun")}</p>
+          <div class="button-row"><button class="button primary" data-action="controller-install">Installer le plugin</button><button class="button" data-action="controller-connect-local">Reconnecter Stream Deck</button></div>
+          ${controllerStatus?.pluginInstalled ? '<p class="muted">Plugin installé. Relancez Stream Deck pour y retrouver les commandes ShenPulse.</p>' : ""}
           ${devices.map((device) => `<div class="list-row"><span class="event-icon">▦</span><div><h4>${escapeHtml(device.name)}</h4><p>Appairé le ${escapeHtml(new Date(device.pairedAt).toLocaleDateString("fr-FR"))}</p></div><button class="button small ghost" data-action="controller-revoke" data-id="${escapeHtml(device.id)}">Révoquer</button></div>`).join("")}
         </div>
       </section>
       <section class="card"><header class="card-header"><div><p class="eyebrow">MIDI</p><h3>Vos pads et contrôleurs</h3></div><span class="badge ${inputs.length ? "success" : ""}">${inputs.length ? `${inputs.length} entrée${inputs.length > 1 ? "s" : ""}` : "Non connecté"}</span></header>
         <div class="card-body"><p>Autorisez l’accès MIDI, puis appuyez sur un pad ou bougez un contrôle pour lui attribuer une action. Les associations restent enregistrées sur cet appareil.</p>
-          <div class="button-row"><button class="button primary" data-action="controller-midi-connect">${midiAccess ? "Rechercher les appareils" : "Connecter le MIDI"}</button><button class="button" data-action="controller-midi-learn" ${midiAccess ? "" : "disabled"}>${midiLearnActive ? "En attente d’un signal…" : "Apprendre une commande"}</button>${midiAccess ? '<button class="button ghost" data-action="controller-midi-disconnect">Déconnecter</button>' : ""}</div>
+          <div class="button-row"><button class="button primary" data-action="controller-midi-connect">${midiAccess ? "Rechercher les appareils" : "Connecter le MIDI"}</button><button class="button" data-action="controller-midi-learn">${midiLearnActive ? "Annuler l’apprentissage" : "Apprendre une commande"}</button>${midiAccess ? '<button class="button ghost" data-action="controller-midi-disconnect">Déconnecter</button>' : ""}</div>
+          ${midiLearnActive ? '<p class="muted">En attente d’un signal : appuyez sur un pad ou bougez un contrôle.</p>' : ""}
           ${inputs.map((input) => `<p><span class="badge success">MIDI</span> ${escapeHtml(input.name || "Entrée MIDI")} · ${escapeHtml(input.manufacturer || "")}</p>`).join("")}
           ${midiLastMessage ? `<p class="muted" data-midi-status>Dernier signal : canal ${midiLastMessage.channel}, ${midiLastMessage.kind === "note" ? "note" : "contrôle"} ${midiLastMessage.number}, valeur ${midiLastMessage.value}.</p>` : ""}
         </div>
@@ -58,36 +62,67 @@ function renderControllers() {
 
 async function refreshControllers({ renderPage = true } = {}) {
   ensureControllerWorkspace();
-  controllerStatus = await api.controllers.status();
+  const owner = controllerWorkspaceUid;
+  const status = await api.controllers.status();
+  if (owner !== String(snapshot?.state.settings.account?.uid || "") || !isVerifiedAdminSession()) return null;
+  controllerStatus = status;
   if (renderPage) render();
   return controllerStatus;
 }
 
 async function connectMidiController() {
-  if (!navigator.requestMIDIAccess) throw new Error("L’accès MIDI est indisponible sur cette version de Windows.");
-  midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-  const bind = () => {
-    for (const input of midiAccess.inputs.values()) input.onmidimessage = (event) => receiveMidiMessage(event, input);
-  };
-  midiAccess.onstatechange = () => { bind(); if (currentPage === "controllers") render(); };
-  bind();
-  await refreshControllers({ renderPage: false });
-  render();
-  if (!midiAccess.inputs.size) toast("MIDI autorisé", "Branchez votre contrôleur USB pour commencer.");
+  if (midiConnectionPromise) return midiConnectionPromise;
+  if (!navigator.requestMIDIAccess) throw new Error("L’accès MIDI est indisponible dans cette version de ShenPulse.");
+  const generation = midiConnectionGeneration;
+  const owner = controllerWorkspaceUid;
+  const operation = (async () => {
+    const access = midiAccess || await navigator.requestMIDIAccess({ sysex: false });
+    if (generation !== midiConnectionGeneration || owner !== String(snapshot?.state.settings.account?.uid || "") || !isVerifiedAdminSession()) {
+      if (access !== midiAccess) releaseMidiController(access);
+      return false;
+    }
+    midiAccess = access;
+    const bind = () => {
+      if (midiAccess !== access) return;
+      for (const input of access.inputs.values()) input.onmidimessage = (event) => receiveMidiMessage(event, input);
+    };
+    access.onstatechange = () => { bind(); if (midiAccess === access && currentPage === "controllers") render(); };
+    bind();
+    await refreshControllers({ renderPage: false });
+    if (midiAccess !== access) return false;
+    render();
+    const count = [...access.inputs.values()].filter((input) => input.state !== "disconnected").length;
+    toast(count ? "MIDI connecté" : "Aucun appareil MIDI détecté", count ? `${count} entrée(s) disponible(s). Vous pouvez apprendre une commande.` : "Branchez votre contrôleur MIDI au PC. Sa détection sera automatique.");
+    return true;
+  })();
+  midiConnectionPromise = operation;
+  try { return await operation; }
+  catch (error) {
+    if (["NotAllowedError", "SecurityError"].includes(error.name)) throw new Error("L’accès MIDI a été refusé. Reconnectez-vous à ShenPulse et réessayez.");
+    throw error;
+  } finally { if (midiConnectionPromise === operation) midiConnectionPromise = null; }
+}
+
+function releaseMidiController(access) {
+  access.onstatechange = null;
+  for (const input of access.inputs.values()) {
+    input.onmidimessage = null;
+    try { input.close?.()?.catch?.(() => {}); } catch { /* Port déjà fermé. */ }
+  }
 }
 
 function disconnectMidiController() {
-  if (midiAccess) {
-    midiAccess.onstatechange = null;
-    for (const input of midiAccess.inputs.values()) { input.onmidimessage = null; input.close?.(); }
-  }
+  midiConnectionGeneration += 1;
+  midiConnectionPromise = null;
+  if (midiAccess) releaseMidiController(midiAccess);
   midiAccess = null;
   midiLearnActive = false;
+  midiLearnedMessage = null;
   midiLastMessage = null;
 }
 
 function receiveMidiMessage(event, input) {
-  if (!isAccountAuthenticated()) { disconnectMidiController(); return; }
+  if (!isVerifiedAdminSession()) { disconnectMidiController(); return; }
   if (ensureControllerWorkspace()) return;
   const contract = window.ShenPulseControllerContract;
   const message = contract.normalizeMidiMessage(event.data, input.id);
@@ -98,9 +133,12 @@ function receiveMidiMessage(event, input) {
   if (midiLearnActive && message.value > 0) {
     midiLearnActive = false;
     midiLearnedMessage = { ...message, deviceName: input.name };
-    openControllerMappingEditor(null, midiLearnedMessage);
+    if (currentPage === "controllers") render();
+    try { openControllerMappingEditor(null, midiLearnedMessage); }
+    catch (error) { toast("Association MIDI impossible", error.message, true); }
     return;
   }
+  if (!status && currentPage === "controllers") render();
   const mappings = controllerStatus?.mappings || snapshot.state.settings.controllers?.mappings || [];
   for (const mapping of mappings) {
     if (!contract.midiMappingMatches(mapping, message)) continue;

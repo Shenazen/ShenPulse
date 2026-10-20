@@ -554,6 +554,7 @@ function acceptSnapshot(value) {
     if (typeof globalMediaLibrary !== "undefined") globalMediaLibrary.close();
   }
   snapshot = value;
+  if (typeof synchronizeGiftPickerCatalog === "function") synchronizeGiftPickerCatalog();
   if (value?.state?.settings?.siteVisibility) {
     siteVisibility = value.state.settings.siteVisibility;
   }

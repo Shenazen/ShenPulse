@@ -26,10 +26,8 @@ const {
 const CURRENT_PAGE_IDS = [
   "home",
   "dashboard",
-  "live",
   "actions",
   "sounds",
-  "rules",
   "overlays",
   "games",
   "irl",

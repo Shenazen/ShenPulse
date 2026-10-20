@@ -7,12 +7,14 @@ const { appPermissionAllowed } = require("../src/main/app-permissions");
 const rendererDirectory = path.resolve(__dirname,"../src/renderer");
 const mainUrl = pathToFileURL(path.join(rendererDirectory,"index.html")).href;
 const request = {rendererDirectory, requestingUrl:mainUrl, contentsUrl:mainUrl,isMainFrame:true,authenticated:true,overlayPort:17654};
-test("MIDI is scoped to authenticated main document and never allows sysex, camera or iframe hardware",()=>{
-  assert.equal(appPermissionAllowed({...request,permission:"midi"}),true);
-  for(const permission of ["midiSysex","media","hid","serial","usb"]) assert.equal(appPermissionAllowed({...request,permission}),false);
-  assert.equal(appPermissionAllowed({...request,permission:"midi",authenticated:false}),false);
-  assert.equal(appPermissionAllowed({...request,permission:"midi",isMainFrame:false}),false);
-  assert.equal(appPermissionAllowed({...request,permission:"midi",requestingUrl:"https://example.com"}),false);
+test("MIDI et son alias Chromium restent réservés au document principal authentifié",()=>{
+  for (const permission of ["midi", "midiSysex"]) {
+    assert.equal(appPermissionAllowed({...request,permission}),true);
+    assert.equal(appPermissionAllowed({...request,permission,authenticated:false}),false);
+    assert.equal(appPermissionAllowed({...request,permission,isMainFrame:false}),false);
+    assert.equal(appPermissionAllowed({...request,permission,requestingUrl:"https://example.com"}),false);
+  }
+  for(const permission of ["media","hid","serial","usb"]) assert.equal(appPermissionAllowed({...request,permission}),false);
 });
 test("local preview and renderer can use loopback but remote frames cannot",()=>{
   assert.equal(appPermissionAllowed({...request,permission:"loopback-network",authenticated:false}),true);

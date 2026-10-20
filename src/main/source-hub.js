@@ -39,6 +39,7 @@ const {
 const { parseTwitchLine } = require("./sources/twitch-protocol");
 const { RelayChatDelivery } = require("./sources/relay-chat-delivery");
 const { EulerOAuthChatDelivery } = require("./sources/euler-oauth-chat-delivery");
+const { TikTokGiftDelivery } = require("./sources/tiktok-gift-delivery");
 
 class SourceHub extends EventEmitter {
   constructor({ store, kickService = null, fetchFn = globalThis.fetch }) {
@@ -215,6 +216,7 @@ class SourceHub extends EventEmitter {
       seenLikeEventIds: new Set(),
       seenTikTokEventIds: new Set(),
       seenTikTokEventObjects: new WeakMap(),
+      giftDelivery: new TikTokGiftDelivery(),
       reconnectTimer: null,
       matchClock: new TikTokMatchClock(),
       detachMatchClock: null,
@@ -241,19 +243,18 @@ class SourceHub extends EventEmitter {
 
     const emitEvent = (type, event) => {
       if (runtime.closed) return;
-      if (!shouldEmitTikTokEvent(runtime, type, event)) return;
+      if (type !== "gift" && !shouldEmitTikTokEvent(runtime, type, event)) return;
+      let payload = tiktokConnectorPayload(type, event, username);
+      payload.roomId = String(runtime.roomId || runtime.connector?.roomId || "");
+      if (type === "gift") payload = runtime.giftDelivery.accept(event, payload);
+      if (type === "like") payload = applyTikTokLikeDelta(runtime, payload);
+      if (!payload) return;
       const now = Date.now();
       if (now - runtime.lastEventStatusAt >= 1000) {
         runtime.lastEventStatusAt = now;
         this.#tiktokStatus(connection.id, "live", {
           lastEventAt: new Date(now).toISOString()
         });
-      }
-      let payload = tiktokConnectorPayload(type, event, username);
-      payload.roomId = String(runtime.roomId || runtime.connector?.roomId || "");
-      if (type === "like") {
-        payload = applyTikTokLikeDelta(runtime, payload);
-        if (!payload) return;
       }
       this.emit(
         "event",
@@ -340,7 +341,7 @@ class SourceHub extends EventEmitter {
       for (const kind of Object.keys(TIKTOK_MATCH_EVENTS)) connector.on(kind, (event) => emitCurrentMatch(kind, event));
       connector.on(WebcastEvent.GIFT, (event) => {
         emitCurrentGiftBonus(event);
-        if (tiktokGiftIsFinal(event)) emitCurrentEvent("gift", event);
+        emitCurrentEvent("gift", event);
       });
       connector.on(WebcastEvent.LIKE, (event) => emitCurrentEvent("like", event));
       connector.on(WebcastEvent.CHAT, (event) => emitCurrentEvent("chat", event));
@@ -365,7 +366,7 @@ class SourceHub extends EventEmitter {
           if (TIKTOK_MATCH_DECODED[messageType]) { emitCurrentMatch(TIKTOK_MATCH_DECODED[messageType], event); return; }
           const type = tiktokDecodedEventType(messageType, event);
           if (type === "gift") emitCurrentGiftBonus(event);
-          if (!type || (type === "gift" && !tiktokGiftIsFinal(event))) return;
+          if (!type) return;
           emitCurrentEvent(type, event);
         });
       });

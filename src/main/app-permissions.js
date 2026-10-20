@@ -18,8 +18,10 @@ function appPermissionAllowed({ permission, requestingUrl = "", contentsUrl = ""
   const contentsPath = localDocumentPath(contentsUrl);
   const main = isMainFrame && requestPath === mainPath && contentsPath === mainPath;
   // Hardware access is restricted to the authenticated main renderer, never an embedded source.
-  if (permission === "midi") return main && authenticated;
-  if (permission === "midiSysex") return false;
+  // Chromium regroupe désormais tout Web MIDI sous midiSysex, y compris
+  // requestMIDIAccess({ sysex: false }). L'interface conserve sysex: false.
+  // Voir electron v43.2.0/spec/webview-spec.ts (permission request handlers).
+  if (["midi", "midiSysex"].includes(permission)) return main && authenticated;
   if (permission === "speaker-selection") return main && authenticated;
   const ownDocument = contentsPath.startsWith(`${rendererBase}${path.sep}`) && requestPath.startsWith(`${rendererBase}${path.sep}`);
   let ownOverlay = false;
