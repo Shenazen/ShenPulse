@@ -12,7 +12,7 @@ n’est nécessaire pour modifier ses fichiers statiques.
 Après les builds et `npm --prefix website run check`, examiner le plan :
 
 ```powershell
-powershell -NoProfile -File scripts/publish-public-site.ps1 -Version 2.0.3
+powershell -NoProfile -File scripts/publish-public-site.ps1 -Version 2.0.4
 ```
 
 Le plan ne crée rien et ne se connecte pas au VPS. La simulation explicite de la
@@ -20,7 +20,7 @@ publication est également possible avec `-Publish -WhatIf`. Pour publier après
 validation :
 
 ```powershell
-powershell -NoProfile -File scripts/publish-public-site.ps1 -Version 2.0.3 -Publish
+powershell -NoProfile -File scripts/publish-public-site.ps1 -Version 2.0.4 -Publish
 ```
 
 Le script utilise la clé SSH déjà configurée, par son **chemin** seulement. Il

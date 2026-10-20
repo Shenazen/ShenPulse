@@ -10,17 +10,17 @@
 | PFN attendu | `ShenPulse.ShenPulse_mammcwaggkw0m` |
 | Store ID | `9NDR71Z41ZJG` |
 
-`npm run build:store` génère `dist/ShenPulse-2.0.3-x64.appx` ainsi que le
-conteneur recommandé `dist/ShenPulse-2.0.3-x64.appxupload`. Son manifeste porte
-la version Store `2.0.3.0`, dont le numéro de révision est conforme. Le Microsoft Store
+`npm run build:store` génère `dist/ShenPulse-2.0.4-x64.appx` ainsi que le
+conteneur recommandé `dist/ShenPulse-2.0.4-x64.appxupload`. Son manifeste porte
+la version Store `2.0.4.0`, dont le numéro de révision est conforme. Le Microsoft Store
 accepte le format AppX pour une application Desktop Bridge et le resigne pour la
 distribution. L'identité Store est déjà renseignée dans `package.json`.
 
-Les [notes 2.0.3](releases/2.0.3.fr.md) décrivent les changements. Les résultats
+Les [notes 2.0.4](releases/2.0.4.fr.md) décrivent les changements. Les résultats
 de qualification et le statut réel du canal Store sont consignés séparément
 dans [VALIDATION.md](VALIDATION.md) ; construire le package ne vaut pas soumission.
 
-## Actions humaines obligatoires avant l'envoi
+## Contrôles avant l'envoi
 
 1. Fournir l’URL publique de politique de confidentialité
    `https://shenpulse.leuridan.fr/confidentialite` et l’URL de support
@@ -33,6 +33,8 @@ dans [VALIDATION.md](VALIDATION.md) ; construire le package ne vaut pas soumissi
 6. Lancer le Windows App Certification Kit puis un vol privé Partner Center.
 7. Tester la connexion de chaque plateforme avec de vrais identifiants de
    production et vérifier leurs conditions d'utilisation.
+
+La publication s’effectue dans le produit Partner Center déjà authentifié, depuis le navigateur intégré. Importer l’AppXUpload, actualiser les nouveautés françaises avec la version et les changements réels, vérifier les informations héritées de la fiche, puis contrôler le récapitulatif avant l’envoi. Les étapes de vol privé et de qualification restent requises ; l’import seul ne vaut pas soumission publique.
 
 ## Signature locale
 
