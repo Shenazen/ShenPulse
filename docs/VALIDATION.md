@@ -42,7 +42,12 @@ Produit `9NDR71Z41ZJG`, session Partner Center authentifiée dans le navigateur 
 
 ## Publication et contrôles post-production
 
-Les constructions et qualifications locales sont terminées. Publication Git/tag, site/EXE, overlays Firebase et contrôles HTTPS : en cours ; leurs résultats effectifs seront ajoutés après exécution. Aucune disponibilité publique 2.0.4 n’est déduite de la présence des fichiers locaux ou du brouillon Store.
+- Commit de release `21eba558edc051bc6cb2110d23b39de94b28466f`, tag annoté `v2.0.4` : poussés vers `origin`, références distantes vérifiées.
+- Publication VPS terminée : EXE versionné publié avant la vitrine, **31 fichiers statiques** contrôlés par SHA-256. Sauvegarde : `/var/www/shenpulse/.public-site-backups/pre-public-site-2.0.4-20261020T154105Z-8c1156d4`. Les installateurs antérieurs, le backend, les jeux et données privées sont conservés.
+- Contrôle HTTPS indépendant : **31/31 fichiers** identiques aux sources qualifiées ; accueil, documentation et cinq routes légales réelles en **HTTP 200** avec le téléchargement 2.0.4 référencé. Les routes sont issues du module des pages légales du site.
+- EXE intégralement téléchargé et haché depuis `https://www.shenpulse.leuridan.fr/downloads/ShenPulseSetup-2.0.4.exe` : **658 488 883 octets**, SHA-256 `C42A2ABE36A754C74FCC6A3636FD64780E38B80B3D4866C5662851A9C0AFBEE7`, identique à l’artefact qualifié. L’EXE 2.0.3 reste en HTTP 200 avec ses **512 659 659 octets**.
+- Smoke réel du relais public réussi avec canal de test temporaire. Firebase `database,hosting` déployé sur `shenazenoverlay`, site `shenpulse-overlays`. Manifeste public **2.0.4-overlay1** ; index et loader publics identiques aux sources par SHA-256. La lecture anonyme de `/users` est refusée (HTTP 401).
+- Le canal **EXE/site et les overlays sont publiés**. Le Microsoft Store reste en **brouillon, non soumis publiquement**, en attente du compte testeur puis de la qualification du vol privé requise avant soumission.
 
 ## Preuves locales
 
