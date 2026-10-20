@@ -21,11 +21,13 @@ const { createDefaultState } = require("../src/main/defaults");
 const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
 const overlayCatalog = require("../resources/overlays/overlay-catalog");
 const { version: appVersion } = require("../package.json");
+const { normalizeMatchesConfig } = require("../src/shared/matches-contract");
 
 const root = path.resolve(__dirname, "..");
-const outputDirectory = path.join(root, "website/public/screenshots");
+const matchesReview = process.argv.includes("--matches-redesign");
+const outputDirectory = path.join(root, matchesReview ? "tmp/matches-page-review-20261016" : "website/public/screenshots");
 const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "shenpulse-public-captures-"));
-const viewport = { width: 1440, height: 900 };
+const viewport = { width: matchesReview && process.argv.includes("--narrow") ? 980 : 1440, height: 900 };
 const consoleErrors = [], blockedRequests = [], frameErrors = [], results = [];
 let captureWindow, staticServer, staticOrigin = "", stage = "initialisation";
 app.setPath("userData", path.join(temporaryDirectory, "chromium"));
@@ -89,6 +91,17 @@ function createFixture() {
     localOverlayUrls[item.key] = local.toString();
     overlayUrls[item.key] = `https://exemple.invalid/overlay/${item.route.view}`;
   }
+  if (matchesReview) {
+    // Synthetic renderer qualification only. These values cannot reach a
+    // real overlay server, customer account, LIVE, media player or device.
+    overlayUrls.matchPlayer = "https://shenpulse-overlays.web.app/m/123456789012/fixture-review-channel-1234567890";
+    state.settings.matches = normalizeMatchesConfig({ automations: [
+      ["battleStart", "cofre", "tikcontrol"], ["multiplierX2", "x2", "cyber"],
+      ["multiplierX3", "x3", "gladiador"], ["card", "guantes", "cyber"],
+      ["likeRush", "taptap", "tikcontrol"], ["snipe", "snipe", "cyber"]
+    ].map(([moment, match, variant]) => ({ id: `review-${moment}`, name: moment, moment,
+      enabled: moment !== "card", reaction: { type: "animation", match, variant, fit: "contain" } })) });
+  }
   return { state, appVersion, packs, soundCatalog: [], mediaCatalog: [], catalogCounts: {}, timerRuntime: [], overlayUrls, localOverlayUrls, publicOverlayRelay: { connected: true, status: "connected" }, liveDirectory: { available: true, connected: true, rows: people.slice(0, 3).map((person, index) => ({ id: person.id, platform: "TikTok", username: person.username, avatarUrl: "", viewers: [128, 76, 42][index] })) }, fixtureUsers: { rows: people, total: people.length, filteredTotal: people.length, blockedUsers: [], blockedTotal: 0, blockedEntries: [], streamers: ["exemple_createur"], stats: { diamonds: 5785, dominantRank: "" } }, fixtureSpotify: spotify, fixtureRequests: requests };
 }
 
@@ -140,6 +153,13 @@ async function capture({ file, label, page, setup = "", scroll = 0 }) {
   if (page === "users") { await captureWindow.webContents.executeJavaScript('refreshCreatorUsersDatabase({force:true})'); await delay(100); }
   await captureWindow.webContents.executeJavaScript(`content.scrollTop=${scroll};`);
   await settleImages();
+  if (matchesReview) {
+    // The synthetic authenticated session is injected after the startup UI
+    // schedules its sign-in invitation. This closes only that fixture modal;
+    // no real account, authentication dialog or user window is involved.
+    await captureWindow.webContents.executeJavaScript('if(isAccountAuthenticated() && dialog.open) dialog.close("fixture-only");');
+    await delay(80);
+  }
   if (page === "overlays") {
     await waitUntil(() => captureWindow.webContents.executeJavaScript(`Array.from(content.querySelectorAll('iframe[data-overlay-src]')).filter(frame => { const rect=frame.getBoundingClientRect(); return rect.bottom>64 && rect.top<innerHeight; }).every(frame => frame.dataset.overlayPreviewReady==='true')`));
     await delay(400);
@@ -188,7 +208,11 @@ async function run() {
   await captureWindow.loadURL(pathToFileURL(path.join(root, "src/renderer/index.html")).toString());
   await waitUntil(() => captureWindow.webContents.executeJavaScript('Boolean(document.querySelector(".creator-home-page")) && isAccountAuthenticated()'));
   await captureWindow.webContents.executeJavaScript('(async()=>{spotifyStatus = await api.getSpotifyStatus();})()');
-  const pages = [
+  const pages = matchesReview ? [
+    { file: `matches-automations${viewport.width < 1000 ? "-narrow" : ""}.png`, label: "Matchs · automatisations", page: "matches", setup: 'creatorMatchesTab="automations";' },
+    { file: `matches-moments${viewport.width < 1000 ? "-narrow" : ""}.png`, label: "Matchs · modèles adaptés", page: "matches", setup: 'creatorMatchesTab="automations";', scroll: 470 },
+    { file: `matches-widgets${viewport.width < 1000 ? "-narrow" : ""}.png`, label: "Matchs · widgets", page: "matches", setup: 'creatorMatchesTab="widgets";', scroll: 220 }
+  ] : [
     { file: "home-public.png", label: "Accueil ShenPulse", page: "home" },
     { file: "app-overview-public.png", label: "Tableau de bord et simulateur", page: "dashboard", scroll: 220 },
     { file: "actions-public.png", label: "Actions et déclencheurs", page: "actions", scroll: 190 },
@@ -207,7 +231,7 @@ async function run() {
   assert.deepEqual(consoleErrors, [], "Console Chromium sans erreur");
   assert.deepEqual(frameErrors, [], "Les aperçus réels ne doivent pas échouer");
   const entries = results.map(({ path: file, width, height, label, sha256 }) => `  ${JSON.stringify(file)}: ${JSON.stringify({ width, height, label, sha256 })}`).join(",\n");
-  fs.writeFileSync(path.join(root, "website/app/screenshots.js"), `/** Captures du renderer ${appVersion}, données de démonstration. Générées par scripts/capture-public-site.js. */\nexport const SCREENSHOTS = {\n${entries}\n};\n`);
+  if (!matchesReview) fs.writeFileSync(path.join(root, "website/app/screenshots.js"), `/** Captures du renderer ${appVersion}, données de démonstration. Générées par scripts/capture-public-site.js. */\nexport const SCREENSHOTS = {\n${entries}\n};\n`);
   fs.writeFileSync(path.join(temporaryDirectory, "results.json"), JSON.stringify({ appVersion, results, consoleErrors, blockedRequests, frameErrors }, null, 2));
   process.stdout.write(JSON.stringify({ appVersion, outputDirectory, auditDirectory: temporaryDirectory, captures: results.length }, null, 2) + "\n");
 }

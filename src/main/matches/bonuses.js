@@ -10,15 +10,23 @@ const countdownEnd = (current) => Number.isSafeInteger(current.bonusEndsAtMs) &&
   ? current.bonusEndsAtMs : current.endsAtMs;
 const ownerScope = (current) => JSON.stringify([current.identity, current.battleId, current.ownerUserId,
   current.roomId, current.ownerTeams, current.startedAtMs]);
+const pendingStartKey = (input, identity) => JSON.stringify([identity, input.battleId,
+  input.bonus?.sourceStartsAtMs || input.bonus?.startsAtMs || `remaining:${input.bonus?.startsBeforeEndMs || 0}`]);
+const blockedStartBattleKey = (battleId, identity) => JSON.stringify([identity, battleId, "cancelled-battle"]);
+const samePendingContext = (expected, actual) => Boolean(actual &&
+  ["roomId", "channelUsername", "liveStartedAt"].every((key) => expected[key] === actual[key]) &&
+  (!expected.ownerUserId || expected.ownerUserId === actual.ownerUserId));
 
 class MatchBonuses {
-  constructor({ now, current, timer, clearTimer, onChange, onStart, publish }) {
-    Object.assign(this, { now, current, timer, clearTimer, onChange, onStart, publish });
+  constructor({ now, current, captureContext, timer, clearTimer, onChange, onStart, publish }) {
+    Object.assign(this, { now, current, captureContext, timer, clearTimer, onChange, onStart, publish });
     this.periods = new Map(); this.activeKey = ""; this.sequence = 0; this.giftProof = null;
+    this.pendingStarts = new Map(); this.blockedStarts = new Set();
   }
   reset() {
-    this.clearTimer("start"); this.clearTimer("end");
+    this.clearTimer("start"); this.clearTimer("end"); this.clearTimer("pending-start");
     this.periods.clear(); this.activeKey = ""; this.sequence = 0; this.giftProof = null;
+    this.pendingStarts.clear(); this.blockedStarts.clear();
   }
   isActive(key) {
     const period = this.periods.get(key), current = this.current();
@@ -34,7 +42,68 @@ class MatchBonuses {
       (!period.requiresVerifiedOwner || current.ownerVerified === true) &&
       (!period.requiresVerifiedOwner || period.matchStartedAtMs === current.startedAtMs) &&
       (period.requiresVerifiedOwner ? period.ownerTeams === current.ownerTeams : !period.ownerTeams || period.ownerTeams === current.ownerTeams) &&
+      (!period.captureScope || samePendingContext(period.captureScope, this.captureContext?.())) &&
       (!period.durationMs || period.startsAtMs + period.durationMs > this.now()));
+  }
+  expirePendingStarts() {
+    const now = this.now();
+    this.clearTimer("pending-start");
+    for (const [key, row] of this.pendingStarts) if (row.expiresAtMs <= now) this.pendingStarts.delete(key);
+    const next = Math.min(...[...this.pendingStarts.values()].map((row) => row.expiresAtMs));
+    if (Number.isFinite(next)) this.timer("pending-start", next - now, () => this.expirePendingStarts());
+  }
+  discardPendingStarts(battleId, identity, terminal = false) {
+    if (terminal === "battle") this.blockedStarts.add(blockedStartBattleKey(battleId, identity));
+    for (const [key, row] of this.pendingStarts) if (row.identity === identity && row.input.battleId === battleId) {
+      this.pendingStarts.delete(key);
+      if (terminal) this.blockedStarts.add(key);
+    }
+    while (this.blockedStarts.size > 32) this.blockedStarts.delete(this.blockedStarts.values().next().value);
+    this.expirePendingStarts();
+  }
+  bufferStartBonus(input, identity) {
+    // Keep only an explicit native START_BONUS proof, never a predicted first
+    // gift/20-second bonus. Binding and activation wait for the real OPEN.
+    this.expirePendingStarts();
+    const bonus = input.bonus, context = this.captureContext?.(), at = this.now();
+    const relative = bonus.startsAtMs === 0 && Number.isSafeInteger(bonus.startsBeforeEndMs) &&
+      bonus.startsBeforeEndMs > 0 && bonus.startsBeforeEndMs <= 7200000;
+    const absolute = Number.isSafeInteger(bonus.startsAtMs) && bonus.startsAtMs > 1e12;
+    if (!context || input.source !== "source_tiktok" || input.test === true ||
+      typeof input.id !== "string" || !input.id || input.id.length > 160 || input.id === "0" ||
+      typeof input.battleId !== "string" || !/^[1-9]\d{0,19}$/.test(input.battleId) ||
+      BigInt(input.battleId) > 18446744073709551615n || input.roomId !== context.roomId ||
+      typeof input.channelUsername !== "string" || input.channelUsername.replace(/^@+/, "").toLowerCase() !== context.channelUsername ||
+      !Number.isSafeInteger(input.receivedAtMs) || input.receivedAtMs < at - 5000 || input.receivedAtMs > at + 1000 ||
+      bonus.result !== "available" || ![2, 3].includes(bonus.multiplier) ||
+      !Number.isSafeInteger(bonus.durationMs) || bonus.durationMs <= 0 || bonus.durationMs > 3600000 ||
+      (!absolute && !relative) || absolute && bonus.startsAtMs + bonus.durationMs <= at ||
+      bonus.sourceStartsAtMs && (!Number.isSafeInteger(bonus.sourceStartsAtMs) || bonus.sourceStartsAtMs <= 1e12) ||
+      bonus.createdAtMs && (!Number.isSafeInteger(bonus.createdAtMs) || bonus.createdAtMs < at - 30000 || bonus.createdAtMs > at + 1000)) return;
+    const key = pendingStartKey(input, identity), previous = this.pendingStarts.get(key);
+    if (this.blockedStarts.has(key) || this.blockedStarts.has(blockedStartBattleKey(input.battleId, identity)) ||
+      previous && !samePendingContext(previous.context, context)) return;
+    const saved = { source: input.source, id: input.id, battleId: input.battleId, roomId: input.roomId,
+      channelUsername: input.channelUsername, receivedAtMs: input.receivedAtMs, bonus: {} };
+    for (const field of ["stage", "multiplier", "startsAtMs", "sourceStartsAtMs", "startsBeforeEndMs", "durationMs", "result", "createdAtMs"]) {
+      if (Object.hasOwn(bonus, field)) saved.bonus[field] = bonus[field];
+    }
+    this.pendingStarts.set(key, { identity, context: { ...context }, input: saved, expiresAtMs: previous?.expiresAtMs || at + 30000 });
+    while (this.pendingStarts.size > 8) this.pendingStarts.delete(this.pendingStarts.keys().next().value);
+    this.expirePendingStarts();
+  }
+  replayPendingStarts(battleId, identity) {
+    this.expirePendingStarts();
+    if (!this.pendingStarts.size) return;
+    const current = this.current(), context = this.captureContext?.();
+    if (!current || !current.openObserved || current.ownerVerified !== true || current.identity !== identity || current.battleId !== battleId) return;
+    for (const [key, row] of this.pendingStarts) if (row.identity === identity && row.input.battleId === battleId) {
+      this.pendingStarts.delete(key);
+      if (samePendingContext(row.context, context) && context.ownerUserId === current.ownerUserId && current.roomId === context.roomId) {
+        this.accept(row.input, identity, false, { ...context });
+      }
+    }
+    this.expirePendingStarts();
   }
   observeGift(input, identity) {
     const current = this.current(), bonus = input.giftBonus, at = this.now();
@@ -73,6 +142,7 @@ class MatchBonuses {
       if (startedAtMs > period.announcedAtMs + 30000) period.result = "ended";
       period.buffered = false;
     }
+    this.replayPendingStarts(battleId, identity);
   }
   mergeVisualPeriod(period) {
     const current = this.current();
@@ -103,13 +173,19 @@ class MatchBonuses {
       startsBeforeEndMs: 0, result: "success", formalBound: true, visualStartsAtMs,
       ownerUserId: visual.ownerUserId, ownerRoomId: visual.ownerRoomId, ownerTeams: visual.ownerTeams,
       requiresVerifiedOwner: true, matchStartedAtMs: visual.matchStartedAtMs, fired: visual.fired || formal.fired });
+    if (formal.captureScope || visual.captureScope) retained.captureScope = formal.captureScope || visual.captureScope;
     if (this.activeKey === removed.key) this.activeKey = retained.key;
     this.periods.delete(removed.key);
     return retained;
   }
-  accept(input, identity, buffered = false) {
+  accept(input, identity, buffered = false, captureScope = null) {
     const bonus = input.bonus;
     if (!bonus || !["announced", "settled", "ended", "available", "start-bonus"].includes(bonus.stage) || !input.battleId) return;
+    if (buffered && (bonus.stage === "ended" || bonus.stage === "settled" && bonus.result === "failed")) this.discardPendingStarts(input.battleId, identity, true);
+    if (bonus.stage === "start-bonus") {
+      if (this.blockedStarts.has(pendingStartKey(input, identity)) || this.blockedStarts.has(blockedStartBattleKey(input.battleId, identity))) return;
+      if (buffered) { this.bufferStartBonus(input, identity); return; }
+    }
     const at = this.now(), battleId = String(input.battleId);
     const beforeEnd = Number.isSafeInteger(bonus.startsBeforeEndMs) && bonus.startsBeforeEndMs > 0 && bonus.startsBeforeEndMs <= 7200000 ? bonus.startsBeforeEndMs : 0;
     let availableOwner;
@@ -169,6 +245,7 @@ class MatchBonuses {
         durationMs: bonus.durationMs, result: "success", ownerUserId: availableOwner.ownerUserId, ownerTeams: availableOwner.ownerTeams,
         ownerRoomId: availableOwner.roomId, requiresVerifiedOwner: true, matchStartedAtMs: availableOwner.startedAtMs,
         mergeScope: ownerScope(availableOwner) });
+      if (captureScope) period.captureScope = captureScope;
       if (bonus.origin === "visual") { period.origin = "visual"; period.visualStartsAtMs ||= startsAtMs; }
     } else if (bonus.stage === "announced") {
       if (!period) {
@@ -234,6 +311,7 @@ class MatchBonuses {
       (!row.ownerRoomId || row.ownerRoomId === current.roomId) &&
       (!row.requiresVerifiedOwner || current.ownerVerified === true) &&
       (!row.requiresVerifiedOwner || row.matchStartedAtMs === current.startedAtMs) &&
+      (!row.captureScope || samePendingContext(row.captureScope, this.captureContext?.())) &&
       (!row.ownerUserId || row.ownerUserId === current.ownerUserId) &&
       (row.requiresVerifiedOwner ? row.ownerTeams === current.ownerTeams : !row.ownerTeams || row.ownerTeams === current.ownerTeams) &&
       row.result === "success" && [2, 3].includes(row.multiplier) && row.startsAtMs > 0 &&

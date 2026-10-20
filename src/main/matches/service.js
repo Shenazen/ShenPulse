@@ -18,6 +18,8 @@ const { MatchBonuses } = require("./bonuses");
 
 const PATHS = ["settings.matches", "matchSession", "settings.account.uid", "session.profileId", "session.running", "session.startedAt",
   "settings.tiktok.roomId", "settings.tiktok.username", "settings.tiktok.status", "settings.tiktok.broadcaster", "commerce.subscription", "settings.siteVisibility"];
+const PENDING_BONUS_CONTEXT_PATHS = ["settings.account.uid", "session.profileId", "session.running", "session.startedAt",
+  "settings.tiktok.roomId", "settings.tiktok.username", "settings.tiktok.status", "settings.tiktok.broadcaster", "connections"];
 const signature = (value) => JSON.stringify(value);
 const clone = (value) => structuredClone(value);
 const ACTION_CONTEXT_PATHS = [...PATHS.filter((key) => key !== "matchSession"), "matchSession.battleId", "matchSession.startObserved", "matchSession.status", "matchSession.result", "matchSession.scope", "matchSession.endsAtMs", "matchSession.participants", "matchSession.teams"];
@@ -25,6 +27,21 @@ const LIVE_CONTEXT_PATHS = ACTION_CONTEXT_PATHS.filter((key) => !["settings.matc
 const SIDE_MOMENTS = new Set(["lead", "comeback", "tieEnd", "victory", "defeat"]);
 function mismatch() { const error = new Error("Le compte ou le profil du match a changé."); error.code = "FEATURE_CONTEXT_CHANGED"; return error; }
 function scope(state) { return { uid: state.settings?.account?.uid || "", profileId: state.session?.profileId || "", roomId: state.settings?.tiktok?.roomId || "" }; }
+function pendingBonusContext(state) {
+  const tiktok = state.settings?.tiktok, session = state.session;
+  const username = String(tiktok?.username || "").trim().replace(/^@+/, "").toLowerCase();
+  const sources = (state.connections || []).filter((row) => row.type === "tiktok-direct" && row.enabled);
+  const source = sources[0], rawOwner = tiktok?.broadcaster?.userId || tiktok?.broadcaster?.id || "";
+  const owner = typeof rawOwner === "string" ? rawOwner : "";
+  if (!username || sources.length !== 1 || source.id !== "source_tiktok" ||
+    String(source.config?.username || "").trim().replace(/^@+/, "").toLowerCase() !== username ||
+    !state.settings?.account?.uid || !session?.profileId || !session.running || tiktok?.status !== "live" ||
+    typeof tiktok.roomId !== "string" || !/^[1-9]\d{0,19}$/.test(tiktok.roomId) || BigInt(tiktok.roomId) > 18446744073709551615n ||
+    typeof session.startedAt !== "string" || !Number.isFinite(Date.parse(session.startedAt)) ||
+    rawOwner && typeof rawOwner !== "string" || owner && owner !== "0" &&
+    (!/^[1-9]\d{0,19}$/.test(owner) || BigInt(owner) > 18446744073709551615n)) return null;
+  return { channelUsername: username, roomId: tiktok.roomId, ownerUserId: owner === "0" ? "" : owner, liveStartedAt: session.startedAt };
+}
 function assertExpectedScope(state, expected) {
   if (expected && (String(expected.ownerUid || "") !== state.settings?.account?.uid || String(expected.profileId || "") !== state.session?.profileId)) throw mismatch();
 }
@@ -70,7 +87,8 @@ class MatchesService {
     this.executor = new CommandExecutor({ store, actionRunner, accessSection: "matches" });
     this.identity = ""; this.seen = new Set(); this.cooldowns = new Map(); this.timers = new Map(); this.likes = [];
     this.pending = []; this.processing = false; this.completion = Promise.resolve(); this.generation = 0;
-    this.bonuses = new MatchBonuses({ now: this.now, current: () => {
+    this.bonuses = new MatchBonuses({ now: this.now,
+    captureContext: () => pendingBonusContext(readState(this.store, PENDING_BONUS_CONTEXT_PATHS)), current: () => {
       try { assertProFeatureAccess(this.store, "matches"); } catch { return null; }
       const state = this.state(), runtime = state.matchSession;
       const ownerId = String(state.settings?.tiktok?.broadcaster?.userId || state.settings?.tiktok?.broadcaster?.id || "");
@@ -81,7 +99,8 @@ class MatchesService {
         // the match end independently; an expired match cannot fire a bonus.
         signature(runtime.scope) === signature(scope(state))
         ? { identity: signature(scope(state)), battleId: runtime.battleId, roomId: String(state.settings.tiktok.roomId || ""), startedAtMs: runtime.startedAtMs, endsAtMs: runtime.endsAtMs, bonusEndsAtMs: runtime.bonusEndsAtMs || 0,
-          ownerUserId: runtime.ownUserId, ownerVerified: Boolean(ownerId && ownerId !== "0" && ownerId === runtime.ownUserId), ownerTeams: teamContext(runtime) } : null;
+          ownerUserId: runtime.ownUserId, ownerVerified: Boolean(ownerId && ownerId !== "0" && ownerId === runtime.ownUserId),
+          openObserved: runtime.openObserved === true, ownerTeams: teamContext(runtime) } : null;
     }, timer: (key, ms, callback) => this.timer(`bonus:${key}`, ms, callback), clearTimer: (key) => {
       const timerKey = `bonus:${key}`; if (this.timers.has(timerKey)) this.clearTimeoutImpl(this.timers.get(timerKey)); this.timers.delete(timerKey);
     }, onChange: (multiplier) => this.mutate((next) => { next.matchSession.multiplier = multiplier; }),
@@ -259,6 +278,7 @@ class MatchesService {
       this.seen.add(key); while (this.seen.size > 2000) this.seen.delete(this.seen.values().next().value); }
     const old = signature(state.matchSession?.scope) === identity ? state.matchSession : createMatchSession(state.matchSession);
     const newBattle = old.battleId !== input.battleId;
+    if (["cancel", "end"].includes(input.phase)) this.bonuses.discardPendingStarts(input.battleId, identity, "battle");
     if (input.phase === "task" && newBattle) { this.bonuses.accept(input, identity, true); return false; }
     const incomingTeams = normalizeMatchTeams(input.teams);
     const hasScores = incomingTeams.some((entry) => entry.score !== null) || (input.participants || []).some((entry) =>
@@ -287,6 +307,7 @@ class MatchesService {
       }
       // ARMIES peut précéder OPEN dans le SDK. Le début réel n'est donc pas
       // réservé à la création du runtime, et n'est jamais répété par son cooldown.
+      if (input.phase === "start") runtime.openObserved = true;
       if ((input.phase === "start" || recentStart) && runtime.startObserved !== true) {
         runtime.startObserved = true; runtime.startOrigin = input.phase === "start" ? "open" : "recent-scores"; moments.push("battleStart");
       }

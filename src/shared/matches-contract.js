@@ -109,8 +109,16 @@
           x >= 0 && y >= 0 && width > 0 && height > 0 && x + width <= 1 && y + height <= 1 && width * height <= maxArea
           ? { x, y, width, height } : null;
       };
-      const bannerROI = region(input.visualBonus?.bannerROI, 0.3), ownerROI = region(input.visualBonus?.ownerROI, 0.1);
-      config.visualBonus = { enabled: input.visualBonus?.enabled === true && Boolean(bannerROI && ownerROI), bannerROI, ownerROI };
+      const bannerROI = region(input.visualBonus?.bannerROI, 0.3);
+      const ownerMode = input.visualBonus?.ownerMode;
+      const ownPosition = ["left", "top-left"].includes(input.visualBonus?.ownPosition) ? input.visualBonus.ownPosition : null;
+      const ownerROI = ownerMode === "self-screen" ? null : region(input.visualBonus?.ownerROI, 0.1);
+      const validMode = ownerMode === undefined || ["username", "studio-self", "self-screen"].includes(ownerMode);
+      // Only this explicit preference is persisted. Window IDs, captured
+      // names, OCR text and frames never become profile configuration.
+      config.visualBonus = { enabled: input.visualBonus?.enabled === true && validMode && Boolean(bannerROI && (ownerMode === "self-screen" ? ownPosition : ownerROI)), bannerROI, ownerROI,
+        ...(["studio-self", "self-screen"].includes(ownerMode) ? { ownerMode } : {}),
+        ...(ownerMode === "self-screen" && ownPosition ? { ownPosition } : {}) };
     }
     return config;
   }

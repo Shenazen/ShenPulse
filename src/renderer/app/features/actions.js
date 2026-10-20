@@ -391,7 +391,7 @@ function automationActionCommands(rule, action, actionIndex) {
   return `${renderAutomationIconButton({ action: "test-action", label: `Tester ${actionTypeLabel(action.type)} · ${rule.name}`, attributes, icon: "play", tone: "play" })}
     ${renderAutomationIconButton({ action: "edit-action", label: "Modifier l’action", attributes, icon: "edit" })}
     ${renderAutomationIconButton({ action: "duplicate-action", label: "Dupliquer l’action", attributes, icon: "copy", tone: "copy" })}
-    ${actionContextMenu(rule, action, actionIndex)}`;
+    ${renderAutomationIconButton({ action: "delete-action", label: "Supprimer l’action", attributes, icon: "trash", tone: "danger" })}`;
 }
 
 function groupActionRows(rows) {
@@ -402,18 +402,6 @@ function groupActionRows(rows) {
     groups.get(key).rows.push(row);
   }
   return [...groups.values()];
-}
-
-function actionContextMenu(rule, action, actionIndex) {
-  const attributes = `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
-  return `<details class="compact-context-menu">
-    <summary title="Plus d’options" aria-label="Plus d’options">•••</summary>
-    <div>
-      <button data-action="edit-action" ${attributes}>Modifier</button>
-      <button data-action="duplicate-action" ${attributes}>Dupliquer</button>
-      <button class="danger" data-action="delete-action" ${attributes}>Supprimer</button>
-    </div>
-  </details>`;
 }
 
 function triggerContextMenu(rule) {

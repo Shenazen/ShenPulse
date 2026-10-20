@@ -157,7 +157,12 @@ function creatorMatchesDashboardMarkup() {
 }
 
 function creatorMatchesTabsMarkup() {
-  return `<nav class="matches-tabs" aria-label="Sections Matchs">${[["dashboard", "Tableau de bord", "grid"], ["widgets", "Widgets", "widgets"], ["automations", "Automatisations", "bolt"]].map(([id, label, icon]) => `<button type="button" class="matches-tab ${creatorMatchesTab === id ? "active" : ""}" data-action="matches-tab" data-value="${id}" aria-pressed="${creatorMatchesTab === id}" aria-controls="creator-matches-panel">${creatorMatchesIcon(icon)}<span>${label}</span></button>`).join("")}</nav>`;
+  const enabled = creatorMatchesModel().automations.filter((entry) => entry.enabled === true).length;
+  return `<nav class="matches-tabs" aria-label="Sections Matchs">${[["dashboard", "Tableau de bord", "grid"], ["widgets", "Widgets de match", "widgets"], ["automations", "Automatisations", "bolt"]].map(([id, label, icon]) => `<button type="button" class="matches-tab ${creatorMatchesTab === id ? "active" : ""}" data-action="matches-tab" data-value="${id}" aria-pressed="${creatorMatchesTab === id}" aria-controls="creator-matches-panel">${creatorMatchesIcon(icon)}<span>${label}</span>${id === "automations" ? `<small class="matches-tab-count" data-matches-automation-count aria-label="Automatisations actives">${enabled}</small>` : ""}</button>`).join("")}</nav>`;
+}
+
+function creatorMatchesHeroMarkup() {
+  return `<header class="matches-hero" data-studio-hero="matches"><div class="matches-hero-art"><img src="assets/studio/matches-arena-v1.png" alt="" width="2172" height="724" decoding="async" fetchpriority="high"><span class="matches-hero-brand">SHENPULSE · TIKTOK LIVE</span><h2 class="matches-accessible-title">Matchs</h2></div><p class="matches-hero-caption"><span>Compteur de manches</span><i aria-hidden="true">·</i><span>Donateurs en vedette</span><i aria-hidden="true">·</i><span>Réactions automatiques</span></p></header>`;
 }
 
 function creatorMatchesPanelMarkup() {
@@ -167,13 +172,14 @@ function creatorMatchesPanelMarkup() {
 function creatorMatchesStructureSignature(config, capabilities) {
   return JSON.stringify([creatorMatchesOwnerKey(), creatorMatchesTab, creatorMatchesTab === "dashboard" ? null : config,
     creatorMatchesTab === "automations" ? capabilities.cards : null,
-    creatorMatchesTab === "widgets" ? [creatorMatchesSourceUrl(), ...CREATOR_MATCH_WIDGETS.map(creatorMatchesWidgetUrl)] : null]);
+    creatorMatchesTab === "widgets" ? CREATOR_MATCH_WIDGETS.map(creatorMatchesWidgetUrl) : null,
+    creatorMatchesTab === "automations" ? [creatorMatchesSourceUrl(), creatorMatchesStudioSourceUrl()] : null]);
 }
 
 function renderCreatorMatches() {
   if (!isAccountAuthenticated()) return renderPrivateDataPlaceholder("Vos matchs TikTok", "Connectez votre compte ShenPulse pour retrouver les matchs et les réglages de votre profil.");
   const { config, capabilities } = creatorMatchesModel();
-  return `<div class="reference-page creator-matches-page">${renderStudioHero("matches", "Matchs", "Vos batailles TikTok. Vos widgets. Vos temps forts.")}<section class="matches-control-bar"><div><span class="matches-platform">TikTok LIVE</span><p>Un espace dédié au profil actif, sans automatisation activée par défaut.</p></div><button type="button" class="button small" data-action="matches-refresh">${creatorMatchesIcon("refresh")}Actualiser</button></section>${creatorMatchesTabsMarkup()}<div id="creator-matches-panel" data-creator-matches-panel data-matches-owner="${escapeHtml(creatorMatchesOwnerKey())}" data-matches-structure="${escapeHtml(creatorMatchesStructureSignature(config, capabilities))}">${creatorMatchesPanelMarkup()}</div></div>`;
+  return `<div class="reference-page creator-matches-page">${creatorMatchesHeroMarkup()}<div class="matches-navigation">${creatorMatchesTabsMarkup()}<button type="button" class="button small ghost matches-refresh" data-action="matches-refresh" aria-label="Actualiser les matchs">${creatorMatchesIcon("refresh")}Actualiser</button></div><div id="creator-matches-panel" data-creator-matches-panel data-matches-owner="${escapeHtml(creatorMatchesOwnerKey())}" data-matches-structure="${escapeHtml(creatorMatchesStructureSignature(config, capabilities))}">${creatorMatchesPanelMarkup()}</div></div>`;
 }
 
 function creatorMatchesPatchCurrent(current, next) {
@@ -283,10 +289,13 @@ function creatorMatchesPatchWidgetPreviews(panel, config) {
 
 /** Les scores mettent à jour leur seul panneau ; ni bannière, ni onglets recréés. */
 function syncCreatorMatchesRuntime() {
+  if (typeof syncCreatorMatchesVisualStatus === "function") syncCreatorMatchesVisualStatus();
   if (currentPage !== "matches" || !isAccountAuthenticated()) return false;
   const panel = content.querySelector("[data-creator-matches-panel]");
   if (!panel) return false;
   const { runtime, config } = creatorMatchesModel();
+  const enabledCount = content.querySelector("[data-matches-automation-count]");
+  if (enabledCount) enabledCount.textContent = String((config.automations || []).filter((entry) => entry.enabled === true).length);
   const capabilities = runtime.capabilities || {};
   const structure = creatorMatchesStructureSignature(config, capabilities);
   const signature = JSON.stringify([structure, creatorMatchesTab === "automations" ? null : runtime,

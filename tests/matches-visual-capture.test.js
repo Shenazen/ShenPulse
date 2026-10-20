@@ -140,6 +140,34 @@ test("one in-memory cropped pair stays in flight until OCR ACK then buffers are 
   assert.equal(borrowed.owner.every((byte) => byte === 0), true); await f.capture.stop();
 });
 
+test("own-screen capture requires explicit transient confirmation and still rejects a missing banner", async () => {
+  const f = fixture();
+  const options = { sourceId: "window:42:0", ownerMode: "self-screen", ownerROI: null, bannerROI: ROI };
+  for (const ownScreenConfirmed of [undefined, false, "true", 1]) {
+    await assert.rejects(f.capture.start({ ...options, ownScreenConfirmed }));
+  }
+  await assert.rejects(f.capture.start({ ...options, ownScreenConfirmed: true, bannerROI: null }));
+  assert.equal(f.windows.length, 0);
+});
+
+test("own-screen mode passes and erases one banner only without accepting an unsolicited owner image", async () => {
+  let borrowed, calls = 0;
+  const f = fixture((frame) => { calls += 1; borrowed = frame; });
+  const options = { sourceId: "window:42:0", ownerMode: "self-screen", ownScreenConfirmed: true, ownerROI: null, bannerROI: ROI };
+  await f.capture.start(options);
+  const window = f.windows[0];
+  assert.equal(window.command.ownerMode, "self-screen");
+  assert.equal(window.command.ownerROI, null);
+  assert.equal(Object.hasOwn(window.command, "ownScreenConfirmed"), false);
+  assert.equal((await f.send(window, { owner: null })).accepted, true);
+  assert.equal(calls, 1);
+  assert.equal(borrowed.owner, undefined);
+  assert.equal(borrowed.banner.every((byte) => byte === 0), true);
+  assert.equal((await f.send(window)).accepted, false);
+  assert.equal(calls, 1);
+  await f.capture.stop();
+});
+
 test("stop invalidates pending ACK and old-generation IPC without restarting capture", async () => {
   let release; const f = fixture(() => new Promise((resolve) => { release = resolve; }));
   await f.capture.start({ sourceId: "window:42:0", bannerROI: ROI, ownerROI: OWNER });

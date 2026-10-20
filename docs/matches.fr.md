@@ -376,18 +376,58 @@ valider séparément ; aucun bonus ni multiplicateur n'est déduit du seul temps
 ### Secours visuel local facultatif
 
 Ce mode est désactivé par défaut. Il ne remplace pas la détection TikTok : il
-nécessite une fenêtre du PC affichant réellement le bandeau actif et le
-@pseudo du créateur suivi. Une page Web sans bandeau et un affichage présent
+nécessite une fenêtre du PC affichant réellement le bandeau actif. Par défaut,
+la preuve d'identité visuelle est le @pseudo exact du créateur.
+Le mode explicite **TikTok Studio : encart « Toi »** accepte aussi le nom du
+créateur associé à la ligne « Toi » pendant un duel identifié. Le nom vient du
+diffuseur dont l'UID est vérifié ; ni « Toi » seul, ni le nom de l'adversaire
+ne suffisent. Un nom tronqué doit porter une ellipse visible, avec un préfixe
+d'au moins huit lettres/chiffres qui reste unique dans le duo. Les équipes de
+plusieurs personnes et les noms ambigus sont refusés dans ce mode Studio.
+Le troisième mode explicite **Mon propre écran — zone déclarée** ne demande
+ni nom, ni « Toi », ni rectangle autour du visage. L'utilisateur choisit son
+emplacement (gauche en duel, haut gauche avec trois ou quatre participants),
+le rectangle du bandeau et confirme, dans une case non précochée, que ce
+bandeau concerne son côté plutôt que celui de l'adversaire. C'est une
+déclaration de l'utilisateur, **pas une identité reconnue par l'image** : un
+bandeau global ou central ne prouve pas automatiquement quel participant en
+bénéficie. L'interface doit conserver cet avertissement et ne jamais annoncer
+une attribution visuelle vérifiée dans ce mode. Les données TikTok doivent
+toujours identifier le compte, l'UID propre, la salle et le match en cours.
+Une page Web sans bandeau et un affichage présent
 seulement sur un téléphone ne suffisent pas. Il ne constitue donc pas, à lui
 seul, une solution universelle pour les utilisateurs Android, iPhone et PC.
 
 Dans Automatisations → Lecture visuelle locale, choisir explicitement une
-fenêtre, demander son aperçu puis délimiter deux petites zones : le bandeau
-du bonus et le @pseudo propre. Le choix de fenêtre n'est pas conservé après
-redémarrage. Seuls l'activation et les rectangles sont enregistrés par profil.
+fenêtre et le mode d'identification, demander son aperçu puis délimiter deux
+petites zones : le bandeau du bonus et le @pseudo propre, ou l'encart contenant
+le nom propre et « Toi » pour le mode Studio. Dans le mode « Mon propre
+écran », seul le rectangle du bandeau est lu : aucune image d'identité n'est
+capturée ni passée au moteur OCR. Un changement de mode invalide
+l'aperçu et les zones pour imposer un nouveau calibrage. Le choix de fenêtre
+n'est pas conservé après redémarrage. La confirmation de zone propre reste
+éphémère, liée au calibrage, et doit être redonnée à chaque choix de fenêtre ;
+elle n'est ni enregistrée ni restaurée depuis le profil. Un changement de
+disposition détecté dans les données TikTok invalide cet accord et demande une nouvelle confirmation, même
+si la disposition précédente revient ensuite. Un simple nouveau rival dans
+la même disposition n'est pas traité comme un changement de disposition.
+Un déplacement purement visuel des panneaux n'est pas déduit de ces données :
+l'utilisateur doit vérifier et recalibrer son rectangle après ce changement.
+Un changement de compte TikTok, de LIVE ou de calibrage invalide également la
+confirmation précédente, sans la rétablir si l'ancien contexte revient.
+Seuls l'activation, le mode, l'emplacement et les
+rectangles sont enregistrés par profil. L'état du lecteur est maintenant
+visible directement dans Automatisations, notamment la fenêtre à rechoisir.
 
-Le moteur Windows lit localement ces deux zones. Deux images fraîches, le
-pseudo exact et un décompte décroissant sont obligatoires. Le ×2/×3 et sa fin
+Le moteur Windows lit localement ces deux zones. Les petites zones sont
+agrandies au maximum deux fois, sans élargir les rectangles consentis, en
+respectant les limites PNG existantes. L'aperçu complet n'est pas agrandi.
+Deux images fraîches et un décompte décroissant sont obligatoires. Dans les
+deux modes à identité visuelle, celle-ci doit aussi être reconnue ; le mode
+déclaré conserve sa confirmation manuelle et les gardes d'identité TikTok.
+Une barre verticale reconnue comme un jeton isolé « 1 », « I »
+ou « l » est acceptée uniquement comme séparateur avant la durée d'un bandeau
+actif complet. Le ×2/×3 et sa fin
 proviennent du texte visible : aucune durée de trente secondes ni activation
 à vingt secondes ne sont inventées. Les défis non gagnés, comptes WIN, images
 figées et fenêtres/profils/LIVE différents sont refusés. Une période reconnue
@@ -397,10 +437,35 @@ sans doublon si TikTok confirme ensuite la même période par son flux habituel.
 Le traitement fonctionne en mémoire : aucune image ni texte OCR n'est écrit
 sur disque, envoyé au réseau, au relais, au journal ou aux statistiques.
 L'aperçu complet de la seule fenêtre choisie sert uniquement au calibrage
-explicite ; la surveillance ne lit que les deux rectangles. Aucun son n'est
+explicite ; la surveillance ne lit que le ou les rectangles choisis. Aucun son n'est
 capturé, aucun service ou modèle cloud n'est utilisé et aucune permission
 Windows n'est modifiée automatiquement. Si le moteur Windows ou la capture
 est indisponible, le mode échoue sans interrompre la détection classique.
+
+Une perte de capture est signalée, même si le flux se termine sans erreur.
+La reprise est bornée à trois essais sur la même fenêtre déjà choisie, sans
+redécouverte automatique d'une autre fenêtre. Une preuve partielle est annulée,
+mais les périodes déjà observées restent dédupliquées. Aucune capture ne
+reprend automatiquement après le redémarrage de ShenPulse.
+
+### Correctif local du 16 octobre 2026 après la publication 2.0.3
+
+Un `START_BONUS` explicite reçu avant `OPEN` n'est plus perdu : une file
+éphémère de huit annonces au maximum, expirant après trente secondes, attend
+la preuve `OPEN`, l'UID du diffuseur et le même compte/profil/LIVE/salon.
+L'expiration du bonus, une annulation ou une fin invalident la preuve. Aucun
+bonus n'est exécuté avant l'identification du match. Ce chemin est reproduit
+par tests ; aucun paquet réel positif de type 22 n'a été capturé pour cette
+révision et les annonces absentes du flux ne sont pas inventées.
+
+`node scripts/verify-first-match-bonus.js` qualifie le vrai moteur Windows OCR
+jusqu'au service Matchs avec des images synthétiques en mémoire : bandeaux
+de trente secondes ×2 et ×3, petites polices, nom tronqué + « Toi », puis refus
+du rival et de « Adversaire », ainsi que la lecture du seul bandeau dans
+le mode déclaré (duel à gauche et quatre participants en haut à gauche).
+Aucun écran réel, compte, son ou effet LIVE
+n'est utilisé. La qualification synthétique ne remplace pas une première
+période réelle après activation explicite par l'utilisateur.
 
 Les tests synthétiques ne valident pas l'affichage réel d'un bonus TikTok.
 Une vérification d'une première période effectivement visible demeure requise

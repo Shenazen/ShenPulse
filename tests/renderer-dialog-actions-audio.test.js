@@ -122,6 +122,10 @@ test("les vues compactes conservent toutes les commandes Actions et Sons", () =>
   const dynamicCommands = new Set(["edit-sound", "edit-tts", "run-rule", "test-timer", "edit-timer"]);
 
   for (const command of commands) {
+    if (["duplicate-action", "delete-action"].includes(command)) {
+      assert.match(app, new RegExp(`renderAutomationIconButton\\(\\{ action: ["']${command}["']`));
+      continue;
+    }
     assert.match(
       app,
       dynamicCommands.has(command)

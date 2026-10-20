@@ -79,8 +79,10 @@ function createVisualCapture({ BrowserWindow, desktopCapturer, ipcMain, onFrame 
     await stopping;
     const sourceId = typeof options.sourceId === "string" ? options.sourceId : "";
     if (!/^window:\d+:\d+$/.test(sourceId)) throw new Error("Choisissez une fenêtre, pas un écran.");
+    const declaredScreen = mode === "monitor" && options.ownerMode === "self-screen";
+    if (declaredScreen && options.ownScreenConfirmed !== true) throw new Error("Confirmez explicitement votre propre écran avant la lecture.");
     const bannerROI = mode === "monitor" ? normalizeCaptureROI(options.bannerROI, 0.3) : null;
-    const ownerROI = mode === "monitor" ? normalizeCaptureROI(options.ownerROI, 0.1) : null;
+    const ownerROI = mode === "monitor" && !declaredScreen ? normalizeCaptureROI(options.ownerROI, 0.1) : null;
     const sources = await desktopCapturer.getSources({ types: ["window"], thumbnailSize: { width: 0, height: 0 }, fetchWindowIcons: false });
     const source = sources.find((row) => row.id === sourceId);
     if (!source || expectedGeneration !== generation) throw new Error("La fenêtre sélectionnée n’est plus disponible.");
@@ -137,7 +139,12 @@ function createVisualCapture({ BrowserWindow, desktopCapturer, ipcMain, onFrame 
         }
         const at = Date.now();
         if (!Number.isSafeInteger(payload.capturedAtMs) || payload.capturedAtMs < Math.max(item.startedAtMs, at - 5000) || payload.capturedAtMs > at + 1000) return { accepted: false };
-        banner = pngBytes(payload.banner, FRAME_LIMIT, 1600, 600); owner = pngBytes(payload.owner, FRAME_LIMIT, 1200, 400);
+        banner = pngBytes(payload.banner, FRAME_LIMIT, 1600, 600);
+        if (declaredScreen) {
+          // No identity crop was consented in this mode. Never pass or parse
+          // an extra image even if a renderer sends one unexpectedly.
+          if (payload.owner !== null && payload.owner !== undefined) throw new Error("Zone d’identité inattendue.");
+        } else owner = pngBytes(payload.owner, FRAME_LIMIT, 1200, 400);
         await onFrame({ banner, owner, capturedAtMs: Math.min(at, payload.capturedAtMs), sourceId, generation: item.generation });
         return { accepted: isCurrent(item), stop: !isCurrent(item) };
       } catch { status("error", item); if (isCurrent(item)) void stop(); return { accepted: false, stop: true }; }
@@ -150,7 +157,7 @@ function createVisualCapture({ BrowserWindow, desktopCapturer, ipcMain, onFrame 
       const startup = (async () => {
         await window.loadFile(PAGE_PATH);
         if (!isCurrent(item)) throw new Error("Lecture interrompue.");
-        const command = { token, mode, bannerROI, ownerROI, intervalMs: 500 };
+        const command = { token, mode, bannerROI, ownerROI, ...(declaredScreen ? { ownerMode: "self-screen" } : {}), intervalMs: 500 };
         item.desktopPermissionArmed = true; item.desktopPermissionExpiresAtMs = Date.now() + 5000;
         const started = await contents.executeJavaScript(`window.startShenPulseVisionCapture(${JSON.stringify(command)})`, true);
         item.desktopPermissionArmed = false;

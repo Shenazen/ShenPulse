@@ -1,8 +1,9 @@
 "use strict";
 
 /** Commandes Matchs explicites, bornées au compte/profil de départ. */
-const CREATOR_MATCHES_ACTIONS = new Set(["matches-tab", "matches-refresh", "matches-visual-configure", "matches-reset-wins", "matches-correct-wins", "matches-clear-donors", "matches-automation-add", "matches-automation-edit", "matches-automation-toggle", "matches-automation-delete", "matches-automation-test", "matches-automation-animation", "matches-automation-output", "matches-automation-setting", "matches-automation-group-output", "matches-automation-group-toggle", "matches-automation-group-test", "matches-automation-multiplier-mode", "matches-widget-edit", "matches-widget-copy", "matches-widget-test", "matches-player-copy"]);
+const CREATOR_MATCHES_ACTIONS = new Set(["matches-tab", "matches-refresh", "matches-visual-configure", "matches-reset-wins", "matches-correct-wins", "matches-clear-donors", "matches-automation-add", "matches-automation-edit", "matches-automation-toggle", "matches-automation-delete", "matches-automation-test", "matches-automation-animation", "matches-animation-local-preview", "matches-automation-output", "matches-automation-setting", "matches-automation-group-output", "matches-automation-group-toggle", "matches-automation-group-test", "matches-automation-multiplier-mode", "matches-widget-edit", "matches-widget-copy", "matches-widget-test", "matches-player-copy"]);
 const creatorMatchesPending = new Set();
+CREATOR_MATCHES_ACTIONS.add("matches-automation-animation-remove");
 
 function creatorMatchesAcceptResult(result, owner) {
   assertCreatorMatchesOwner(owner);
@@ -77,6 +78,12 @@ async function handleCreatorMatchesAction({ action, target, id }) {
   }
   if (action === "matches-automation-add") return openCreatorMatchesAutomationEditor(null, target.dataset.moment);
   const entry = creatorMatchesModel().automations.find((item) => String(item.id) === String(id));
+  if (action === "matches-animation-local-preview") {
+    if (id && !entry) throw new Error("Cette automatisation n’existe plus dans le profil actif.");
+    const moment = entry?.moment || target.dataset.moment;
+    const reaction = entry ? creatorMatchesOutput(entry, "animation") : creatorMatchesAnimationFromChoice(moment, `${target.dataset.match}:${target.dataset.variant}`);
+    return openCreatorMatchesAnimationPreview(moment, reaction);
+  }
   if (["matches-automation-group-output", "matches-automation-group-toggle", "matches-automation-group-test", "matches-automation-multiplier-mode"].includes(action)) {
     const rawIds = String(target.dataset.ids || "");
     let requestedIds;
@@ -117,15 +124,23 @@ async function handleCreatorMatchesAction({ action, target, id }) {
       return result || {};
     }, "Multiplicateurs mis à jour");
   }
-  if (["matches-automation-animation", "matches-automation-output", "matches-automation-setting"].includes(action)) {
+  if (["matches-automation-animation", "matches-automation-animation-remove", "matches-automation-output", "matches-automation-setting"].includes(action)) {
     if (id && !entry) throw new Error("Cette automatisation n’existe plus dans le profil actif.");
     const current = creatorMatchesOutputDraft(entry, target.dataset.moment);
     if (action === "matches-automation-output") return openCreatorMatchesOutputEditor(entry, current.moment, target.dataset.output);
     let next;
-    if (action === "matches-automation-animation") {
-      const [match, variant] = String(target.value || "").split(":");
-      const output = match ? ShenPulseMatches.normalizeReaction({ type: "animation", match, variant, fit: creatorMatchesOutput(entry, "animation")?.fit || "contain" }) : null;
+    if (["matches-automation-animation", "matches-automation-animation-remove"].includes(action)) {
+      if (action === "matches-automation-animation-remove" && (!entry || !creatorMatchesOutput(entry, "animation"))) throw new Error("Cette ancienne animation n’existe plus dans le profil actif.");
+      const output = creatorMatchesAnimationFromChoice(current.moment, action === "matches-automation-animation-remove" ? "" : String(target.value || ""), creatorMatchesOutput(entry, "animation")?.fit || "contain");
       next = creatorMatchesReplaceOutput(current, "animation", output);
+      const dialogSession = typeof dialogSessionId === "number" ? dialogSessionId : null;
+      let saved = false;
+      const result = await creatorMatchesPerform(target, owner, action + (id || current.moment), async () => {
+        const result = await api.matches.saveAutomation(next, scope); saved = true; return result;
+      }, "Réglage de match enregistré");
+      assertCreatorMatchesOwner(owner);
+      if (saved && output && currentPage === "matches" && (dialogSession === null || dialogSession === dialogSessionId)) openCreatorMatchesAnimationPreview(current.moment, output);
+      return result;
     } else {
       if (target.dataset.setting !== "card" || current.moment !== "card" || !(target.value === "any" || ShenPulseMatches.CARDS.includes(target.value))) throw new Error("Réglage de match invalide.");
       next = { ...current, id: current.id || `match_auto_${cryptoId()}`, card: target.value };
@@ -138,6 +153,7 @@ async function handleCreatorMatchesAction({ action, target, id }) {
   }
   if (!entry) throw new Error("Cette automatisation n’existe plus dans le profil actif.");
   if (action === "matches-automation-test") {
+    if (!creatorMatchesReactionReady(entry)) throw new Error("Choisissez un effet compatible avec ce temps fort avant de tester.");
     if (!(await confirmAction(`Tester réellement « ${entry.name} » sur ses sorties configurées ? Aucun score ni historique de match ne sera modifié.`, { title: "Tester cet effet de match", confirmLabel: "Tester l’effet" }))) return;
     assertCreatorMatchesOwner(owner);
     return creatorMatchesPerform(target, owner, action + id, () => api.matches.testAutomation(entry.id, scope), "Test de l’effet de match demandé");

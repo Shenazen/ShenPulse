@@ -18,6 +18,31 @@ function creatorMatchesVariantRows(match) {
   return globalThis.ShenPulseOverlayMatchCatalog.animationVariants(match);
 }
 
+/** One semantic asset per moment. Internal legacy names remain unchanged;
+ * there is deliberately no fallback animation for an unrelated moment. */
+function creatorMatchesMomentAnimation(moment) {
+  return ({ battleStart: "cofre", multiplierX2: "x2", multiplierX3: "x3", card: "guantes", likeRush: "taptap", snipe: "snipe" })[moment] || "";
+}
+
+function creatorMatchesAnimationChoices(moment) {
+  const match = creatorMatchesMomentAnimation(moment);
+  if (!match || !creatorMatchesAnimationRows().some((row) => row[2] === match)) return [];
+  return creatorMatchesVariantRows(match).filter(([id]) => ["tikcontrol", "gladiador", "cyber"].includes(id))
+    .map(([variant, label]) => [`${match}:${variant}`, variant === "gladiador" ? "Gladiator" : label]);
+}
+
+function creatorMatchesAnimationCompatible(moment, reaction) {
+  return reaction?.type === "animation" && creatorMatchesAnimationChoices(moment)
+    .some(([value]) => value === `${reaction.match}:${reaction.variant || "tikcontrol"}`);
+}
+
+function creatorMatchesAnimationFromChoice(moment, value, fit = "contain") {
+  if (!value) return null;
+  if (!creatorMatchesAnimationChoices(moment).some(([id]) => id === value)) throw new Error("Ce modèle d’animation ne correspond pas à ce temps fort.");
+  const [match, variant] = value.split(":");
+  return ShenPulseMatches.normalizeReaction({ type: "animation", match, variant, fit });
+}
+
 function creatorMatchesAnimationLabel(match, variant, fallback = "Animation") {
   const row = creatorMatchesAnimationRows().find((entry) => entry[2] === match);
   const name = String(row?.[1] || fallback).replace(/^Match\s*/, "");
@@ -30,10 +55,95 @@ function creatorMatchesSyncVariantSelect(editor) {
   const animation = editor.querySelector('[name="matchAnimation"]');
   const select = editor.querySelector('[name="matchVariant"]');
   if (!animation || !select) return;
-  const previous = select.value;
-  const options = creatorMatchesVariantRows(animation.value);
+  const moment = editor.querySelector('[name="moment"]')?.value || "";
+  const match = creatorMatchesMomentAnimation(moment), previous = animation.value === match ? select.value : "";
+  const options = [["", "Aucun"], ...creatorMatchesAnimationChoices(moment).map(([id, label]) => [id.split(":")[1], label])];
+  animation.value = match;
   select.innerHTML = options.map(([id, label]) => `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`).join("");
-  select.value = options.some(([id]) => id === previous) ? previous : "tikcontrol";
+  select.value = options.some(([id]) => id === previous) ? previous : "";
+}
+
+function creatorMatchesAnimationPoster(reaction) {
+  const row = creatorMatchesAnimationRows().find((entry) => entry[2] === reaction?.match);
+  return row && typeof overlayPlaceholderMatch === "function" ? overlayPlaceholderMatch({ key: row[0], name: row[1], match: row[2], previewKind: "match" }, reaction.variant || "tikcontrol") : "";
+}
+
+function creatorMatchesAnimationPreviewMarkup(moment, reaction, { editor = false, id = "" } = {}) {
+  if (!creatorMatchesAnimationCompatible(moment, reaction)) return "";
+  const attributes = editor ? "data-matches-editor-preview" : `data-action="matches-animation-local-preview" data-id="${escapeHtml(id)}" data-moment="${escapeHtml(moment)}" data-match="${escapeHtml(reaction.match)}" data-variant="${escapeHtml(reaction.variant || "tikcontrol")}"`;
+  return `<div class="matches-animation-mini-preview"><div class="matches-animation-mini-poster">${creatorMatchesAnimationPoster(reaction)}</div><div class="matches-animation-preview-actions"><button type="button" class="button small ghost" ${attributes}>${creatorMatchesIcon("play")}Aperçu local</button><small>Muet · uniquement dans ShenPulse</small></div></div>`;
+}
+
+function creatorMatchesLocalAnimationPreviewUrl(moment, reaction) {
+  if (!isAccountAuthenticated() || !hasProAccess() || !creatorMatchesAnimationCompatible(moment, reaction)) return "";
+  const expectedPort = snapshot?.state?.settings?.overlayPort, expectedToken = snapshot?.state?.settings?.overlayToken;
+  if (!Number.isInteger(expectedPort) || expectedPort < 1 || expectedPort > 65535 || typeof expectedToken !== "string" ||
+    !expectedToken || expectedToken.length > 300 || /\s/.test(expectedToken)) return "";
+  const row = creatorMatchesAnimationRows().find((entry) => entry[2] === reaction.match);
+  for (const source of [snapshot?.localOverlayUrls?.[row?.[0]], snapshot?.localOverlayUrls?.base]) {
+    try {
+      const local = new URL(source);
+      if (local.protocol !== "http:" || !["127.0.0.1", "localhost", "[::1]"].includes(local.hostname) || local.username || local.password) continue;
+      if (Number(local.port || 80) !== expectedPort || local.searchParams.has("token") && local.searchParams.get("token") !== expectedToken) continue;
+      if (local.pathname !== "/" && !/^\/overlay\/?(?:index\.html)?$/.test(local.pathname)) continue;
+      const url = new URL("/overlay/", local.origin);
+      url.search = new URLSearchParams({ view: "match", match: reaction.match, variant: reaction.variant || "tikcontrol", token: expectedToken,
+        preview: "animated", autoplay: "true", loop: "false", fit: reaction.fit === "cover" ? "cover" : "contain", soundEnabled: "false" }).toString();
+      return url.toString();
+    } catch { /* A missing local source never falls back to the LIVE or a raw media URL. */ }
+  }
+  return "";
+}
+
+function creatorMatchesMountAnimationPreview(container, moment, reaction, owner) {
+  assertCreatorMatchesOwner(owner);
+  if (!container?.isConnected || !dialog.open || !dialog.contains(container) || currentPage !== "matches" ||
+    typeof rendererVisualsActive === "function" && !rendererVisualsActive() ||
+    !creatorMatchesAnimationCompatible(moment, reaction)) return;
+  container.shenPulseMatchPreviewDispose?.();
+  const url = creatorMatchesLocalAnimationPreviewUrl(moment, reaction);
+  container.innerHTML = `<div class="matches-animation-mini-poster">${creatorMatchesAnimationPoster(reaction)}</div><p class="matches-local-animation-message" role="status">${url ? "Aperçu local muet. Rien n’est envoyé au LIVE." : "Lecteur local indisponible. Le visuel reste disponible ; aucun test LIVE n’est envoyé."}</p>`;
+  const previewDocument = container.ownerDocument, previewDialog = dialog;
+  const cleanups = []; let disposed = false, observer;
+  const cleanup = () => {
+    if (disposed) return; disposed = true;
+    container.querySelectorAll("iframe").forEach((frame) => { frame.removeAttribute("src"); frame.remove(); });
+    observer?.disconnect(); cleanups.forEach((release) => release?.());
+    previewDialog.removeEventListener("close", cleanup); previewDocument.removeEventListener("visibilitychange", check);
+  };
+  const check = () => {
+    try {
+      assertCreatorMatchesOwner(owner);
+      if (!container.isConnected || !previewDialog.open || !previewDialog.contains(container) || currentPage !== "matches" ||
+        typeof rendererVisualsActive === "function" && !rendererVisualsActive()) cleanup();
+    } catch { cleanup(); }
+  };
+  container.shenPulseMatchPreviewDispose = cleanup;
+  if (url) {
+    const frame = previewDocument.createElement("iframe"); frame.className = "matches-local-animation-frame";
+    frame.title = `Aperçu local ${creatorMatchesAnimationLabel(reaction.match, reaction.variant || "tikcontrol")}`;
+    frame.width = "270"; frame.height = "480"; frame.setAttribute("sandbox", "allow-scripts allow-same-origin");
+    frame.setAttribute("allow", "autoplay"); frame.referrerPolicy = "no-referrer"; frame.src = url;
+    container.appendChild(frame);
+  }
+  observer = new MutationObserver(check); observer.observe(previewDocument.body, { childList: true, subtree: true });
+  previewDialog.addEventListener("close", cleanup, { once: true }); previewDocument.addEventListener("visibilitychange", check);
+  if (typeof api.on === "function") {
+    for (const channel of ["state-changed", "runtime-state-changed"]) cleanups.push(api.on(channel, check));
+    cleanups.push(api.on("renderer-visibility", (status) => { if (status?.visible === false) cleanup(); else check(); }));
+  }
+  check();
+}
+
+function openCreatorMatchesAnimationPreview(moment, reaction) {
+  const owner = creatorMatchesCaptureOwner();
+  if (!creatorMatchesAnimationCompatible(moment, reaction)) throw new Error("Ce modèle d’animation ne correspond pas à ce temps fort.");
+  openEditor({ title: `Aperçu local · ${creatorMatchesAnimationLabel(reaction.match, reaction.variant || "tikcontrol")}`,
+    kicker: "MATCHS · APERÇU PRIVÉ ET MUET", variant: "wide",
+    body: `<div class="matches-local-animation-preview" data-matches-local-animation-preview></div><button type="button" class="button small ghost" data-matches-local-animation-replay>Rejouer l’aperçu local</button><p class="matches-editor-note">Cet aperçu ne modifie aucun réglage et ne déclenche ni son LIVE, ni action, ni appareil IRL.</p>` });
+  const container = dialog.querySelector("[data-matches-local-animation-preview]");
+  creatorMatchesMountAnimationPreview(container, moment, reaction, owner);
+  dialog.querySelector("[data-matches-local-animation-replay]")?.addEventListener("click", () => creatorMatchesMountAnimationPreview(container, moment, reaction, owner));
 }
 
 function creatorMatchesOutputDraft(entry, moment) {
@@ -52,6 +162,7 @@ function creatorMatchesReactionReady(entry) {
   if (!outputs.length) return false;
   return outputs.every((reaction) => {
     try { ShenPulseMatches.normalizeReaction(reaction); } catch { return false; }
+    if (reaction.type === "animation" && !creatorMatchesAnimationCompatible(entry?.moment, reaction)) return false;
     return reaction.type !== "action" || creatorCommandActionRows().some(({ action }) => String(action.id) === String(reaction.actionId));
   });
 }
@@ -83,11 +194,11 @@ const CREATOR_MATCH_CARD_PRESENTATION = Object.freeze({
 
 function creatorMatchesAnimationSelect(entry, moment, label = "Animation Premium") {
   const reaction = creatorMatchesOutput(entry, "animation");
-  const value = reaction ? `${reaction.match}:${reaction.variant || "tikcontrol"}` : "";
+  const compatible = creatorMatchesAnimationCompatible(moment, reaction);
+  const value = compatible ? `${reaction.match}:${reaction.variant || "tikcontrol"}` : "";
   const data = entry ? `data-id="${escapeHtml(entry.id)}"` : `data-moment="${escapeHtml(moment)}"`;
-  const options = [["", "Aucune animation"], ...creatorMatchesAnimationRows().flatMap(([, name, match]) =>
-    creatorMatchesVariantRows(match).map(([variant]) => [`${match}:${variant}`, creatorMatchesAnimationLabel(match, variant, name)]))];
-  return `<label class="matches-automation-effect"><span>${creatorMatchesAutomationIcon("magic")}${escapeHtml(label)}</span><select class="matches-automation-select" data-action="matches-automation-animation" ${data} aria-label="${escapeHtml(label)} · ${escapeHtml(CREATOR_MATCH_MOMENT_LABELS[moment][0])}">${options.map(([id, name]) => `<option value="${escapeHtml(id)}" ${id === value ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></label>`;
+  const options = [["", "Aucun"], ...creatorMatchesAnimationChoices(moment)];
+  return `<div class="matches-animation-choice"><label class="matches-automation-effect"><span>${creatorMatchesAutomationIcon("magic")}${escapeHtml(label)}</span><select class="matches-automation-select" data-action="matches-automation-animation" ${data} aria-label="${escapeHtml(label)} · ${escapeHtml(CREATOR_MATCH_MOMENT_LABELS[moment][0])}">${options.map(([id, name]) => `<option value="${escapeHtml(id)}" ${id === value ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}</select></label>${reaction && !compatible ? `<small class="matches-animation-warning">L’ancienne animation ne correspond pas à ce temps fort. Réglage conservé : choisissez un pack compatible pour le remplacer, ou retirez seulement cette animation.<button type="button" class="button small ghost" data-action="matches-automation-animation-remove" ${data}>Retirer l’ancienne animation</button></small>` : ""}${compatible ? creatorMatchesAnimationPreviewMarkup(moment, reaction, { id: entry?.id || "" }) : ""}</div>`;
 }
 
 function creatorMatchesMediaTiles(entry, moment, suffix = "", groupEntries = null) {

@@ -305,7 +305,8 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     dom.window.document.querySelector('[data-action="matches-tab"][data-value="widgets"]').click();
     await waitUntil(() => dom.window.document.querySelector(".matches-widget-grid"), "L’onglet Widgets de Matchs ne s’ouvre pas.");
     assert.equal(dom.window.document.querySelectorAll(".matches-widget-card").length, 7);
-    assert.equal(dom.window.document.querySelectorAll(".matches-animation-card").length, 8);
+    assert.equal(dom.window.document.querySelectorAll(".matches-animation-card").length, 0, "Les effets sont réglés dans les automatisations, pas dans Widgets.");
+    assert.equal(dom.window.document.querySelector('[data-action="matches-player-copy"]'), null);
     assert.equal(dom.window.document.querySelector('.creator-matches-page [data-studio-hero]'), matchesHero);
     dom.window.document.querySelector('[data-action="matches-widget-edit"][data-id="wins"]').click();
     await waitUntil(() => dom.window.document.getElementById("editor-dialog").open, "L’éditeur du compteur de manches ne s’ouvre pas.");
@@ -314,6 +315,8 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     dom.window.document.getElementById("editor-dialog").close();
     dom.window.document.querySelector('[data-action="matches-tab"][data-value="automations"]').click();
     await waitUntil(() => dom.window.document.querySelectorAll(".matches-automation-card").length === 10, "Les dix cartes Matchs, dont le groupe des bonus, ne sont pas rendues.");
+    assert.equal(dom.window.document.querySelectorAll(".matches-automation-onboarding").length, 1);
+    assert.equal(dom.window.document.querySelectorAll('[data-action="matches-player-copy"]').length, 2);
     const animationControls = [...dom.window.document.querySelectorAll('[data-action="matches-automation-animation"]')];
     assert.equal(animationControls.length, 11, "Les onze moments conservent chacun leur réglage d’animation.");
     assert.deepEqual(animationControls.map((control) => control.dataset.moment).sort(),
@@ -416,7 +419,7 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     navigation.querySelector('[data-navigate="matches"]').click();
     assert.ok(dom.window.document.querySelector(".creator-matches-page"));
     assert.equal(dom.window.document.querySelectorAll(".matches-tabs button").length, 3);
-    assert.equal(dom.window.document.querySelector('.studio-hero[data-studio-hero="matches"]') !== null, true);
+    assert.equal(dom.window.document.querySelector('.matches-hero[data-studio-hero="matches"]') !== null, true);
     navigation.querySelector('[data-navigate="home"]').click();
     // Le même index et les vrais événements contrôlent les outils du tableau.
     // Aucun clic sur lecture, test, périphérique, Spotify ou exécution de règle.

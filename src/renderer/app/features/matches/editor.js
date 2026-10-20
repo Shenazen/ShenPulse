@@ -50,16 +50,18 @@ function creatorMatchesAutomationDefault(moment = "battleStart") {
   if (!Object.hasOwn(CREATOR_MATCH_MOMENT_LABELS, moment)) moment = "battleStart";
   return { id: "", name: CREATOR_MATCH_MOMENT_LABELS[moment][0], enabled: false, moment, card: "any", threshold: moment === "comeback" ? 1000 : 300,
     windowSeconds: 5, remainingSeconds: moment === "tieEnd" ? 60 : 30, cooldownMs: 5000,
-    reaction: { type: "animation", match: moment === "multiplierX3" ? "x3" : moment === "card" ? "guantes" : moment === "snipe" ? "snipe" : moment === "likeRush" ? "taptap" : "x2", variant: "tikcontrol", fit: "contain" } };
+    reaction: { type: "bundle", reactions: [] } };
 }
 
 function creatorMatchesReactionFields(current) {
-  const reaction = creatorMatchesReactionOutputs(current.reaction)[0] || creatorMatchesAutomationDefault(current.moment).reaction;
-  const animations = creatorMatchesAnimationRows().map((row) => [row[2], row[1]]);
+  const reaction = creatorMatchesReactionOutputs(current.reaction)[0] || { type: "animation", fit: "contain" };
+  const animation = creatorMatchesOutput(current, "animation"), compatible = creatorMatchesAnimationCompatible(current.moment, animation);
+  const match = creatorMatchesMomentAnimation(current.moment);
+  const variants = [["", "Aucun"], ...creatorMatchesAnimationChoices(current.moment).map(([id, label]) => [id.split(":")[1], label])];
   const actions = creatorCommandActionRows().map(({ rule, action }) => [action.id, `${rule.name || "Action"} · ${typeof actionTypeLabel === "function" ? actionTypeLabel(action.type) : action.type}`]);
   if (reaction.actionId && !actions.some(([id]) => String(id) === String(reaction.actionId))) actions.push([reaction.actionId, "Action enregistrée indisponible — à remplacer"]);
   return `${selectFieldMarkup("reactionType", "Effet à déclencher", reaction.type || "animation", [["animation", "Animation de match"], ["media", "Média personnel"], ["sound", "Son"], ["action", "Action enregistrée"]], { full: true })}
-    <div class="matches-reaction-fields form-grid full" data-matches-reaction="animation" ${reaction.type !== "animation" ? "hidden" : ""}>${selectFieldMarkup("matchAnimation", "Animation", reaction.match || "x2", animations, { full: true })}${selectFieldMarkup("matchVariant", "Version", reaction.variant || "tikcontrol", creatorMatchesVariantRows(reaction.match || "x2"))}${selectFieldMarkup("matchFit", "Ajustement", reaction.fit || "contain", [["contain", "Vidéo entière"], ["cover", "Remplir la source"]])}<p class="matches-editor-note full">Les huit animations utilisent la source Match protégée. Cyber est disponible pour le gant, x2, x3, Tap Tap, le cœur et Snipe. Aucun Coffre Cyber n’a été fourni ; Enigma reste en version TikControl.</p></div>
+    <div class="matches-reaction-fields form-grid full" data-matches-reaction="animation" ${reaction.type !== "animation" ? "hidden" : ""}><input type="hidden" name="matchAnimation" value="${escapeHtml(match)}"><input type="hidden" name="matchAnimationChanged" value="0">${selectFieldMarkup("matchVariant", "Modèle de ce temps fort", compatible ? animation.variant || "tikcontrol" : "", variants, { full: true })}${selectFieldMarkup("matchFit", "Ajustement", animation?.fit || "contain", [["contain", "Vidéo entière"], ["cover", "Remplir la source"]])}<small class="matches-animation-warning full" data-matches-animation-warning ${animation && !compatible ? "" : "hidden"}>L’ancienne animation ne correspond pas à ce temps fort. Elle est conservée tant que vous ne choisissez pas explicitement un modèle compatible ou Aucun.<button type="button" class="button small ghost" data-matches-editor-remove-animation>Retirer l’ancienne animation</button></small><div class="matches-local-animation-preview full" data-matches-editor-animation-preview>${compatible ? creatorMatchesAnimationPreviewMarkup(current.moment, animation, { editor: true }) : ""}</div><p class="matches-editor-note full">Seuls les packs réellement disponibles pour ce temps fort sont proposés. Aucun n’enlève que l’animation : sons, vidéos et actions sont conservés. Choisir un modèle affiche un aperçu local muet, jamais un test sur votre LIVE.</p></div>
     <div class="matches-reaction-fields form-grid full" data-matches-reaction="media" ${reaction.type !== "media" ? "hidden" : ""}>${mediaPickerField("matchMediaUrl", "Média à afficher", reaction.mediaUrl || "", "", { optional: false })}${soundPickerField("matchMediaSound", reaction.soundUrl || "", { label: "Son optionnel", optional: true })}${field("matchMediaDuration", "Durée (secondes)", Number(reaction.durationMs || 5000) / 1000, "number", 'min="0.5" max="60" step="0.5"')}<input type="hidden" name="matchMediaScreen" value="${Math.max(1, Number(reaction.screen) || 1)}"><p class="matches-editor-note full">Le média utilise la même source Match que les animations, sans écran média supplémentaire.</p></div>
     <div class="matches-reaction-fields form-grid full" data-matches-reaction="sound" ${reaction.type !== "sound" ? "hidden" : ""}>${soundPickerField("matchSoundUrl", reaction.url || "", { label: "Son à jouer" })}${field("matchSoundVolume", "Volume (%)", Math.round(Number(reaction.volume ?? 1) * 100), "number", 'min="0" max="100" step="1"')}${selectFieldMarkup("matchSoundOutput", "Sortie du son", reaction.outputMode || "live", [["local", "Lecture sur cet ordinateur"], ["live", "Source Match du LIVE"]])}</div>
     <div class="matches-reaction-fields form-grid full" data-matches-reaction="action" ${reaction.type !== "action" ? "hidden" : ""}>${selectFieldMarkup("matchActionId", "Action du profil actif", reaction.actionId || "", [["", "Choisir une action…"], ...actions], { full: true })}<p class="matches-editor-note full">L’action sera réellement exécutée, y compris ses éventuels effets de jeu ou d’appareil IRL. Les autorisations de l’action restent vérifiées.</p></div>`;
@@ -69,18 +71,29 @@ function creatorMatchesAutomationFromForm(data, current) {
   const text = (key) => String(data.get(key) || "").trim();
   const type = text("reactionType");
   let reaction;
-  if (type === "animation") reaction = { type, match: text("matchAnimation"), variant: text("matchAnimation") === "enigma" ? "tikcontrol" : text("matchVariant"), fit: text("matchFit") };
+  if (type === "animation") {
+    const old = creatorMatchesOutput(current, "animation"), moment = text("moment");
+    if (old && !creatorMatchesAnimationCompatible(current.moment, old) && moment === current.moment &&
+      !text("matchVariant") && text("matchAnimationChanged") !== "1") {
+      const updated = { ...old, fit: text("matchFit") === "cover" ? "cover" : "contain" };
+      reaction = current.reaction.type === "bundle" ? { ...current.reaction, reactions: current.reaction.reactions.map(row => row === old ? updated : row) } : updated;
+    }
+    else {
+      const output = creatorMatchesAnimationFromChoice(moment, text("matchVariant") ? `${text("matchAnimation")}:${text("matchVariant")}` : "", text("matchFit"));
+      reaction = creatorMatchesReplaceOutput(current, "animation", output).reaction;
+    }
+  }
   else if (type === "action") reaction = { type, actionId: text("matchActionId") };
   else if (type === "sound") reaction = { type, url: text("matchSoundUrl"), volume: Number(data.get("matchSoundVolume")) / 100, outputMode: text("matchSoundOutput"), screen: creatorMatchesOutput(current, "sound")?.screen || 1 };
   else if (type === "media") reaction = { type, mediaUrl: text("matchMediaUrl"), soundUrl: text("matchMediaSound"), durationMs: Number(data.get("matchMediaDuration")) * 1000, screen: Number(data.get("matchMediaScreen")) };
   else throw new Error("Choisissez une animation, un média, un son ou une action.");
-  if (current.reaction?.type === "bundle") {
+  if (type !== "animation" && current.reaction?.type === "bundle") {
     const first = creatorMatchesReactionOutputs(current.reaction)[0];
     const others = creatorMatchesReactionOutputs(current.reaction).filter((entry) => entry !== first && entry.type !== reaction.type);
     reaction = { type: "bundle", reactions: [...others, reaction] };
   }
   return ShenPulseMatches.normalizeMatchAutomation({ ...current, id: current.id || `match_auto_${cryptoId()}`, name: text("name"),
-    enabled: data.has("enabled"), moment: text("moment"), card: text("matchCard"), threshold: Number(data.get("matchLikeThreshold")),
+    enabled: data.has("enabled") && creatorMatchesReactionOutputs(reaction).length > 0, moment: text("moment"), card: text("matchCard"), threshold: Number(data.get("matchLikeThreshold")),
     windowSeconds: Number(data.get("matchLikeWindow")), remainingSeconds: Number(data.get("matchRemainingSeconds")), cooldownMs: Number(data.get("matchCooldownSeconds")) * 1000, reaction });
 }
 
@@ -100,10 +113,39 @@ function openCreatorMatchesAutomationEditor(entry, moment) {
       creatorMatchesAcceptResult(result, owner);
     } });
   const editor = dialog.querySelector(".matches-editor");
-  editor?.addEventListener("change", (event) => {
-    if (event.target.name === "matchAnimation") {
-      creatorMatchesSyncVariantSelect(editor);
+  const preview = editor?.querySelector("[data-matches-editor-animation-preview]");
+  const updateAnimationPreview = (play = false) => {
+    assertCreatorMatchesOwner(owner);
+    preview?.shenPulseMatchPreviewDispose?.();
+    const selectedMoment = editor.querySelector('[name="moment"]').value;
+    const variant = editor.querySelector('[name="matchVariant"]').value;
+    const reaction = creatorMatchesAnimationFromChoice(selectedMoment, variant ? `${editor.querySelector('[name="matchAnimation"]').value}:${variant}` : "",
+      editor.querySelector('[name="matchFit"]').value);
+    if (preview) preview.innerHTML = reaction ? creatorMatchesAnimationPreviewMarkup(selectedMoment, reaction, { editor: true }) : "";
+    if (reaction) editor.querySelector("[data-matches-animation-warning]").hidden = true;
+    if (play && reaction && preview) creatorMatchesMountAnimationPreview(preview, selectedMoment, reaction, owner);
+  };
+  editor?.addEventListener("click", (event) => {
+    if (event.target.closest?.("[data-matches-editor-remove-animation]")) {
+      event.preventDefault(); assertCreatorMatchesOwner(owner);
+      editor.querySelector('[name="matchAnimationChanged"]').value = "1";
+      editor.querySelector('[name="matchVariant"]').value = "";
+      updateAnimationPreview(false); editor.querySelector("[data-matches-animation-warning]").hidden = true;
       return;
+    }
+    if (!event.target.closest?.("[data-matches-editor-preview]")) return;
+    event.preventDefault(); updateAnimationPreview(true);
+  });
+  editor?.addEventListener("change", (event) => {
+    if (["matchVariant", "matchFit"].includes(event.target.name)) {
+      if (event.target.name === "matchVariant") editor.querySelector('[name="matchAnimationChanged"]').value = "1";
+      updateAnimationPreview(Boolean(editor.querySelector('[name="matchVariant"]').value));
+      return;
+    }
+    if (event.target.name === "moment") {
+      editor.querySelector('[name="matchAnimationChanged"]').value = "1";
+      creatorMatchesSyncVariantSelect(editor);
+      updateAnimationPreview(false);
     }
     if (!["reactionType", "moment"].includes(event.target.name)) return;
     const type = editor.querySelector('[name="reactionType"]').value;
@@ -113,6 +155,7 @@ function openCreatorMatchesAutomationEditor(entry, moment) {
     const enabled = editor.querySelector('[name="enabled"]');
     enabled.disabled = unavailableCard && selectedMoment === "card";
     if (enabled.disabled) enabled.checked = false;
+    if (type !== "animation") preview?.shenPulseMatchPreviewDispose?.();
   });
 }
 
@@ -167,5 +210,5 @@ function creatorMatchesAutomationsMarkup() {
     const rows = automations.filter((entry) => entry.moment === moment);
     return rows.length ? rows.map((entry) => creatorMatchesAutomationCard(entry, moment)) : [creatorMatchesAutomationCard(null, moment)];
   }).join("");
-  return `<section class="matches-automations"><header class="matches-section-heading"><div><h3>Chaque temps fort, votre réaction.</h3><p>Combinez une animation, une vidéo et un son. Rien ne se déclenche avant d’avoir configuré et activé le temps fort.</p></div><div class="matches-vision-actions"><button type="button" class="button ghost small" data-action="matches-visual-configure">Lecture visuelle locale</button><button type="button" class="button primary small" data-action="matches-automation-add">${creatorMatchesIcon("plus")}Ajouter</button></div></header><section class="matches-automation-section"><header class="matches-automation-section-heading"><h3>Pendant le match</h3><p>Pour pousser votre communauté à envoyer au bon moment</p></header><div class="matches-automation-grid">${cards(["battleStart", "multiplierX2", "card", "lead", "comeback", "tieEnd", "likeRush", "snipe"])}</div></section><section class="matches-automation-section"><header class="matches-automation-section-heading"><h3>Après le match</h3><p>Pour accompagner le résultat confirmé par TikTok</p></header><div class="matches-automation-grid">${cards(["victory", "defeat"])}</div></section><p class="matches-safety-note">Ajoutez une seule fois la source Match des widgets pour les animations, vidéos et sons LIVE. Les tests jouent réellement les sorties configurées, uniquement après confirmation. Ils ne modifient ni les scores, ni les victoires, ni l’historique des matchs. Une action IRL reste soumise à ses autorisations.</p></section>`;
+  return `<section class="matches-automations"><header class="matches-section-heading"><div><h3>Chaque temps fort, votre réaction.</h3><p>Combinez une animation, une vidéo et un son. Rien ne se déclenche avant d’avoir configuré et activé le temps fort.</p></div><div class="matches-vision-actions"><button type="button" class="button ghost small" data-action="matches-visual-configure">Lecture visuelle locale</button><button type="button" class="button primary small" data-action="matches-automation-add">${creatorMatchesIcon("plus")}Ajouter</button></div></header>${typeof creatorMatchesAutomationOnboardingMarkup === "function" ? creatorMatchesAutomationOnboardingMarkup() : ""}${typeof creatorMatchesVisualStatusMarkup === "function" ? creatorMatchesVisualStatusMarkup() : ""}<section class="matches-automation-section"><header class="matches-automation-section-heading"><h3>Pendant le match</h3><p>Pour pousser votre communauté à envoyer au bon moment</p></header><div class="matches-automation-grid">${cards(["battleStart", "multiplierX2", "card", "lead", "comeback", "tieEnd", "likeRush", "snipe"])}</div></section><section class="matches-automation-section"><header class="matches-automation-section-heading"><h3>Après le match</h3><p>Pour accompagner le résultat confirmé par TikTok</p></header><div class="matches-automation-grid">${cards(["victory", "defeat"])}</div></section><p class="matches-safety-note">Ajoutez une seule fois la source Match des widgets pour les animations, vidéos et sons LIVE. Les tests jouent réellement les sorties configurées, uniquement après confirmation. Ils ne modifient ni les scores, ni les victoires, ni l’historique des matchs. Une action IRL reste soumise à ses autorisations.</p></section>`;
 }

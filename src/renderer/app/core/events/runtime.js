@@ -220,6 +220,7 @@ storeUpdateButton.addEventListener("click", () => {
 });
 
 setInterval(() => {
+  if (typeof syncCreatorMatchesVisualStatus === "function") syncCreatorMatchesVisualStatus();
   if (!rendererVisualsActive()) return;
   if (typeof syncCreatorMatchesClock === "function") syncCreatorMatchesClock();
   if (

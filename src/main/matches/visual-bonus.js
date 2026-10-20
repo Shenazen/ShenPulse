@@ -1,6 +1,6 @@
 "use strict";
 
-// Pure interpretation of two separately cropped OCR regions. This module does
+// Pure interpretation of explicitly selected OCR regions. This module does
 // not capture an image, perform OCR, send a request, log text or write a file.
 const MAX_FRAME_AGE_MS = 1000;
 const MAX_FRAME_GAP_MS = 2000;
@@ -13,6 +13,9 @@ const opaqueId = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,160
 const exactTikTokId = (value) => typeof value === "string" && /^[1-9]\d{0,19}$/.test(value) && BigInt(value) <= 18446744073709551615n;
 const username = (value) => typeof value === "string" && /^@?[a-z0-9._]{1,24}$/i.test(value)
   ? value.replace(/^@/, "").toLowerCase() : "";
+const displayName = (value) => typeof value === "string" && value.length <= 200 && !/[\x00-\x1f\x7f]/.test(value)
+  ? value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[œŒ]/g, "oe").replace(/[æÆ]/g, "ae")
+    .toLowerCase().replace(/[^\p{L}\p{N}]/gu, "") : "";
 
 function lines(value) {
   const input = typeof value === "string" ? value.split(/\r?\n/) : value;
@@ -30,7 +33,10 @@ function parseVisualBonusBanner(input) {
   // Match only the complete active TikTok banner, never an animation's ×2,
   // WIN counter, mission announcement, gift target or "available soon" text.
   if (/bientot|defi|envoy|objectif|gagn|atteign|obten|mission|disponib|prochain|\bwin\b/.test(text)) return null;
-  const suffix = "(?:\\s*\\|\\s*|\\s+)([1-9]\\d{0,3})\\s*(?:s|sec|secs|seconde|secondes)\\.?$";
+  // Windows OCR can read the thin separator | as an isolated 1, I or l.
+  // Accept that token only between the complete active label and its clock;
+  // it is never a multiplier, missing duration, challenge or guessed bonus.
+  const suffix = "(?:\\s*\\|\\s*|\\s+[1il]\\s+|\\s+)([1-9]\\d{0,3})\\s*(?:s|sec|secs|seconde|secondes)\\.?$";
   const match = new RegExp("^x\\s*([23])\\s+points?\\s+cadeaux?" + suffix).exec(text) ||
     new RegExp("^points?\\s+cadeaux?\\s+x\\s*([23])(?:\\s+par\\s+premier\\s+cadeau)?" + suffix).exec(text);
   if (!match) return null;
@@ -44,13 +50,38 @@ function normalizedContext(input, now) {
     !username(input.ownerUsername) || !absolute(input.startedAtMs) || !absolute(input.endsAtMs) ||
     input.startedAtMs > now || input.endsAtMs <= Math.max(input.startedAtMs, now) ||
     input.status !== undefined && input.status !== "running") return null;
-  return { ...Object.fromEntries(CONTEXT_IDS.map((key) => [key, input[key]])), ownerUsername: username(input.ownerUsername),
+  const ownerMode = ["studio-self", "self-screen"].includes(input.ownerMode) ? input.ownerMode : "username";
+  if (ownerMode === "self-screen" && (input.ownScreenConfirmed !== true || !["left", "top-left"].includes(input.ownPosition) ||
+    typeof input.layoutKey !== "string" || !input.layoutKey || input.layoutKey.length > 128 || /[\x00-\x1f\x7f]/.test(input.layoutKey))) return null;
+  if (ownerMode === "studio-self" && (!displayName(input.ownerDisplayName) || !Array.isArray(input.otherDisplayNames) ||
+    input.otherDisplayNames.length !== 1 || !displayName(input.otherDisplayNames[0]))) return null;
+  return { ...Object.fromEntries(CONTEXT_IDS.map((key) => [key, input[key]])), ownerUsername: username(input.ownerUsername), ownerMode,
+    ...(ownerMode === "self-screen" ? { ownScreenConfirmed: true, ownPosition: input.ownPosition, layoutKey: input.layoutKey } : {}),
+    ...(ownerMode === "studio-self" ? { ownerDisplayName: input.ownerDisplayName, otherDisplayNames: [...input.otherDisplayNames] } : {}),
     startedAtMs: input.startedAtMs, endsAtMs: input.endsAtMs };
 }
 
-function ownerMatches(input, expected) {
+function ownerMatches(input, context) {
+  // This mode is a manual assertion about the user's own selected screen,
+  // not OCR identity proof or a guessed beneficiary of a global banner.
+  if (context.ownerMode === "self-screen") return context.ownScreenConfirmed === true;
   const ownerLines = lines(input);
   if (!ownerLines?.length) return false;
+  const expected = context.ownerUsername;
+  if (context.ownerMode === "studio-self") {
+    const own = displayName(context.ownerDisplayName), rivals = context.otherDisplayNames.map(displayName);
+    if (ownerLines.filter((line) => line.toLowerCase() === "toi").length !== 1 ||
+      ownerLines.some((line) => /adversaire/i.test(line)) ||
+      ownerLines.some((line) => line.includes("@") && line.toLowerCase() !== `@${expected}`)) return false;
+    const nameLines = ownerLines.filter((line) => line.toLowerCase() !== "toi" && !line.includes("@"));
+    const label = nameLines.join(" "), normalized = displayName(label);
+    if (!normalized || rivals.includes(own)) return false;
+    if (normalized === own) return true;
+    // A truncated name is proof only when Studio visibly marks the end as
+    // truncated, and the sufficiently long prefix is unique in this duo.
+    return /(?:…|\.{2,})\s*$/.test(label) && [...normalized].length >= 8 && own.startsWith(normalized) &&
+      !rivals.some((rival) => rival.startsWith(normalized));
+  }
   const handles = ownerLines.filter((line) => line.includes("@"));
   return handles.length === 1 && handles[0].toLowerCase() === `@${expected}`;
 }
@@ -58,17 +89,19 @@ function ownerMatches(input, expected) {
 class VisualBonusTracker {
   constructor() { this.sequence = 0; this.reset(); }
   reset() { this.identity = ""; this.candidate = null; this.periods = []; this.lastCapturedAtMs = 0; this.frameIds = new Set(); }
+  interrupt() { this.candidate = null; }
   observe(input, nowMs = Date.now()) {
     if (!object(input) || !absolute(nowMs)) { this.candidate = null; return null; }
     const context = normalizedContext(input.context, nowMs);
     if (!context) { this.reset(); return null; }
     // An extension changes the safety bound, not the account/window identity
     // or the already observed bonus end. A new battle/start does change it.
-    const identity = JSON.stringify([...CONTEXT_IDS.map((key) => context[key]), context.ownerUsername, context.startedAtMs]);
+    const identity = JSON.stringify([...CONTEXT_IDS.map((key) => context[key]), context.ownerUsername, context.ownerMode,
+      context.ownerDisplayName, context.otherDisplayNames, context.ownPosition, context.layoutKey, context.startedAtMs]);
     if (identity !== this.identity) { this.reset(); this.identity = identity; }
     if (!opaqueId(input.frameId) || !absolute(input.capturedAtMs) || input.capturedAtMs > nowMs ||
       nowMs - input.capturedAtMs > MAX_FRAME_AGE_MS || input.capturedAtMs < context.startedAtMs ||
-      !ownerMatches(input.ownerLines, context.ownerUsername)) { this.candidate = null; return null; }
+      !ownerMatches(input.ownerLines, context)) { this.candidate = null; return null; }
     if (this.frameIds.has(input.frameId) || input.capturedAtMs <= this.lastCapturedAtMs) return null;
     this.frameIds.add(input.frameId);
     while (this.frameIds.size > 64) this.frameIds.delete(this.frameIds.values().next().value);

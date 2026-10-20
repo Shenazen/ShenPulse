@@ -1,7 +1,7 @@
 "use strict";
 
-/** No fetch, persistent storage, full-screen selection or audio. Only two
- * cropped PNGs leave this private page, except the explicit one-shot preview. */
+/** No fetch, persistent storage, full-screen selection or audio. Only the
+ * consented crop(s) leave this private page, except the one-shot preview. */
 (() => {
   const video = document.getElementById("capture"), bridge = window.shenPulseVision;
   let stream = null, timer = null, running = false, activeToken = "";
@@ -12,16 +12,19 @@
   }
   bridge?.onStop(stop);
   window.addEventListener("pagehide", stop);
-  function image(roi, maxWidth, maxHeight) {
+  function image(roi, maxWidth, maxHeight, maxScale = 1) {
     const width = video.videoWidth, height = video.videoHeight;
     if (!width || !height) throw new Error("Missing frame");
     const sx = Math.round(roi.x * width), sy = Math.round(roi.y * height);
     const sw = Math.max(1, Math.min(width - sx, Math.round(roi.width * width)));
     const sh = Math.max(1, Math.min(height - sy, Math.round(roi.height * height)));
-    const scale = Math.min(1, maxWidth / sw, maxHeight / sh), canvas = document.createElement("canvas");
+    // Studio uses small labels. Enlarge only the already consented crop for
+    // local OCR, never its source rectangle or the one-shot window preview.
+    const scale = Math.min(maxScale, maxWidth / sw, maxHeight / sh), canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.floor(sw * scale)); canvas.height = Math.max(1, Math.floor(sh * scale));
     try {
       const context = canvas.getContext("2d", { alpha: false });
+      context.imageSmoothingEnabled = true; context.imageSmoothingQuality = "high";
       context.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL("image/png");
     } finally { canvas.width = 0; canvas.height = 0; }
@@ -32,7 +35,8 @@
       const capturedAtMs = Date.now();
       const payload = command.mode === "preview"
         ? { token: activeToken, mode: "preview", image: image({ x: 0, y: 0, width: 1, height: 1 }, 1920, 1080), capturedAtMs }
-        : { token: activeToken, mode: "monitor", banner: image(command.bannerROI, 1600, 600), owner: image(command.ownerROI, 1200, 400), capturedAtMs };
+        : { token: activeToken, mode: "monitor", banner: image(command.bannerROI, 1600, 600, 2),
+          owner: command.ownerMode === "self-screen" ? null : image(command.ownerROI, 1200, 400, 2), capturedAtMs };
       const result = await bridge.frame(payload);
       if (command.mode === "preview" || result?.stop || !result?.accepted) return stop();
       // ACK backpressure: there can never be a second frame while OCR runs.

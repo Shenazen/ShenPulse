@@ -23,6 +23,16 @@ test("active French TikTok banners parse only explicit x2/x3 and their visible r
   ]) assert.deepEqual(parseVisualBonusBanner(text), { multiplier, remainingSeconds });
 });
 
+test("Windows OCR separator glyphs are accepted only between a complete active banner and its explicit clock", () => {
+  for (const separator of ["1", "I", "l"]) {
+    assert.deepEqual(parseVisualBonusBanner(`Points Cadeaux x2 par premier Cadeau ${separator} 30s`), { multiplier: 2, remainingSeconds: 30 });
+    assert.deepEqual(parseVisualBonusBanner(`x3 points Cadeaux ${separator} 59s`), { multiplier: 3, remainingSeconds: 59 });
+  }
+  for (const text of ["Points Cadeaux x2 par premier Cadeau 11 30s", "x2 points Cadeaux 1 -30s",
+    "x2 points Cadeaux1 30s", "x2 points Cadeaux 1", "x2 points Cadeaux 1 30s WIN x3", "Défi x2 points Cadeaux 1 30s",
+    "Points Cadeaux x2 par premier Cadeau |1 30s"]) assert.equal(parseVisualBonusBanner(text), null, text);
+});
+
 test("announcements, challenges, WIN counters, animation text, absent powers and guessed durations are rejected", () => {
   for (const text of ["x2 points Cadeaux seront bientôt disponibles |30s", "Défi x2 points Cadeaux |30s",
     "Envoyez tout ! x2 points Cadeaux |30s", "Objectif x2 points Cadeaux |30s", "Gagnez x2 points Cadeaux |30s",
@@ -59,6 +69,73 @@ test("normal countdown ticks and a temporary missing banner never replay the sam
   assert.equal(observe(tracker, 10, 20, { bannerLines: [] }), null);
   assert.equal(observe(tracker, 11, 19), null);
   assert.equal(observe(tracker, 12, 18), null);
+});
+
+test("an interrupted capture invalidates its unconfirmed pair but retains already observed period deduplication", () => {
+  const tracker = new VisualBonusTracker(); observe(tracker, 0, 30); tracker.interrupt();
+  assert.equal(observe(tracker, 1, 29), null); assert.ok(observe(tracker, 2, 28));
+  tracker.interrupt(); assert.equal(observe(tracker, 3, 27), null); assert.equal(observe(tracker, 4, 26), null);
+  observe(tracker, 40, 30); assert.ok(observe(tracker, 41, 29), "a distinct later period remains observable");
+});
+
+test("explicit Studio self mode requires Toi plus an exact verified name or unique visibly truncated prefix", () => {
+  const studio = { ...context(), ownerMode: "studio-self", ownerDisplayName: "Shenazen🔥Phoenix Lég.🔥", otherDisplayNames: ["Mamie cocotte"] };
+  for (const label of ["Shenazen Phoenix Leg", "SHENAZEN 🔥 PHOENIX LÉG. 🔥", "Shenazen🔥Phoe...", "Shenazen Phoe…"]) {
+    const tracker = new VisualBonusTracker(), extra = { context: studio, ownerLines: [label, "Toi"] };
+    assert.equal(observe(tracker, 0, 30, extra), null);
+    assert.ok(observe(tracker, 1, 29, extra), label);
+  }
+  const wrongMode = new VisualBonusTracker();
+  assert.equal(observe(wrongMode, 0, 30, { ownerLines: ["Shenazen Phoenix Leg", "Toi"] }), null);
+  assert.equal(observe(wrongMode, 1, 29, { ownerLines: ["Shenazen Phoenix Leg", "Toi"] }), null, "legacy @ mode is not relaxed");
+});
+
+test("Studio self mode rejects Toi alone, rivals, ambiguous prefixes, missing ellipses, extra handles and unknown names", () => {
+  const studio = { ...context(), ownerMode: "studio-self", ownerDisplayName: "Shenazen🔥Phoenix Lég.🔥", otherDisplayNames: ["Mamie cocotte"] };
+  for (const ownerLines of [["Toi"], ["Mamie cocotte", "Toi"], ["Shenazen Phoe", "Toi"], ["Shen…", "Toi"],
+    ["Shenazen Phoenix Leg"], ["Shenazen Phoenix Leg", "Toi", "Toi"], ["Shenazen Phoenix Leg", "Toi", "@rival"],
+    ["Shenazen Phoenix Leg", "Toi", "Adversaire"], ["Someone different…", "Toi"]]) {
+    const tracker = new VisualBonusTracker(), extra = { context: studio, ownerLines };
+    assert.equal(observe(tracker, 0, 30, extra), null); assert.equal(observe(tracker, 1, 29, extra), null, ownerLines.join(" / "));
+  }
+  for (const change of [{ otherDisplayNames: ["Shenazen Phoebe"] }, { otherDisplayNames: [] },
+    { otherDisplayNames: ["Shenazen Phoenix Leg"] }, { ownerDisplayName: "" }]) {
+    const tracker = new VisualBonusTracker(), extra = { context: { ...studio, ...change }, ownerLines: ["Shenazen Phoe…", "Toi"] };
+    assert.equal(observe(tracker, 0, 30, extra), null); assert.equal(observe(tracker, 1, 29, extra), null);
+  }
+});
+
+test("self-screen is an explicit manual screen assertion, with no OCR identity inferred from its position", () => {
+  for (const ownPosition of ["left", "top-left"]) {
+    const tracker = new VisualBonusTracker(), selected = { ...context(), ownerMode: "self-screen", ownPosition,
+      ownScreenConfirmed: true, layoutKey: ownPosition === "left" ? "[1,2,[]]" : "[2,4,[2,2]]" };
+    assert.equal(observe(tracker, 0, 30, { context: selected, ownerLines: [] }), null);
+    const bonus = observe(tracker, 1, 29, { context: selected, ownerLines: [] });
+    assert.equal(bonus.multiplier, 2); assert.equal(bonus.context.ownPosition, ownPosition);
+    assert.equal(bonus.context.ownerMode, "self-screen");
+  }
+  for (const change of [{ ownScreenConfirmed: false }, { ownScreenConfirmed: undefined }, { ownPosition: "right" },
+    { ownPosition: "" }, { layoutKey: "" }, { ownerUserId: "18446744073709551616" }]) {
+    const tracker = new VisualBonusTracker(), selected = { ...context(), ownerMode: "self-screen", ownPosition: "left",
+      ownScreenConfirmed: true, layoutKey: "[1,2,[]]", ...change };
+    assert.equal(observe(tracker, 0, 30, { context: selected, ownerLines: [] }), null);
+    assert.equal(observe(tracker, 1, 29, { context: selected, ownerLines: [] }), null);
+  }
+});
+
+test("self-screen keeps fresh falling-countdown proof, period deduplication and position/layout invalidation", () => {
+  const selected = { ...context(), ownerMode: "self-screen", ownPosition: "left", ownScreenConfirmed: true, layoutKey: "[1,2,[]]" };
+  const tracker = new VisualBonusTracker(), extra = { context: selected, ownerLines: [] };
+  observe(tracker, 0, 30, extra); assert.equal(observe(tracker, 1, 30, extra), null);
+  assert.ok(observe(tracker, 2, 28, extra)); assert.equal(observe(tracker, 3, 27, extra), null);
+  tracker.interrupt(); observe(tracker, 4, 26, extra); assert.equal(observe(tracker, 5, 25, extra), null);
+  for (const change of [{ ownPosition: "top-left" }, { layoutKey: "[1,2,[1,1]]" }]) {
+    const value = new VisualBonusTracker(); observe(value, 0, 30, extra);
+    assert.equal(observe(value, 1, 29, { ...extra, context: { ...selected, ...change } }), null);
+  }
+  const stale = new VisualBonusTracker();
+  assert.equal(stale.observe(frame(0, 30, extra), NOW + 1001), null);
+  assert.equal(observe(stale, 2, 28, extra), null);
 });
 
 test("changing the multiplier or an explicit countdown window requires a new consistent pair", () => {
