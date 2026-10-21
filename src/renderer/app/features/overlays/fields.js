@@ -31,16 +31,12 @@ const OVERLAY_FIELD_HELP = {
   current: "Valeur de départ utilisée hors live ou quand aucune donnée de session n’est encore disponible.",
   target: "Valeur à atteindre. Elle définit aussi le calcul de la progression quand l’overlay en possède une.",
   goalBaseline: "Point de départ de la progression : les valeurs inférieures ou égales correspondent à 0 %.",
-  progressLabel: "Libellé affiché au-dessus de la progression du Like Goal.",
+  progressLabel: "Texte facultatif affiché après les valeurs dans la barre du Like Goal.",
   whenReached: "Définit le comportement automatique lorsque le Like Goal atteint sa valeur cible.",
   completionActionId: "Action ShenPulse lancée une seule fois lorsque le Like Goal franchit son objectif ou lorsque le timer standard arrive à zéro.",
   showPercent: "Affiche ou masque le pourcentage calculé à côté des valeurs du Like Goal.",
-  likeGoalTitleOffsetX: "Déplace horizontalement le titre du Like Goal sans déplacer le cadre ni la progression.",
-  likeGoalTitleOffsetY: "Déplace verticalement le titre du Like Goal sans déplacer le cadre ni la progression.",
   likeGoalTitleScale: "Agrandit ou réduit uniquement le titre du Like Goal, sans modifier sa position ni le cadre.",
   likeGoalTitleColor: "Modifie uniquement la couleur du titre du Like Goal.",
-  likeGoalContentOffsetX: "Déplace horizontalement tout le texte central : valeur actuelle, objectif, libellé et pourcentage.",
-  likeGoalContentOffsetY: "Déplace verticalement tout le texte central : valeur actuelle, objectif, libellé et pourcentage.",
   likeGoalContentScale: "Agrandit ou réduit ensemble la valeur actuelle, l’objectif, le libellé et le pourcentage.",
   likeGoalContentColor: "Modifie la couleur des valeurs et du libellé central, sans modifier le pourcentage.",
   likeGoalPercentColor: "Modifie uniquement la couleur du pourcentage du Like Goal.",
@@ -51,6 +47,9 @@ const OVERLAY_FIELD_HELP = {
   showHours: "Force le format heures:minutes:secondes, même lorsque le compteur contient moins d’une heure.",
   timerTitleScale: "Agrandit ou réduit uniquement le titre du timer, sans modifier le cadre ni la valeur.",
   timerValueScale: "Agrandit ou réduit uniquement la valeur du timer, sans modifier le cadre ni le titre.",
+  timerTitleColor: "Modifie uniquement la couleur du titre du timer.",
+  timerValueColor: "Modifie uniquement la couleur du compte à rebours.",
+  timerMultiplierColor: "Modifie la couleur du multiplicateur affiché à côté du chrono.",
   multiplier: "Valeur X2 à X5 affichée sur le Timer multiplicateur.",
   maxRows: "Nombre maximal d’éléments ou de personnes visibles simultanément.",
   showRank: "Affiche ou masque le numéro et le badge de chaque position du classement.",
@@ -62,10 +61,24 @@ const OVERLAY_FIELD_HELP = {
   scoreColor: "Couleur du score affiché pour chaque viewer.",
   rankColor: "Couleur des numéros de rang lorsque le design les laisse visibles.",
   rowOpacity: "Règle l’opacité du fond généré derrière chaque ligne du classement.",
+  leaderboardTitleColor: "Modifie la couleur du titre du classement sans changer les noms et les scores.",
+  leaderboardTitleScale: "Agrandit ou réduit le titre en le gardant centré dans sa zone.",
+  leaderboardNameScale: "Règle la taille des noms, ajustés à la place disponible dans chaque ligne.",
+  leaderboardScoreScale: "Règle la taille des scores sans changer les totaux du LIVE.",
+  leaderboardMetricLabel: "Texte affiché après le score, par exemple coins, likes ou points. Laissez vide pour garder uniquement le nombre.",
+  leaderboardShowUnit: "Affiche ou masque le libellé après le score, tout en gardant le nombre visible.",
+  leaderboardUnitColor: "Modifie uniquement la couleur du libellé après le score.",
+  leaderboardUnitScale: "Règle la taille du libellé indépendamment de celle du nombre.",
+  leaderboardAvatarScale: "À 100 %, la photo remplit le logement du design. Réduisez ce réglage pour une photo plus petite dans le cercle.",
   allowNegative: "Autorise le compteur de wins à descendre sous zéro.",
   winCounterLabelColorNegative: "Couleur du nombre lorsque la valeur est négative.",
   winCounterLabelColorNeutral: "Couleur du nombre lorsque la valeur est égale à zéro.",
   winCounterLabelColorPositive: "Couleur du nombre lorsque la valeur est positive.",
+  winCounterTitleColor: "Modifie uniquement la couleur du titre du compteur de wins.",
+  winCounterGoalColor: "Modifie uniquement la couleur de l’objectif de wins.",
+  winCounterTitleScale: "Agrandit ou réduit le titre en le gardant centré dans sa zone.",
+  winCounterValueScale: "Agrandit ou réduit le compteur en conservant son centrage et les couleurs selon sa valeur.",
+  winCounterGoalScale: "Agrandit ou réduit l’objectif facultatif sous le compteur.",
   winCounterLabelOffsetX: "Déplace horizontalement le bloc libellé, valeur et objectif dans le design.",
   winCounterLabelOffsetY: "Déplace verticalement le bloc libellé, valeur et objectif dans le design.",
   fit: "Détermine si la vidéo entière reste visible ou remplit la source 1080 × 1920 en la recadrant si nécessaire.",
@@ -154,13 +167,26 @@ function overlayTimerDurationFields(totalSeconds = 0) {
   </div>`;
 }
 
-function overlayActionSelect(name, label, selectedId = "") {
-  return `<label class="field full">${fieldLabelWithInfo(
+function overlaySizeField(name, label, value = 100, { min = 50, max = 400 } = {}) {
+  const size = Math.round(Math.min(max, Math.max(min, Number(value) || 100)));
+  const id = `${escapeHtml(name)}-range`;
+  return `<label class="field overlay-size-field">
+    ${fieldLabelWithInfo(label, OVERLAY_FIELD_HELP[name])}
+    <span class="overlay-size-control">
+      <input id="${id}" name="${escapeHtml(name)}" type="range" min="${min}" max="${max}" step="1" value="${size}" data-overlay-size aria-label="${escapeHtml(label)}" aria-valuetext="${size} %">
+      <output for="${id}">${size} %</output>
+    </span>
+  </label>`;
+}
+
+function overlayActionSelect(name, label, selectedId = "", full = true) {
+  const missingAction = selectedId && !flattenActions().some(({ action }) => action.id === selectedId);
+  return `<label class="field ${full ? "full" : ""}">${fieldLabelWithInfo(
     label,
     OVERLAY_FIELD_HELP.completionActionId
   )}<select name="${escapeHtml(name)}">${wheelActionOptions(
     selectedId
-  )}</select></label>`;
+  )}${missingAction ? `<option value="${escapeHtml(selectedId)}" selected>Action liée indisponible dans ce profil</option>` : ""}</select></label>`;
 }
 
 function wheelDefaultSettings(overrides = {}) {

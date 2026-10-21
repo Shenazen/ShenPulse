@@ -1,0 +1,170 @@
+/* Zones utiles des cadres, communes à la source OBS et aux cartes du catalogue. */
+.like-goal-widget,
+.overlay-placeholder-like-goal {
+  --like-goal-inner-top: 44%;
+  --like-goal-inner-right: 12%;
+  --like-goal-inner-bottom: 21%;
+  --like-goal-inner-left: 12%;
+  --like-goal-inner-radius: 20px;
+  --like-goal-title-top: 14%;
+  --like-goal-title-right: 35%;
+  --like-goal-title-bottom: 68%;
+  --like-goal-title-left: 35%;
+}
+
+[data-theme="gta"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="gta"] {
+  --like-goal-inner-top: 44%;
+  --like-goal-inner-right: 9%;
+  --like-goal-inner-bottom: 26%;
+  --like-goal-inner-left: 9%;
+  --like-goal-inner-radius: 26px;
+  --like-goal-title-top: 11%;
+  --like-goal-title-bottom: 67%;
+  --like-goal-title-left: 35%;
+  --like-goal-title-right: 33%;
+}
+[data-theme="minecraft"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="minecraft"] {
+  --like-goal-inner-top: 52%;
+  --like-goal-inner-right: 14%;
+  --like-goal-inner-bottom: 22%;
+  --like-goal-inner-left: 14%;
+  --like-goal-inner-radius: 3px;
+  --like-goal-title-top: 25%;
+  --like-goal-title-bottom: 59%;
+  --like-goal-title-left: 36%;
+  --like-goal-title-right: 34%;
+}
+[data-theme="akatsuki"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="akatsuki"] {
+  --like-goal-inner-top: 43%;
+  --like-goal-inner-right: 17.5%;
+  --like-goal-inner-bottom: 34%;
+  --like-goal-inner-left: 18%;
+  --like-goal-inner-radius: 23px;
+  --like-goal-title-top: 14%;
+  --like-goal-title-bottom: 70%;
+  --like-goal-title-left: 39%;
+  --like-goal-title-right: 39%;
+}
+[data-theme="assassination-classroom"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="assassination-classroom"] {
+  --like-goal-inner-top: 48%;
+  --like-goal-inner-right: 24%;
+  --like-goal-inner-bottom: 26%;
+  --like-goal-inner-left: 24%;
+  --like-goal-inner-radius: 6px;
+  --like-goal-title-top: 12%;
+  --like-goal-title-bottom: 70%;
+  --like-goal-title-left: 37%;
+  --like-goal-title-right: 36%;
+}
+[data-theme="cult-of-the-lamb"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="cult-of-the-lamb"] {
+  --like-goal-inner-top: 58%;
+  --like-goal-inner-right: 17%;
+  --like-goal-inner-bottom: 22%;
+  --like-goal-inner-left: 18%;
+  --like-goal-inner-radius: 22px;
+  --like-goal-title-top: 26%;
+  --like-goal-title-bottom: 55%;
+  --like-goal-title-left: 40%;
+  --like-goal-title-right: 37%;
+}
+[data-theme="demon-slayer"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="demon-slayer"] {
+  --like-goal-inner-top: 42%;
+  --like-goal-inner-right: 18%;
+  --like-goal-inner-bottom: 34%;
+  --like-goal-inner-left: 18%;
+  --like-goal-inner-radius: 22px;
+  --like-goal-title-top: 17%;
+  --like-goal-title-bottom: 68%;
+  --like-goal-title-left: 36%;
+  --like-goal-title-right: 36%;
+}
+[data-theme="dragon-ball"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="dragon-ball"] {
+  --like-goal-inner-top: 44%;
+  --like-goal-inner-right: 18.5%;
+  --like-goal-inner-bottom: 26%;
+  --like-goal-inner-left: 18.5%;
+  --like-goal-inner-radius: 24px;
+  --like-goal-title-top: 14%;
+  --like-goal-title-bottom: 70%;
+  --like-goal-title-left: 40%;
+  --like-goal-title-right: 38%;
+}
+[data-theme="fairy-tail"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="fairy-tail"] {
+  --like-goal-inner-top: 41%;
+  --like-goal-inner-right: 17%;
+  --like-goal-inner-bottom: 34%;
+  --like-goal-inner-left: 17%;
+  --like-goal-inner-radius: 22px;
+  --like-goal-title-top: 17%;
+  --like-goal-title-bottom: 68%;
+  --like-goal-title-left: 29%;
+  --like-goal-title-right: 29%;
+}
+[data-theme="harry-potter"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="harry-potter"] {
+  --like-goal-inner-top: 47%;
+  --like-goal-inner-right: 13%;
+  --like-goal-inner-bottom: 27%;
+  --like-goal-inner-left: 13%;
+  --like-goal-inner-radius: 13px;
+  --like-goal-title-top: 22%;
+  --like-goal-title-bottom: 63%;
+  --like-goal-title-left: 37%;
+  --like-goal-title-right: 37%;
+}
+[data-theme="naruto"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="naruto"] {
+  --like-goal-inner-top: 44%;
+  --like-goal-inner-right: 16%;
+  --like-goal-inner-bottom: 29%;
+  --like-goal-inner-left: 16%;
+  --like-goal-inner-radius: 24px;
+  --like-goal-title-top: 15%;
+  --like-goal-title-bottom: 70%;
+  --like-goal-title-left: 39%;
+  --like-goal-title-right: 39%;
+}
+[data-theme="one-piece"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="one-piece"] {
+  --like-goal-inner-top: 51%;
+  --like-goal-inner-right: 16%;
+  --like-goal-inner-bottom: 30%;
+  --like-goal-inner-left: 16%;
+  --like-goal-inner-radius: 12px;
+  --like-goal-title-top: 27%;
+  --like-goal-title-bottom: 61%;
+  --like-goal-title-left: 39%;
+  --like-goal-title-right: 37%;
+}
+[data-theme="stardew-valley"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="stardew-valley"] {
+  --like-goal-inner-top: 40%;
+  --like-goal-inner-right: 12%;
+  --like-goal-inner-bottom: 44%;
+  --like-goal-inner-left: 12%;
+  --like-goal-inner-radius: 12px;
+  --like-goal-title-top: 17%;
+  --like-goal-title-bottom: 66%;
+  --like-goal-title-left: 40%;
+  --like-goal-title-right: 37%;
+}
+[data-theme="terraria"] .like-goal-widget,
+.overlay-placeholder-like-goal[data-placeholder-theme="terraria"] {
+  --like-goal-inner-top: 42%;
+  --like-goal-inner-right: 10%;
+  --like-goal-inner-bottom: 26%;
+  --like-goal-inner-left: 10%;
+  --like-goal-inner-radius: 12px;
+  --like-goal-title-top: 12%;
+  --like-goal-title-bottom: 75%;
+  --like-goal-title-left: 39%;
+  --like-goal-title-right: 39%;
+}

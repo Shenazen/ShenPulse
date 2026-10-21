@@ -350,14 +350,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .overlay-catalog-card--like-goal .overlay-design-picker,
-  .overlay-catalog-card--like-goal .overlay-quick-actions {
+  .overlay-catalog-card--like-goal .overlay-design-picker {
     grid-column: 1;
-  }
-
-  .overlay-catalog-card--like-goal .overlay-quick-actions {
-    padding-top: 10px;
-    border-top: 1px solid rgba(135, 119, 202, .14);
   }
 
   .simulator-grid {

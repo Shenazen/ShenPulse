@@ -41,33 +41,19 @@ function overlayProfileName() {
     || "Profil actif";
 }
 
+function overlayTimerPauseButton(item) {
+  const paused = Boolean(overlayConfig(item.key).timerPaused);
+  const label = paused ? "Reprendre le timer" : "Mettre le timer en pause";
+  return `<button type="button" class="button small ghost overlay-quick-icon" data-action="overlay-quick" data-id="${escapeHtml(item.key)}" data-operation="pause" data-amount="0" title="${label}" aria-label="${label}"><span aria-hidden="true">${paused ? "&#9654;" : "&#10074;&#10074;"}</span></button>`;
+}
+
 function overlayQuickActions(item, allowed = true) {
-  if (["timer", "multiplierTimer"].includes(item.key)) {
-    const paused = Boolean(overlayConfig(item.key).timerPaused);
-    const toggleLabel = paused ? "Reprendre le timer" : "Mettre le timer en pause";
-    const toggleIcon = paused ? "&#9654;" : "&#10074;&#10074;";
-    return `<div class="overlay-quick-actions overlay-quick-actions--timer" aria-label="Actions rapides">
-      <span>Actions rapides</span>
-      <div>
-        <button type="button" class="button tiny ghost overlay-quick-icon" data-action="overlay-quick" data-id="${escapeHtml(item.key)}" data-operation="pause" data-amount="0" title="${toggleLabel}" aria-label="${toggleLabel}" ${allowed ? "" : "disabled"}><span aria-hidden="true">${toggleIcon}</span></button>
-        <button type="button" class="button tiny ghost overlay-quick-icon" data-action="overlay-quick" data-id="${escapeHtml(item.key)}" data-operation="reset" data-amount="0" title="Réinitialiser le timer" aria-label="Réinitialiser le timer" ${allowed ? "" : "disabled"}><span aria-hidden="true">&#8635;</span></button>
-      </div>
-    </div>`;
-  }
+  if (["timer", "multiplierTimer", "winCounter"].includes(item.key)) return "";
   const definitions = {
-    likeGoal: [
-      ["add", 1000, "＋1 000"],
-      ["reset", 0, "Réinitialiser"]
-    ],
     coinJar: [
       ["add", 10, "＋10"],
       ["remove", 10, "−10"],
       ["reset", 0, "Vider"]
-    ],
-    winCounter: [
-      ["remove", 1, "−1"],
-      ["add", 1, "＋1"],
-      ["reset", 0, "Réinitialiser"]
     ],
     wheel: [["test", 0, "Lancer"]]
   };
@@ -79,6 +65,12 @@ function overlayQuickActions(item, allowed = true) {
       `<button type="button" class="button tiny ghost" data-action="overlay-quick" data-id="${escapeHtml(item.key)}" data-operation="${operation}" data-amount="${amount}" ${allowed ? "" : "disabled"}>${escapeHtml(label)}</button>`
     ).join("")}</div>
   </div>`;
+}
+
+function overlayWinCounterButtons() {
+  return [["remove", "Retirer une win", "−1"], ["add", "Ajouter une win", "+1"]].map(([operation, label, text]) =>
+    `<button type="button" class="button small ghost overlay-quick-icon" data-action="overlay-quick" data-id="winCounter" data-operation="${operation}" data-amount="1" title="${label}" aria-label="${label}">${text}</button>`
+  ).join("");
 }
 
 /**
@@ -166,8 +158,10 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
           <div class="entity-actions">
             <button class="button small primary" data-action="preview-overlay" data-id="${escapeHtml(item.key)}">${isMatchOverlay ? "Relancer à 0" : "Tester en direct"}</button>
             <button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer</button>
-            <button class="button small" data-action="open-url" data-value="${escapeHtml(isMatchOverlay ? matchStudioUrl : url)}" ${isMatchOverlay && !matchStudioUrl ? "disabled" : ""}>Ouvrir</button>
-            ${isMatchOverlay ? "" : `<button class="button small ghost" data-action="copy" data-value="${escapeHtml(localOverlayUrl(item))}">OBS local</button>`}
+            ${["likeGoal", "timer", "multiplierTimer", "winCounter"].includes(item.key)
+              ? `${["timer", "multiplierTimer"].includes(item.key) ? overlayTimerPauseButton(item) : ""}${item.key === "winCounter" ? overlayWinCounterButtons() : ""}<button type="button" class="button small ghost" data-action="overlay-quick" data-id="${escapeHtml(item.key)}" data-operation="reset" data-amount="0">Réinitialiser</button>`
+              : ["topDonors", "topTappers"].includes(item.key) ? "" : `<button class="button small" data-action="open-url" data-value="${escapeHtml(isMatchOverlay ? matchStudioUrl : url)}" ${isMatchOverlay && !matchStudioUrl ? "disabled" : ""}>Ouvrir</button>
+                 ${isMatchOverlay ? "" : `<button class="button small ghost" data-action="copy" data-value="${escapeHtml(localOverlayUrl(item))}">OBS local</button>`}`}
           </div>
         </div>`
       : ""}
@@ -331,7 +325,7 @@ function updateOverlayCardConfigUi(key, config) {
 
   if (["timer", "multiplierTimer"].includes(key)) {
     const toggle = card.querySelector(
-      '.overlay-quick-actions--timer [data-operation="pause"]'
+      '[data-action="overlay-quick"][data-operation="pause"]'
     );
     const paused = Boolean(config.timerPaused);
     const label = paused ? "Reprendre le timer" : "Mettre le timer en pause";

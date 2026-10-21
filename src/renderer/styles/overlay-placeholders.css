@@ -1,3 +1,6 @@
+@import url("../../../resources/overlays/styles/like-goal-layout.css");
+@import url("../../../resources/overlays/styles/timer-layout.css");
+
 /*
  * Aperçus instantanés du catalogue.
  *
@@ -29,41 +32,21 @@
 /* Like Goal ------------------------------------------------------------- */
 
 .overlay-placeholder-like-goal {
-  --placeholder-inner-top: 44%;
-  --placeholder-inner-right: 12%;
-  --placeholder-inner-bottom: 21%;
-  --placeholder-inner-left: 12%;
-  --placeholder-inner-radius: 20px;
-  --placeholder-value-top: 68%;
   overflow: visible;
   isolation: isolate;
   text-align: center;
   text-shadow: 0 2px 0 rgba(0, 0, 0, .78), 0 0 8px rgba(0, 0, 0, .82);
 }
 
-.overlay-placeholder-like-goal[data-placeholder-theme="gta"] { --placeholder-inner-top: 44%; --placeholder-inner-right: 9%; --placeholder-inner-bottom: 26%; --placeholder-inner-left: 9%; --placeholder-inner-radius: 26px; --placeholder-value-top: 72%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="minecraft"] { --placeholder-inner-top: 52%; --placeholder-inner-right: 14%; --placeholder-inner-bottom: 22%; --placeholder-inner-left: 14%; --placeholder-inner-radius: 3px; --placeholder-value-top: 76%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="akatsuki"] { --placeholder-inner-top: 43%; --placeholder-inner-right: 17.5%; --placeholder-inner-bottom: 34%; --placeholder-inner-left: 18%; --placeholder-inner-radius: 23px; --placeholder-value-top: 67%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="assassination-classroom"] { --placeholder-inner-top: 45%; --placeholder-inner-right: 24%; --placeholder-inner-bottom: 36%; --placeholder-inner-left: 24%; --placeholder-inner-radius: 6px; --placeholder-value-top: 66%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="cult-of-the-lamb"] { --placeholder-inner-top: 58%; --placeholder-inner-right: 17%; --placeholder-inner-bottom: 22%; --placeholder-inner-left: 18%; --placeholder-inner-radius: 22px; --placeholder-value-top: 79%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="demon-slayer"] { --placeholder-inner-top: 42%; --placeholder-inner-right: 18%; --placeholder-inner-bottom: 34%; --placeholder-inner-left: 18%; --placeholder-inner-radius: 22px; --placeholder-value-top: 66%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="dragon-ball"] { --placeholder-inner-top: 42%; --placeholder-inner-right: 18.5%; --placeholder-inner-bottom: 31%; --placeholder-inner-left: 18.5%; --placeholder-inner-radius: 24px; --placeholder-value-top: 68%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="fairy-tail"] { --placeholder-inner-top: 41%; --placeholder-inner-right: 17%; --placeholder-inner-bottom: 34%; --placeholder-inner-left: 17%; --placeholder-inner-radius: 22px; --placeholder-value-top: 65%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="harry-potter"] { --placeholder-inner-top: 52%; --placeholder-inner-right: 13%; --placeholder-inner-bottom: 35%; --placeholder-inner-left: 13%; --placeholder-inner-radius: 13px; --placeholder-value-top: 70%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="naruto"] { --placeholder-inner-top: 44%; --placeholder-inner-right: 16%; --placeholder-inner-bottom: 29%; --placeholder-inner-left: 16%; --placeholder-inner-radius: 24px; --placeholder-value-top: 69%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="one-piece"] { --placeholder-inner-top: 51%; --placeholder-inner-right: 16%; --placeholder-inner-bottom: 30%; --placeholder-inner-left: 16%; --placeholder-inner-radius: 12px; --placeholder-value-top: 71%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="stardew-valley"] { --placeholder-inner-top: 41%; --placeholder-inner-right: 12%; --placeholder-inner-bottom: 45%; --placeholder-inner-left: 12%; --placeholder-inner-radius: 12px; --placeholder-value-top: 58%; }
-.overlay-placeholder-like-goal[data-placeholder-theme="terraria"] { --placeholder-inner-top: 44%; --placeholder-inner-right: 10%; --placeholder-inner-bottom: 28%; --placeholder-inner-left: 10%; --placeholder-inner-radius: 12px; --placeholder-value-top: 70%; }
-
 .overlay-placeholder-like-bar {
   position: absolute;
   z-index: 2;
-  top: var(--placeholder-inner-top);
-  right: var(--placeholder-inner-right);
-  bottom: var(--placeholder-inner-bottom);
-  left: var(--placeholder-inner-left);
+  top: var(--like-goal-inner-top);
+  right: var(--like-goal-inner-right);
+  bottom: var(--like-goal-inner-bottom);
+  left: var(--like-goal-inner-left);
   overflow: hidden;
-  border-radius: var(--placeholder-inner-radius);
+  border-radius: var(--like-goal-inner-radius);
   background: rgba(2, 6, 14, .62);
   box-shadow: inset 0 0 12px rgba(255, 255, 255, .12);
 }
@@ -87,26 +70,26 @@
 .overlay-placeholder-like-copy > strong,
 .overlay-placeholder-like-copy > small {
   position: absolute;
-  right: 0;
-  left: 0;
-  display: block;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .overlay-placeholder-like-copy > strong {
-  top: 26%;
-  transform: translate(var(--placeholder-title-x, 0), calc(-50% + var(--placeholder-title-y, 0px))) scale(var(--placeholder-title-scale, 1));
+  inset: var(--like-goal-title-top) var(--like-goal-title-right) var(--like-goal-title-bottom) var(--like-goal-title-left);
   color: var(--placeholder-title-color, #fff);
-  font-size: clamp(8px, 1.7vw, 18px);
+  font-size: calc(clamp(8px, 1.7vw, 18px) * var(--placeholder-title-scale, 1));
   font-weight: 950;
-  text-transform: uppercase;
 }
 
 .overlay-placeholder-like-copy > small {
-  top: var(--placeholder-value-top);
-  transform: translate(var(--placeholder-content-x, 0), calc(-50% + var(--placeholder-content-y, 0px))) scale(var(--placeholder-content-scale, 1));
+  inset: var(--like-goal-inner-top) var(--like-goal-inner-right) var(--like-goal-inner-bottom) var(--like-goal-inner-left);
+  gap: .34em;
   color: var(--placeholder-content-color, #fff);
-  font-size: clamp(7px, 1.3vw, 14px);
+  font-size: calc(clamp(7px, 1.3vw, 14px) * var(--placeholder-content-scale, 1));
   font-weight: 900;
 }
 
@@ -124,20 +107,10 @@
   pointer-events: none;
 }
 
-.overlay-placeholder-frame-slice--top { clip-path: inset(0 0 calc(100% - var(--placeholder-inner-top)) 0); }
-.overlay-placeholder-frame-slice--bottom { clip-path: inset(calc(100% - var(--placeholder-inner-bottom)) 0 0 0); }
-.overlay-placeholder-frame-slice--left { clip-path: inset(var(--placeholder-inner-top) calc(100% - var(--placeholder-inner-left)) var(--placeholder-inner-bottom) 0); }
-.overlay-placeholder-frame-slice--right { clip-path: inset(var(--placeholder-inner-top) 0 var(--placeholder-inner-bottom) calc(100% - var(--placeholder-inner-right))); }
-
-.overlay-placeholder-like-goal.is-classic .overlay-placeholder-like-bar {
-  inset: 21% 8.5% 19%;
-  border: 1px solid rgba(255, 255, 255, .26);
-  border-radius: 34px;
-  background: rgba(2, 6, 14, .72);
-}
-
-.overlay-placeholder-like-goal.is-classic .overlay-placeholder-like-copy > strong { top: 31%; }
-.overlay-placeholder-like-goal.is-classic .overlay-placeholder-like-copy > small { top: 67%; }
+.overlay-placeholder-frame-slice--top { clip-path: inset(0 0 calc(100% - var(--like-goal-inner-top)) 0); }
+.overlay-placeholder-frame-slice--bottom { clip-path: inset(calc(100% - var(--like-goal-inner-bottom)) 0 0 0); }
+.overlay-placeholder-frame-slice--left { clip-path: inset(var(--like-goal-inner-top) calc(100% - var(--like-goal-inner-left)) var(--like-goal-inner-bottom) 0); }
+.overlay-placeholder-frame-slice--right { clip-path: inset(var(--like-goal-inner-top) 0 var(--like-goal-inner-bottom) calc(100% - var(--like-goal-inner-right))); }
 
 /* Timer ---------------------------------------------------------------- */
 

@@ -8,11 +8,9 @@ const { root, renderer, rendererCss, overlayCss, overlayRuntime, coinJarPhysics,
 
 /** Rendus, couleurs, positions et médias propres aux overlays. */
 
-test("le Like Goal classique garde son ratio et remplit le cadre intérieur", () => {
-  assert.match(rendererCss, /\.preview-theme-classic/);
+test("le Like Goal utilise GTA par défaut et garde son ratio", () => {
   assert.match(rendererCss, /aspect-ratio:\s*6\.5\s*\/\s*1/);
-  assert.match(overlayCss, /\[data-theme="classic"\] \.like-goal-bar/);
-  assert.match(overlayCss, /inset:\s*21% 8\.5% 19%/);
+  assert.equal(overlayCatalog.defaultConfig("likeGoal").theme, "gta");
   assert.equal(overlayCatalog.defaultConfig("likeGoal").schemaVersion, 2);
   assert.equal(overlayCatalog.defaultConfig("likeGoal").scale, 100);
   assert.match(
@@ -81,17 +79,13 @@ test("les textes, les couleurs et le gagnant de la roue utilisent le même angle
   );
 });
 
-test("les timers gardent seulement les commandes icone lecture pause et reset", () => {
-  const timerActions =
-    renderer.match(
-      /if \(\["timer", "multiplierTimer"\]\.includes\(item\.key\)\) \{([\s\S]*?)\r?\n  \}\r?\n  const definitions/
-    )?.[1] || "";
-
-  assert.match(timerActions, /data-operation="pause"/);
-  assert.match(timerActions, /data-operation="reset"/);
-  assert.match(timerActions, /overlay-quick-icon/);
-  assert.match(timerActions, /aria-label="\$\{toggleLabel\}"/);
-  assert.doesNotMatch(timerActions, /data-operation="add"|data-operation="remove"/);
+test("les timers gardent leurs commandes pause et reset dans le pied de carte", () => {
+  const pause = renderer.slice(renderer.indexOf("function overlayTimerPauseButton"), renderer.indexOf("function overlayQuickActions"));
+  assert.match(pause, /data-operation="pause"/);
+  assert.match(pause, /overlay-quick-icon/);
+  assert.match(pause, /aria-label="\$\{label\}"/);
+  assert.match(renderer, /\["timer", "multiplierTimer"\]\.includes\(item\.key\) \? overlayTimerPauseButton\(item\)/);
+  assert.match(renderer, /data-operation="reset"/);
 });
 
 test("les vidéos Match utilisent un lecteur local exclusif et protégé par compte", () => {
@@ -188,12 +182,12 @@ test("les objectifs gardent leur cadre devant la progression et les timers n'ont
   assert.match(overlayHtml, /class="like-goal-frame-slice slice-bottom"/);
   assert.match(
     overlayCss,
-    /:where\(\[data-theme\]:not\(\[data-theme="classic"\]\)\) \.like-goal-widget/
+    /\.like-goal-widget\s*\{[\s\S]*overflow:\s*visible/
   );
   assert.match(overlayCss, /\.like-goal-frame-foreground\s*\{[\s\S]*z-index:\s*3/);
   assert.match(
     overlayCss,
-    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.like-goal-bar\s*\{[\s\S]*z-index:\s*2/
+    /\.like-goal-bar\s*\{[\s\S]*z-index:\s*2/
   );
   assert.doesNotMatch(overlayHtml, /class="timer-line"/);
   assert.doesNotMatch(overlayCss, /\.timer-line/);

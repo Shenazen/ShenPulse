@@ -109,7 +109,7 @@ test("PublicOverlayRelay authentifie l'installation puis publie état et lots", 
   assert.equal(batch.configurations.likeGoal.theme, "naruto");
   assert.equal(batch.configurations.likeGoal.title, "PING-PONG");
   assert.equal(batch.configurations.likeGoal.target, 2500);
-  assert.equal(batch.configurations.likeGoal.contentY, -25);
+  assert.equal(batch.configurations.likeGoal.contentY, undefined);
   assert.equal(batch.configurations.likeGoal.contentScale, 200);
 
   await relay.stop();

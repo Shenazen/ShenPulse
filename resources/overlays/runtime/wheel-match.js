@@ -282,10 +282,10 @@ function seedStaticLeaderboardPreview() {
 function setupLeaderboard() {
   const title = document.getElementById("leaderboard-title");
   const icon = document.getElementById("leaderboard-icon");
-  if (title) title.textContent = leaderboardKind === "tappers"
+  if (title) (title.firstElementChild || title).textContent = leaderboardKind === "tappers"
     ? "CLASSEMENT TAPOTEURS"
     : "CLASSEMENT DONATEURS";
-  if (title && overlayTitle) title.textContent = overlayTitle;
+  if (title && overlayTitle) (title.firstElementChild || title).textContent = overlayTitle;
   if (icon) icon.textContent = leaderboardKind === "tappers" ? "♥" : "♛";
   seedStaticLeaderboardPreview();
   renderLeaderboard();

@@ -1,7 +1,14 @@
 /* Point d'entrée CSS de compatibilité et des tests du runtime overlay. */
+@import url("styles/like-goal-layout.css");
 @import url("styles/core.css");
 @import url("styles/wheel.css");
 @import url("styles/themes.css");
 @import url("styles/configuration.css");
+@import url("styles/timer-layout.css");
+@import url("styles/timer.css");
+@import url("styles/win-counter-layout.css");
+@import url("styles/win-counter.css");
+@import url("styles/leaderboard-layout.css");
+@import url("styles/leaderboard.css");
 @import url("styles/scene.css");
 @import url("styles/match-player.css");

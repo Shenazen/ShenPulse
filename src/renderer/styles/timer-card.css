@@ -1,0 +1,41 @@
+/* Chaque timer garde une carte compacte et ses commandes dans le pied. */
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) > .overlay-preview {
+  grid-column: 1 / -1;
+  min-height: 190px;
+  height: 190px;
+  padding: 10px 18px;
+}
+
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) > .overlay-card-copy {
+  gap: 10px;
+}
+
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) .overlay-card-copy > p,
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) .overlay-design-picker {
+  margin: 0;
+}
+
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) .overlay-design-picker,
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) .overlay-design-picker select {
+  text-align: center;
+  text-align-last: center;
+}
+
+:is([data-overlay-card="timer"], [data-overlay-card="multiplierTimer"], [data-overlay-card="winCounter"], [data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) .overlay-runtime-frame--card {
+  width: min(100%, 560px);
+  max-height: 170px;
+}
+
+:is([data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) > .overlay-preview {
+  min-height: 300px;
+  height: 300px;
+}
+
+:is([data-overlay-card="topDonors"], [data-overlay-card="topTappers"]) .overlay-runtime-frame--card {
+  max-height: 280px;
+}
+

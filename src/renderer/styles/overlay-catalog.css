@@ -735,19 +735,6 @@ dialog[data-variant="overlay-preview"] {
   aspect-ratio: 6.5 / 1;
 }
 
-.preview-theme-classic {
-  --like-preview-top: 21%;
-  --like-preview-right: 8.5%;
-  --like-preview-bottom: 19%;
-  --like-preview-left: 8.5%;
-  --like-preview-radius: 22px;
-  --like-preview-value-top: 67%;
-}
-
-.preview-theme-classic .preview-like-goal-content > strong {
-  top: 31%;
-}
-
 .preview-like-goal-content {
   position: absolute;
   z-index: 3;

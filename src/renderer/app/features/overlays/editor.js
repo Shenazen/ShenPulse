@@ -186,6 +186,15 @@ function openWheelOverlayConfig(item, rawConfig = null) {
 
 function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
   const next = { ...baseConfig };
+  if (item.key === "winCounter") {
+    delete next.winCounterLabelOffsetX;
+    delete next.winCounterLabelOffsetY;
+  }
+  if (item.key === "likeGoal") {
+    for (const key of ["likeGoalTitleOffsetX", "likeGoalTitleOffsetY", "likeGoalContentOffsetX", "likeGoalContentOffsetY"]) {
+      delete next[key];
+    }
+  }
   const stringKeys = [
     "title",
     "theme",
@@ -210,12 +219,20 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
     "nameColor",
     "scoreColor",
     "rankColor",
+    "leaderboardTitleColor",
+    "leaderboardMetricLabel",
+    "leaderboardUnitColor",
     "winCounterLabelColorNegative",
     "winCounterLabelColorNeutral",
     "winCounterLabelColorPositive",
+    "winCounterTitleColor",
+    "winCounterGoalColor",
     "likeGoalTitleColor",
     "likeGoalContentColor",
-    "likeGoalPercentColor"
+    "likeGoalPercentColor",
+    "timerTitleColor",
+    "timerValueColor",
+    "timerMultiplierColor"
   ];
   const numberKeys = [
     "scale",
@@ -231,20 +248,22 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
     "current",
     "target",
     "goalBaseline",
-    "likeGoalTitleOffsetX",
-    "likeGoalTitleOffsetY",
     "likeGoalTitleScale",
-    "likeGoalContentOffsetX",
-    "likeGoalContentOffsetY",
     "likeGoalContentScale",
     "seconds",
     "timerTitleScale",
     "timerValueScale",
+    "leaderboardTitleScale",
+    "leaderboardNameScale",
+    "leaderboardScoreScale",
+    "leaderboardUnitScale",
+    "leaderboardAvatarScale",
+    "winCounterTitleScale",
+    "winCounterValueScale",
+    "winCounterGoalScale",
     "multiplier",
     "maxRows",
     "minCoins",
-    "winCounterLabelOffsetX",
-    "winCounterLabelOffsetY",
     "rowOpacity"
   ];
   const booleanKeys = [
@@ -257,6 +276,7 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
     "showCrown",
     "showRankBadges",
     "showMetricLabel",
+    "leaderboardShowUnit",
     "showBase",
     "showHours",
     "showShadow",
@@ -388,6 +408,10 @@ function overlayEditorPanel(key, content, active = false) {
 
 function openOverlayConfig(item) {
   if (!item) throw new Error("Overlay introuvable.");
+  if (["topDonors", "topTappers"].includes(item.key)) return openLeaderboardOverlayConfig(item);
+  if (item.key === "likeGoal") return openLikeGoalOverlayConfig(item);
+  if (item.key === "winCounter") return openWinCounterOverlayConfig(item);
+  if (["timer", "multiplierTimer"].includes(item.key)) return openTimerOverlayConfig(item);
   if (item.key === "wheel") {
     wheelEditorContext = null;
     return openWheelOverlayConfig(item, overlayConfig(item.key));
@@ -425,19 +449,6 @@ function openOverlayConfig(item) {
     specialized += `${overlayField("current", "Valeur de départ hors session", config.current ?? 0, "number", 'min="-999999" max="999999"')}
       ${overlayField("target", "Objectif", config.target ?? 1000, "number", 'min="1" max="999999"')}`;
   }
-  if (item.key === "likeGoal") {
-    specialized += `${overlayField("goalBaseline", "Départ de la progression", config.goalBaseline ?? 0, "number")}
-      ${overlayField("progressLabel", "Unité / libellé de progression", config.progressLabel || "likes", "text")}
-      ${overlaySelect("whenReached", "Lorsque l’objectif est atteint", config.whenReached || "increase", [["keep", "Conserver l’objectif"], ["increase", "Augmenter l’objectif"], ["double", "Doubler l’objectif"], ["hide", "Masquer le Like Goal"]])}
-      ${overlayActionSelect("completionActionId", "Action à lancer lorsque l’objectif est atteint", config.completionActionId)}
-      ${overlaySelect("showPercent", "Afficher le pourcentage", String(config.showPercent !== false), [["true", "Oui"], ["false", "Non"]])}
-      ${overlayField("likeGoalTitleOffsetX", "Décalage horizontal du titre (px)", config.likeGoalTitleOffsetX ?? 0, "number", 'min="-500" max="500"')}
-      ${overlayField("likeGoalTitleOffsetY", "Décalage vertical du titre (px)", config.likeGoalTitleOffsetY ?? 0, "number", 'min="-500" max="500"')}
-      ${overlayField("likeGoalTitleScale", "Taille du titre (%)", config.likeGoalTitleScale ?? 100, "number", 'min="50" max="200"')}
-      ${overlayField("likeGoalContentOffsetX", "Décalage horizontal du texte central (px)", config.likeGoalContentOffsetX ?? 0, "number", 'min="-500" max="500"')}
-      ${overlayField("likeGoalContentOffsetY", "Décalage vertical du texte central (px)", config.likeGoalContentOffsetY ?? 0, "number", 'min="-500" max="500"')}
-      ${overlayField("likeGoalContentScale", "Taille du texte central (%)", config.likeGoalContentScale ?? 100, "number", 'min="50" max="200"')}`;
-  }
   if (item.key === "coinJar") {
     specialized += `${overlayField("minCoins", "Minimum de pièces conservé", config.minCoins ?? 0, "number", 'min="0"')}
       ${overlaySelect("showBase", "Afficher le niveau de remplissage", String(config.showBase !== false), [["true", "Oui"], ["false", "Non"]], false, "Affiche ou masque la jauge lumineuse située derrière les cadeaux dans le bocal.")}`;
@@ -473,14 +484,6 @@ function openOverlayConfig(item) {
       ${overlayField("scoreColor", "Couleur des scores", config.scoreColor || "#ffe575", "color")}
       ${overlayField("rankColor", "Couleur des rangs", config.rankColor || "#ffe575", "color")}
       ${overlayField("rowOpacity", "Opacité du fond des lignes (%)", config.rowOpacity ?? 68, "number", 'min="0" max="100"')}`;
-  }
-  if (item.key === "winCounter") {
-    specialized += `${overlaySelect("allowNegative", "Autoriser les valeurs négatives", String(config.allowNegative !== false), [["true", "Oui"], ["false", "Non"]])}
-      ${overlayField("winCounterLabelColorNegative", "Couleur si négatif", config.winCounterLabelColorNegative || "#ff4f6d", "color")}
-      ${overlayField("winCounterLabelColorNeutral", "Couleur à zéro", config.winCounterLabelColorNeutral || "#f8fafc", "color")}
-      ${overlayField("winCounterLabelColorPositive", "Couleur si positif", config.winCounterLabelColorPositive || "#31ff74", "color")}
-      ${overlayField("winCounterLabelOffsetX", "Position du libellé X", config.winCounterLabelOffsetX ?? 0, "number", 'min="-500" max="500"')}
-      ${overlayField("winCounterLabelOffsetY", "Position du libellé Y", config.winCounterLabelOffsetY ?? 0, "number", 'min="-500" max="500"')}`;
   }
   if (item.previewKind === "match") {
     specialized += `${overlaySelect("fit", "Ajustement dans la source 1080 × 1920", config.fit || "contain", [["contain", "Vidéo entière"], ["cover", "Remplir la source"]], true)}

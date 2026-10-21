@@ -1,0 +1,92 @@
+/* Zones WINS communes au rendu OBS et à son aperçu léger. */
+[data-theme="gta"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="gta"] {
+  --wins-title-top: 8%; --wins-title-bottom: 77%;
+  --wins-title-left: 30%; --wins-title-right: 30%;
+  --wins-value-top: 30%; --wins-value-bottom: 17%;
+  --wins-value-left: 15%; --wins-value-right: 15%;
+}
+[data-theme="minecraft"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="minecraft"] {
+  --wins-title-top: 12%; --wins-title-bottom: 79%;
+  --wins-title-left: 28%; --wins-title-right: 28%;
+  --wins-value-top: 32%; --wins-value-bottom: 21%;
+  --wins-value-left: 18%; --wins-value-right: 18%;
+}
+[data-theme="akatsuki"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="akatsuki"] {
+  --wins-title-top: 11%; --wins-title-bottom: 74%;
+  --wins-title-left: 27%; --wins-title-right: 27%;
+  --wins-value-top: 34%; --wins-value-bottom: 20%;
+  --wins-value-left: 15%; --wins-value-right: 15%;
+}
+[data-theme="assassination-classroom"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="assassination-classroom"] {
+  --wins-title-top: 10%; --wins-title-bottom: 76%;
+  --wins-title-left: 30%; --wins-title-right: 28%;
+  --wins-value-top: 34%; --wins-value-bottom: 21%;
+  --wins-value-left: 19%; --wins-value-right: 17%;
+}
+[data-theme="fairy-tail"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="fairy-tail"] {
+  --wins-title-top: 12%; --wins-title-bottom: 75%;
+  --wins-title-left: 29%; --wins-title-right: 29%;
+  --wins-value-top: 35%; --wins-value-bottom: 25%;
+  --wins-value-left: 20%; --wins-value-right: 20%;
+}
+[data-theme="harry-potter"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="harry-potter"] {
+  --wins-title-top: 15%; --wins-title-bottom: 70%;
+  --wins-title-left: 28%; --wins-title-right: 28%;
+  --wins-value-top: 39%; --wins-value-bottom: 20%;
+  --wins-value-left: 17%; --wins-value-right: 17%;
+}
+[data-theme="cult-of-the-lamb"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="cult-of-the-lamb"] {
+  --wins-title-top: 15%; --wins-title-bottom: 72%;
+  --wins-title-left: 29%; --wins-title-right: 29%;
+  --wins-value-top: 36%; --wins-value-bottom: 24%;
+  --wins-value-left: 20%; --wins-value-right: 20%;
+}
+[data-theme="stardew-valley"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="stardew-valley"] {
+  --wins-title-top: 12%; --wins-title-bottom: 72%;
+  --wins-title-left: 29%; --wins-title-right: 29%;
+  --wins-value-top: 38%; --wins-value-bottom: 25%;
+  --wins-value-left: 18%; --wins-value-right: 18%;
+}
+[data-theme="terraria"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="terraria"] {
+  --wins-title-top: 12%; --wins-title-bottom: 77%;
+  --wins-title-left: 34%; --wins-title-right: 32%;
+  --wins-value-top: 34%; --wins-value-bottom: 24%;
+  --wins-value-left: 18%; --wins-value-right: 18%;
+}
+[data-theme="one-piece"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="one-piece"] {
+  --wins-title-top: 17%; --wins-title-bottom: 70%;
+  --wins-title-left: 29%; --wins-title-right: 29%;
+  --wins-value-top: 41%; --wins-value-bottom: 22%;
+  --wins-value-left: 18%; --wins-value-right: 18%;
+}
+[data-theme="demon-slayer"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="demon-slayer"] {
+  --wins-title-top: 12%; --wins-title-bottom: 73%;
+  --wins-title-left: 29%; --wins-title-right: 29%;
+  --wins-value-top: 35%; --wins-value-bottom: 25%;
+  --wins-value-left: 24%; --wins-value-right: 24%;
+}
+[data-theme="dragon-ball"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="dragon-ball"] {
+  --wins-title-top: 15%; --wins-title-bottom: 71%;
+  --wins-title-left: 29%; --wins-title-right: 29%;
+  --wins-value-top: 39%; --wins-value-bottom: 25%;
+  --wins-value-left: 19%; --wins-value-right: 19%;
+}
+[data-theme="naruto"] .win-counter-widget,
+.overlay-placeholder-wins[data-placeholder-theme="naruto"] {
+  --wins-title-top: 11%; --wins-title-bottom: 74%;
+  --wins-title-left: 29%; --wins-title-right: 29%;
+  --wins-value-top: 35%; --wins-value-bottom: 21%;
+  --wins-value-left: 18%; --wins-value-right: 18%;
+}

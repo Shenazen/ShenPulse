@@ -10,21 +10,30 @@
   definition: {
     key: "topTappers",
     name: "Classement tapoteurs",
-    description: "Top des viewers par likes, avec 14 thèmes et mise à jour en direct.",
+    description: "Top des viewers par likes, avec 13 designs et mise à jour en direct.",
     category: "rankings",
     icon: "★",
     route: { view: "leaderboard", kind: "tappers" },
     parameter: "theme",
-    options: shared.themes,
-    defaultOption: "classic",
+    options: shared.themes.filter(([theme]) => theme !== "classic"),
+    defaultOption: "gta",
     previewKind: "leaderboard",
     sourceSize: [520, 640],
     settingsProfile: "leaderboard"
   },
   defaults: {
     title: "CLASSEMENT TAPOTEURS",
-    theme: "classic",
+    theme: "gta",
     maxRows: 5,
+    leaderboardTitleColor: "#ffffff",
+    leaderboardTitleScale: 100,
+    leaderboardNameScale: 100,
+    leaderboardScoreScale: 100,
+    leaderboardMetricLabel: "likes",
+    leaderboardShowUnit: true,
+    leaderboardUnitColor: "#ff8db8",
+    leaderboardUnitScale: 100,
+    leaderboardAvatarScale: 100,
     showHeader: true,
     showRank: true,
     showAvatars: true,
@@ -39,7 +48,10 @@
   settings: [
     "title", "theme", "maxRows", "showHeader", "showRank", "showAvatars",
     "showCrown", "showRankBadges", "showMetricLabel", "nameColor",
-    "scoreColor", "rankColor", "rowOpacity"
+    "scoreColor", "rankColor", "rowOpacity", "leaderboardTitleColor",
+    "leaderboardTitleScale", "leaderboardNameScale", "leaderboardScoreScale",
+    "leaderboardMetricLabel", "leaderboardShowUnit", "leaderboardUnitColor",
+    "leaderboardUnitScale", "leaderboardAvatarScale"
   ],
   parameters: {
     showRank: "showRank",
@@ -50,6 +62,15 @@
     nameColor: "nameColor",
     scoreColor: "scoreColor",
     rankColor: "rankColor",
-    rowOpacity: "rowOpacity"
+    rowOpacity: "rowOpacity",
+    leaderboardTitleColor: "leaderboardTitleColor",
+    leaderboardTitleScale: "leaderboardTitleScale",
+    leaderboardNameScale: "leaderboardNameScale",
+    leaderboardScoreScale: "leaderboardScoreScale",
+    leaderboardMetricLabel: "leaderboardMetricLabel",
+    leaderboardShowUnit: "leaderboardShowUnit",
+    leaderboardUnitColor: "leaderboardUnitColor",
+    leaderboardUnitScale: "leaderboardUnitScale",
+    leaderboardAvatarScale: "leaderboardAvatarScale"
   }
 }));

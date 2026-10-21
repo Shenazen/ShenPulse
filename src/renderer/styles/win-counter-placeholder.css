@@ -1,0 +1,51 @@
+@import url("../../../resources/overlays/styles/win-counter-layout.css");
+
+.overlay-placeholder-wins[data-placeholder-theme="gta"] {
+  aspect-ratio: 686 / 473;
+}
+
+.overlay-placeholder-wins[data-placeholder-theme="minecraft"] {
+  aspect-ratio: 683 / 490;
+}
+
+.overlay-placeholder-wins .overlay-placeholder-win-copy {
+  inset: 0;
+  display: block;
+  min-width: 0;
+}
+
+.overlay-placeholder-wins .overlay-placeholder-win-copy > :is(small, strong, span) {
+  position: absolute;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.overlay-placeholder-wins .overlay-placeholder-win-copy > small {
+  inset: var(--wins-title-top) var(--wins-title-right) var(--wins-title-bottom) var(--wins-title-left);
+  color: var(--wins-title-color, #fff);
+  font-size: calc(12px * var(--wins-title-scale, 1));
+}
+
+.overlay-placeholder-wins .overlay-placeholder-win-copy > strong {
+  inset: var(--wins-value-top) var(--wins-value-right) var(--wins-value-bottom) var(--wins-value-left);
+  color: var(--placeholder-win-color, #f8fafc);
+  font-size: calc(54px * var(--wins-value-scale, 1));
+}
+
+.overlay-placeholder-wins:has(.overlay-placeholder-win-copy > span) .overlay-placeholder-win-copy > strong {
+  bottom: calc(var(--wins-value-bottom) + 12%);
+}
+
+.overlay-placeholder-wins .overlay-placeholder-win-copy > span {
+  inset: calc(90% - var(--wins-value-bottom)) var(--wins-value-right) var(--wins-value-bottom) var(--wins-value-left);
+  gap: .3em;
+  color: var(--wins-goal-color, #fff);
+  font-size: calc(9px * var(--wins-goal-scale, 1));
+}

@@ -60,7 +60,7 @@
 .like-goal-content small {
   display: flex;
   gap: .34em;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
 }
 
@@ -139,8 +139,7 @@ body,
 
 /*
  * Like Goal est dessiné sur son canevas OBS natif. TikTok Studio, OBS et les
- * aperçus ne redimensionnent ensuite qu'un seul bloc : les offsets des textes
- * restent ainsi exactement solidaires du cadre, quelle que soit la viewport.
+ * aperçus redimensionnent ensemble le cadre et ses zones de texte centrées.
  */
 #like-goal-view.active {
   align-items: center;

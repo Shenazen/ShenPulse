@@ -11,19 +11,26 @@
         document.head.prepend(base);
       }
     </script>
-    <meta name="shenpulse-overlay-version" content="2.0.4-overlay1" />
+    <meta name="shenpulse-overlay-version" content="2.0.4-overlay10" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ShenPulse Overlay</title>
     <link rel="preconnect" href="https://shenazenoverlay-default-rtdb.firebaseio.com" crossorigin />
     <link rel="dns-prefetch" href="//shenazenoverlay-default-rtdb.firebaseio.com" />
-    <link rel="preload" href="fonts/inter-latin-wght-normal.woff2?v=2.0.4-overlay1" as="font" type="font/woff2" crossorigin />
-    <script src="runtime/dependencies.js?v=2.0.4-overlay1"></script>
-    <script src="runtime/match-local-entry.js?v=2.0.4-overlay1"></script>
-    <link rel="stylesheet" href="styles/core.css?v=2.0.4-overlay1" />
-    <link rel="stylesheet" href="styles/wheel.css?v=2.0.4-overlay1" />
-    <link rel="stylesheet" href="styles/themes.css?v=2.0.4-overlay1" />
-    <link rel="stylesheet" href="styles/configuration.css?v=2.0.4-overlay1" />
-    <link rel="stylesheet" href="styles/scene.css?v=2.0.4-overlay1" />
+    <link rel="preload" href="fonts/inter-latin-wght-normal.woff2?v=2.0.4-overlay10" as="font" type="font/woff2" crossorigin />
+    <script src="runtime/dependencies.js?v=2.0.4-overlay10"></script>
+    <script src="runtime/match-local-entry.js?v=2.0.4-overlay10"></script>
+    <link rel="stylesheet" href="styles/like-goal-layout.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/core.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/wheel.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/themes.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/configuration.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/timer-layout.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/timer.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/win-counter-layout.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/win-counter.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/leaderboard-layout.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/leaderboard.css?v=2.0.4-overlay10" />
+    <link rel="stylesheet" href="styles/scene.css?v=2.0.4-overlay10" />
   </head>
   <body>
     <main id="overlay-root" aria-live="polite">
@@ -46,9 +53,9 @@
         <div class="themed-widget like-goal-widget">
           <img id="like-goal-frame" class="theme-frame" alt="" />
           <div class="like-goal-content">
-            <strong id="like-goal-title">LIKE GOAL</strong>
+            <strong id="like-goal-title"><span>LIKE GOAL</span></strong>
             <div class="like-goal-bar"><span id="like-goal-progress"></span></div>
-            <small><span id="like-goal-current">0</span> / <span id="like-goal-target">50 000</span> <span id="like-goal-progress-label">likes</span> <b id="like-goal-percent">0%</b></small>
+            <small><span class="like-goal-values"><span id="like-goal-current">0</span> / <span id="like-goal-target">50 000</span> <span id="like-goal-progress-label">likes</span> <b id="like-goal-percent">0%</b></span></small>
           </div>
           <div class="like-goal-frame-foreground" aria-hidden="true">
             <img class="like-goal-frame-slice slice-top" alt="" />
@@ -74,7 +81,7 @@
         <div class="themed-widget leaderboard-widget">
           <img id="leaderboard-frame" class="theme-frame" alt="" />
           <div class="leaderboard-content">
-            <header><span id="leaderboard-icon">♛</span><strong id="leaderboard-title">CLASSEMENT DONATEURS</strong></header>
+            <header><span id="leaderboard-icon">♛</span><strong id="leaderboard-title"><span>CLASSEMENT DONATEURS</span></strong></header>
             <div id="leaderboard-rows"></div>
           </div>
         </div>
@@ -110,17 +117,18 @@
       <section id="timer-view" class="view">
         <div class="overlay-panel timer-panel themed-widget">
           <img id="timer-frame" class="theme-frame" alt="" />
-          <p id="timer-label">TEMPS RESTANT</p>
-          <strong id="timer-value">00:00</strong>
+          <p id="timer-label"><span>TEMPS RESTANT</span></p>
+          <strong id="timer-value" class="timer-value-zone"><span>00:00</span></strong>
         </div>
       </section>
 
       <section id="multiplier-timer-view" class="view">
         <div class="overlay-panel timer-panel multiplier-timer-panel themed-widget">
           <img id="multiplier-timer-frame" class="theme-frame" alt="" />
-          <p id="multiplier-timer-label">BONUS ACTIF</p>
-          <strong id="multiplier-timer-value">00:00</strong>
-          <b id="multiplier-value">X2</b>
+          <p id="multiplier-timer-label"><span>BONUS ACTIF</span></p>
+          <div id="multiplier-timer-content" class="timer-value-zone">
+            <span class="timer-value-content"><strong id="multiplier-timer-value">00:00</strong><b id="multiplier-value">X2</b></span>
+          </div>
         </div>
       </section>
 
@@ -129,9 +137,9 @@
           <div class="win-counter-backdrop" aria-hidden="true"></div>
           <img id="win-counter-frame" class="theme-frame" alt="" />
           <div class="win-counter-content">
-            <span>WIN</span>
-            <strong id="win-counter-value">0</strong>
-            <small>OBJECTIF <b id="win-counter-target">20</b></small>
+            <span id="win-counter-title"><span>WIN</span></span>
+            <strong id="win-counter-value"><span>0</span></strong>
+            <small id="win-counter-goal"><span>OBJECTIF <b id="win-counter-target">20</b></span></small>
           </div>
         </div>
       </section>
@@ -171,6 +179,6 @@
         </div>
       </section>
     </main>
-    <script src="runtime/loader.js?v=2.0.4-overlay1"></script>
+    <script src="runtime/loader.js?v=2.0.4-overlay10"></script>
   </body>
 </html>

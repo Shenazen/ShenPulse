@@ -9,7 +9,7 @@ const { JSDOM, VirtualConsole } = require("jsdom");
 
 const overlayDirectory = path.join(__dirname, "..", "resources", "overlays");
 
-async function loadOverlay(view, parameters = {}) {
+async function loadOverlay(view, parameters = {}, setupWindow = () => {}) {
   const htmlFile = path.join(overlayDirectory, "index.html");
   const url = new URL(pathToFileURL(htmlFile));
   url.search = new URLSearchParams({
@@ -38,6 +38,7 @@ async function loadOverlay(view, parameters = {}) {
       window.HTMLMediaElement.prototype.load = () => {};
       window.HTMLMediaElement.prototype.pause = () => {};
       window.HTMLMediaElement.prototype.play = async () => {};
+      setupWindow(window);
     }
   });
   await new Promise((resolve, reject) => {
@@ -77,12 +78,42 @@ function sendCardMessage(window, channel, payload) {
   );
 }
 
+test("le moteur Like Goal utilise GTA sans design et remplace les anciens designs Classique", async () => {
+  for (const parameters of [{}, { theme: "obsolete" }]) {
+    const dom = await loadOverlay("like-goal", parameters);
+    try {
+      const root = dom.window.document.documentElement;
+      assert.equal(root.dataset.theme, "gta");
+      sendCardMessage(dom.window, "configuration", { overlayKey: "likeGoal", config: { theme: "naruto" } });
+      assert.equal(root.dataset.theme, "naruto");
+      sendCardMessage(dom.window, "configuration", { overlayKey: "likeGoal", config: { theme: "classic" } });
+      assert.equal(root.dataset.theme, "gta");
+    } finally {
+      dom.window.close();
+    }
+  }
+});
+
+test("le Like Goal applique les tailles jusqu’à 400 % dans l’URL et les mises à jour", async (t) => {
+  const dom = await loadOverlay("like-goal", { titleScale: "350", contentScale: "400" });
+  t.after(() => dom.window.close());
+  const style = dom.window.document.documentElement.style;
+  assert.equal(style.getPropertyValue("--like-goal-title-scale"), "3.5");
+  assert.equal(style.getPropertyValue("--like-goal-content-scale"), "4");
+  sendCardMessage(dom.window, "configuration", { overlayKey: "likeGoal", config: { titleScale: 400, contentScale: 300 } });
+  assert.equal(style.getPropertyValue("--like-goal-title-scale"), "4");
+  assert.equal(style.getPropertyValue("--like-goal-content-scale"), "3");
+  sendCardMessage(dom.window, "configuration", { overlayKey: "likeGoal", config: { titleScale: 500, contentScale: 25 } });
+  assert.equal(style.getPropertyValue("--like-goal-title-scale"), "4");
+  assert.equal(style.getPropertyValue("--like-goal-content-scale"), "0.5");
+});
+
 test("un Like Goal chargé dans un vrai DOM applique sa configuration et son état", async () => {
   const dom = await loadOverlay("like-goal", { theme: "classic" });
   const { window } = dom;
   const { document } = window;
 
-  assert.equal(document.documentElement.dataset.theme, "classic");
+  assert.equal(document.documentElement.dataset.theme, "gta", "les anciennes URL Classique utilisent GTA");
   assert.equal(document.getElementById("like-goal-view").classList.contains("active"), true);
 
   sendCardMessage(window, "configuration", {
@@ -209,11 +240,11 @@ test("tous les réglages communs et visuels du Like Goal modifient le DOM réel"
   assert.equal(root.style.getPropertyValue("--overlay-font-size"), "1.25");
   assert.equal(root.style.getPropertyValue("--overlay-background-opacity"), "47%");
   assert.equal(root.style.getPropertyValue("--overlay-shadow-color"), "#223344");
-  assert.equal(root.style.getPropertyValue("--like-goal-title-x"), "31px");
-  assert.equal(root.style.getPropertyValue("--like-goal-title-y"), "-12px");
+  assert.equal(root.style.getPropertyValue("--like-goal-title-x"), "");
+  assert.equal(root.style.getPropertyValue("--like-goal-title-y"), "");
   assert.equal(root.style.getPropertyValue("--like-goal-title-scale"), "1.45");
-  assert.equal(root.style.getPropertyValue("--like-goal-content-x"), "-22px");
-  assert.equal(root.style.getPropertyValue("--like-goal-content-y"), "19px");
+  assert.equal(root.style.getPropertyValue("--like-goal-content-x"), "");
+  assert.equal(root.style.getPropertyValue("--like-goal-content-y"), "");
   assert.equal(root.style.getPropertyValue("--like-goal-content-scale"), "1.6");
   assert.equal(view.style.fontFamily, 'Georgia, "Times New Roman", serif');
   assert.equal(view.style.direction, "rtl");
@@ -378,6 +409,91 @@ test("les classements donateurs et tapoteurs restent totalement isolés", async 
   }
 });
 
+test("reconfigurer chaque classement garde les scores, les avatars et les événements LIVE indépendants", async (t) => {
+  for (const [kind, key, other, type, data] of [["donors", "topDonors", "topTappers", "gift", { count: 2, value: 10 }], ["tappers", "topTappers", "topDonors", "like", { count: 20 }]]) {
+    const dom = await loadOverlay("leaderboard", { kind, theme: "classic", preview: "" }, (window) => { window.EventSource = class { addEventListener() {} close() {} }; });
+    t.after(() => dom.window.close());
+    const { window } = dom;
+    const { document } = window;
+    window.hydrateOverlaySession({ hasData: true, leaderboards: { [kind]: [{ id: "viewer1", name: "Participant avec un nom long", score: 120, avatarUrl: "https://example.com/avatar.png" }, { id: "viewer2", name: "Second", score: 80 }] } });
+    assert.equal(document.documentElement.dataset.theme, "gta");
+    window.updateOverlayConfiguration({ overlayKey: key, config: { title: "Nouveau titre", theme: "naruto", maxRows: 1, leaderboardTitleColor: "#123456", nameColor: "#234567", scoreColor: "#345678", rankColor: "#456789", leaderboardTitleScale: 400, leaderboardNameScale: 350, leaderboardScoreScale: 300, rowOpacity: 0 } });
+    assert.equal(document.querySelector(".leaderboard-identity strong").textContent, "Participant avec un nom long");
+    assert.equal(document.querySelector(".leaderboard-identity em").textContent, `120 ${kind === "donors" ? "coins" : "likes"}`);
+    assert.equal(document.querySelector(".leaderboard-avatar-image").getAttribute("src"), "https://example.com/avatar.png");
+    for (const [property, value] of Object.entries({ "--leaderboard-title-scale": "4", "--leaderboard-name-scale": "3.5", "--leaderboard-score-scale": "3", "--leaderboard-title-color": "#123456", "--leaderboard-row-opacity": "0" })) assert.equal(document.documentElement.style.getPropertyValue(property), value);
+    window.updateOverlayConfiguration({ overlayKey: other, config: { title: "Autre classement", maxRows: 5, leaderboardTitleColor: "#abcdef" } });
+    assert.equal(document.getElementById("leaderboard-title").textContent, "Nouveau titre");
+    window.updateOverlayConfiguration({ overlayKey: key, config: { maxRows: 5 } });
+    for (const [part, color] of [["name", "#234567"], ["score", "#345678"], ["rank", "#456789"]]) assert.equal(document.documentElement.style.getPropertyValue(`--leaderboard-${part}-color`), color);
+    assert.equal(document.querySelectorAll(".leaderboard-row:not(.is-empty)").length, 2, "réduire le nombre de places ne détruit pas les autres scores");
+    window.updateInteractiveWidgets({ id: `${kind}-after-configuration`, type, user: { id: "viewer1", displayName: "Participant avec un nom long" }, data });
+    assert.equal(document.querySelector(".leaderboard-identity em").textContent, `140 ${kind === "donors" ? "coins" : "likes"}`);
+  }
+});
+
+test("les libellés des classements sont indépendants, masquables et conservés vides", async (t) => {
+  for (const [kind, key, other] of [["donors", "topDonors", "topTappers"], ["tappers", "topTappers", "topDonors"]]) {
+    const dom = await loadOverlay("leaderboard", { kind, leaderboardMetricLabel: "", leaderboardAvatarScale: "400" });
+    t.after(() => dom.window.close());
+    const { window } = dom;
+    const { document } = window;
+    assert.equal(document.querySelector(".leaderboard-score-unit").hidden, true);
+    assert.equal(document.documentElement.style.getPropertyValue("--leaderboard-avatar-scale"), "1");
+    window.updateOverlayConfiguration({ overlayKey: key, config: { leaderboardMetricLabel: "points", leaderboardShowUnit: true, leaderboardUnitColor: "#123456", leaderboardUnitScale: 250, leaderboardScoreScale: 150, leaderboardAvatarScale: 75 } });
+    assert.equal(document.querySelector(".leaderboard-score-unit").textContent, "points");
+    assert.equal(document.querySelector(".leaderboard-score-unit").hidden, false);
+    assert.equal(document.documentElement.style.getPropertyValue("--leaderboard-unit-color"), "#123456");
+    assert.equal(document.documentElement.style.getPropertyValue("--leaderboard-unit-scale"), "2.5");
+    assert.equal(document.documentElement.style.getPropertyValue("--leaderboard-score-scale"), "1.5");
+    assert.equal(document.documentElement.style.getPropertyValue("--leaderboard-avatar-scale"), "0.75");
+    const before = document.querySelector(".leaderboard-score-number").textContent;
+    window.updateOverlayConfiguration({ overlayKey: other, config: { leaderboardMetricLabel: "AUTRE" } });
+    assert.equal(document.querySelector(".leaderboard-score-unit").textContent, "points");
+    window.updateOverlayConfiguration({ overlayKey: key, config: { leaderboardShowUnit: false } });
+    assert.equal(document.querySelector(".leaderboard-score-unit").hidden, true);
+    assert.equal(document.querySelector(".leaderboard-score-number").textContent, before);
+    window.updateOverlayConfiguration({ overlayKey: key, config: { leaderboardShowUnit: true } });
+    assert.equal(document.querySelector(".leaderboard-score-unit").textContent, "points");
+    window.updateOverlayConfiguration({ overlayKey: key, config: { leaderboardMetricLabel: '<img src="x">' } });
+    assert.equal(document.querySelector(".leaderboard-score-unit img"), null);
+    assert.equal(document.querySelector(".leaderboard-score-unit").textContent, '<img src="x">');
+    window.updateOverlayConfiguration({ overlayKey: key, config: { leaderboardMetricLabel: "" } });
+    assert.equal(document.querySelector(".leaderboard-score-unit").hidden, true);
+    assert.equal(document.querySelector(".leaderboard-score-number").textContent, before);
+  }
+});
+
+test("le timer garde son état piloté par les actions pendant une reconfiguration visuelle", async (t) => {
+  const dom = await loadOverlay("timer", { preview: "", theme: "classic", timerTitleScale: "350", timerValueScale: "400", timerTitleColor: "#112233", timerValueColor: "#aabbcc" }, (window) => {
+    window.EventSource = class { addEventListener() {} close() {} };
+  });
+  t.after(() => dom.window.close());
+  const { window } = dom;
+  const root = window.document.documentElement;
+  assert.equal(root.dataset.theme, "gta");
+  assert.equal(root.style.getPropertyValue("--timer-title-scale"), "3.5");
+  assert.equal(root.style.getPropertyValue("--timer-value-scale"), "4");
+  assert.equal(root.style.getPropertyValue("--timer-title-color"), "#112233");
+  assert.equal(root.style.getPropertyValue("--timer-value-color"), "#aabbcc");
+  window.updateTimer({ operation: "set", remainingSeconds: 120, paused: true, label: "Partie" });
+  window.updateOverlayConfiguration({ overlayKey: "timer", config: { theme: "naruto", title: "Mon jeu", seconds: 300, timerAutoStart: true, timerTitleScale: 400, timerValueScale: 350, showHeader: false, timerTitleColor: "#123456", timerValueColor: "#fedcba" } });
+  assert.equal(window.document.getElementById("timer-value").textContent, "00:02:00");
+  assert.equal(window.document.getElementById("timer-value").classList.contains("paused"), true);
+  assert.equal(window.document.getElementById("timer-label").hidden, true);
+  assert.equal(root.dataset.theme, "naruto");
+  assert.equal(root.style.getPropertyValue("--timer-title-scale"), "4");
+  assert.equal(root.style.getPropertyValue("--timer-value-scale"), "3.5");
+  window.updateOverlayConfiguration({ overlayKey: "timer", config: { showHeader: true } });
+  window.updateTimer({ operation: "set", remainingSeconds: 90, paused: true, label: "Autre action" });
+  assert.equal(window.document.getElementById("timer-value").textContent, "00:01:30");
+  assert.equal(window.document.querySelector("#timer-label > span").textContent, "Mon jeu");
+  assert.equal(window.document.querySelectorAll("#timer-value > span").length, 1);
+  assert.equal(window.document.getElementById("timer-label").hidden, false);
+  assert.equal(root.style.getPropertyValue("--timer-title-color"), "#123456");
+  assert.equal(root.style.getPropertyValue("--timer-value-color"), "#fedcba");
+});
+
 test("le timer standard applique chaque champ et son démarrage automatique", async () => {
   const dom = await loadOverlay("timer", {
     theme: "classic",
@@ -479,6 +595,39 @@ test("le timer ne rejoue pas un delta déjà inclus dans l'état public", async 
   dom.window.close();
 });
 
+test("reconfigurer le multiplicateur conserve le bonus actif envoyé par les actions et isole le timer standard", async (t) => {
+  const dom = await loadOverlay("multiplier-timer", { preview: "", theme: "classic", multiplier: "20", timerTitleScale: "400", timerValueScale: "350", timerMultiplierColor: "#123456", showHours: "false" }, (window) => {
+    window.EventSource = class { addEventListener() {} close() {} };
+  });
+  t.after(() => dom.window.close());
+  const { window } = dom;
+  const { document } = window;
+  const root = document.documentElement;
+  assert.equal(root.dataset.theme, "gta");
+  assert.equal(document.getElementById("multiplier-value").textContent, "X20");
+  assert.equal(root.style.getPropertyValue("--timer-title-scale"), "4");
+  assert.equal(root.style.getPropertyValue("--timer-value-scale"), "3.5");
+  window.updateMultiplierTimer({ operation: "set", remainingSeconds: 90, paused: true, multiplier: 20, label: "Bonus du jeu" });
+  window.updateOverlayConfiguration({ overlayKey: "multiplierTimer", config: { theme: "naruto", title: "Mon bonus", seconds: 300, multiplier: 2, timerAutoStart: true, timerValueScale: 400, timerValueColor: "#abcdef", timerMultiplierColor: "#fedcba", showHeader: false } });
+  assert.equal(document.getElementById("multiplier-value").textContent, "X20", "le facteur actif ne revient pas à la valeur du formulaire");
+  assert.equal(document.getElementById("multiplier-timer-value").textContent, "01:30");
+  assert.equal(document.getElementById("multiplier-timer-value").classList.contains("paused"), true);
+  assert.equal(document.getElementById("multiplier-timer-label").hidden, true);
+  assert.equal(root.dataset.theme, "naruto");
+  assert.equal(root.style.getPropertyValue("--timer-value-scale"), "4");
+  assert.equal(root.style.getPropertyValue("--timer-value-color"), "#abcdef");
+  assert.equal(root.style.getPropertyValue("--timer-multiplier-color"), "#fedcba");
+  window.updateOverlayConfiguration({ overlayKey: "timer", config: { title: "Autre timer", multiplier: 5, seconds: 600 } });
+  assert.equal(document.getElementById("multiplier-value").textContent, "X20");
+  window.updateOverlayConfiguration({ overlayKey: "multiplierTimer", config: { showHeader: true } });
+  window.updateMultiplierTimer({ operation: "set", remainingSeconds: 60, paused: true, multiplier: 50 });
+  assert.equal(document.querySelector("#multiplier-timer-label>span").textContent, "Mon bonus");
+  assert.equal(document.getElementById("multiplier-value").textContent, "X50");
+  assert.equal(document.getElementById("multiplier-timer-value").textContent, "01:00");
+  assert.equal(document.getElementById("timer-label").textContent, "TEMPS RESTANT");
+  assert.equal(document.getElementById("timer-value").textContent, "00:00");
+});
+
 test("les deux timers conservent chacun leur propre titre", async () => {
   const dom = await loadOverlay("multiplier-timer", {
     theme: "classic",
@@ -515,7 +664,7 @@ test("les deux timers conservent chacun leur propre titre", async () => {
   dom.window.close();
 });
 
-test("le compteur de wins applique valeurs, objectif, couleurs et placement", async () => {
+test("le compteur de wins applique valeurs, objectif, couleurs et centrage automatique", async () => {
   const dom = await loadOverlay("win-counter", { theme: "classic" });
   const { window } = dom;
   const { document } = window;
@@ -532,6 +681,11 @@ test("le compteur de wins applique valeurs, objectif, couleurs et placement", as
       negativeColor: "#aa1122",
       neutralColor: "#ddeeff",
       positiveColor: "#22aa44",
+      winCounterTitleColor: "#123456",
+      winCounterGoalColor: "#abcdef",
+      winCounterTitleScale: 350,
+      winCounterValueScale: 400,
+      winCounterGoalScale: 200,
       labelX: 17,
       labelY: -9
     }
@@ -542,7 +696,11 @@ test("le compteur de wins applique valeurs, objectif, couleurs et placement", as
   assert.equal(value.style.color, "rgb(170, 17, 34)");
   assert.equal(document.getElementById("win-counter-target").textContent, "12");
   assert.equal(document.querySelector(".win-counter-content > span").textContent, "VICTOIRES TEST");
-  assert.equal(document.querySelector(".win-counter-content").style.translate, "17px -9px");
+  assert.equal(document.querySelector(".win-counter-content").style.translate, "");
+  assert.equal(document.documentElement.dataset.theme, "gta");
+  for (const [property, expected] of Object.entries({ "--wins-title-color": "#123456", "--wins-goal-color": "#abcdef", "--wins-title-scale": "3.5", "--wins-value-scale": "4", "--wins-goal-scale": "2" })) {
+    assert.equal(document.documentElement.style.getPropertyValue(property), expected);
+  }
 
   sendCardMessage(window, "configuration", {
     overlayKey: "winCounter",
@@ -560,6 +718,39 @@ test("le compteur de wins applique valeurs, objectif, couleurs et placement", as
   assert.equal(document.querySelector(".win-counter-content > small").hidden, true);
 
   dom.window.close();
+});
+
+test("modifier le design des wins conserve la valeur LIVE, le multiplicateur et la synchronisation des jeux", async (t) => {
+  const dom = await loadOverlay("win-counter", { theme: "gta", preview: "", current: 0 }, (window) => {
+    window.EventSource = class { addEventListener() {} close() {} };
+  });
+  t.after(() => dom.window.close());
+  const { window } = dom;
+  const { document } = window;
+  const value = document.getElementById("win-counter-value");
+  window.updateWinCounter({ operation: "set", amount: 7 });
+  window.updateWinCounter({ operation: "multiplier", amount: 3, durationSeconds: 60 });
+  window.updateWinCounter({ operation: "adjust", amount: 2 });
+  assert.equal(value.textContent, "13");
+  window.updateOverlayConfiguration({ overlayKey: "winCounter", config: { theme: "naruto", current: 0, title: "Wins du jeu", showHeader: false, winCounterValueScale: 400, winCounterTitleColor: "#123456", positiveColor: "#abcdef" } });
+  assert.equal(value.textContent, "13");
+  assert.equal(value.style.color, "rgb(171, 205, 239)");
+  assert.equal(document.documentElement.style.getPropertyValue("--wins-value-scale"), "4");
+  assert.equal(document.getElementById("win-counter-title").hidden, true);
+  window.updateWinCounter({ operation: "adjust", amount: 1 });
+  assert.equal(value.textContent, "16", "le bonus actif reste appliqué après un changement de design");
+  window.updateWinCounter({ operation: "adjust", amount: 2, current: 42 });
+  assert.equal(value.textContent, "42", "une valeur absolue envoyée par un jeu ne doit pas être multipliée une seconde fois");
+  window.updateOverlayConfiguration({ overlayKey: "timer", config: { current: 0, title: "Autre widget" } });
+  assert.equal(value.textContent, "42");
+  window.updateOverlayConfiguration({ overlayKey: "winCounter", config: { showHeader: true } });
+  assert.equal(document.getElementById("win-counter-title").textContent, "Wins du jeu");
+  assert.equal(document.getElementById("win-counter-title").hidden, false);
+  window.updateWinCounter({ operation: "set", amount: -5 });
+  assert.equal(value.textContent, "-5");
+  window.updateOverlayConfiguration({ overlayKey: "winCounter", config: { allowNegative: false } });
+  window.updateWinCounter({ operation: "adjust", amount: -1 });
+  assert.equal(value.textContent, "0");
 });
 
 test("tous les champs visuels de la roue atteignent son moteur", async () => {

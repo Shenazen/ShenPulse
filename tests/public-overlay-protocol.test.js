@@ -50,9 +50,7 @@ test("la configuration visuelle publique est stockée par overlay sans secrets l
     title: "PING-PONG",
     target: 2500,
     showGoal: false,
-    titleY: -6,
     titleScale: 110,
-    contentY: -25,
     contentScale: 200,
     percentColor: "#4dff4f",
     theme: "naruto"

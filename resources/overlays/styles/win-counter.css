@@ -1,0 +1,120 @@
+/* Les trois textes ont chacun une zone fixe et un ajustement autour du centre. */
+#win-counter-view.active {
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+#win-counter-view .win-counter-widget {
+  position: relative;
+  flex: 0 0 706px;
+  width: 706px;
+  height: 517px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+[data-theme="gta"] #win-counter-view .win-counter-widget {
+  flex-basis: 686px;
+  width: 686px;
+  height: 473px;
+}
+
+[data-theme="minecraft"] #win-counter-view .win-counter-widget {
+  flex-basis: 683px;
+  width: 683px;
+  height: 490px;
+}
+
+#win-counter-view .win-counter-content {
+  position: absolute;
+  inset: 0;
+  display: block;
+  translate: none;
+}
+
+#win-counter-view .win-counter-backdrop {
+  inset: var(--wins-value-top) var(--wins-value-right) var(--wins-value-bottom) var(--wins-value-left);
+  border-radius: 12%;
+  background: #070b10;
+  opacity: 0;
+}
+
+:is([data-theme="gta"], [data-theme="minecraft"], [data-theme="akatsuki"]) #win-counter-view .win-counter-backdrop {
+  opacity: 1;
+}
+
+[data-theme="gta"] #win-counter-view .win-counter-backdrop {
+  inset: 27% 12% 13%;
+}
+
+[data-theme="minecraft"] #win-counter-view .win-counter-backdrop {
+  inset: 28% 14% 16%;
+  border-radius: 0;
+}
+
+[data-theme="akatsuki"] #win-counter-view .win-counter-backdrop {
+  inset: 29% 13% 15%;
+}
+
+#win-counter-view .win-counter-content > :is(span, strong, small) {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  line-height: 1.1;
+  letter-spacing: .02em;
+  text-align: center;
+  text-transform: none;
+  white-space: nowrap;
+  transform: none;
+}
+
+#win-counter-view #win-counter-title {
+  inset: var(--wins-title-top) var(--wins-title-right) var(--wins-title-bottom) var(--wins-title-left);
+  color: var(--wins-title-color, #fff);
+  font-size: calc(28px * var(--wins-title-scale, 1));
+  font-weight: 900;
+}
+
+#win-counter-view #win-counter-value {
+  inset: var(--wins-value-top) var(--wins-value-right) var(--wins-value-bottom) var(--wins-value-left);
+  font-size: calc(144px * var(--wins-value-scale, 1));
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+#win-counter-view .win-counter-widget:has(#win-counter-goal:not([hidden])) #win-counter-value {
+  bottom: calc(var(--wins-value-bottom) + 12%);
+}
+
+#win-counter-view #win-counter-goal {
+  inset: calc(90% - var(--wins-value-bottom)) var(--wins-value-right) var(--wins-value-bottom) var(--wins-value-left);
+  color: var(--wins-goal-color, #fff);
+  font-size: calc(20px * var(--wins-goal-scale, 1));
+  font-weight: 800;
+}
+
+#win-counter-view .win-counter-content > :is(span, strong, small) > span {
+  flex-shrink: 0;
+  transform: scale(var(--wins-text-fit, 1));
+  transform-origin: center;
+}
+
+#win-counter-view .win-counter-content > [hidden] {
+  display: none;
+}
+
+#win-counter-value > .pulse {
+  animation: wins-value-pulse 350ms ease-out;
+}
+
+@keyframes wins-value-pulse {
+  from { opacity: .65; }
+  to { opacity: 1; }
+}

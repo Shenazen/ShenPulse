@@ -278,6 +278,11 @@ dialogBody.addEventListener("input", (event) => {
     syncActionGroupEditor();
   }
   if (event.target.closest("[data-overlay-config-editor]")) {
+    if (event.target.matches("[data-overlay-size]")) {
+      const value = `${event.target.value} %`;
+      event.target.closest(".overlay-size-field").querySelector("output").value = value;
+      event.target.setAttribute("aria-valuetext", value);
+    }
     scheduleOverlayLivePreview();
   }
 });

@@ -1,0 +1,235 @@
+/* Zones communes des cadres des deux classements. Les places gardent leurs cinq emplacements. */
+:root[data-theme="akatsuki"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="akatsuki"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 24.22222%;
+  --leaderboard-photo-diameter: 9.55556cqw;
+  --leaderboard-slot-height: 9.83333%;
+  --leaderboard-text-left: 34.44444%;
+  --leaderboard-slot-1-y: 25.25000%;
+  --leaderboard-slot-2-y: 37.25000%;
+  --leaderboard-slot-3-y: 49.25000%;
+  --leaderboard-slot-4-y: 61.25000%;
+  --leaderboard-slot-5-y: 73.25000%;
+  --leaderboard-title-top: 7%; --leaderboard-title-left: 25%; --leaderboard-title-right: 23%;
+  --leaderboard-title-height: 8%;
+  --leaderboard-rows-top: 20%; --leaderboard-rows-right: 17%;
+  --leaderboard-rows-bottom: 20%; --leaderboard-rows-left: 17%;
+  --leaderboard-rows-gap: 1.2%;
+}
+:root[data-theme="assassination-classroom"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="assassination-classroom"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 19.52239%;
+  --leaderboard-photo-diameter: 11.64179cqw;
+  --leaderboard-slot-height: 9.83333%;
+  --leaderboard-text-left: 30.59701%;
+  --leaderboard-slot-1-y: 32.05833%;
+  --leaderboard-slot-2-y: 43.68333%;
+  --leaderboard-slot-3-y: 55.30000%;
+  --leaderboard-slot-4-y: 66.91667%;
+  --leaderboard-slot-5-y: 78.54167%;
+  --leaderboard-title-top: 20.5%; --leaderboard-title-left: 23.43%; --leaderboard-title-right: 13.43%;
+  --leaderboard-title-height: 4.5%;
+  --leaderboard-rows-top: 26.5%; --leaderboard-rows-right: 10.75%;
+  --leaderboard-rows-bottom: 15.5%; --leaderboard-rows-left: 12.69%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="cult-of-the-lamb"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="cult-of-the-lamb"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 23.44444%;
+  --leaderboard-photo-diameter: 7.77778cqw;
+  --leaderboard-slot-height: 9.33333%;
+  --leaderboard-text-left: 32.22222%;
+  --leaderboard-slot-1-y: 28.16667%;
+  --leaderboard-slot-2-y: 39.00000%;
+  --leaderboard-slot-3-y: 50.00000%;
+  --leaderboard-slot-4-y: 60.91667%;
+  --leaderboard-slot-5-y: 71.83333%;
+  --leaderboard-title-top: 8%; --leaderboard-title-left: 25%; --leaderboard-title-right: 23%;
+  --leaderboard-title-height: 8%;
+  --leaderboard-rows-top: 23.5%; --leaderboard-rows-right: 15%;
+  --leaderboard-rows-bottom: 23%; --leaderboard-rows-left: 16%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="demon-slayer"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="demon-slayer"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 26.33333%;
+  --leaderboard-photo-diameter: 10.00000cqw;
+  --leaderboard-slot-height: 9.66667%;
+  --leaderboard-text-left: 35.55556%;
+  --leaderboard-slot-1-y: 32.41667%;
+  --leaderboard-slot-2-y: 44.00000%;
+  --leaderboard-slot-3-y: 55.50000%;
+  --leaderboard-slot-4-y: 67.00000%;
+  --leaderboard-slot-5-y: 78.58333%;
+  --leaderboard-title-top: 8%; --leaderboard-title-left: 25%; --leaderboard-title-right: 23%;
+  --leaderboard-title-height: 8%;
+  --leaderboard-rows-top: 26.5%; --leaderboard-rows-right: 17%;
+  --leaderboard-rows-bottom: 15.5%; --leaderboard-rows-left: 20%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="dragon-ball"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="dragon-ball"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 25.55556%;
+  --leaderboard-photo-diameter: 9.33333cqw;
+  --leaderboard-slot-height: 9.66667%;
+  --leaderboard-text-left: 32.22222%;
+  --leaderboard-slot-1-y: 29.16667%;
+  --leaderboard-slot-2-y: 41.16667%;
+  --leaderboard-slot-3-y: 53.00000%;
+  --leaderboard-slot-4-y: 65.00000%;
+  --leaderboard-slot-5-y: 77.00000%;
+  --leaderboard-title-top: 9%; --leaderboard-title-left: 28%; --leaderboard-title-right: 26%;
+  --leaderboard-title-height: 8%;
+  --leaderboard-rows-top: 23.5%; --leaderboard-rows-right: 17%;
+  --leaderboard-rows-bottom: 17.5%; --leaderboard-rows-left: 18%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="fairy-tail"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="fairy-tail"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 25.55556%;
+  --leaderboard-photo-diameter: 9.33333cqw;
+  --leaderboard-slot-height: 9.66667%;
+  --leaderboard-text-left: 32.22222%;
+  --leaderboard-slot-1-y: 28.75000%;
+  --leaderboard-slot-2-y: 40.25000%;
+  --leaderboard-slot-3-y: 52.08333%;
+  --leaderboard-slot-4-y: 64.25000%;
+  --leaderboard-slot-5-y: 76.16667%;
+  --leaderboard-title-top: 10%; --leaderboard-title-left: 26%; --leaderboard-title-right: 26%;
+  --leaderboard-title-height: 6%;
+  --leaderboard-rows-top: 22.5%; --leaderboard-rows-right: 16%;
+  --leaderboard-rows-bottom: 15.5%; --leaderboard-rows-left: 17%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="gta"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="gta"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 25.55556%;
+  --leaderboard-photo-diameter: 9.33333cqw;
+  --leaderboard-slot-height: 9.66667%;
+  --leaderboard-text-left: 32.22222%;
+  --leaderboard-slot-1-y: 32.91667%;
+  --leaderboard-slot-2-y: 44.83333%;
+  --leaderboard-slot-3-y: 56.66667%;
+  --leaderboard-slot-4-y: 68.50000%;
+  --leaderboard-slot-5-y: 80.33333%;
+  --leaderboard-title-top: 12%; --leaderboard-title-left: 28%; --leaderboard-title-right: 27%;
+  --leaderboard-title-height: 9%;
+  --leaderboard-rows-top: 27.8%; --leaderboard-rows-right: 16.5%;
+  --leaderboard-rows-bottom: 14.5%; --leaderboard-rows-left: 17%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="harry-potter"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="harry-potter"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 23.11111%;
+  --leaderboard-photo-diameter: 9.77778cqw;
+  --leaderboard-slot-height: 9.83333%;
+  --leaderboard-text-left: 32.22222%;
+  --leaderboard-slot-1-y: 32.91667%;
+  --leaderboard-slot-2-y: 44.33333%;
+  --leaderboard-slot-3-y: 55.66667%;
+  --leaderboard-slot-4-y: 67.08333%;
+  --leaderboard-slot-5-y: 78.66667%;
+  --leaderboard-title-top: 13.5%; --leaderboard-title-left: 29%; --leaderboard-title-right: 27%;
+  --leaderboard-title-height: 8%;
+  --leaderboard-rows-top: 27.8%; --leaderboard-rows-right: 15%;
+  --leaderboard-rows-bottom: 16.5%; --leaderboard-rows-left: 17%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="minecraft"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="minecraft"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 25.55556%;
+  --leaderboard-photo-diameter: 9.33333cqw;
+  --leaderboard-slot-height: 9.66667%;
+  --leaderboard-text-left: 32.22222%;
+  --leaderboard-slot-1-y: 31.83333%;
+  --leaderboard-slot-2-y: 43.58333%;
+  --leaderboard-slot-3-y: 55.08333%;
+  --leaderboard-slot-4-y: 66.58333%;
+  --leaderboard-slot-5-y: 78.08333%;
+  --leaderboard-title-top: 12%; --leaderboard-title-left: 23%; --leaderboard-title-right: 23%;
+  --leaderboard-title-height: 6%;
+  --leaderboard-rows-top: 25.8%; --leaderboard-rows-right: 16%;
+  --leaderboard-rows-bottom: 16.5%; --leaderboard-rows-left: 16%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="naruto"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="naruto"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 24.38889%;
+  --leaderboard-photo-diameter: 10.66667cqw;
+  --leaderboard-slot-height: 10.83333%;
+  --leaderboard-text-left: 34.00000%;
+  --leaderboard-slot-1-y: 29.08333%;
+  --leaderboard-slot-2-y: 41.58333%;
+  --leaderboard-slot-3-y: 54.08333%;
+  --leaderboard-slot-4-y: 66.58333%;
+  --leaderboard-slot-5-y: 79.08333%;
+  --leaderboard-title-top: 9%; --leaderboard-title-left: 25%; --leaderboard-title-right: 23%;
+  --leaderboard-title-height: 8%;
+  --leaderboard-rows-top: 23.3%; --leaderboard-rows-right: 13%;
+  --leaderboard-rows-bottom: 14.5%; --leaderboard-rows-left: 16.5%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="one-piece"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="one-piece"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 23.33333%;
+  --leaderboard-photo-diameter: 10.88889cqw;
+  --leaderboard-slot-height: 10.50000%;
+  --leaderboard-text-left: 32.77778%;
+  --leaderboard-slot-1-y: 25.75000%;
+  --leaderboard-slot-2-y: 38.25000%;
+  --leaderboard-slot-3-y: 50.75000%;
+  --leaderboard-slot-4-y: 63.16667%;
+  --leaderboard-slot-5-y: 75.58333%;
+  --leaderboard-title-top: 8%; --leaderboard-title-left: 28%; --leaderboard-title-right: 28%;
+  --leaderboard-title-height: 6.5%;
+  --leaderboard-rows-top: 20.4%; --leaderboard-rows-right: 13%;
+  --leaderboard-rows-bottom: 17%; --leaderboard-rows-left: 16.5%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="stardew-valley"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="stardew-valley"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 22.05556%;
+  --leaderboard-photo-diameter: 9.11111cqw;
+  --leaderboard-slot-height: 9.83333%;
+  --leaderboard-text-left: 31.66667%;
+  --leaderboard-slot-1-y: 30.12500%;
+  --leaderboard-slot-2-y: 41.66667%;
+  --leaderboard-slot-3-y: 53.23333%;
+  --leaderboard-slot-4-y: 64.85000%;
+  --leaderboard-slot-5-y: 76.45833%;
+  --leaderboard-title-top: 8%; --leaderboard-title-left: 26%; --leaderboard-title-right: 24%;
+  --leaderboard-title-height: 8%;
+  --leaderboard-rows-top: 25%; --leaderboard-rows-right: 13%;
+  --leaderboard-rows-bottom: 16.5%; --leaderboard-rows-left: 16.5%;
+  --leaderboard-rows-gap: 1%;
+}
+:root[data-theme="terraria"] #leaderboard-view .leaderboard-widget,
+.overlay-placeholder-leaderboard[data-placeholder-theme="terraria"] {
+  /* Centres relevés dans l’image 900 × 1200 ; Assassination est recadré à 670 px. */
+  --leaderboard-photo-x: 21.22222%;
+  --leaderboard-photo-diameter: 8.66667cqw;
+  --leaderboard-slot-height: 10.00000%;
+  --leaderboard-text-left: 30.00000%;
+  --leaderboard-slot-1-y: 31.00000%;
+  --leaderboard-slot-2-y: 43.16667%;
+  --leaderboard-slot-3-y: 55.08333%;
+  --leaderboard-slot-4-y: 67.08333%;
+  --leaderboard-slot-5-y: 79.00000%;
+  --leaderboard-title-top: 13%; --leaderboard-title-left: 30%; --leaderboard-title-right: 32%;
+  --leaderboard-title-height: 6%;
+  --leaderboard-rows-top: 25.8%; --leaderboard-rows-right: 10%;
+  --leaderboard-rows-bottom: 15%; --leaderboard-rows-left: 14%;
+  --leaderboard-rows-gap: 1%;
+}

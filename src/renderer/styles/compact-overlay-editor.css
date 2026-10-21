@@ -1,0 +1,81 @@
+/* Éditeurs compacts Like Goal et timer, avec curseurs de taille communs. */
+.overlay-config-compact .overlay-config-fields {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.overlay-config-compact .overlay-config-fields > * {
+  flex-shrink: 0;
+}
+
+.overlay-config-compact .overlay-config-fields .dialog-section > .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.overlay-config-compact .overlay-config-fields :is(.like-goal-title-settings, .timer-title-settings, .win-counter-title-settings, .leaderboard-title-settings) > .form-grid {
+  grid-template-columns: minmax(0, 1.7fr) repeat(2, minmax(0, 1fr));
+}
+
+.overlay-config-compact :is(.like-goal-progress-label-row, .like-goal-typography-row, .timer-typography-row) {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.overlay-config-compact .overlay-config-fields :is(.like-goal-counter-settings, .like-goal-render-settings, .timer-render-settings, .win-counter-visibility-settings, .win-counter-render-settings, .leaderboard-profile-settings, .leaderboard-visibility-settings, .leaderboard-render-settings) > .form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+
+.overlay-config-compact .overlay-config-fields :is(.timer-visibility-settings, .timer-shortcut-settings, .win-counter-colors-settings, .win-counter-goal-settings, .win-counter-shortcut-settings, .leaderboard-score-settings) > .form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.overlay-config-compact .field {
+  min-width: 0;
+}
+
+.overlay-config-compact .overlay-size-control {
+  display: flex;
+  min-width: 0;
+  min-height: 43px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid rgba(111, 137, 183, .34);
+  border-radius: 9px;
+  background: rgba(5, 8, 18, .86);
+}
+
+.overlay-config-compact .overlay-size-control input[type="range"] {
+  min-width: 0;
+  min-height: 0;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: #a855f7;
+  cursor: ew-resize;
+}
+
+.overlay-config-compact .overlay-size-control output {
+  flex: 0 0 44px;
+  color: #e8ebff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 620px) {
+  .overlay-config-compact .overlay-config-fields .dialog-section > .form-grid,
+  .overlay-config-compact .overlay-config-fields :is(.like-goal-title-settings, .timer-title-settings, .win-counter-title-settings, .leaderboard-title-settings, .like-goal-counter-settings, .like-goal-render-settings, .timer-render-settings, .win-counter-visibility-settings, .win-counter-render-settings, .leaderboard-profile-settings, .leaderboard-visibility-settings, .leaderboard-render-settings, .timer-visibility-settings, .timer-shortcut-settings, .win-counter-colors-settings, .win-counter-goal-settings, .win-counter-shortcut-settings, .leaderboard-score-settings) > .form-grid,
+  .overlay-config-compact :is(.like-goal-progress-label-row, .like-goal-typography-row, .timer-typography-row) {
+    grid-template-columns: 1fr;
+  }
+}

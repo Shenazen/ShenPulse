@@ -28,86 +28,19 @@
   z-index: 2;
 }
 
-/* Like Goal : géométrie propre à chaque cadre généré. */
-:where([data-theme]:not([data-theme="classic"])) .like-goal-widget {
-  --like-goal-inner-top: 44%;
-  --like-goal-inner-right: 12%;
-  --like-goal-inner-bottom: 21%;
-  --like-goal-inner-left: 12%;
-  --like-goal-inner-radius: 20px;
-  --like-goal-value-top: 68%;
-  width: min(1300px, 96vw);
-  aspect-ratio: 6.5 / 1;
+/* Like Goal: zones from like-goal-layout.css. */
+.like-goal-widget {
   overflow: visible;
 }
 
-[data-theme]:not([data-theme="classic"]) .like-goal-content {
-  position: absolute;
-  z-index: auto;
-  inset: 0;
-  display: block;
-  text-align: center;
+.like-goal-content {
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.78), 0 0 12px rgba(0, 0, 0, 0.82);
 }
 
-[data-theme]:not([data-theme="classic"]) .like-goal-content > strong {
-  position: absolute;
-  z-index: 4;
-  top: calc(26% - 16px);
-  right: 0;
-  left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  transform: translate(
-    var(--like-goal-title-x, 0),
-    var(--like-goal-title-y, 0px)
-  ) scale(var(--like-goal-title-scale, 1));
-  transform-origin: center;
-  color: #fff;
-  font-size: 22px;
-  font-synthesis: none;
-  font-weight: 900;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-[data-theme]:not([data-theme="classic"]) .like-goal-content > small {
-  position: absolute;
-  z-index: 4;
-  top: calc(var(--like-goal-value-top) - 16px);
-  right: 0;
-  left: 0;
-  height: 32px;
-  transform: translate(
-    var(--like-goal-content-x, 0),
-    var(--like-goal-content-y, 0px)
-  ) scale(var(--like-goal-content-scale, 1));
-  transform-origin: center;
-  color: #fff;
-  font-size: 18px;
-  font-synthesis: none;
-  font-weight: 900;
-  line-height: 1;
-}
-
-[data-theme]:not([data-theme="classic"]) .like-goal-bar {
-  position: absolute;
+.like-goal-bar {
   z-index: 2;
-  top: var(--like-goal-inner-top);
-  right: var(--like-goal-inner-right);
-  bottom: var(--like-goal-inner-bottom);
-  left: var(--like-goal-inner-left);
-  height: auto;
-  margin: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--like-goal-inner-radius);
   background: rgba(2, 6, 14, 0.62);
-  box-shadow:
-    inset 0 0 20px rgba(255, 255, 255, 0.12),
-    0 0 18px color-mix(in srgb, var(--cyan) 34%, transparent);
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.12);
 }
 
 /*
@@ -158,23 +91,6 @@
   );
 }
 
-[data-theme="classic"] .like-goal-frame-foreground {
-  display: none;
-}
-
-[data-theme="gta"] .like-goal-widget { --like-goal-inner-top: 44%; --like-goal-inner-right: 9%; --like-goal-inner-bottom: 26%; --like-goal-inner-left: 9%; --like-goal-inner-radius: 26px; --like-goal-value-top: 72%; }
-[data-theme="minecraft"] .like-goal-widget { --like-goal-inner-top: 52%; --like-goal-inner-right: 14%; --like-goal-inner-bottom: 22%; --like-goal-inner-left: 14%; --like-goal-inner-radius: 3px; --like-goal-value-top: 76%; }
-[data-theme="akatsuki"] .like-goal-widget { --like-goal-inner-top: 43%; --like-goal-inner-right: 17.5%; --like-goal-inner-bottom: 34%; --like-goal-inner-left: 18%; --like-goal-inner-radius: 23px; --like-goal-value-top: 67%; }
-[data-theme="assassination-classroom"] .like-goal-widget { --like-goal-inner-top: 45%; --like-goal-inner-right: 24%; --like-goal-inner-bottom: 36%; --like-goal-inner-left: 24%; --like-goal-inner-radius: 6px; --like-goal-value-top: 66%; }
-[data-theme="cult-of-the-lamb"] .like-goal-widget { --like-goal-inner-top: 58%; --like-goal-inner-right: 17%; --like-goal-inner-bottom: 22%; --like-goal-inner-left: 18%; --like-goal-inner-radius: 22px; --like-goal-value-top: 79%; }
-[data-theme="demon-slayer"] .like-goal-widget { --like-goal-inner-top: 42%; --like-goal-inner-right: 18%; --like-goal-inner-bottom: 34%; --like-goal-inner-left: 18%; --like-goal-inner-radius: 22px; --like-goal-value-top: 66%; }
-[data-theme="dragon-ball"] .like-goal-widget { --like-goal-inner-top: 42%; --like-goal-inner-right: 18.5%; --like-goal-inner-bottom: 31%; --like-goal-inner-left: 18.5%; --like-goal-inner-radius: 24px; --like-goal-value-top: 68%; }
-[data-theme="fairy-tail"] .like-goal-widget { --like-goal-inner-top: 41%; --like-goal-inner-right: 17%; --like-goal-inner-bottom: 34%; --like-goal-inner-left: 17%; --like-goal-inner-radius: 22px; --like-goal-value-top: 65%; }
-[data-theme="harry-potter"] .like-goal-widget { --like-goal-inner-top: 52%; --like-goal-inner-right: 13%; --like-goal-inner-bottom: 35%; --like-goal-inner-left: 13%; --like-goal-inner-radius: 13px; --like-goal-value-top: 70%; }
-[data-theme="naruto"] .like-goal-widget { --like-goal-inner-top: 44%; --like-goal-inner-right: 16%; --like-goal-inner-bottom: 29%; --like-goal-inner-left: 16%; --like-goal-inner-radius: 24px; --like-goal-value-top: 69%; }
-[data-theme="one-piece"] .like-goal-widget { --like-goal-inner-top: 51%; --like-goal-inner-right: 16%; --like-goal-inner-bottom: 30%; --like-goal-inner-left: 16%; --like-goal-inner-radius: 12px; --like-goal-value-top: 71%; }
-[data-theme="stardew-valley"] .like-goal-widget { --like-goal-inner-top: 41%; --like-goal-inner-right: 12%; --like-goal-inner-bottom: 45%; --like-goal-inner-left: 12%; --like-goal-inner-radius: 12px; --like-goal-value-top: 58%; }
-[data-theme="terraria"] .like-goal-widget { --like-goal-inner-top: 44%; --like-goal-inner-right: 10%; --like-goal-inner-bottom: 28%; --like-goal-inner-left: 10%; --like-goal-inner-radius: 12px; --like-goal-value-top: 70%; }
 
 /* Classements : proportions, titre et rangées de ShenazenOverlay. */
 [data-theme]:not([data-theme="classic"]) .leaderboard-widget {

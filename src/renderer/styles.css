@@ -3,6 +3,12 @@
 @import url("styles/dialogs.css");
 @import url("styles/creator-pages.css");
 @import url("styles/overlay-catalog.css");
+@import url("styles/compact-overlay-editor.css");
+@import url("styles/leaderboard-editor.css");
+@import url("styles/timer-card.css");
+@import url("styles/timer-placeholder.css");
+@import url("styles/win-counter-placeholder.css");
+@import url("styles/leaderboard-placeholder.css");
 @import url("styles/game-journey.css");
 @import url("styles/membership.css");
 @import url("styles/administration.css");

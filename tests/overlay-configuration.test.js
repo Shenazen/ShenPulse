@@ -38,17 +38,11 @@ test("le Like Goal garde une géométrie et une police identiques dans TikTok St
     /#like-goal-view\.active > \.like-goal-widget\s*\{[\s\S]*flex:\s*0 0 1300px;[\s\S]*height:\s*200px;/
   );
   assert.match(overlayCss, /scale\(var\(--like-goal-viewport-scale, 1\)\)/);
-  assert.match(
-    overlayCss,
-    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.like-goal-content > strong\s*\{[\s\S]*font-size:\s*22px;/
-  );
-  assert.match(
-    overlayCss,
-    /\[data-theme\]:not\(\[data-theme="classic"\]\) \.like-goal-content > small\s*\{[\s\S]*font-size:\s*18px;/
-  );
-  assert.match(overlayCss, /top:\s*calc\(26% - 16px\)/);
-  assert.match(overlayCss, /top:\s*calc\(var\(--like-goal-value-top\) - 16px\)/);
-  assert.match(overlayCss, /height:\s*32px;[\s\S]*transform-origin:\s*center/);
+  assert.match(overlayCss, /font-size:\s*calc\(22px \* var\(--like-goal-title-scale, 1\)\)/);
+  assert.match(overlayCss, /font-size:\s*calc\(18px \* var\(--like-goal-content-scale, 1\)\)/);
+  assert.match(overlayCss, /inset: var\(--like-goal-title-top\)/);
+  assert.match(overlayCss, /inset: var\(--like-goal-inner-top\)/);
+  assert.match(overlayCss, /transform-origin:\s*center/);
   assert.doesNotMatch(
     overlayCss,
     /calc\(-50% \+ var\(--like-goal-(?:title|content)-y/
@@ -414,7 +408,7 @@ test("le Like Goal propose en français les quatre comportements de fin", () => 
   assert.match(overlayRuntime, /like-goal-reached-hidden/);
 });
 
-test("les options du Like Goal restaurent les elements et deplacent ses textes", () => {
+test("les options du Like Goal restaurent les éléments et gardent le centrage automatique", () => {
   assert.match(overlayRuntime, /element\.hidden = !showHeader/);
   assert.match(
     overlayRuntime,
@@ -429,12 +423,8 @@ test("les options du Like Goal restaurent les elements et deplacent ses textes",
     /progressLabel\.hidden = !showGoal \|\| !likeGoalProgressLabel/
   );
   for (const field of [
-    "likeGoalTitleOffsetX",
-    "likeGoalTitleOffsetY",
     "likeGoalTitleScale",
     "likeGoalTitleColor",
-    "likeGoalContentOffsetX",
-    "likeGoalContentOffsetY",
     "likeGoalContentScale",
     "likeGoalContentColor",
     "likeGoalPercentColor"
@@ -442,18 +432,16 @@ test("les options du Like Goal restaurent les elements et deplacent ses textes",
     assert.match(renderer, new RegExp(`"${field}"`));
   }
   for (const parameter of [
-    "titleX",
-    "titleY",
     "titleScale",
     "titleColor",
-    "contentX",
-    "contentY",
     "contentScale",
     "contentColor",
     "percentColor"
   ]) {
     assert.match(overlayRuntime, new RegExp(`"${parameter}"`));
   }
+  assert.doesNotMatch(overlayRuntime, /parameters.get\("(?:title|content)[XY]"\)/);
+  assert.match(overlayRuntime, /function fitLikeGoalText\(\)/);
 });
 
 test("le Like Goal et le timer standard proposent une action de fin", () => {

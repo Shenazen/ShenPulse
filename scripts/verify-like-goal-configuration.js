@@ -40,44 +40,48 @@ let previewWindow = null;
 
 async function readState() {
   return previewWindow.webContents.executeJavaScript(`(() => {
+    const rect = (element) => {
+      const { left, top, width, height } = element.getBoundingClientRect();
+      return { left, top, width, height };
+    };
     const title = document.getElementById("like-goal-title");
     const content = document.querySelector(".like-goal-content > small");
-    const goalLabel = document.getElementById("like-goal-progress-label");
-    const progressBar = document.querySelector(".like-goal-bar");
-    const styles = getComputedStyle(document.documentElement);
+    const label = document.getElementById("like-goal-progress-label");
+    const percent = document.getElementById("like-goal-percent");
     return {
-      titleHidden: title.hidden,
-      goalLabelHidden: goalLabel.hidden,
-      progressBarHidden: progressBar.hidden,
-      titleRect: {
-        height: title.getBoundingClientRect().height,
-        left: title.getBoundingClientRect().left,
-        top: title.getBoundingClientRect().top,
-        width: title.getBoundingClientRect().width
+      theme: document.documentElement.dataset.theme,
+      title: rect(title), titleText: rect(title.firstElementChild),
+      content: rect(content), contentText: rect(content.firstElementChild),
+      bar: rect(document.querySelector(".like-goal-bar")),
+      hidden: {
+        title: getComputedStyle(title).display === "none",
+        label: getComputedStyle(label).display === "none",
+        percent: getComputedStyle(percent).display === "none"
       },
-      contentRect: {
-        height: content.getBoundingClientRect().height,
-        left: content.getBoundingClientRect().left,
-        top: content.getBoundingClientRect().top,
-        width: content.getBoundingClientRect().width
-      },
-      variables: {
-        titleX: styles.getPropertyValue("--like-goal-title-x").trim(),
-        titleY: styles.getPropertyValue("--like-goal-title-y").trim(),
-        titleScale: styles.getPropertyValue("--like-goal-title-scale").trim(),
-        contentX: styles.getPropertyValue("--like-goal-content-x").trim(),
-        contentY: styles.getPropertyValue("--like-goal-content-y").trim(),
-        contentScale: styles.getPropertyValue("--like-goal-content-scale").trim()
-      },
+      label: label.textContent,
       colors: {
         title: getComputedStyle(title).color,
         content: getComputedStyle(content).color,
-        percent: getComputedStyle(
-          document.getElementById("like-goal-percent")
-        ).color
+        percent: getComputedStyle(percent).color
       }
     };
   })()`);
+}
+
+function assertCentered(inner, outer, label) {
+  for (const [position, dimension] of [["left", "width"], ["top", "height"]]) {
+    if (!closeEnough(inner[position] + inner[dimension] / 2, outer[position] + outer[dimension] / 2)) {
+      throw new Error(`${label}: text is not centered on ${position}.`);
+    }
+    if (inner[dimension] > outer[dimension] + 0.75) {
+      throw new Error(`${label}: text overflows ${dimension}.`);
+    }
+  }
+}
+
+function assertLayout(state) {
+  if (!state.hidden.title) assertCentered(state.titleText, state.title, `${state.theme} title`);
+  assertCentered(state.contentText, state.bar, `${state.theme} progress`);
 }
 
 async function configure(payload) {
@@ -90,6 +94,18 @@ async function configure(payload) {
     location.origin
   )`);
   await delay(120);
+}
+
+async function waitForReady() {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const ready = await previewWindow.webContents.executeJavaScript(`
+      !document.documentElement.classList.contains("overlay-booting") &&
+      Number(getComputedStyle(document.getElementById("overlay-root")).opacity) === 1
+    `);
+    if (ready) return;
+    await delay(100);
+  }
+  throw new Error("The overlay did not become visible.");
 }
 
 async function run() {
@@ -124,6 +140,7 @@ async function run() {
   await fs.promises.mkdir(targetDirectory, { recursive: true });
 
   const consoleErrors = [];
+  const knownWarnings = new Set();
   previewWindow = new BrowserWindow({
     width: 1300,
     height: 200,
@@ -138,112 +155,87 @@ async function run() {
       webSecurity: true
     }
   });
-  previewWindow.webContents.on("console-message", (_event, level, message) => {
-    if (level >= 2) consoleErrors.push(message);
+  previewWindow.webContents.on("console-message", ({ level, message }) => {
+    // Le bootstrap de base-path existant est inline ; le serveur local le bloque.
+    // /overlay/ résout déjà les chemins relatifs sans ce bootstrap.
+    if (message.includes("sha256-Wq/Lyhstace2rd3EMS9KZiT7uGqm+5oANVw72r4CRKY=")) {
+      knownWarnings.add(message);
+    } else if (["warning", "error"].includes(level)) consoleErrors.push(message);
   });
 
   const previewUrl =
     `http://127.0.0.1:${overlayPort}/overlay/` +
-    "?view=like-goal&theme=classic&preview=static" +
+    "?view=like-goal&theme=gta&preview=static" +
     "&title=LIKE%20GOAL&progressLabel=Objectif%20LIVE" +
     "&current=12500&target=50000&showHeader=true&showGoal=true" +
     "&token=like-goal-smoke-token";
   await previewWindow.loadURL(previewUrl);
-  await delay(200);
+  await waitForReady();
 
-  const initial = await readState();
-  await configure({ showHeader: "false", showGoal: "false" });
-  const hidden = await readState();
-  if (!hidden.titleHidden || !hidden.goalLabelHidden) {
-    throw new Error("Le titre ou le libellé d’objectif ne se masque pas.");
+  const themes = require("../resources/overlays/catalog/like-goal").definition.options;
+  const results = [];
+  for (const [theme] of themes) {
+    await waitForReady();
+    await configure({
+      theme, title: "LIKE GOAL", titleScale: "100", contentScale: "100",
+      current: "12500", target: "50000", whenReached: "keep", progressLabel: "likes",
+      showHeader: "true", showGoal: "true", showPercent: "true",
+      titleColor: "#ffffff", contentColor: "#ffffff", percentColor: "#ff4f86",
+      titleX: "450", titleY: "-200", contentX: "-400", contentY: "250"
+    });
+    await previewWindow.webContents.executeJavaScript(`Promise.all([
+      document.fonts.ready,
+      ...Array.from(document.querySelectorAll("#like-goal-view img"), (image) => image.decode().catch(() => {}))
+    ])`);
+    const initial = await readState();
+    assertLayout(initial);
+    const screenshot = path.join(targetDirectory, `like-goal-${theme}.png`);
+    await fs.promises.writeFile(screenshot, (await previewWindow.webContents.capturePage()).toPNG());
+    await configure({ showHeader: "false", showGoal: "false", showPercent: "false" });
+    const hidden = await readState();
+    if (!hidden.hidden.title || !hidden.hidden.label || !hidden.hidden.percent || !hidden.bar.height) {
+      throw new Error(`${theme}: visibility settings did not apply.`);
+    }
+    assertLayout(hidden);
+    await configure({
+      title: "UN TRES LONG TITRE PERSONNALISE POUR NOTRE OBJECTIF DE LIKES DU LIVE",
+      progressLabel: "Un long texte de progression personnalise pour ce LIVE",
+      current: "123456789", target: "987654321",
+      titleScale: "400", contentScale: "400", font: "Georgia", rtl: "true",
+      showHeader: "true", showGoal: "true", showPercent: "true",
+      titleColor: "#ff0000", contentColor: "#00ff00", percentColor: "#0000ff"
+    });
+    const restored = await readState();
+    assertLayout(restored);
+    if (Object.values(restored.hidden).some(Boolean)) throw new Error(`${theme}: elements did not reappear.`);
+    if (restored.colors.title !== "rgb(255, 0, 0)" || restored.colors.content !== "rgb(0, 255, 0)" || restored.colors.percent !== "rgb(0, 0, 255)") {
+      throw new Error(`${theme}: text colors did not apply.`);
+    }
+    await configure({ progressLabel: "", showPercent: "false", rtl: "false", font: "Inter" });
+    const noLabel = await readState();
+    assertLayout(noLabel);
+    if (!noLabel.hidden.label || noLabel.label !== "") throw new Error(`${theme}: empty label did not apply.`);
+    for (const [width, height] of [[650, 100], [390, 60], [780, 400]]) {
+      previewWindow.setContentSize(width, height);
+      await delay(60);
+      assertLayout(await readState());
+    }
+    previewWindow.setContentSize(1300, 200);
+    await delay(60);
+    // Re-opening an old URL must ignore its manual offsets as well.
+    await previewWindow.loadURL(previewUrl.replace("theme=gta", `theme=${theme}`).replace("progressLabel=Objectif%20LIVE", "progressLabel=") + "&titleX=450&titleY=-200&contentX=-400&contentY=250");
+    await delay(100);
+    const reloaded = await readState();
+    assertLayout(reloaded);
+    if (reloaded.label !== "") throw new Error(`${theme}: empty label was lost after reload.`);
+    results.push({ theme, initial, restored, screenshot });
+    process.stdout.write(`OK ${theme}: centering, visibility, colors, fitting, resize and old URLs\n`);
   }
-  if (hidden.progressBarHidden) {
-    throw new Error("Afficher l’objectif ne doit pas masquer la progression.");
-  }
+  if (overlayServer.sseClients.size !== 0) throw new Error("Static previews opened a LIVE connection.");
+  if (consoleErrors.length) throw new Error(`Console errors: ${consoleErrors.join(" | ")}`);
+  await fs.promises.writeFile(path.join(targetDirectory, "result.json"), JSON.stringify({ results, consoleErrors, knownWarnings: [...knownWarnings] }, null, 2), "utf8");
+  process.stdout.write(`Verified ${results.length} designs. Screenshots: ${targetDirectory}\n`);
 
-  await configure({
-    showHeader: "true",
-    showGoal: "true",
-    titleX: "60",
-    titleY: "-14",
-    titleScale: "140",
-    titleColor: "#ff0000",
-    contentX: "-40",
-    contentY: "18",
-    contentScale: "70",
-    contentColor: "#00ff00",
-    percentColor: "#0000ff"
-  });
-  const restored = await readState();
-  if (restored.titleHidden || restored.goalLabelHidden) {
-    throw new Error("Le titre ou le libellé d’objectif ne réapparaît pas.");
-  }
-  if (restored.progressBarHidden) {
-    throw new Error("La barre de progression a été masquée.");
-  }
-  const titleDelta = {
-    x:
-      restored.titleRect.left + restored.titleRect.width / 2 -
-      (initial.titleRect.left + initial.titleRect.width / 2),
-    y:
-      restored.titleRect.top + restored.titleRect.height / 2 -
-      (initial.titleRect.top + initial.titleRect.height / 2)
-  };
-  const contentDelta = {
-    x:
-      restored.contentRect.left + restored.contentRect.width / 2 -
-      (initial.contentRect.left + initial.contentRect.width / 2),
-    y:
-      restored.contentRect.top + restored.contentRect.height / 2 -
-      (initial.contentRect.top + initial.contentRect.height / 2)
-  };
-  if (!closeEnough(titleDelta.x, 60) || !closeEnough(titleDelta.y, -14)) {
-    throw new Error(`Décalage du titre incorrect : ${JSON.stringify(titleDelta)}.`);
-  }
-  if (!closeEnough(contentDelta.x, -40) || !closeEnough(contentDelta.y, 18)) {
-    throw new Error(`Décalage du texte central incorrect : ${JSON.stringify(contentDelta)}.`);
-  }
-  const titleScale = restored.titleRect.width / initial.titleRect.width;
-  const contentScale = restored.contentRect.width / initial.contentRect.width;
-  if (!closeEnough(titleScale, 1.4, 0.02)) {
-    throw new Error(`Zoom du titre incorrect : ${titleScale}.`);
-  }
-  if (!closeEnough(contentScale, 0.7, 0.02)) {
-    throw new Error(`Zoom du texte central incorrect : ${contentScale}.`);
-  }
-  if (
-    restored.colors.title !== "rgb(255, 0, 0)" ||
-    restored.colors.content !== "rgb(0, 255, 0)" ||
-    restored.colors.percent !== "rgb(0, 0, 255)"
-  ) {
-    throw new Error(`Couleurs Like Goal incorrectes : ${JSON.stringify(restored.colors)}.`);
-  }
-  if (overlayServer.sseClients.size !== 0) {
-    throw new Error("L’aperçu Like Goal ne doit pas ouvrir de connexion LIVE.");
-  }
-  if (consoleErrors.length) {
-    throw new Error(`Erreurs console : ${consoleErrors.join(" | ")}`);
-  }
-
-  const image = await previewWindow.webContents.capturePage();
-  const screenshot = path.join(targetDirectory, "like-goal-restored-offsets.png");
-  await fs.promises.writeFile(screenshot, image.toPNG());
-  const result = {
-    consoleErrors,
-    contentDelta,
-    hidden,
-    restored,
-    screenshot,
-    sseClients: overlayServer.sseClients.size,
-    scales: { content: contentScale, title: titleScale },
-    titleDelta
-  };
-  await fs.promises.writeFile(
-    path.join(targetDirectory, "result.json"),
-    JSON.stringify(result, null, 2),
-    "utf8"
-  );
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
 app.whenReady()

@@ -302,22 +302,51 @@ function renderWinCounter({ animate = false } = {}) {
   const current = document.getElementById("win-counter-value");
   const target = document.getElementById("win-counter-target");
   if (current) {
-    current.textContent = String(winCounter);
+    const text = current.firstElementChild || current;
+    text.textContent = String(winCounter);
     current.style.color = winCounter < 0
       ? winCounterNegativeColor
       : winCounter > 0
         ? winCounterPositiveColor
         : winCounterNeutralColor;
     if (animate) {
-      current.classList.remove("pulse");
-      void current.offsetWidth;
-      current.classList.add("pulse");
+      text.classList.remove("pulse");
+      void text.offsetWidth;
+      text.classList.add("pulse");
     }
   }
   if (target) target.textContent = formatNumber(winCounterTarget);
-  const content = document.querySelector(".win-counter-content");
-  if (content) {
-    content.style.translate = `${winCounterLabelX}px ${winCounterLabelY}px`;
+  applyWinCounterAppearance();
+  fitWinCounterText();
+}
+
+function applyWinCounterAppearance(payload = null) {
+  const style = document.documentElement.style;
+  for (const part of ["Title", "Value", "Goal"]) {
+    const key = `winCounter${part}Scale`;
+    const previous = Number(style.getPropertyValue(`--wins-${part.toLowerCase()}-scale`)) * 100 || Number(parameters.get(key)) || 100;
+    const value = payload ? previewNumber(payload, key, previous, 50, 400) : previous;
+    style.setProperty(`--wins-${part.toLowerCase()}-scale`, String(Math.min(400, Math.max(50, value)) / 100));
+  }
+  for (const part of ["Title", "Goal"]) {
+    const property = `--wins-${part.toLowerCase()}-color`;
+    const value = payload
+      ? payload[`winCounter${part}Color`] || payload.textColor || style.getPropertyValue(property)
+      : style.getPropertyValue(property) || parameters.get(`winCounter${part}Color`) || parameters.get("textColor");
+    style.setProperty(property, value || "#ffffff");
+  }
+}
+
+function fitWinCounterText() {
+  if (viewName !== "win-counter") return;
+  for (const id of ["win-counter-title", "win-counter-value", "win-counter-goal"]) {
+    const zone = document.getElementById(id);
+    const text = zone?.firstElementChild;
+    if (!text || !zone.clientWidth || !zone.clientHeight) continue;
+    const fit = Math.min(1,
+      Math.max(1, zone.clientWidth - 12) / Math.max(1, text.offsetWidth),
+      Math.max(1, zone.clientHeight - 4) / Math.max(1, text.offsetHeight));
+    text.style.setProperty("--wins-text-fit", String(fit));
   }
 }
 
@@ -546,7 +575,7 @@ function updateTimer(payload = {}) {
     isMultiplierTimer ? "multiplier-timer-label" : "timer-label"
   );
   if (label) {
-    label.textContent =
+    (label.firstElementChild || label).textContent =
       overlayTitle ||
       payload.label ||
       (isMultiplierTimer ? "BONUS ACTIF" : "TEMPS RESTANT");
@@ -585,11 +614,28 @@ function renderTimer() {
       : "timer-value"
   );
   if (element) {
-    element.textContent = value;
+    (element.firstElementChild || element).textContent = value;
     element.classList.toggle("paused", timerPaused);
   }
   const multiplier = document.getElementById("multiplier-value");
   if (multiplier) multiplier.textContent = `X${multiplierValue}`;
+  fitTimerText();
+}
+
+function fitTimerText() {
+  if (!["timer", "multiplier-timer"].includes(viewName)) return;
+  const ids = viewName === "multiplier-timer"
+    ? ["multiplier-timer-label", "multiplier-timer-content"]
+    : ["timer-label", "timer-value"];
+  for (const id of ids) {
+    const zone = document.getElementById(id);
+    const text = zone?.firstElementChild;
+    if (!text || !zone.clientWidth || !zone.clientHeight) continue;
+    const fit = Math.min(1,
+      Math.max(1, zone.clientWidth - 12) / Math.max(1, text.offsetWidth),
+      Math.max(1, zone.clientHeight - 4) / Math.max(1, text.offsetHeight));
+    text.style.setProperty("--timer-text-fit", String(fit));
+  }
 }
 
 function spinWheel(payload) {

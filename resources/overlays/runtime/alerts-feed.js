@@ -222,6 +222,23 @@ function cancelLikeGoalAnimation() {
   likeGoalAnimationFrame = 0;
 }
 
+function fitLikeGoalText() {
+  if (viewName !== "like-goal") return;
+  for (const selector of ["#like-goal-title", ".like-goal-content > small"]) {
+    const zone = document.querySelector(selector);
+    const text = zone?.firstElementChild;
+    if (!text || !zone.clientWidth || !zone.clientHeight) continue;
+    const fit = Math.min(
+      1,
+      Math.max(1, zone.clientWidth - 16) / Math.max(1, text.offsetWidth),
+      Math.max(1, zone.clientHeight - 4) / Math.max(1, text.offsetHeight)
+    );
+    text.style.setProperty("--like-goal-text-fit", String(fit));
+  }
+}
+
+document.fonts?.ready?.then(fitLikeGoalText);
+
 function paintLikeGoal(displayedCurrent) {
   const current = Math.max(0, Math.round(Number(displayedCurrent || 0)));
   const target = likeGoalTarget;
@@ -236,7 +253,7 @@ function paintLikeGoal(displayedCurrent) {
   const percentLabel = document.getElementById("like-goal-percent");
   const progressLabel = document.getElementById("like-goal-progress-label");
   const bar = document.getElementById("like-goal-progress");
-  if (title) title.textContent = overlayTitle || "LIKE GOAL";
+  if (title?.firstElementChild) title.firstElementChild.textContent = overlayTitle || "LIKE GOAL";
   if (title) title.hidden = !showHeader;
   if (currentLabel) currentLabel.textContent = formatNumber(current);
   if (targetLabel) targetLabel.textContent = formatNumber(target);
@@ -249,6 +266,7 @@ function paintLikeGoal(displayedCurrent) {
     progressLabel.hidden = !showGoal || !likeGoalProgressLabel;
   }
   if (bar) bar.style.width = `${progress}%`;
+  fitLikeGoalText();
 }
 
 function animateLikeGoal() {
@@ -461,20 +479,23 @@ function renderLeaderboard() {
     const medalPath = leaderboardRankMedals[index];
     const ringPath = leaderboardRankRings[index];
     return `
-      <article class="leaderboard-row leaderboard-position-${index + 1}">
+      <article class="leaderboard-row leaderboard-position-${index + 1}" style="--leaderboard-row-y:var(--leaderboard-slot-${index + 1}-y)">
         <span class="leaderboard-rank" ${showRank ? "" : "hidden"}>
           ${showRankBadges && medalPath ? `<img class="leaderboard-rank-medal" src="${escapeHtml(mediaUrl(medalPath))}" alt="">` : ""}
           <b class="leaderboard-rank-number">${index + 1}</b>
         </span>
         <span class="leaderboard-avatar-shell ${showAvatars && avatarUrl ? "has-avatar-image" : ""}" ${showAvatars ? "" : "hidden"}>
+          <span class="leaderboard-avatar-window">
           ${showAvatars && avatarUrl ? `<img class="leaderboard-avatar-image" src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(entry.name)}" referrerpolicy="no-referrer">` : ""}
           <span class="leaderboard-avatar-fallback">${escapeHtml(entry.name.slice(0, 1).toUpperCase())}</span>
+          </span>
           ${showRankBadges && ringPath ? `<img class="leaderboard-avatar-ring" src="${escapeHtml(mediaUrl(ringPath))}" alt="">` : ""}
           ${showCrown && index === 0 ? `<img class="leaderboard-crown" src="${escapeHtml(mediaUrl(leaderboardRankCrown))}" alt="">` : ""}
         </span>
         <span class="leaderboard-identity">
-          <strong>${escapeHtml(entry.name)}</strong>
-          <em ${showMetricLabel ? "" : "hidden"}>${formatNumber(entry.score)} ${leaderboardKind === "tappers" ? "likes" : "coins"}</em>
+          <span><strong><span>${escapeHtml(entry.name)}</span></strong>
+          <em ${showMetricLabel ? "" : "hidden"}><span><span class="leaderboard-score-number">${formatNumber(entry.score)}</span>${leaderboardShowUnit && leaderboardMetricLabel.trim() ? " " : ""}<span class="leaderboard-score-unit" ${leaderboardShowUnit && leaderboardMetricLabel.trim() ? "" : "hidden"}>${leaderboardShowUnit ? escapeHtml(leaderboardMetricLabel.trim()) : ""}</span></span></em>
+          </span>
         </span>
       </article>
     `;
@@ -485,4 +506,42 @@ function renderLeaderboard() {
       image.closest(".leaderboard-avatar-shell")?.classList.remove("has-avatar-image");
     }, { once: true });
   });
+  applyLeaderboardAppearance();
+  fitLeaderboardText();
 }
+
+function applyLeaderboardAppearance(payload = null) {
+  const style = document.documentElement.style;
+  for (const part of ["Title", "Name", "Score", "Unit", "Avatar"]) {
+    const key = `leaderboard${part}Scale`;
+    const property = `--leaderboard-${part.toLowerCase()}-scale`;
+    const previous = Number(style.getPropertyValue(property)) * 100 || Number(parameters.get(key)) || 100;
+    const maximum = part === "Avatar" ? 100 : 400;
+    const value = payload ? previewNumber(payload, key, previous, 50, maximum) : previous;
+    style.setProperty(property, String(Math.min(maximum, Math.max(50, value)) / 100));
+  }
+  const property = "--leaderboard-title-color";
+  const color = payload
+    ? payload.leaderboardTitleColor || payload.textColor || style.getPropertyValue(property)
+    : style.getPropertyValue(property) || parameters.get("leaderboardTitleColor") || parameters.get("textColor");
+  style.setProperty(property, color || "#ffffff");
+  const unitProperty = "--leaderboard-unit-color";
+  const unitColor = payload
+    ? payload.leaderboardUnitColor || style.getPropertyValue(unitProperty)
+    : style.getPropertyValue(unitProperty) || parameters.get("leaderboardUnitColor") || parameters.get("scoreColor");
+  style.setProperty(unitProperty, unitColor || (leaderboardKind === "tappers" ? "#ff8db8" : "#ffe575"));
+}
+
+function fitLeaderboardText() {
+  if (viewName !== "leaderboard") return;
+  for (const zone of document.querySelectorAll("#leaderboard-title, .leaderboard-identity strong, .leaderboard-identity em")) {
+    const text = zone.firstElementChild;
+    if (!text || !zone.clientWidth || !zone.clientHeight) continue;
+    const fit = Math.min(1,
+      Math.max(1, zone.clientWidth - 8) / Math.max(1, text.offsetWidth),
+      Math.max(1, zone.clientHeight - 4) / Math.max(1, text.offsetHeight));
+    text.style.setProperty("--leaderboard-text-fit", String(fit));
+  }
+}
+
+document.fonts?.ready?.then(fitLeaderboardText);

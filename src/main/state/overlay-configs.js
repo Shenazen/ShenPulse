@@ -2,6 +2,7 @@
 
 const { clone } = require("../utils");
 const { createDefaultOverlayConfigs } = require("../defaults");
+const overlayCatalog = require("../../../resources/overlays/overlay-catalog");
 
 /** Migration commune à l'état actif et aux profils : Like Goal et roues historiques. */
 /** Une action choisie active son secteur, sauf pour le secteur spécial de relance. */
@@ -30,7 +31,42 @@ function normalizeProfileOverlayConfigs(storedConfigs) {
           : {};
       const merged = { ...clone(defaultConfig), ...clone(saved) };
 
+      if (["topDonors", "topTappers"].includes(overlayId)) {
+        merged.theme = overlayCatalog.normalizeDesign(overlayId, merged.theme);
+        if (!Object.prototype.hasOwnProperty.call(saved, "leaderboardUnitColor")) {
+          merged.leaderboardUnitColor = saved.scoreColor || defaultConfig.leaderboardUnitColor;
+        }
+        if (!Object.prototype.hasOwnProperty.call(saved, "leaderboardTitleColor")) {
+          merged.leaderboardTitleColor = saved.textColor || defaultConfig.leaderboardTitleColor;
+        }
+      }
+
+      if (["timer", "multiplierTimer"].includes(overlayId)) {
+        merged.theme = overlayCatalog.normalizeDesign(overlayId, merged.theme);
+        if (!Object.prototype.hasOwnProperty.call(saved, "timerTitleColor")) {
+          merged.timerTitleColor = saved.accentColor || saved.textColor || defaultConfig.timerTitleColor;
+        }
+        if (!Object.prototype.hasOwnProperty.call(saved, "timerValueColor")) {
+          merged.timerValueColor = saved.textColor || defaultConfig.timerValueColor;
+        }
+      }
+
+      if (overlayId === "winCounter") {
+        merged.theme = overlayCatalog.normalizeDesign(overlayId, merged.theme);
+        delete merged.winCounterLabelOffsetX;
+        delete merged.winCounterLabelOffsetY;
+        for (const key of ["winCounterTitleColor", "winCounterGoalColor"]) {
+          if (!Object.prototype.hasOwnProperty.call(saved, key)) {
+            merged[key] = saved.textColor || defaultConfig[key];
+          }
+        }
+      }
+
       if (overlayId === "likeGoal") {
+        merged.theme = overlayCatalog.normalizeDesign(overlayId, merged.theme);
+        for (const key of ["likeGoalTitleOffsetX", "likeGoalTitleOffsetY", "likeGoalContentOffsetX", "likeGoalContentOffsetY"]) {
+          delete merged[key];
+        }
         if (
           !Object.prototype.hasOwnProperty.call(
             saved,

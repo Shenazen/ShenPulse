@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const { JSDOM } = require("jsdom");
+const catalog = require("../resources/overlays/overlay-catalog");
 
 const source = fs.readFileSync(path.join(__dirname, "../src/renderer/app/features/overlays/catalog.js"), "utf8");
 
@@ -30,7 +31,7 @@ function previewFixture(t, { page = "overlays" } = {}) {
     overlayUrls: {}, localOverlayUrls: { likeGoal: "http://127.0.0.1:17654/overlay/?view=like-goal&token=test", timer: "http://127.0.0.1:17654/overlay/?view=timer&token=test" } };
   const items = Object.entries(window.snapshot.localOverlayUrls).map(([key, url]) => ({ key, url, parameter: "theme", previewView: key, defaultOption: "classic" }));
   window.overlayDesignSelections = {};
-  window.overlayCatalog = { configParameterMappings: { theme: "theme" }, defaultConfig: () => ({}), definitionsWithUrls: () => items };
+  window.overlayCatalog = { configParameterMappings: { theme: "theme" }, defaultConfig: () => ({}), definitionsWithUrls: () => items, normalizeDesign: catalog.normalizeDesign };
   window.isAccountAuthenticated = () => true;
   window.normalizeWheelConfig = (value) => value;
   window.escapeHtml = (value) => String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;");

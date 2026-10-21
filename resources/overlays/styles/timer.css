@@ -1,0 +1,106 @@
+/* Zones et ajustement communs des timers, dont les données restent indépendantes. */
+:is(#timer-view, #multiplier-timer-view) .timer-panel {
+  position: relative;
+  flex: 0 0 640px;
+  width: 640px;
+  min-width: 0;
+  height: 360px;
+  max-height: none;
+  aspect-ratio: auto;
+  align-self: center;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+:is(#timer-view, #multiplier-timer-view) .timer-panel > .theme-frame {
+  z-index: 1;
+}
+
+:is(#timer-view, #multiplier-timer-view) :is(#timer-label, #multiplier-timer-label),
+:is(#timer-view, #multiplier-timer-view) .timer-value-zone {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: none;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+:is(#timer-view, #multiplier-timer-view) :is(#timer-label, #multiplier-timer-label) {
+  inset: var(--timer-title-top) var(--timer-title-right) var(--timer-title-bottom) var(--timer-title-left);
+  color: var(--timer-title-color, #fff);
+  font-size: calc(20px * var(--timer-title-scale, 1));
+  letter-spacing: .04em;
+}
+
+:is(#timer-view, #multiplier-timer-view) .timer-value-zone {
+  inset: var(--timer-value-top) var(--timer-value-right) var(--timer-value-bottom) var(--timer-value-left);
+  color: var(--timer-value-color, #fff);
+  font-size: calc(72px * var(--timer-value-scale, 1));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+
+:is(#timer-view, #multiplier-timer-view) :is(#timer-label, #multiplier-timer-label, .timer-value-zone) > span {
+  flex-shrink: 0;
+  transform: scale(var(--timer-text-fit, 1));
+  transform-origin: center;
+}
+
+.timer-value-content {
+  display: inline-flex;
+  align-items: center;
+  gap: .35em;
+}
+
+#multiplier-timer-view #multiplier-timer-value {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  transform: none;
+  box-shadow: none;
+}
+
+#multiplier-timer-view #multiplier-value {
+  position: static;
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  align-items: center;
+  justify-content: center;
+  padding: .2em .35em;
+  border: .06em solid currentColor;
+  border-radius: 999px;
+  background: rgba(7, 9, 20, .72);
+  color: var(--timer-multiplier-color, #ffe575);
+  font-size: .42em;
+  line-height: 1.1;
+  box-shadow: none;
+}
+
+:is(#timer-view, #multiplier-timer-view) [hidden] {
+  display: none !important;
+}

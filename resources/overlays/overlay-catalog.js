@@ -141,6 +141,13 @@
     };
   }
 
+  function normalizeDesign(key, value) {
+    const item = definition(key);
+    return item?.options?.some(([option]) => option === value)
+      ? value
+      : item?.defaultOption || item?.options?.[0]?.[0] || "";
+  }
+
   function settingsFor(key) {
     return [...(manifest(key)?.settings || SETTINGS_PROFILES[key] || [])];
   }
@@ -262,6 +269,7 @@
     manifest,
     definition,
     defaultConfig,
+    normalizeDesign,
     settingsFor,
     buildUrls,
     definitionsWithUrls,

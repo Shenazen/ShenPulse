@@ -1,0 +1,49 @@
+/* Mêmes zones que le timer chargé, avant le démarrage de son iframe. */
+.overlay-placeholder-timer.is-standard .overlay-placeholder-frame {
+  inset: 0 14.444444%;
+  width: 71.111111%;
+  height: 100%;
+  object-fit: fill;
+  transform: none;
+}
+
+.overlay-placeholder-timer.is-standard .overlay-placeholder-timer-copy {
+  position: absolute;
+  inset: 0 14.444444%;
+  display: block;
+  width: auto;
+}
+
+.overlay-placeholder-timer.is-standard .overlay-placeholder-timer-copy :is(small, strong) {
+  position: absolute;
+  display: flex;
+  min-width: 0;
+  width: auto;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.1;
+  transform: none;
+}
+
+.overlay-placeholder-timer.is-standard .overlay-placeholder-timer-copy small {
+  inset: var(--timer-title-top) var(--timer-title-right) var(--timer-title-bottom) var(--timer-title-left);
+  color: var(--timer-title-color, #fff);
+  font-size: calc(10px * var(--timer-title-scale, 1));
+}
+
+.overlay-placeholder-timer.is-standard .overlay-placeholder-timer-copy strong {
+  inset: var(--timer-value-top) var(--timer-value-right) var(--timer-value-bottom) var(--timer-value-left);
+  color: var(--timer-value-color, #fff);
+  font-size: calc(28px * var(--timer-value-scale, 1));
+  gap: .35em;
+}
+
+.overlay-placeholder-timer-copy strong b {
+  color: var(--timer-multiplier-color, #ffe575);
+  font-size: .42em;
+}

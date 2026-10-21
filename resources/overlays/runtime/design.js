@@ -66,7 +66,7 @@ async function setupOverlayDesign() {
     const source = await setThemeFrame(
       "like-goal-frame",
       "like-goal",
-      "widgets/goals/banniere_mystique_transparente_1300x200.png",
+      "",
       revision
     );
     if (revision !== overlayDesignRevision) return;

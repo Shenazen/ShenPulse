@@ -42,7 +42,10 @@ const isStaticPreview = previewMode === "static";
 const isCatalogPreview =
   isStaticPreview || previewMode === "animated";
 const isSceneChild = parameters.get("embedded") === "scene" && window.parent !== window;
-let themeName = parameters.get("theme") || "classic";
+const centeredThemeKey = { "like-goal": "likeGoal", timer: "timer", "multiplier-timer": "multiplierTimer", "win-counter": "winCounter", leaderboard: parameters.get("kind") === "tappers" ? "topTappers" : "topDonors" }[viewName];
+let themeName = centeredThemeKey
+  ? overlayCatalog.normalizeDesign(centeredThemeKey, parameters.get("theme"))
+  : parameters.get("theme") || "classic";
 let jarModel = parameters.get("model") || "fantasy";
 let wheelDesign = parameters.get("design") || "classic";
 const leaderboardKind = parameters.get("kind") === "tappers" ? "tappers" : "donors";
@@ -68,9 +71,16 @@ let showAvatars = parameters.get("showAvatars") !== "false";
 let showCrown = parameters.get("showCrown") !== "false";
 let showRankBadges = parameters.get("showRankBadges") !== "false";
 let showMetricLabel = parameters.get("showMetricLabel") !== "false";
+let leaderboardMetricLabel = parameters.has("leaderboardMetricLabel")
+  ? parameters.get("leaderboardMetricLabel")
+  : leaderboardKind === "tappers" ? "likes" : "coins";
+let leaderboardShowUnit = parameters.get("leaderboardShowUnit") !== "false";
 let timerAutoStart = parameters.get("timerAutoStart") === "true";
-let timerTitleScale = Math.min(2, Math.max(.5, Number(parameters.get("timerTitleScale") || 100) / 100));
-let timerValueScale = Math.min(2, Math.max(.5, Number(parameters.get("timerValueScale") || 100) / 100));
+let timerTitleScale = Math.min(4, Math.max(.5, Number(parameters.get("timerTitleScale") || 100) / 100));
+let timerValueScale = Math.min(4, Math.max(.5, Number(parameters.get("timerValueScale") || 100) / 100));
+let timerTitleColor = parameters.get("timerTitleColor") || parameters.get("accent") || parameters.get("textColor") || "#ffffff";
+let timerValueColor = parameters.get("timerValueColor") || parameters.get("textColor") || "#ffffff";
+let timerMultiplierColor = parameters.get("timerMultiplierColor") || "#ffe575";
 const overlaySoundEnabled = parameters.get("soundEnabled") !== "false";
 const overlaySoundVolume = Math.min(1, Math.max(0, Number(parameters.get("soundVolume") || 70) / 100));
 const overlayDisplayTime = Math.min(120, Math.max(1, Number(parameters.get("displayTime") || 8)));
@@ -82,21 +92,17 @@ let overlayFontSize = viewName === "wheel"
 let overlayBackgroundOpacity = Math.min(100, Math.max(0, Number(parameters.get("backgroundOpacity") || 82)));
 let leaderboardRowOpacity = Math.min(100, Math.max(0, Number(parameters.get("rowOpacity") || 68)));
 let likeGoalBaseline = Math.max(0, Number(parameters.get("goalBaseline") || 0));
-let likeGoalProgressLabel = String(parameters.get("progressLabel") || "likes").trim();
-let likeGoalTitleX = Math.min(500, Math.max(-500, Number(parameters.get("titleX") || 0)));
-let likeGoalTitleY = Math.min(500, Math.max(-500, Number(parameters.get("titleY") || 0)));
-let likeGoalTitleScale = Math.min(2, Math.max(.5, Number(parameters.get("titleScale") || 100) / 100));
+let likeGoalProgressLabel = String(parameters.get("progressLabel") ?? "likes").trim();
+let likeGoalTitleScale = Math.min(4, Math.max(.5, Number(parameters.get("titleScale") || 100) / 100));
 let likeGoalTitleColor = parameters.get("titleColor") || parameters.get("textColor") || "#ffffff";
-let likeGoalContentX = Math.min(500, Math.max(-500, Number(parameters.get("contentX") || 0)));
-let likeGoalContentY = Math.min(500, Math.max(-500, Number(parameters.get("contentY") || 0)));
-let likeGoalContentScale = Math.min(2, Math.max(.5, Number(parameters.get("contentScale") || 100) / 100));
+let likeGoalContentScale = Math.min(4, Math.max(.5, Number(parameters.get("contentScale") || 100) / 100));
 let likeGoalContentColor = parameters.get("contentColor") || parameters.get("textColor") || "#ffffff";
 let likeGoalPercentColor = parameters.get("percentColor") || parameters.get("secondary") || "#ff4f86";
 let overlayMaxRows = Math.min(12, Math.max(1, Number(parameters.get("maxRows") || 5)));
 let matchFit = parameters.get("fit") === "cover" ? "cover" : "contain";
 let matchAutoplay = parameters.get("autoplay") !== "false";
 let matchLoop = parameters.get("loop") !== "false";
-let multiplierValue = Math.min(5, Math.max(2, Number(parameters.get("multiplier") || 2)));
+let multiplierValue = Math.min(100, Math.max(1, Math.round(Number(parameters.get("multiplier") || 2))));
 let wheelParameterColors = String(parameters.get("colors") || "")
   .split("|")
   .map((color) => color.trim())
@@ -156,17 +162,16 @@ document.documentElement.style.setProperty("--overlay-shadow-color", parameters.
 document.documentElement.style.setProperty("--overlay-font-size", overlayFontSize);
 document.documentElement.style.setProperty("--timer-title-scale", timerTitleScale);
 document.documentElement.style.setProperty("--timer-value-scale", timerValueScale);
-document.documentElement.style.setProperty("--like-goal-title-x", `${likeGoalTitleX}px`);
-document.documentElement.style.setProperty("--like-goal-title-y", `${likeGoalTitleY}px`);
+document.documentElement.style.setProperty("--timer-title-color", timerTitleColor);
+document.documentElement.style.setProperty("--timer-value-color", timerValueColor);
+document.documentElement.style.setProperty("--timer-multiplier-color", timerMultiplierColor);
 document.documentElement.style.setProperty("--like-goal-title-scale", likeGoalTitleScale);
 document.documentElement.style.setProperty("--like-goal-title-color", likeGoalTitleColor);
-document.documentElement.style.setProperty("--like-goal-content-x", `${likeGoalContentX}px`);
-document.documentElement.style.setProperty("--like-goal-content-y", `${likeGoalContentY}px`);
 document.documentElement.style.setProperty("--like-goal-content-scale", likeGoalContentScale);
 document.documentElement.style.setProperty("--like-goal-content-color", likeGoalContentColor);
 document.documentElement.style.setProperty("--like-goal-percent-color", likeGoalPercentColor);
 document.documentElement.style.setProperty("--leaderboard-name-color", parameters.get("nameColor") || "#ffffff");
-document.documentElement.style.setProperty("--leaderboard-score-color", parameters.get("scoreColor") || "#ffe575");
+document.documentElement.style.setProperty("--leaderboard-score-color", parameters.get("scoreColor") || (leaderboardKind === "tappers" ? "#ff8db8" : "#ffe575"));
 document.documentElement.style.setProperty("--leaderboard-rank-color", parameters.get("rankColor") || "#ffe575");
 document.documentElement.style.setProperty("--leaderboard-row-opacity", `${leaderboardRowOpacity / 100}`);
 activeView.style.fontFamily = overlayFontStack(parameters.get("font"));
@@ -199,8 +204,6 @@ let winCounterTarget = Math.max(1, Number(parameters.get("target") || 20));
 let winCounterNegativeColor = parameters.get("negativeColor") || "#ff4f6d";
 let winCounterNeutralColor = parameters.get("neutralColor") || "#f8fafc";
 let winCounterPositiveColor = parameters.get("positiveColor") || "#31ff74";
-let winCounterLabelX = Number(parameters.get("labelX") || 0);
-let winCounterLabelY = Number(parameters.get("labelY") || 0);
 let winCounterMultiplier = 1;
 let winCounterMultiplierTimer = null;
 let coinJarMinimum = Math.max(0, Number(parameters.get("minCoins") || 0));
@@ -328,7 +331,11 @@ function updatePreviewConfiguration(payload = {}) {
   const previousVariant = matchVariant;
   const previousTimerAutoStart = timerAutoStart;
 
-  if (payload.theme) themeName = String(payload.theme);
+  if (payload.theme) {
+    themeName = centeredThemeKey
+      ? overlayCatalog.normalizeDesign(centeredThemeKey, payload.theme)
+      : String(payload.theme);
+  }
   if (payload.model) jarModel = String(payload.model);
   if (payload.design) wheelDesign = String(payload.design);
   if (payload.variant) matchVariant = String(payload.variant);
@@ -369,24 +376,20 @@ function updatePreviewConfiguration(payload = {}) {
     0,
     999999999
   );
-  likeGoalTitleX = previewNumber(payload, "titleX", likeGoalTitleX, -500, 500);
-  likeGoalTitleY = previewNumber(payload, "titleY", likeGoalTitleY, -500, 500);
   likeGoalTitleScale = previewNumber(
     payload,
     "titleScale",
     likeGoalTitleScale * 100,
     50,
-    200
+    400
   ) / 100;
   likeGoalTitleColor = payload.titleColor || likeGoalTitleColor;
-  likeGoalContentX = previewNumber(payload, "contentX", likeGoalContentX, -500, 500);
-  likeGoalContentY = previewNumber(payload, "contentY", likeGoalContentY, -500, 500);
   likeGoalContentScale = previewNumber(
     payload,
     "contentScale",
     likeGoalContentScale * 100,
     50,
-    200
+    400
   ) / 100;
   likeGoalContentColor = payload.contentColor || likeGoalContentColor;
   likeGoalPercentColor = payload.percentColor || likeGoalPercentColor;
@@ -416,15 +419,18 @@ function updatePreviewConfiguration(payload = {}) {
     "timerTitleScale",
     timerTitleScale * 100,
     50,
-    200
+    400
   ) / 100;
   timerValueScale = previewNumber(
     payload,
     "timerValueScale",
     timerValueScale * 100,
     50,
-    200
+    400
   ) / 100;
+  timerTitleColor = payload.timerTitleColor || payload.accent || timerTitleColor;
+  timerValueColor = payload.timerValueColor || payload.textColor || timerValueColor;
+  timerMultiplierColor = payload.timerMultiplierColor || timerMultiplierColor;
   matchAutoplay = previewBoolean(payload, "autoplay", matchAutoplay);
   matchLoop = previewBoolean(payload, "loop", matchLoop);
   matchFit = payload.fit === "cover" ? "cover" : payload.fit ? "contain" : matchFit;
@@ -458,13 +464,12 @@ function updatePreviewConfiguration(payload = {}) {
     timerSeconds = Math.max(0, Number(payload.seconds || 0));
   }
   multiplierValue = Math.round(
-    previewNumber(payload, "multiplier", multiplierValue, 2, 5)
+    previewNumber(payload, "multiplier", multiplierValue, 1, 100)
   );
   winCounterNegativeColor = payload.negativeColor || winCounterNegativeColor;
   winCounterNeutralColor = payload.neutralColor || winCounterNeutralColor;
   winCounterPositiveColor = payload.positiveColor || winCounterPositiveColor;
-  winCounterLabelX = previewNumber(payload, "labelX", winCounterLabelX, -500, 500);
-  winCounterLabelY = previewNumber(payload, "labelY", winCounterLabelY, -500, 500);
+  if (viewName === "win-counter" && typeof applyWinCounterAppearance === "function") applyWinCounterAppearance(payload);
 
   document.documentElement.style.setProperty("--overlay-scale", overlayScale);
   document.documentElement.style.setProperty("--overlay-x", `${overlayX}px`);
@@ -478,19 +483,23 @@ function updatePreviewConfiguration(payload = {}) {
   document.documentElement.style.setProperty("--overlay-font-size", overlayFontSize);
   document.documentElement.style.setProperty("--timer-title-scale", timerTitleScale);
   document.documentElement.style.setProperty("--timer-value-scale", timerValueScale);
-  document.documentElement.style.setProperty("--like-goal-title-x", `${likeGoalTitleX}px`);
-  document.documentElement.style.setProperty("--like-goal-title-y", `${likeGoalTitleY}px`);
+  document.documentElement.style.setProperty("--timer-title-color", timerTitleColor);
+  document.documentElement.style.setProperty("--timer-value-color", timerValueColor);
+  document.documentElement.style.setProperty("--timer-multiplier-color", timerMultiplierColor);
   document.documentElement.style.setProperty("--like-goal-title-scale", likeGoalTitleScale);
   document.documentElement.style.setProperty("--like-goal-title-color", likeGoalTitleColor);
-  document.documentElement.style.setProperty("--like-goal-content-x", `${likeGoalContentX}px`);
-  document.documentElement.style.setProperty("--like-goal-content-y", `${likeGoalContentY}px`);
   document.documentElement.style.setProperty("--like-goal-content-scale", likeGoalContentScale);
   document.documentElement.style.setProperty("--like-goal-content-color", likeGoalContentColor);
   document.documentElement.style.setProperty("--like-goal-percent-color", likeGoalPercentColor);
-  document.documentElement.style.setProperty("--leaderboard-name-color", payload.nameColor || parameters.get("nameColor") || "#ffffff");
-  document.documentElement.style.setProperty("--leaderboard-score-color", payload.scoreColor || parameters.get("scoreColor") || "#ffe575");
-  document.documentElement.style.setProperty("--leaderboard-rank-color", payload.rankColor || parameters.get("rankColor") || "#ffe575");
+  for (const [part, key] of [["name", "nameColor"], ["score", "scoreColor"], ["rank", "rankColor"]]) {
+    const property = `--leaderboard-${part}-color`;
+    const style = document.documentElement.style;
+    style.setProperty(property, payload[key] || style.getPropertyValue(property));
+  }
   document.documentElement.style.setProperty("--leaderboard-row-opacity", `${leaderboardRowOpacity / 100}`);
+  if (viewName === "leaderboard" && typeof applyLeaderboardAppearance === "function") applyLeaderboardAppearance(payload);
+  if (Object.prototype.hasOwnProperty.call(payload, "leaderboardMetricLabel")) leaderboardMetricLabel = String(payload.leaderboardMetricLabel || "");
+  leaderboardShowUnit = previewBoolean(payload, "leaderboardShowUnit", leaderboardShowUnit);
   activeView.style.fontFamily = overlayFontStack(payload.font || parameters.get("font"));
   activeView.style.direction = String(payload.rtl) === "true" ? "rtl" : "ltr";
   activeView.dataset.layout = payload.layout || activeView.dataset.layout || "wide";
@@ -655,6 +664,7 @@ function configurationWithoutRuntimeReset(configuration = {}) {
   const next = { ...configuration };
   delete next.current;
   delete next.seconds;
+  if (viewName === "multiplier-timer") delete next.multiplier;
   return next;
 }
 
@@ -709,7 +719,7 @@ function setupConfiguration() {
   const targetId = titleTargets[viewName];
   if (overlayTitle && targetId) {
     const target = document.getElementById(targetId);
-    if (target) target.textContent = overlayTitle;
+    if (target) (["like-goal-title", "timer-label", "multiplier-timer-label", "leaderboard-title"].includes(targetId) ? target.firstElementChild : target).textContent = overlayTitle;
   }
   const likeCurrent = document.getElementById("like-goal-current");
   const likeTarget = document.getElementById("like-goal-target");
@@ -731,8 +741,9 @@ function setupConfiguration() {
     likeProgressLabel.textContent = likeGoalProgressLabel;
     likeProgressLabel.hidden = !showGoal || !likeGoalProgressLabel;
   }
+  if (viewName === "like-goal" && typeof fitLikeGoalText === "function") fitLikeGoalText();
   if (winTarget) winTarget.textContent = formatNumber(winCounterTarget);
-  if (winTitle && overlayTitle) winTitle.textContent = overlayTitle;
+  if (winTitle && overlayTitle) (winTitle.firstElementChild || winTitle).textContent = overlayTitle;
   activeView.querySelectorAll("header, #like-goal-title, #timer-label, #multiplier-timer-label, .win-counter-content > span, #wheel-caption").forEach((element) => {
     element.hidden = !showHeader;
   });

@@ -10,12 +10,12 @@
   definition: {
     key: "timer",
     name: "Timer",
-    description: "Compte à rebours configurable avec les 14 thèmes graphiques.",
+    description: "Compte à rebours personnalisable avec 13 designs illustrés.",
     category: "counters",
     icon: "▷",
     route: { view: "timer" },
     parameter: "theme",
-    options: shared.themes,
+    options: shared.themes.filter(([theme]) => theme !== "classic"),
     defaultOption: "gta",
     previewKind: "timer",
     sourceSize: [900, 360],
@@ -30,6 +30,8 @@
     showGoal: true,
     timerTitleScale: 100,
     timerValueScale: 100,
+    timerTitleColor: "#ffffff",
+    timerValueColor: "#ffffff",
     timerAutoStart: false,
     incrementShortcut: "Alt+W, Alt+ArrowUp",
     decrementShortcut: "Alt+S, Alt+ArrowDown",
@@ -37,7 +39,7 @@
   },
   settings: [
     "title", "theme", "seconds", "completionActionId", "showHours", "showGoal",
-    "timerTitleScale", "timerValueScale", "timerAutoStart",
+    "timerTitleScale", "timerValueScale", "timerTitleColor", "timerValueColor", "timerAutoStart",
     "incrementShortcut", "decrementShortcut", "resetShortcut"
   ],
   parameters: {
@@ -45,6 +47,8 @@
     showHours: "showHours",
     timerTitleScale: "timerTitleScale",
     timerValueScale: "timerValueScale",
+    timerTitleColor: "timerTitleColor",
+    timerValueColor: "timerValueColor",
     timerAutoStart: "timerAutoStart"
   }
 }));

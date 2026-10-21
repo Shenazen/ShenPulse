@@ -228,6 +228,23 @@ test("timer reset cancels completion scheduling", async () => {
   assert.equal(harness.runs.length, 0);
 });
 
+test("changer le design du timer conserve le compte à rebours du jeu et son action de fin", async () => {
+  const harness = createHarness({ timer: { timerAutoStart: true }, overlaySession: { timerSeconds: 10, timerEndsAt: 11_000, timerPaused: false, timerLabel: "Partie Minecraft" } });
+  await harness.controller.initialize();
+  const previous = structuredClone(harness.state.settings);
+  const session = structuredClone(harness.state.overlaySession);
+  harness.state.settings.overlayConfigs.timer = { ...previous.overlayConfigs.timer, theme: "naruto", timerTitleScale: 400, timerValueColor: "#123456" };
+  const restarted = await harness.controller.settingsChanged(previous, harness.state.settings);
+  assert.equal(restarted, false);
+  assert.deepEqual(harness.state.overlaySession, session);
+  assert.equal(harness.runs.length, 0);
+  assert.equal(harness.state.settings.overlayConfigs.timer.completionActionId, "completion-action");
+  harness.setNow(11_000);
+  assert.equal(await harness.controller.checkTimerCompletion(11_000), true);
+  assert.equal(harness.runs.length, 1);
+  assert.equal(harness.runs[0].action.id, "completion-action");
+});
+
 test("timer action also fires when a timer adjustment reaches zero immediately", async () => {
   const harness = createHarness({
     overlaySession: {

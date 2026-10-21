@@ -80,23 +80,20 @@ function overlayPlaceholderColor(value, fallback) {
 }
 
 function overlayPlaceholderLikeGoal(item, config, design) {
+  design = overlayCatalog.normalizeDesign("likeGoal", design);
   const current = Math.max(0, overlayPlaceholderNumber(config.current));
   const target = Math.max(
     1,
     overlayPlaceholderNumber(config.target, 50000, 1)
   );
   const percent = Math.min(100, Math.round((current / target) * 100));
-  const framePath = design === "classic"
-    ? "widgets/goals/banniere_mystique_transparente_1300x200.png"
-    : overlayPlaceholderThemePath("like-goal", design);
+  const framePath = overlayPlaceholderThemePath("like-goal", design);
   const frame = overlayPlaceholderImage(
     item,
     framePath,
     "overlay-placeholder-frame"
   );
-  const foreground = design === "classic"
-    ? ""
-    : `<span class="overlay-placeholder-like-foreground" aria-hidden="true">
+  const foreground = `<span class="overlay-placeholder-like-foreground" aria-hidden="true">
         ${["top", "right", "bottom", "left"].map((side) =>
           overlayPlaceholderImage(
             item,
@@ -108,28 +105,22 @@ function overlayPlaceholderLikeGoal(item, config, design) {
   const title = config.showHeader === false
     ? ""
     : `<strong>${escapeHtml(config.title || item.name)}</strong>`;
-  const progressLabel = config.progressLabel
+  const progressLabel = config.showGoal !== false && config.progressLabel
     ? ` <span>${escapeHtml(config.progressLabel)}</span>`
     : "";
   const percentLabel = config.showPercent === false
     ? ""
     : ` <b>${percent}%</b>`;
-  const values = config.showGoal === false
-    ? ""
-    : `<small>${Math.round(current).toLocaleString("fr-FR")} / ${Math.round(target).toLocaleString("fr-FR")}${progressLabel}${percentLabel}</small>`;
+  const values = `<small>${Math.round(current).toLocaleString("fr-FR")} / ${Math.round(target).toLocaleString("fr-FR")}${progressLabel}${percentLabel}</small>`;
   const style = [
     `--placeholder-progress:${percent}%`,
     `--placeholder-title-color:${overlayPlaceholderColor(config.likeGoalTitleColor, "#ffffff")}`,
     `--placeholder-content-color:${overlayPlaceholderColor(config.likeGoalContentColor, "#ffffff")}`,
     `--placeholder-percent-color:${overlayPlaceholderColor(config.likeGoalPercentColor, "#ff4f86")}`,
-    `--placeholder-title-x:${overlayPlaceholderNumber(config.likeGoalTitleOffsetX, 0, -100, 100)}px`,
-    `--placeholder-title-y:${overlayPlaceholderNumber(config.likeGoalTitleOffsetY, 0, -100, 100)}px`,
-    `--placeholder-title-scale:${overlayPlaceholderNumber(config.likeGoalTitleScale, 100, 20, 240) / 100}`,
-    `--placeholder-content-x:${overlayPlaceholderNumber(config.likeGoalContentOffsetX, 0, -100, 100)}px`,
-    `--placeholder-content-y:${overlayPlaceholderNumber(config.likeGoalContentOffsetY, 0, -100, 100)}px`,
-    `--placeholder-content-scale:${overlayPlaceholderNumber(config.likeGoalContentScale, 100, 20, 240) / 100}`
+    `--placeholder-title-scale:${overlayPlaceholderNumber(config.likeGoalTitleScale, 100, 50, 400) / 100}`,
+    `--placeholder-content-scale:${overlayPlaceholderNumber(config.likeGoalContentScale, 100, 50, 400) / 100}`
   ].join(";");
-  return `<div class="overlay-placeholder-like-goal ${design === "classic" ? "is-classic" : "is-themed"}" data-placeholder-theme="${escapeHtml(design)}" style="${style}">
+  return `<div class="overlay-placeholder-like-goal is-themed" data-placeholder-theme="${escapeHtml(design)}" style="${style}">
     ${frame}
     <span class="overlay-placeholder-like-bar"><i></i></span>
     <span class="overlay-placeholder-like-copy">${title}${values}</span>
@@ -138,23 +129,32 @@ function overlayPlaceholderLikeGoal(item, config, design) {
 }
 
 function overlayPlaceholderTimerCard(item, config, design) {
+  design = overlayCatalog.normalizeDesign(item.key, design);
   const framePath = overlayPlaceholderThemePath("timer", design);
   const multiplier = item.key === "multiplierTimer"
     ? `<b>X${Math.round(overlayPlaceholderNumber(config.multiplier, 2, 2, 5))}</b>`
     : "";
-  const title = config.showGoal === false
+  const title = config.showHeader === false
     ? ""
     : `<small>${escapeHtml(config.title || item.name)}</small>`;
-  return `<div class="overlay-placeholder-timer ${design === "classic" ? "is-classic" : "is-themed"}" data-placeholder-theme="${escapeHtml(design)}">
+  const style = [
+    `--timer-title-color:${overlayPlaceholderColor(config.timerTitleColor, "#ffffff")}`,
+    `--timer-value-color:${overlayPlaceholderColor(config.timerValueColor, "#ffffff")}`,
+    `--timer-multiplier-color:${overlayPlaceholderColor(config.timerMultiplierColor, "#ffe575")}`,
+    `--timer-title-scale:${overlayPlaceholderNumber(config.timerTitleScale, 100, 50, 400) / 100}`,
+    `--timer-value-scale:${overlayPlaceholderNumber(config.timerValueScale, 100, 50, 400) / 100}`
+  ].join(";");
+  return `<div class="overlay-placeholder-timer is-standard is-themed" data-placeholder-theme="${escapeHtml(design)}" style="${style}">
     ${overlayPlaceholderImage(item, framePath, "overlay-placeholder-frame")}
-    <span class="overlay-placeholder-timer-copy">${title}<strong>${overlayPlaceholderTimer(config.seconds, config.showHours !== false)}</strong></span>
-    ${multiplier}
+    <span class="overlay-placeholder-timer-copy">${title}<strong>${overlayPlaceholderTimer(config.seconds, config.showHours !== false)}${multiplier}</strong></span>
   </div>`;
 }
 
 function overlayPlaceholderLeaderboard(item, config, design) {
+  design = overlayCatalog.normalizeDesign(item.key, design || config.theme);
   const framePath = overlayPlaceholderThemePath("leaderboard", design);
   const isTappers = item.key === "topTappers";
+  const unit = config.leaderboardShowUnit === false ? "" : String(config.leaderboardMetricLabel ?? (isTappers ? "likes" : "coins")).trim();
   const scores = isTappers ? [2450, 1870, 920] : [820, 540, 310];
   const maxRows = Math.round(
     overlayPlaceholderNumber(config.maxRows, 5, 1, 5)
@@ -185,13 +185,23 @@ function overlayPlaceholderLeaderboard(item, config, design) {
     if (rank > 3) {
       return '<span class="overlay-placeholder-leaderboard-row is-empty"></span>';
     }
-    return `<span class="overlay-placeholder-leaderboard-row">
+    return `<span class="overlay-placeholder-leaderboard-row" style="--leaderboard-row-y:var(--leaderboard-slot-${rank}-y)">
       <b class="overlay-placeholder-rank" ${config.showRank === false ? "hidden" : ""}>${medal(rank)}<i>${rank}</i></b>
-      <i class="overlay-placeholder-avatar" ${config.showAvatars === false ? "hidden" : ""}>A${ring(rank)}${rank === 1 ? crown : ""}</i>
-      <span><strong>APERÇU ${rank}</strong><em ${config.showMetricLabel === false ? "hidden" : ""}>${scores[index]} ${isTappers ? "likes" : "coins"}</em></span>
+      <i class="overlay-placeholder-avatar" ${config.showAvatars === false ? "hidden" : ""}><span class="overlay-placeholder-avatar-window">A</span>${ring(rank)}${rank === 1 ? crown : ""}</i>
+      <span><strong>APERÇU ${rank}</strong><em ${config.showMetricLabel === false ? "hidden" : ""}><span class="overlay-placeholder-score-number">${scores[index]}</span>${unit ? ` <span class="overlay-placeholder-score-unit">${escapeHtml(unit)}</span>` : ""}</em></span>
     </span>`;
   }).join("");
-  return `<div class="overlay-placeholder-leaderboard ${design === "classic" ? "is-classic" : "is-themed"}" data-placeholder-theme="${escapeHtml(design)}">
+  const style = [
+    `--leaderboard-title-color:${overlayPlaceholderColor(config.leaderboardTitleColor || config.textColor, "#ffffff")}`,
+    `--leaderboard-name-color:${overlayPlaceholderColor(config.nameColor, "#ffffff")}`,
+    `--leaderboard-score-color:${overlayPlaceholderColor(config.scoreColor, isTappers ? "#ff8db8" : "#ffe575")}`,
+    `--leaderboard-rank-color:${overlayPlaceholderColor(config.rankColor, "#ffe575")}`,
+    `--leaderboard-row-opacity:${overlayPlaceholderNumber(config.rowOpacity, 68, 0, 100) / 100}`,
+    `--leaderboard-unit-color:${overlayPlaceholderColor(config.leaderboardUnitColor || config.scoreColor, isTappers ? "#ff8db8" : "#ffe575")}`,
+    `--leaderboard-avatar-scale:${overlayPlaceholderNumber(config.leaderboardAvatarScale, 100, 50, 100) / 100}`,
+    ...["Title", "Name", "Score", "Unit"].map((part) => `--leaderboard-${part.toLowerCase()}-scale:${overlayPlaceholderNumber(config[`leaderboard${part}Scale`], 100, 50, 400) / 100}`)
+  ].join(";");
+  return `<div class="overlay-placeholder-leaderboard is-themed ${config.showAvatars === false ? "without-avatars" : ""} ${config.showRank === false ? "without-rank" : ""}" data-placeholder-theme="${escapeHtml(design)}" style="${style}">
     ${overlayPlaceholderImage(item, framePath, "overlay-placeholder-frame")}
     <span class="overlay-placeholder-leaderboard-copy">
       ${config.showHeader === false ? "" : `<strong>${escapeHtml(config.title || item.name)}</strong>`}
@@ -215,19 +225,27 @@ function overlayPlaceholderCoinJar(item, config, design) {
 }
 
 function overlayPlaceholderWinCounter(item, config, design) {
-  const value = Math.round(
+  design = overlayCatalog.normalizeDesign("winCounter", design || config.theme);
+  const raw = Math.round(
     overlayPlaceholderNumber(config.current ?? config.value)
   );
+  const value = config.allowNegative === false ? Math.max(0, raw) : raw;
   const color = value < 0
     ? overlayPlaceholderColor(config.winCounterLabelColorNegative, "#ff4f6d")
     : value > 0
       ? overlayPlaceholderColor(config.winCounterLabelColorPositive, "#31ff74")
       : overlayPlaceholderColor(config.winCounterLabelColorNeutral, "#f8fafc");
-  return `<div class="overlay-placeholder-wins ${design === "classic" ? "is-classic" : "is-themed"}" data-placeholder-theme="${escapeHtml(design)}" style="--placeholder-win-color:${color}">
+  const style = [
+    `--placeholder-win-color:${color}`,
+    `--wins-title-color:${overlayPlaceholderColor(config.winCounterTitleColor || config.textColor, "#ffffff")}`,
+    `--wins-goal-color:${overlayPlaceholderColor(config.winCounterGoalColor || config.textColor, "#ffffff")}`,
+    ...["Title", "Value", "Goal"].map((part) => `--wins-${part.toLowerCase()}-scale:${overlayPlaceholderNumber(config[`winCounter${part}Scale`], 100, 50, 400) / 100}`)
+  ].join(";");
+  return `<div class="overlay-placeholder-wins is-themed" data-placeholder-theme="${escapeHtml(design)}" style="${style}">
     <i class="overlay-placeholder-win-backdrop"></i>
     ${overlayPlaceholderImage(item, overlayPlaceholderThemePath("win-counter", design), "overlay-placeholder-frame")}
     <span class="overlay-placeholder-win-copy">
-      <small>${escapeHtml(config.title || "WIN")}</small>
+      ${config.showHeader === false ? "" : `<small>${escapeHtml(config.title || "WIN")}</small>`}
       <strong>${value}</strong>
       ${config.showGoal === false ? "" : `<span>OBJECTIF <b>${Math.round(overlayPlaceholderNumber(config.target, 20, 1))}</b></span>`}
     </span>

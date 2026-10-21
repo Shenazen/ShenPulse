@@ -33,7 +33,7 @@ function updateTimer(payload = {}) {
     isMultiplierTimer ? "multiplier-timer-label" : "timer-label"
   );
   if (label) {
-    label.textContent =
+    (label.firstElementChild || label).textContent =
       overlayTitle ||
       payload.label ||
       (isMultiplierTimer ? "BONUS ACTIF" : "TEMPS RESTANT");
@@ -72,9 +72,29 @@ function renderTimer() {
       : "timer-value"
   );
   if (element) {
-    element.textContent = value;
+    (element.firstElementChild || element).textContent = value;
     element.classList.toggle("paused", timerPaused);
   }
   const multiplier = document.getElementById("multiplier-value");
   if (multiplier) multiplier.textContent = `X${multiplierValue}`;
+  fitTimerText();
 }
+
+/** Réduit chaque texte autour de son centre sans déplacer sa zone dans le cadre. */
+function fitTimerText() {
+  if (!["timer", "multiplier-timer"].includes(viewName)) return;
+  const ids = viewName === "multiplier-timer"
+    ? ["multiplier-timer-label", "multiplier-timer-content"]
+    : ["timer-label", "timer-value"];
+  for (const id of ids) {
+    const zone = document.getElementById(id);
+    const text = zone?.firstElementChild;
+    if (!text || !zone.clientWidth || !zone.clientHeight) continue;
+    const fit = Math.min(1,
+      Math.max(1, zone.clientWidth - 12) / Math.max(1, text.offsetWidth),
+      Math.max(1, zone.clientHeight - 4) / Math.max(1, text.offsetHeight));
+    text.style.setProperty("--timer-text-fit", String(fit));
+  }
+}
+
+document.fonts?.ready?.then(fitTimerText);

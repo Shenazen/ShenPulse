@@ -29,7 +29,9 @@ function overlayUnlocked(item) {
 function selectedOverlayDesign(item) {
   const config = overlayConfig(item.key);
   const previewSelection = overlayDesignSelections[item.key];
-  if (previewSelection) return previewSelection;
+  if (previewSelection) return ["likeGoal", "timer", "multiplierTimer", "winCounter", "topDonors", "topTappers"].includes(item.key)
+    ? overlayCatalog.normalizeDesign(item.key, previewSelection)
+    : previewSelection;
   if (item.key === "wheel" && Array.isArray(config.wheels)) {
     const selectedWheel = config.wheels.find(
       (wheel) => wheel.id === config.selectedWheelId
@@ -51,6 +53,19 @@ function selectedOverlayDesign(item) {
 function overlayConfig(key) {
   const saved = snapshot.state.settings.overlayConfigs?.[key] || {};
   const merged = { ...overlayCatalog.defaultConfig(key), ...saved };
+  if (["likeGoal", "timer", "multiplierTimer", "winCounter", "topDonors", "topTappers"].includes(key)) merged.theme = overlayCatalog.normalizeDesign(key, merged.theme);
+  if (["timer", "multiplierTimer"].includes(key)) {
+    merged.timerTitleColor = saved.timerTitleColor || saved.accentColor || saved.textColor || merged.timerTitleColor;
+    merged.timerValueColor = saved.timerValueColor || saved.textColor || merged.timerValueColor;
+  }
+  if (key === "winCounter") {
+    merged.winCounterTitleColor = saved.winCounterTitleColor || saved.textColor || merged.winCounterTitleColor;
+    merged.winCounterGoalColor = saved.winCounterGoalColor || saved.textColor || merged.winCounterGoalColor;
+  }
+  if (["topDonors", "topTappers"].includes(key)) {
+    merged.leaderboardTitleColor = saved.leaderboardTitleColor || saved.textColor || merged.leaderboardTitleColor;
+    merged.leaderboardUnitColor = saved.leaderboardUnitColor || saved.scoreColor || merged.leaderboardUnitColor;
+  }
   return key === "wheel" ? normalizeWheelConfig(merged) : merged;
 }
 
@@ -87,6 +102,7 @@ function overlayUrl(
     const config = configOverride
       ? { ...overlayConfig(item.key), ...configOverride }
       : overlayConfig(item.key);
+    if (["likeGoal", "timer", "multiplierTimer", "winCounter", "topDonors", "topTappers"].includes(item.key)) config.theme = overlayCatalog.normalizeDesign(item.key, config.theme);
     const selectedWheel = item.key === "wheel" && Array.isArray(config.wheels)
       ? config.wheels.find((wheel) => wheel.id === config.selectedWheelId) || config.wheels[0]
       : null;
@@ -119,7 +135,7 @@ function overlayUrl(
     // manifeste de son overlay, sans devoir modifier ce générateur d'URL.
     const mappings = overlayCatalog.configParameterMappings;
     for (const [key, parameter] of Object.entries(mappings)) {
-      if (effectiveConfig[key] !== undefined && effectiveConfig[key] !== "") {
+      if (effectiveConfig[key] !== undefined && (effectiveConfig[key] !== "" || ["progressLabel", "leaderboardMetricLabel"].includes(key))) {
         url.searchParams.set(parameter, String(effectiveConfig[key]));
       }
     }
@@ -179,9 +195,12 @@ function localOverlayUrl(item, configOverride = null) {
 }
 
 function overlayCatalogPreviewUrl(item) {
-  const previewUrls = isAccountAuthenticated()
-    ? snapshot?.localOverlayUrls
-    : snapshot?.previewOverlayUrls;
+  // Le serveur de développement fournit ses propres sources à jour, même
+  // lorsqu'un compte utilise aussi une version installée sur un autre port.
+  const previewUrls = {
+    ...(isAccountAuthenticated() ? snapshot?.localOverlayUrls : {}),
+    ...snapshot?.previewOverlayUrls
+  };
   const localUrl = previewUrls?.[item?.key];
   if (localUrl) return localUrl;
   const base = previewUrls?.base;

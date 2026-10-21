@@ -142,7 +142,7 @@ test("les assets réels préparés sont exactement ceux des cartes et leur mémo
   t.diagnostic(`${urls.length} images publiques réelles, ${bytes} octets lus, ${f.api.state().pinned.size} références conservées, ${f.api.state().pinnedPixels} pixels retenus sur ${f.api.limits().pixels} maximum.`);
   const like = f.window.overlayDefinitions().find((entry) => entry.key === "likeGoal");
   f.window.content.innerHTML = f.window.overlayPreview(like);
-  assert.match(f.window.content.querySelector(".overlay-placeholder-frame").src, /banniere_mystique/);
+  assert.match(f.window.content.querySelector(".overlay-placeholder-frame").src, /like-goal-theme-gta\.webp/);
   assert.ok(f.api.state().warmed.has(f.window.content.querySelector(".overlay-placeholder-frame").src));
   assert.equal(f.window.content.querySelector("iframe").src, "about:blank", "le premier design est prêt avant le lecteur paresseux");
 });

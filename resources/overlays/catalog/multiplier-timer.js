@@ -10,12 +10,12 @@
   definition: {
     key: "multiplierTimer",
     name: "Timer multiplicateur",
-    description: "Compte à rebours indépendant affichant un multiplicateur X2 à X5.",
+    description: "Timer de bonus indépendant avec 13 designs illustrés.",
     category: "counters",
     icon: "×2",
     route: { view: "multiplier-timer" },
     parameter: "theme",
-    options: shared.themes,
+    options: shared.themes.filter(([theme]) => theme !== "classic"),
     defaultOption: "gta",
     previewView: "multiplier-timer",
     previewKind: "timer",
@@ -32,11 +32,14 @@
     showGoal: true,
     timerTitleScale: 100,
     timerValueScale: 100,
+    timerTitleColor: "#ffffff",
+    timerValueColor: "#ffffff",
+    timerMultiplierColor: "#ffe575",
     timerAutoStart: false
   },
   settings: [
     "title", "theme", "seconds", "multiplier", "showHours", "showGoal",
-    "timerTitleScale", "timerValueScale", "timerAutoStart"
+    "timerTitleScale", "timerValueScale", "timerTitleColor", "timerValueColor", "timerMultiplierColor", "timerAutoStart"
   ],
   parameters: {
     seconds: "seconds",
@@ -44,6 +47,9 @@
     showHours: "showHours",
     timerTitleScale: "timerTitleScale",
     timerValueScale: "timerValueScale",
+    timerTitleColor: "timerTitleColor",
+    timerValueColor: "timerValueColor",
+    timerMultiplierColor: "timerMultiplierColor",
     timerAutoStart: "timerAutoStart"
   }
 }));

@@ -368,14 +368,15 @@
   margin: 0;
 }
 
-.overlay-catalog-card--like-goal .overlay-design-picker,
-.overlay-catalog-card--like-goal .overlay-quick-actions {
+.overlay-catalog-card--like-goal .overlay-design-picker {
+  grid-column: 1 / -1;
   align-self: end;
+  text-align: center;
 }
 
-.overlay-catalog-card--like-goal .overlay-quick-actions {
-  padding: 0;
-  border-top: 0;
+.overlay-catalog-card--like-goal .overlay-design-picker select {
+  text-align: center;
+  text-align-last: center;
 }
 
 .overlay-card-copy {

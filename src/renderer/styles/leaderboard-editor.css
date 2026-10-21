@@ -1,0 +1,32 @@
+/* Les sources verticales tiennent entièrement entre le titre et les commandes. */
+.leaderboard-unit-settings {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 14px;
+}
+
+@media (max-width: 620px) {
+  .leaderboard-unit-settings { grid-template-columns: 1fr; }
+}
+
+:is([data-overlay-config-editor="topDonors"], [data-overlay-config-editor="topTappers"]) .overlay-live-preview-panel {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:is([data-overlay-config-editor="topDonors"], [data-overlay-config-editor="topTappers"]) .overlay-runtime-frame--live {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+:is([data-overlay-config-editor="topDonors"], [data-overlay-config-editor="topTappers"]) .overlay-live-preview-panel > :is(header, p, .overlay-live-preview-actions) {
+  flex-shrink: 0;
+}

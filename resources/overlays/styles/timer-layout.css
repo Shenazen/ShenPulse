@@ -1,0 +1,91 @@
+/* Zones des deux timers, partagées avec l’aperçu léger du catalogue. */
+:is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard {
+  --timer-title-top: 11%;
+  --timer-title-right: 30%;
+  --timer-title-bottom: 76%;
+  --timer-title-left: 30%;
+  --timer-value-top: 31%;
+  --timer-value-right: 17%;
+  --timer-value-bottom: 26%;
+  --timer-value-left: 17%;
+}
+
+[data-theme="gta"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="gta"] {
+  --timer-title-top: 9%; --timer-title-bottom: 78%;
+  --timer-title-left: 35%; --timer-title-right: 34%;
+  --timer-value-top: 30%; --timer-value-bottom: 27%;
+}
+[data-theme="minecraft"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="minecraft"] {
+  --timer-title-top: 11%; --timer-title-bottom: 77%;
+  --timer-title-left: 32%; --timer-title-right: 32%;
+  --timer-value-top: 35%; --timer-value-bottom: 30%;
+}
+[data-theme="akatsuki"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="akatsuki"] {
+  --timer-title-top: 11%; --timer-title-bottom: 76%;
+  --timer-title-left: 30%; --timer-title-right: 30%;
+  --timer-value-top: 30%; --timer-value-bottom: 23%;
+}
+[data-theme="assassination-classroom"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="assassination-classroom"] {
+  --timer-title-top: 13%; --timer-title-bottom: 77%;
+  --timer-title-left: 30%; --timer-title-right: 30%;
+  --timer-value-top: 30%; --timer-value-bottom: 37%;
+}
+[data-theme="fairy-tail"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="fairy-tail"] {
+  --timer-title-top: 10%; --timer-title-bottom: 78%;
+  --timer-title-left: 31%; --timer-title-right: 31%;
+  --timer-value-top: 33%; --timer-value-bottom: 29%;
+}
+[data-theme="harry-potter"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="harry-potter"] {
+  --timer-title-top: 12%; --timer-title-bottom: 75%;
+  --timer-title-left: 30%; --timer-title-right: 30%;
+  --timer-value-top: 33%; --timer-value-bottom: 24%;
+}
+[data-theme="cult-of-the-lamb"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="cult-of-the-lamb"] {
+  --timer-title-top: 16%; --timer-title-bottom: 74%;
+  --timer-title-left: 34%; --timer-title-right: 34%;
+  --timer-value-top: 37%; --timer-value-bottom: 26%;
+}
+[data-theme="stardew-valley"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="stardew-valley"] {
+  --timer-title-top: 12%; --timer-title-bottom: 75%;
+  --timer-title-left: 31%; --timer-title-right: 31%;
+  --timer-value-top: 34%; --timer-value-bottom: 25%;
+}
+[data-theme="terraria"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="terraria"] {
+  --timer-title-top: 11%; --timer-title-bottom: 81%;
+  --timer-title-left: 32%; --timer-title-right: 33%;
+  --timer-value-top: 30%; --timer-value-bottom: 26%;
+}
+[data-theme="one-piece"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="one-piece"] {
+  --timer-title-top: 14%; --timer-title-bottom: 75%;
+  --timer-title-left: 33%; --timer-title-right: 33%;
+  --timer-value-top: 34%; --timer-value-bottom: 27%;
+}
+[data-theme="demon-slayer"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="demon-slayer"] {
+  --timer-title-top: 12%; --timer-title-bottom: 78%;
+  --timer-title-left: 34%; --timer-title-right: 34%;
+  --timer-value-top: 37%; --timer-value-bottom: 28%;
+}
+[data-theme="dragon-ball"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="dragon-ball"] {
+  --timer-title-top: 12%; --timer-title-bottom: 78%;
+  --timer-title-left: 34%; --timer-title-right: 34%;
+  --timer-value-top: 31%; --timer-value-bottom: 26%;
+}
+[data-theme="naruto"] :is(#timer-view, #multiplier-timer-view) .timer-panel,
+.overlay-placeholder-timer.is-standard[data-placeholder-theme="naruto"] {
+  --timer-title-top: 14%; --timer-title-bottom: 76%;
+  --timer-title-left: 32%; --timer-title-right: 32%;
+  --timer-value-top: 34%; --timer-value-bottom: 25%;
+}
