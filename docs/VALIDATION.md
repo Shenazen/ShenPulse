@@ -40,7 +40,18 @@ Produit `9NDR71Z41ZJG`, soumission publique **11** (`1152921505702202086`), sess
 
 Distribution relue : audience **Public non privé**, produit disponible et détectable, **240 marchés**, nouveaux marchés activés, téléchargement de base gratuit. **Aucun vol privé créé ni publié.**
 
-La soumission publique finale, le déploiement VPS/Firebase et les contrôles HTTPS sont encore à effectuer à la date de ce rapport préparatoire. Leur résultat sera ajouté après exécution ; l’import du paquet ne vaut pas soumission ou disponibilité Store.
+La **soumission publique 11 a été envoyée le 22 octobre 2026**. Partner Center affiche **« Mise à jour en cours de certification »**, **Envoi terminé / Prétraitement en cours** et **« La publication de votre produit commence dès qu’il obtient la certification »**. La description, les nouveautés et les notes de certification enregistrées ne contiennent aucune mention du fournisseur d’interactions tiers. Les notes sont mises à jour pour la 2.0.5, les résultats WACK, les essais d’installation et la justification `runFullTrust` ; les identifiants de test restent dans leur section dédiée.
+
+La certification et la disponibilité effective de la 2.0.5 restent sous contrôle de Microsoft. La 2.0.4 précédemment publiée demeure disponible pendant ce traitement. Aucun essai de la 2.0.5 distribuée par le Store n’est revendiqué ; la qualification porte sur les artefacts locaux et leur installation.
+
+## Publication et contrôles post-production
+
+- Commit de release `cb2fae82ec73671112ee15493e87b89938dbdb97` et tag annoté `v2.0.5` poussés vers `origin` ; références distantes relues. Le tag pointe sur le commit qualifié.
+- EXE versionné publié avant la vitrine. **31 fichiers statiques** contrôlés par SHA-256 sur le VPS puis par HTTPS. Sauvegarde : `/var/www/shenpulse/.public-site-backups/pre-public-site-2.0.5-20261022T122052Z-c1dea735`. Backend, données privées et anciens installateurs conservés.
+- Accueil, `/docs` et cinq routes légales : **HTTP 200**, lien de téléchargement 2.0.5 présent. EXE intégralement téléchargé depuis `https://www.shenpulse.leuridan.fr/downloads/ShenPulseSetup-2.0.5.exe` : **637 655 578 octets**, SHA-256 `73986c93435fd90139616061e1757c621de884c281478ccedc48d05f187706fd`, identique à l’artefact qualifié. La 2.0.4 reste disponible en HTTP 200 avec ses **658 488 883 octets**.
+- Firebase `database,hosting` déployé sur `shenazenoverlay`, site `shenpulse-overlays`, version Hosting `bb34a022884b0d4b`. Manifeste public **2.0.5-overlay1** ; index et loader identiques aux sources par SHA-256. La lecture anonyme de `/users` reste refusée : **HTTP 401**.
+- Application autonome 2.0.5 relancée sur ce PC. Compte propriétaire vérifié, nouvelles versions d’installation et ports présents ; **actions, règles, profils et associations de jeux comparés à la sauvegarde et conservés**.
+- **Canal EXE/site et overlays publiés. Canal Store : soumission publique 11 en attente de certification Microsoft, publication automatique activée, aucun vol privé.** La confirmation visuelle Partner Center est conservée avec le compte rendu de publication.
 
 ## Preuves locales
 
