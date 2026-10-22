@@ -4,7 +4,7 @@
 const { RESIDENT_EVIL_3_ASSET_BASE, DOTNET_DESKTOP_RUNTIME_8_ASSET_BASE } = require("./constants");
 
 module.exports = {
-    version: "2.1.3",
+    version: "2.1.4",
     title: "Resident Evil 3",
     targetLabel: "dossier contenant re3.exe",
     autoDetect: true,
@@ -14,7 +14,7 @@ module.exports = {
     executables: ["re3.exe"],
     launchExecutables: ["re3.exe"],
     warning:
-      "Resident Evil 3 doit être fermé. ShenPulse sauvegarde les fichiers remplacés puis installe, si nécessaire, le runtime Bureau .NET 8 officiel, REFramework et le mod officiel Crowd Control 2.1.2 configuré sur le port local 58431.",
+      "Resident Evil 3 doit être fermé. ShenPulse sauvegarde les fichiers remplacés puis installe, si nécessaire, le runtime Bureau .NET 8 officiel, REFramework et son module local d’interactions.",
     assets: [
       {
         id: "dotnet-desktop-runtime-8",
@@ -33,7 +33,7 @@ module.exports = {
         size: 20825046,
         sha256:
           "34a5b87eeff7b0fddf7e3069a7af4de42c6c3448ce2c0896f4c64db78fd44fba",
-        url: `${RESIDENT_EVIL_3_ASSET_BASE}/RE3net-CC.zip?ver=2.1.2`
+        url: `${RESIDENT_EVIL_3_ASSET_BASE}/RE3net-CC-2.1.2.zip`
       }
     ]
   };

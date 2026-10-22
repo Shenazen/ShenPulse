@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { findLaunchTarget } = require("./paths");
 const { detectInstalledGame } = require("./discovery");
+const { validateFourGamesTarget } = require("./four-games-installation");
 
 async function pickTarget(runtime, gameId, manifest) {
     const previous =
@@ -137,6 +138,7 @@ async function validateTarget(runtime, targetPath, manifest) {
         );
       }
     }
+    await validateFourGamesTarget(absolute, manifest);
   }
 
 module.exports = { pickTarget, showInvalidTarget, validateTarget };

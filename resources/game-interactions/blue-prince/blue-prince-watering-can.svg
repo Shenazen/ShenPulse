@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Arrosoir</title>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#244b81"/><stop offset="1" stop-color="#101c36"/></linearGradient><linearGradient id="can" x2="0" y2="1"><stop stop-color="#8ce4d5"/><stop offset="1" stop-color="#358b95"/></linearGradient></defs>
+  <rect x="4" y="4" width="248" height="248" rx="40" fill="url(#bg)" stroke="#6d9bce" stroke-width="5"/>
+  <g stroke="#d6fff4" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M76 109V91c0-33 58-33 58 0v18" fill="none"/>
+    <path d="m139 128 48-45 15 17-45 64" fill="url(#can)"/>
+    <path d="m66 110 12 84h68l14-84Z" fill="url(#can)"/>
+    <path d="m185 80 23 26" fill="none"/>
+  </g>
+  <g fill="#8ce8ff"><path d="M209 119q-14 17 0 20 14-3 0-20Z"/><path d="M224 138q-14 17 0 20 14-3 0-20Z"/><path d="M198 147q-14 17 0 20 14-3 0-20Z"/></g>
+</svg>

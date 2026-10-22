@@ -9,7 +9,9 @@ function disableUnavailableInteractions(hub) {
       pack.id,
       new Set(
         (pack.effects || [])
-          .filter((effect) => effect.available === false)
+          // Les fiches en attente d’intégration conservent les associations
+          // de l’utilisateur ; trigger refuse déjà les effets non exécutables.
+          .filter((effect) => pack.guide?.mode !== "reference" && effect.available === false)
           .map((effect) => effect.id)
       )
     ])

@@ -295,6 +295,8 @@ async function deployAdditionalInstallTargets({
   targetPath,
   backupRoot,
   documentsPath,
+  appDataPath,
+  edition,
   assertAccess = () => {}
 }) {
   const targets = Array.isArray(manifest?.additionalInstallTargets)
@@ -302,22 +304,23 @@ async function deployAdditionalInstallTargets({
     : [];
   const deployed = [];
   for (const entry of targets) {
+    if (entry.editions?.length && !entry.editions.includes(edition)) continue;
     assertAccess();
-    if (entry?.root !== "documents") {
+    if (!["documents", "appData"].includes(entry?.root)) {
       throw new Error(
         "Destination d’installation supplémentaire non autorisée."
       );
     }
     const source = safeChildPath(targetPath, entry.sourcePath || "");
-    const root = path.resolve(documentsPath);
+    const root = path.resolve(entry.root === "appData" ? appDataPath : documentsPath);
     const destination = safeChildPath(root, entry.targetPath || "");
     const stat = await fs.promises.stat(source).catch(() => null);
-    if (!stat?.isFile()) {
+    if (!(entry.directory ? stat?.isDirectory() : stat?.isFile())) {
       throw new Error(
         `Le fichier préparé ${entry.sourcePath || ""} est introuvable.`
       );
     }
-    await copyWithBackup(
+    await (entry.directory ? copyTreeWithBackup : copyWithBackup)(
       source,
       destination,
       root,

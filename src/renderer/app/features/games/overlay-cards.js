@@ -45,6 +45,9 @@ function renderGameInstallation(pack, unlocked) {
     : installation
       ? "Tous les éléments nécessaires sont installés. Vous pouvez continuer la configuration."
       : "ShenPulse recherche le jeu puis installe automatiquement tout ce qui est nécessaire. S’il ne le trouve pas, il vous demandera simplement de choisir son dossier.";
+  if (pack.id === "fallout-4") {
+    statusText = "Module pour Steam 1.11.240 uniquement : les six DLC et F4SE 0.7.9 doivent être installés au préalable. Xbox / Game Pass est incompatible. Après installation, activez le module d’interactions installé par ShenPulse dans CREATIONS puis chargez une sauvegarde après la sortie de l’Abri 111.";
+  }
   if (managedMinecraft) {
     statusTitle = installation
       ? "Serveur Minecraft ShenPulse installé"
@@ -179,11 +182,11 @@ function renderInputGameInstallation(pack, unlocked) {
   const configuredLayout = String(
     snapshot.state.game.connectorOverrides?.[pack.id]?.keyLayout ||
       pack.connector?.keyLayout ||
-      "wasd"
+      "azerty"
   ).toLowerCase();
   return `<div class="game-simple-step">
     <section class="game-primary-panel game-install-simple">
-      <header><div><span>⌨ CONTRÔLE CIBLÉ</span><h3>${automated ? installation ? `${escapeHtml(pack.name)} est prêt` : "Installation en un clic" : "Interactions prêtes sans mod"}</h3><p>${automated ? `ShenPulse recherche automatiquement ${escapeHtml(pack.name)} dans Steam, confirme son dossier puis prépare toutes les interactions.` : `ShenPulse utilise directement les séquences clavier et souris vérifiées du pack Crowd Control pour ${escapeHtml(pack.name)}.`}</p></div><span class="game-step-count">${ready ? "PRÊT" : "1 CLIC"}</span></header>
+      <header><div><span>⌨ CONTRÔLE CIBLÉ</span><h3>${automated ? installation ? `${escapeHtml(pack.name)} est prêt` : "Installation en un clic" : "Interactions prêtes sans mod"}</h3><p>${automated ? `ShenPulse recherche automatiquement ${escapeHtml(pack.name)} dans ${["ark-survival-ascended", "dead-by-daylight"].includes(pack.id) ? "Steam ou Xbox Game Pass" : "Steam"}, confirme son dossier puis prépare toutes les interactions.` : `ShenPulse utilise ses séquences clavier et souris vérifiées pour ${escapeHtml(pack.name)}.`}</p></div><span class="game-step-count">${ready ? "PRÊT" : "1 CLIC"}</span></header>
       ${renderGamePageMessage(pack, "installation")}
       <div class="game-install-state ${ready ? "ready" : ""}">
         <span>${ready ? "✓" : "↓"}</span>
@@ -195,11 +198,20 @@ function renderInputGameInstallation(pack, unlocked) {
       <label class="field full">
         <span>Touches de déplacement utilisées dans ${escapeHtml(pack.name)}</span>
         <select data-game-key-layout>
-          <option value="wasd" ${configuredLayout === "wasd" ? "selected" : ""}>WASD — séquence Crowd Control originale</option>
           <option value="azerty" ${configuredLayout === "azerty" ? "selected" : ""}>ZQSD — clavier français</option>
+          <option value="wasd" ${configuredLayout === "wasd" ? "selected" : ""}>WASD — clavier anglais</option>
+          ${pack.id === "dead-by-daylight" ? `<option value="zsqd" ${configuredLayout === "zsqd" ? "selected" : ""}>ZSQD — gauche S, reculer Q</option>` : ""}
         </select>
-        <small>Seules les touches de déplacement sont adaptées. Les autres commandes restent celles du pack officiel.</small>
+        <small>Choisissez les touches du rôle que vous jouez. Seuls les déplacements sont adaptés ; les autres commandes suivent les raccourcis du jeu par défaut.</small>
       </label>
+      ${pack.id === "dead-by-daylight" ? `<label class="field full">
+        <span>Touches des gestes du survivant</span>
+        <select data-game-gesture-keys>
+          <option value="numbers" ${snapshot.state.game.connectorOverrides?.[pack.id]?.gestureKeys !== "letters" ? "selected" : ""}>1 / 2 — commandes d’origine</option>
+          <option value="letters" ${snapshot.state.game.connectorOverrides?.[pack.id]?.gestureKeys === "letters" ? "selected" : ""}>P / O — alternative pour clavier français</option>
+        </select>
+        <small>Avec P / O, associez « Désigner » à P et « Suivez-moi / Venez ici » à O dans les commandes du survivant de Dead by Daylight. ShenPulse conserve les autres raccourcis.</small>
+      </label>` : ""}
       <footer class="game-panel-actions">
         <button class="button" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked && ready ? "" : "disabled"}>Détecter ${escapeHtml(pack.name)} ouvert</button>
         ${automated
@@ -211,7 +223,7 @@ function renderInputGameInstallation(pack, unlocked) {
     <aside class="game-novice-note">
       <span>⌁</span>
       <strong>${visibilityTools.gameScopeFor(siteVisibility, pack) === "admin" ? "Réservé au propriétaire" : "Fenêtre ciblée uniquement"}</strong>
-      <p>Le connecteur reconnaît exclusivement ${escapeHtml(processName)} et ne transmet aucune commande à une autre application.</p>
+      <p>${pack.id === "dead-by-daylight" ? "Le connecteur cible uniquement la fenêtre Dead by Daylight de l’édition Steam ou Xbox Game Pass préparée." : `Le connecteur reconnaît exclusivement ${escapeHtml(processName)} et ne transmet aucune commande à une autre application.`}</p>
       <small>Lancez ${escapeHtml(pack.name)} et chargez une partie avant de tester un effet.</small>
     </aside>
   </div>`;
@@ -220,7 +232,7 @@ function renderInputGameInstallation(pack, unlocked) {
 function renderGameLaunch(pack, unlocked) {
   const integrated = pack.guide?.mode === "integrated";
   const inputDriven = pack.guide?.mode === "input";
-  const demonologistAutoLaunch = pack.id === "demonologist";
+  const inputAutoLaunch = inputDriven && AUTOMATED_GAME_INSTALLERS.has(pack.id);
   const crowdControlMod = pack.guide?.mode === "crowd-control-mod";
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
@@ -248,8 +260,8 @@ function renderGameLaunch(pack, unlocked) {
     : roundSettings
       ? roundSettings.durationMinutes * 60
       : 0;
-  const launchDescription = demonologistAutoLaunch
-    ? "ShenPulse lance Demonologist depuis le dossier détecté, attend que sa fenêtre soit prête puis active automatiquement les interactions."
+  const launchDescription = inputAutoLaunch
+    ? `ShenPulse lance ${pack.name} depuis le dossier détecté, attend que sa fenêtre soit prête puis active automatiquement les interactions.`
     : inputDriven
     ? `Ouvrez ${pack.name}, chargez une partie puis activez la session. ShenPulse ne lancera ni ne modifiera le jeu.`
     : crowdControlMod
@@ -278,8 +290,8 @@ function renderGameLaunch(pack, unlocked) {
           : ""}
         ${sessionActive
           ? `<button class="button danger game-launch-button" data-action="stop-game-session">■ Arrêter la session de jeu</button>`
-          : demonologistAutoLaunch && ready
-            ? `<button class="button primary game-launch-button" data-action="launch-game" data-id="${escapeHtml(pack.id)}" ${launchBusy ? "disabled" : ""}>${launchBusy ? "… Lancement de Demonologist" : "▶ Lancer Demonologist et activer"}</button>`
+          : inputAutoLaunch && ready
+            ? `<button class="button primary game-launch-button" data-action="launch-game" data-id="${escapeHtml(pack.id)}" ${launchBusy ? "disabled" : ""}>${launchBusy ? `… Lancement de ${escapeHtml(pack.name)}` : escapeHtml(launchButtonLabel)}</button>`
           : inputDriven && ready
             ? `<button class="button primary game-launch-button" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer les interactions ${escapeHtml(pack.name)}</button>`
           : inputDriven

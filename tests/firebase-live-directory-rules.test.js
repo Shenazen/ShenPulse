@@ -48,9 +48,9 @@ test("Firebase directory validates exact protocol fields and never grants privat
   }
 });
 
-test("Directory privacy explains public UID, explicit opt-in, expiry and unverified platform identity", () => {
+test("Directory privacy explains default sharing, migration, opt-out, public UID and expiry", () => {
   const privacy = fs.readFileSync(path.join(__dirname, "../PRIVACY.md"), "utf8");
-  for (const text of ["désactivée par défaut", "activation explicite", "clé publique", "90 secondes", "ne certifie", "Aucun e-mail"]) {
+  for (const text of ["activée par défaut", "anciennes installations", "Vous pouvez désactiver", "ce choix est ensuite conservé", "clé publique", "90 secondes", "ne certifie", "Aucun e-mail"]) {
     assert.ok(privacy.includes(text), text);
   }
 });

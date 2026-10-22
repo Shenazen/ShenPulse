@@ -516,6 +516,7 @@ async function performOverlayQuickAction(key, operation, amount = 0) {
         current: next.current
       }
     };
+    if (key === "coinJar" && operation === "reset") previewMessage.payload.operation = "reset";
   } else if (["timer", "multiplierTimer"].includes(key)) {
     const timerChannel = key === "multiplierTimer"
       ? "multiplier-timer"

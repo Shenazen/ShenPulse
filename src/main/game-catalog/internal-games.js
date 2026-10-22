@@ -264,7 +264,7 @@ const INTERNAL_GAMES = [
     defaultMappings: POKEMON_RED_BLUE_DEFAULT_MAPPINGS,
     interactionCatalogVersion:
       POKEMON_RED_BLUE_INTERACTION_CATALOG_VERSION,
-    installerVersion: "1.0.1"
+    installerVersion: "1.1.0"
   }),
   game("super-mario-kart", "Super Mario Kart", {
     artworkUrl:
@@ -277,7 +277,7 @@ const INTERNAL_GAMES = [
     defaultMappings: SUPER_MARIO_KART_DEFAULT_MAPPINGS,
     interactionCatalogVersion:
       SUPER_MARIO_KART_INTERACTION_CATALOG_VERSION,
-    installerVersion: "1.0.0"
+    installerVersion: "1.1.0"
   }),
   game("fortnite", "Fortnite", {
     artworkUrl:
@@ -294,7 +294,7 @@ const INTERNAL_GAMES = [
     connector: {
       type: "windows-input",
       processName: "FortniteClient-Win64-Shipping.exe",
-      keyLayout: "wasd"
+      keyLayout: "azerty"
     },
     effects: FORTNITE_EFFECTS,
     defaultMappings: FORTNITE_DEFAULT_MAPPINGS,
@@ -319,7 +319,7 @@ const INTERNAL_GAMES = [
     connector: {
       type: "windows-input",
       processName: "RocketLeague.exe",
-      keyLayout: "wasd"
+      keyLayout: "azerty"
     },
     effects: ROCKET_LEAGUE_EFFECTS,
     defaultMappings: ROCKET_LEAGUE_DEFAULT_MAPPINGS,
@@ -345,7 +345,7 @@ const INTERNAL_GAMES = [
     connector: {
       type: "windows-input",
       processName: "Shivers-Win64-Shipping.exe",
-      keyLayout: "wasd"
+      keyLayout: "azerty"
     },
     effects: DEMONOLOGIST_EFFECTS,
     defaultMappings: DEMONOLOGIST_DEFAULT_MAPPINGS,
@@ -367,7 +367,7 @@ const INTERNAL_GAMES = [
       "mod PC",
       "Steam"
     ],
-    installerVersion: "1.0.4",
+    installerVersion: "1.0.5",
     connector: EURO_TRUCK_SIMULATOR_2_BRIDGE,
     effects: EURO_TRUCK_SIMULATOR_2_EFFECTS,
     defaultMappings: EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS,
@@ -389,7 +389,7 @@ const INTERNAL_GAMES = [
       "mod PC",
       "Steam"
     ],
-    installerVersion: "2.1.3",
+    installerVersion: "2.1.4",
     connector: RESIDENT_EVIL_3_BRIDGE,
     effects: RESIDENT_EVIL_3_EFFECTS,
     defaultMappings: RESIDENT_EVIL_3_DEFAULT_MAPPINGS,

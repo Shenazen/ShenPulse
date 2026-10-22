@@ -77,3 +77,18 @@ test("le calcul de retour à la ligne accepte les mots très longs", () => {
   assert.equal(wrappedLineCount("Rien", 10), 1);
   assert.ok(wrappedLineCount("SUPERCALIFRAGILISTIC", 5) >= 4);
 });
+
+test("les anciens déplacements ne décentrent plus le texte des deux designs", () => {
+  for (const design of ["classic", "royal"]) {
+    for (const textOrientation of ["horizontal", "vertical"]) {
+      for (const segmentCount of [2, 3, 8, 12, 16]) {
+        for (let index = 0; index < segmentCount; index += 1) {
+          const options = { design, segmentCount, index, label: "Choix", settings: { ...defaultSettings, textOrientation } };
+          const centered = resolveSegmentLayout(options);
+          const legacy = resolveSegmentLayout({ ...options, settings: { ...options.settings, textRadius: 20, textSegmentOffset: 100, textAngleOffset: 180, textBoxWidth: 260, textBoxHeight: 50 } });
+          assert.deepEqual(legacy, centered);
+        }
+      }
+    }
+  }
+});

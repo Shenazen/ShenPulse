@@ -4,7 +4,7 @@
 const { GAME_CHEAT_ACCESS_ID, isValidGameCheatEmail } = require("../../shared/game-cheat-access");
 const { ADMIN_EMAIL, PUBLIC_VISIBILITY_SECTIONS, VISIBILITY_SECTIONS } = require("./constants");
 const { normalizeScope, cleanKey, cleanUsername, normalizeEmail } = require("./validation");
-const { migrateVisibility } = require("../../shared/visibility-catalog");
+const { migrateVisibility, gamePlatformConfig, gameVersionConfig, normalizeAppVersion } = require("../../shared/visibility-catalog");
 
 /** Une portée de jeu invalide ne doit jamais devenir une publication explicite.
  * L'absence de réglage conserve le défaut du catalogue (notamment propriétaire).
@@ -31,7 +31,7 @@ function normalizeSiteSettings(value) {
     for (const [rawId, rawConfig] of Object.entries(source).slice(0, 500)) {
       const id = cleanKey(rawId);
       if (!id || !hasValidVisibilityEntry(section, rawConfig)) continue;
-      result[section][id] = { scope: normalizeScope(rawConfig) };
+      result[section][id] = { scope: normalizeScope(rawConfig), ...(section === "games" ? { ...gamePlatformConfig(rawConfig), ...gameVersionConfig(rawConfig) } : {}) };
     }
   }
   for (const [rawId, enabled] of Object.entries(
@@ -93,11 +93,36 @@ function normalizePublicVisibility(value) {
     for (const [rawId, rawConfig] of Object.entries(source).slice(0, 500)) {
       const id = cleanKey(rawId);
       if (!id || !hasValidVisibilityEntry(section, rawConfig)) continue;
-      result[section][id] = { scope: normalizeScope(rawConfig) };
+      const version = section === "games" ? gameVersionConfig(rawConfig) : {};
+      const scope = section === "games" && rawConfig?.scope === "hidden" && rawConfig.versionScope === "public" && version.minAppVersion
+        ? "public" : normalizeScope(rawConfig);
+      result[section][id] = { scope, ...(section === "games" ? { ...gamePlatformConfig(rawConfig), ...version } : {}) };
     }
   }
   return migrateVisibility(result);
 }
 
-module.exports = { normalizeSiteSettings, normalizePublicVisibility };
+function validateGameVersions(settings) {
+  for (const entry of Object.values(settings.games || {})) {
+    if (entry.minAppVersion && !normalizeAppVersion(entry.minAppVersion)) {
+      throw new Error("Version minimale ShenPulse invalide. Utilisez le format 2.0.5 ou laissez le champ vide.");
+    }
+  }
+}
+
+/** Les clients déjà diffusés ignorent minAppVersion : ils doivent lire Masqué.
+ * Les nouveaux décodent versionScope puis comparent leur propre version.
+ */
+function publicVisibilityDocument(settings) {
+  const document = normalizePublicVisibility(settings);
+  for (const entry of Object.values(document.games || {})) {
+    if (entry.scope === "public" && entry.minAppVersion) {
+      entry.scope = "hidden";
+      entry.versionScope = "public";
+    }
+  }
+  return document;
+}
+
+module.exports = { normalizeSiteSettings, normalizePublicVisibility, validateGameVersions, publicVisibilityDocument };
 

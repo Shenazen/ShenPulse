@@ -4,6 +4,12 @@ const crypto = require("node:crypto");
 
 function createDefaultWheelSettings(overrides = {}) {
   return {
+    wheelShowTitle: true,
+    wheelTitleColor: "#fff1c2",
+    wheelTitleScale: 100,
+    wheelTextScale: 100,
+    wheelWinnerColor: "#fff7d3",
+    wheelWinnerScale: 100,
     font: "Inter",
     fontSize: 19,
     textOrientation: "radial",
@@ -194,10 +200,9 @@ function createDefaultOverlayConfigs() {
       ...positioned,
       model: "fantasy",
       title: "COIN JAR",
-      current: 0,
-      target: 1000,
-      minCoins: 0,
-      showGoal: true
+      showHeader: true,
+      coinJarTitleScale: 100,
+      coinJarTitleColor: "#ffffff"
     },
     timer: {
       ...themed,

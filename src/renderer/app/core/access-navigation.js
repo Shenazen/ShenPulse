@@ -35,7 +35,8 @@ function canAccessGame(pack) {
   return visibilityTools.canAccessGame(
     siteVisibility,
     pack,
-    isVerifiedAdminSession()
+    isVerifiedAdminSession(),
+    snapshot?.appVersion
   );
 }
 
@@ -45,10 +46,9 @@ function minecraftLauncherPack(modePacks) {
     name: "Minecraft",
     publisher: "ShenPulse",
     version: "1.0.0",
-    description:
-      "Choisissez Bedrock Box, SandBox 3 ou Survival, puis configurez les interactions TikTok LIVE propres à ce mode.",
+    description: `Choisissez ${modePacks.map((pack) => pack.name).join(", ")}, puis configurez les interactions TikTok LIVE propres à ce mode.`,
     platform: "Windows",
-    tags: ["abonnement requis", "inclus", "3 modes"],
+    tags: ["abonnement requis", "inclus", `${modePacks.length} mode${modePacks.length > 1 ? "s" : ""}`],
     artwork: "minecraft.webp",
     artworkUrl: "",
     accessMode: "included",
@@ -626,6 +626,7 @@ const GUEST_BROWSING_ACTIONS = new Set([
   "set-sounds-section",
   "set-game-effect-category",
   "set-game-filter",
+  "set-game-category",
   "set-overlay-category",
   "set-sound-category",
   "preview-overlay"

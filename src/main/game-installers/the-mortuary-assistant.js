@@ -26,7 +26,7 @@ module.exports = {
       id: "mod",
       fileName: "the-mortuary-assistant-shenpulse-1.0.0.zip",
       action: "extract",
-      bundledPath: "installer-assets/the-mortuary-assistant/1.0.0/the-mortuary-assistant-shenpulse-1.0.0.zip",
+      url: "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/the-mortuary-assistant/1.0.0/the-mortuary-assistant-shenpulse-1.0.0.zip",
       size: 20163863,
       sha256: "bd43b6cf4beb09d0dcbb10c424e116e2c7e5b75bdee92b539471179ef13b5505"
     }

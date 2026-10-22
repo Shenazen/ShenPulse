@@ -5,7 +5,7 @@ const { readState } = require("./state-projection");
 /** Façade stable : API historique, implémentations organisées par responsabilités. */
 const { gameCheatAccessGrantMap } = require("../shared/game-cheat-access");
 const { ADMIN_EMAIL, FIREBASE_API_KEY, FIREBASE_DATABASE_URL, SHENPULSE_API_URL, PUBLIC_VISIBILITY_SECTIONS, VISIBILITY_SECTIONS } = require("./admin/constants");
-const { normalizeSiteSettings, normalizePublicVisibility } = require("./admin/configuration");
+const { normalizeSiteSettings, normalizePublicVisibility, validateGameVersions, publicVisibilityDocument } = require("./admin/configuration");
 const { normalizeCommerceCatalog, normalizeCommerceState, normalizeTrialRequest, commerceStateFromPublicConfig, emptyCommerceState } = require("./admin/commerce");
 const { normalizeAdminModuleError, cleanUid, normalizeEmail, firebaseTokenClaims, readPayload, firebaseErrorMessage, remoteErrorMessage } = require("./admin/validation");
 
@@ -183,6 +183,7 @@ class AdminService {
 
   async saveSiteSettings(incoming) {
     const settings = normalizeSiteSettings(incoming);
+    validateGameVersions(settings);
     const token = await this.#token();
     const response = await this.fetch(
       `${FIREBASE_DATABASE_URL}/site/adminSettings.json?auth=${encodeURIComponent(token)}`,
@@ -276,7 +277,7 @@ class AdminService {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         signal: AbortSignal.timeout(15000),
-        body: JSON.stringify(normalizePublicVisibility(settings))
+        body: JSON.stringify(publicVisibilityDocument(settings))
       }
     );
     const payload = await readPayload(response);

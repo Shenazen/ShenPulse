@@ -1,7 +1,7 @@
-import { CLIENT_RELEASE } from '/content.js?v=20261020-web1'
-import { PRODUCT_TOUR } from '/app/product-tour.js?v=20261020-web1'
-import { SCREENSHOTS } from '/app/screenshots.js?v=20261020-web1'
-import { escapeHtml } from '/app/html.js?v=20261020-web1'
+import { CLIENT_RELEASE } from '/content.js?v=20261022-web1'
+import { PRODUCT_TOUR } from '/app/product-tour.js?v=20261022-web1'
+import { SCREENSHOTS } from '/app/screenshots.js?v=20261022-web1'
+import { escapeHtml } from '/app/html.js?v=20261022-web1'
 
 const SCREENSHOT_VERSION = '20261015-2.0.2'
 

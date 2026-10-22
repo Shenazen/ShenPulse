@@ -13,4 +13,15 @@ async function launchSteamDemo({ gameId, manifest, executable, shell, assertAcce
   return { ok: true, gameId, launcher: "steam", steamAppId: "5165210", path: executable };
 }
 
-module.exports = { launchSteamDemo };
+async function launchSteamGame({ gameId, manifest, executable, shell, assertAccess }) {
+  const allowed = { "escape-from-duckov": "3167020" };
+  if (!allowed[gameId] || manifest.steamLaunchAppId !== allowed[gameId]) {
+    throw new Error("Identifiant de lancement Steam non autorisé.");
+  }
+  if (!executable) throw new Error("L’exécutable du jeu Steam est introuvable. Réparez son installation puis réessayez.");
+  assertAccess();
+  await shell.openExternal(`steam://rungameid/${allowed[gameId]}`);
+  return { ok: true, gameId, launcher: "steam", steamAppId: allowed[gameId], path: executable };
+}
+
+module.exports = { launchSteamDemo, launchSteamGame };

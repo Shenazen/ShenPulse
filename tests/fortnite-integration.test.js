@@ -251,7 +251,7 @@ test("le connecteur Fortnite reste réservé au propriétaire et ne route aucun 
       { user: { id: "viewer", displayName: "Viewer" } },
       { packId: "fortnite" }
     ),
-    /référence visuelle|aucun pack natif/i
+    /la sélection directe d’un emplacement d’arme n’est pas compatible avec Fortnite/i
   );
   assert.deepEqual(
     calls.map((call) => [call.operation, call.processName]),

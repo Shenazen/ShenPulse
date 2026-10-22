@@ -128,7 +128,7 @@ function assertNoErrors(fixture) {
   assert.equal(fixture.errors.length, 0, fixture.errors.map((error) => error.stack || error.message).join("\n"));
 }
 
-test("l’annuaire reste désactivé par défaut et le menu compte explique puis sauvegarde le choix volontaire", async () => {
+test("l’annuaire est actif par défaut et le menu compte explique puis sauvegarde une désactivation", async () => {
   let release;
   const fixture = createRenderer({ hooks: { liveDirectoryConfigure: () => new Promise((resolve) => { release = resolve; }) } });
   const { dom, calls, state, handlers } = fixture;
@@ -139,22 +139,22 @@ test("l’annuaire reste désactivé par défaut et le menu compte explique puis
     const toggle = document.getElementById("account-directory-toggle");
     assert.ok(menu.contains(toggle));
     assert.equal(document.getElementById("account-directory-preference").hidden, false);
-    assert.equal(toggle.getAttribute("aria-checked"), "false");
+    assert.equal(toggle.getAttribute("aria-checked"), "true");
     assert.match(document.getElementById("account-directory-description").textContent, /@, photo publique, plateforme et audience/);
-    assert.match(document.getElementById("account-directory-description").textContent, /90 s.*Désactivé par défaut/);
+    assert.match(document.getElementById("account-directory-description").textContent, /Actif par défaut.*désactiver.*90 s/);
     assert.equal(calls.filter((entry) => entry.name === "liveDirectoryConfigure").length, 0);
     toggle.click();
-    await waitUntil(() => typeof release === "function", "L’opt-in ne déclenche pas sa sauvegarde.");
+    await waitUntil(() => typeof release === "function", "La désactivation ne déclenche pas sa sauvegarde.");
     assert.equal(toggle.disabled, true);
-    assert.equal(toggle.getAttribute("aria-checked"), "false", "Un choix en attente n’est pas présenté comme enregistré.");
+    assert.equal(toggle.getAttribute("aria-checked"), "true", "Un choix en attente n’est pas présenté comme enregistré.");
     toggle.click();
     assert.equal(calls.filter((entry) => entry.name === "liveDirectoryConfigure").length, 1);
-    assert.deepEqual(calls.find((entry) => entry.name === "liveDirectoryConfigure").incoming, { publishEnabled: true });
+    assert.deepEqual(calls.find((entry) => entry.name === "liveDirectoryConfigure").incoming, { publishEnabled: false });
     release();
-    await waitUntil(() => !toggle.disabled && toggle.getAttribute("aria-checked") === "true", "Le choix enregistré n’est pas reflété.");
-    assert.equal(state.settings.liveDirectory.publishEnabled, true);
-    handlers.get("live-directory-status")({ available: true, connected: true, enabled: false, rows: [] });
-    assert.equal(toggle.getAttribute("aria-checked"), "false", "Un statut main fait autorité sur un ancien snapshot.");
+    await waitUntil(() => !toggle.disabled && toggle.getAttribute("aria-checked") === "false", "Le choix enregistré n’est pas reflété.");
+    assert.equal(state.settings.liveDirectory.publishEnabled, false);
+    handlers.get("live-directory-status")({ available: true, connected: true, enabled: true, rows: [] });
+    assert.equal(toggle.getAttribute("aria-checked"), "true", "Un statut main fait autorité sur un ancien snapshot.");
     assert.equal(calls.filter((entry) => entry.name === "liveDirectoryConfigure").length, 1, "Le feed et le rendu ne publient pas implicitement.");
     assertNoErrors(fixture);
   } finally { dom.window.close(); }
@@ -177,7 +177,7 @@ test("un invité ne peut pas modifier la visibilité publique, même avec un anc
   } finally { dom.window.close(); }
 });
 
-test("un refus de l’opt-in laisse la préférence désactivée, libère le bouton et affiche une erreur", async () => {
+test("un refus de la désactivation laisse la préférence active, libère le bouton et affiche une erreur", async () => {
   const fixture = createRenderer({ hooks: { liveDirectoryConfigure: async () => { throw new Error("Publication refusée."); } } });
   const { dom, calls } = fixture;
   try {
@@ -186,8 +186,8 @@ test("un refus de l’opt-in laisse la préférence désactivée, libère le bou
     const toggle = document.getElementById("account-directory-toggle");
     toggle.click();
     await waitUntil(() => !toggle.disabled && /Publication refusée/.test(document.body.textContent), "Le refus ne rétablit pas le bouton ni ne signale l’erreur.");
-    assert.equal(toggle.getAttribute("aria-checked"), "false");
-    assert.deepEqual(calls.filter((entry) => entry.name === "liveDirectoryConfigure").map((entry) => entry.incoming), [{ publishEnabled: true }]);
+    assert.equal(toggle.getAttribute("aria-checked"), "true");
+    assert.deepEqual(calls.filter((entry) => entry.name === "liveDirectoryConfigure").map((entry) => entry.incoming), [{ publishEnabled: false }]);
     assertNoErrors(fixture);
   } finally { dom.window.close(); }
 });

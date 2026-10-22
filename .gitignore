@@ -3,6 +3,8 @@ dist/
 release/
 coverage/
 .artifacts/
+resources/installer-assets/**/*.zip
+resources/installer-assets/**/*.dll
 .firebase/
 .tmp/
 tmp/

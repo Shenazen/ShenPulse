@@ -51,6 +51,10 @@ function normalizeProfileOverlayConfigs(storedConfigs) {
         }
       }
 
+      if (overlayId === "coinJar") {
+        if (!Object.prototype.hasOwnProperty.call(saved, "coinJarTitleColor")) merged.coinJarTitleColor = saved.textColor || defaultConfig.coinJarTitleColor;
+      }
+
       if (overlayId === "winCounter") {
         merged.theme = overlayCatalog.normalizeDesign(overlayId, merged.theme);
         delete merged.winCounterLabelOffsetX;
@@ -137,14 +141,9 @@ function normalizeProfileOverlayConfigs(storedConfigs) {
         merged.selectedWheelId = merged.wheels[0].id;
       }
 
-      const wheels = Array.isArray(merged.wheels)
+      const wheels = overlayCatalog.normalizeWheelIdentities(Array.isArray(merged.wheels) && merged.wheels.length
         ? clone(merged.wheels)
-        : [];
-      for (const preset of defaultConfig.wheels || []) {
-        if (!wheels.some((wheel) => wheel.design === preset.design)) {
-          wheels.push(clone(preset));
-        }
-      }
+        : clone(defaultConfig.wheels));
       normalizeWheelSegmentActions(wheels);
       merged.wheels = wheels;
       merged.schemaVersion = Math.max(

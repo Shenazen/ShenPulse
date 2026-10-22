@@ -33,6 +33,7 @@ function game(id, name, options = {}) {
     currency: "EUR",
     source: options.source || "ShenazenOverlay",
     ...(options.ownerOnly === true ? { ownerOnly: true } : {}),
+    ...(options.minAppVersion ? { minAppVersion: String(options.minAppVersion) } : {}),
     connector: { ...(options.connector || { type: "demo" }) },
     effects: (options.effects || []).map((effect, index) =>
       typeof effect === "string"
@@ -74,7 +75,7 @@ function external(id, name, artworkUrl, source) {
     included: true,
     artworkUrl,
     source,
-    description: `Fiche Game Pass issue de ${source}. Les effets natifs sont pilotés par la passerelle locale ShenPulse ; les références visuelles restent signalées comme non exécutables.`,
+    description: `Catalogue d’interactions pour ${name}. L’intégration autonome ShenPulse n’est pas encore disponible ; ces références ne sont pas exécutables.`,
     effects: []
   });
 }

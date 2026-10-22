@@ -1,4 +1,49 @@
-/* Roue classique et royale. */
+/* Roue Orange et Royale Prestige. */
+
+#wheel-view #wheel-caption,
+#wheel-view #wheel-winner {
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72%;
+  min-width: 0;
+  max-width: 72%;
+  height: 64px;
+  box-sizing: border-box;
+  overflow: hidden;
+  transform: translateX(-50%);
+  font-family: var(--wheel-caption-font, "Inter"), sans-serif;
+  text-align: center;
+}
+
+#wheel-view #wheel-caption {
+  color: var(--wheel-title-color, #fff1c2);
+  font-size: calc(18px * var(--wheel-title-scale, 1));
+  letter-spacing: .04em;
+}
+
+#wheel-view #wheel-winner {
+  height: 84px;
+  color: var(--wheel-winner-color, #fff7d3);
+  font-size: calc(27px * var(--wheel-winner-scale, 1));
+  text-transform: none;
+}
+
+#wheel-view #wheel-caption > span,
+#wheel-view #wheel-winner > span {
+  display: block;
+  flex-shrink: 0;
+  width: max-content;
+  max-width: none;
+  line-height: 1.1;
+  transform-origin: center;
+  white-space: nowrap;
+}
+
+#wheel-view #wheel-caption[hidden] { display: none; }
+#wheel-view .segment-label { overflow: hidden; }
+#wheel-view .segment-label > span { text-align: center; }
 
 /* Roue d'actions : reconstruction du rendu classique et royal. */
 .wheel-stage {

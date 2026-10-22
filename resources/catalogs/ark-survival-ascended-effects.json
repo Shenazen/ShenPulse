@@ -1,0 +1,532 @@
+{
+  "ark_forward": {
+    "name": "Move Forward",
+    "description": "Walks forward.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,87,0;k,3000,87,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_backward": {
+    "name": "Move Backward",
+    "description": "Walks backward.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,83,0;k,3000,83,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_strafe_left": {
+    "name": "Strafe Left",
+    "description": "Sidesteps left.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,65,0;k,3000,65,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_strafe_right": {
+    "name": "Strafe Right",
+    "description": "Sidesteps right.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,68,0;k,3000,68,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_sprint": {
+    "name": "Sprint",
+    "description": "Sprints forward.",
+    "price": 200,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,16,0;k,0,87,0;k,4000,16,1;k,0,87,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_jump": {
+    "name": "Jump",
+    "description": "Jumps once.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,32,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_crouch": {
+    "name": "Crouch",
+    "description": "Crouches down.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,67,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_prone": {
+    "name": "Go Prone",
+    "description": "Goes prone.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,88,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_drunk_walk": {
+    "name": "Tipsy Walk",
+    "description": "Stumbles around erratically.",
+    "price": 400,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,87,0;k,0,65,0;k,400,65,1;k,0,68,0;k,400,87,1;k,0,68,1;k,0,83,0;k,0,68,0;k,400,68,1;k,0,65,0;k,400,83,1;k,0,65,1;k,0,87,0;k,0,65,0;k,400,65,1;k,0,68,0;k,400,87,1;k,0,68,1;k,0,83,0;k,0,68,0;k,400,68,1;k,0,65,0;k,400,83,1;k,0,65,1;k,0,87,0;k,0,65,0;k,400,65,1;k,0,68,0;k,400,87,1;k,0,68,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_fire": {
+    "name": "Fire Weapon",
+    "description": "Fires the equipped weapon.",
+    "price": 150,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "mouse",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "b,0,0,2"
+      },
+      "guardInput": [
+        "mouse"
+      ]
+    }
+  },
+  "ark_aim": {
+    "name": "Aim Down Sights",
+    "description": "Aims down sights.",
+    "price": 150,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "mouse",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "b,0,1,0;b,1500,1,1"
+      },
+      "guardInput": [
+        "mouse"
+      ]
+    }
+  },
+  "ark_reload": {
+    "name": "Reload",
+    "description": "Reloads the current weapon.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,82,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_melee": {
+    "name": "Melee Attack",
+    "description": "Performs a melee attack.",
+    "price": 150,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,17,0;k,500,17,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_toggle_fists": {
+    "name": "Toggle Fists",
+    "description": "Equips or unequips fists.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,81,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_weapon_attachment": {
+    "name": "Toggle Attachment",
+    "description": "Toggles weapon attachment.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,78,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_use": {
+    "name": "Use",
+    "description": "Interacts with an object.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,69,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_inventory": {
+    "name": "Open Inventory",
+    "description": "Opens the inventory.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,73,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_access_other": {
+    "name": "Access Inventory",
+    "description": "Opens another inventory.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,70,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_map": {
+    "name": "Open Map",
+    "description": "Opens the map.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,77,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_craftables": {
+    "name": "Open Craftables",
+    "description": "Opens the craftables menu.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,86,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_hotbar_1": {
+    "name": "Hotbar Slot 1",
+    "description": "Uses hotbar slot 1.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,49,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_hotbar_2": {
+    "name": "Hotbar Slot 2",
+    "description": "Uses hotbar slot 2.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,50,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_hotbar_3": {
+    "name": "Hotbar Slot 3",
+    "description": "Uses hotbar slot 3.",
+    "price": 100,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,51,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_drag_body": {
+    "name": "Drag Body",
+    "description": "Drags a corpse or unconscious body.",
+    "price": 150,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,71,0;k,2000,71,1"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_jump_spam": {
+    "name": "Jump Spam",
+    "description": "Jumps repeatedly.",
+    "price": 300,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,32,2;k,200,32,2;k,200,32,2;k,200,32,2;k,200,32,2;k,200,32,2;k,200,32,2;k,200,32,2;k,200,32,2;k,200,32,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_fire_spam": {
+    "name": "Fire Spam",
+    "description": "Fires the weapon in bursts.",
+    "price": 300,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "mouse",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "b,0,0,2;b,250,0,2;b,250,0,2;b,250,0,2;b,250,0,2;b,250,0,2;b,250,0,2;b,250,0,2"
+      },
+      "guardInput": [
+        "mouse"
+      ]
+    }
+  },
+  "ark_crouch_spam": {
+    "name": "Crouch Spam",
+    "description": "Repeatedly crouches and stands.",
+    "price": 250,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,67,2;k,300,67,2;k,300,67,2;k,300,67,2;k,300,67,2;k,300,67,2;k,300,67,2;k,300,67,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_hotbar_roulette": {
+    "name": "Hotbar Roulette",
+    "description": "Cycles through hotbar slots.",
+    "price": 250,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "k,0,49,2;k,250,50,2;k,250,51,2;k,250,52,2;k,250,53,2;k,250,54,2;k,250,55,2;k,250,56,2"
+      },
+      "guardInput": []
+    }
+  },
+  "ark_spin_aim": {
+    "name": "Spin Aim",
+    "description": "Spins the camera while firing.",
+    "price": 400,
+    "alignment": {
+      "orderliness": 0,
+      "morality": 0
+    },
+    "inputType": "keyboard-mouse",
+    "action": {
+      "mode": "play",
+      "sequence": {
+        "version": 1,
+        "events": "b,0,0,0;r,0,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;r,50,50,0;b,0,0,1"
+      },
+      "guardInput": [
+        "mouse"
+      ]
+    }
+  }
+}

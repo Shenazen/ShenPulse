@@ -11,26 +11,27 @@
         document.head.prepend(base);
       }
     </script>
-    <meta name="shenpulse-overlay-version" content="2.0.4-overlay10" />
+    <meta name="shenpulse-overlay-version" content="2.0.5-overlay1" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ShenPulse Overlay</title>
     <link rel="preconnect" href="https://shenazenoverlay-default-rtdb.firebaseio.com" crossorigin />
     <link rel="dns-prefetch" href="//shenazenoverlay-default-rtdb.firebaseio.com" />
-    <link rel="preload" href="fonts/inter-latin-wght-normal.woff2?v=2.0.4-overlay10" as="font" type="font/woff2" crossorigin />
-    <script src="runtime/dependencies.js?v=2.0.4-overlay10"></script>
-    <script src="runtime/match-local-entry.js?v=2.0.4-overlay10"></script>
-    <link rel="stylesheet" href="styles/like-goal-layout.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/core.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/wheel.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/themes.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/configuration.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/timer-layout.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/timer.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/win-counter-layout.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/win-counter.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/leaderboard-layout.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/leaderboard.css?v=2.0.4-overlay10" />
-    <link rel="stylesheet" href="styles/scene.css?v=2.0.4-overlay10" />
+    <link rel="preload" href="fonts/inter-latin-wght-normal.woff2?v=2.0.5-overlay1" as="font" type="font/woff2" crossorigin />
+    <script src="runtime/dependencies.js?v=2.0.5-overlay1"></script>
+    <script src="runtime/match-local-entry.js?v=2.0.5-overlay1"></script>
+    <link rel="stylesheet" href="styles/like-goal-layout.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/core.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/coin-jar.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/wheel.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/themes.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/configuration.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/timer-layout.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/timer.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/win-counter-layout.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/win-counter.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/leaderboard-layout.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/leaderboard.css?v=2.0.5-overlay1" />
+    <link rel="stylesheet" href="styles/scene.css?v=2.0.5-overlay1" />
   </head>
   <body>
     <main id="overlay-root" aria-live="polite">
@@ -89,6 +90,7 @@
 
       <section id="coin-jar-view" class="view">
         <div class="coin-jar-widget">
+          <div id="coin-jar-title" class="coin-jar-text-zone"><span>COIN JAR</span></div>
           <svg class="coin-jar-clip-definitions" aria-hidden="true">
             <defs>
               <clipPath id="coin-jar-glass-clip" clipPathUnits="objectBoundingBox">
@@ -100,17 +102,12 @@
             </defs>
           </svg>
           <img id="coin-jar-back" class="coin-jar-layer coin-jar-back" alt="" />
-          <div class="coin-jar-level" aria-hidden="true"><span id="coin-jar-level"></span></div>
           <div id="coin-jar-drops" class="coin-jar-drops">
             <div id="coin-jar-contained-drops" class="coin-jar-drop-layer coin-jar-contained-drops"></div>
             <div id="coin-jar-overflow-drops" class="coin-jar-drop-layer coin-jar-overflow-drops"></div>
             <div id="coin-jar-exterior-drops" class="coin-jar-drop-layer coin-jar-exterior-drops"></div>
           </div>
           <img id="coin-jar-front" class="coin-jar-layer coin-jar-front" alt="" />
-          <div class="coin-jar-meter">
-            <span><strong id="coin-jar-current">0</strong> / <strong id="coin-jar-target">1 000</strong></span>
-            <small>PIÈCES</small>
-          </div>
         </div>
       </section>
 
@@ -179,6 +176,6 @@
         </div>
       </section>
     </main>
-    <script src="runtime/loader.js?v=2.0.4-overlay10"></script>
+    <script src="runtime/loader.js?v=2.0.5-overlay1"></script>
   </body>
 </html>

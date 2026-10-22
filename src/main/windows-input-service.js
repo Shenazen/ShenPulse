@@ -16,6 +16,13 @@ $ErrorActionPreference = 'Stop'
 
 $targets = @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)
 if ($targets.Count -eq 0) {
+  # Certaines éditions GDK sont absentes de la recherche Get-Process par nom.
+  $taskExeName = $ProcessName + '.exe'
+  $targets = @(Get-CimInstance Win32_Process -Filter "Name = '$taskExeName'" -ErrorAction SilentlyContinue | ForEach-Object {
+    try { [Diagnostics.Process]::GetProcessById([int]$_.ProcessId) } catch { }
+  })
+}
+if ($targets.Count -eq 0) {
   throw "$ProcessName n'est pas ouvert."
 }
 
@@ -301,21 +308,25 @@ public static class ShenPulseGameInput {
   }
 
   public static void SendMouseButton(int button, bool buttonUp) {
+    SendMouse(0, 0, MouseButtonFlags(button, buttonUp));
+  }
+
+  public static uint MouseButtonFlags(int button, bool buttonUp) {
     uint flags;
     switch (button) {
       case 0:
         flags = buttonUp ? MOUSEEVENTF_LEFTUP : MOUSEEVENTF_LEFTDOWN;
         break;
       case 1:
-        flags = buttonUp ? MOUSEEVENTF_MIDDLEUP : MOUSEEVENTF_MIDDLEDOWN;
+        flags = buttonUp ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_RIGHTDOWN;
         break;
       case 2:
-        flags = buttonUp ? MOUSEEVENTF_RIGHTUP : MOUSEEVENTF_RIGHTDOWN;
+        flags = buttonUp ? MOUSEEVENTF_MIDDLEUP : MOUSEEVENTF_MIDDLEDOWN;
         break;
       default:
         throw new ArgumentOutOfRangeException("button");
     }
-    SendMouse(0, 0, flags);
+    return flags;
   }
 
   public static void SendMouseMove(int dx, int dy) {
@@ -538,11 +549,11 @@ class WindowsInputService {
 }
 
 function applyKeyboardLayout(events, keyLayout) {
-  if (String(keyLayout || "").toLowerCase() !== "azerty") return events;
-  const azertyMovementKeys = new Map([
-    [87, 90],
-    [65, 81]
-  ]);
+  const layout = String(keyLayout || "").toLowerCase();
+  if (!["azerty", "zsqd"].includes(layout)) return events;
+  const azertyMovementKeys = new Map(layout === "zsqd"
+    ? [[87, 90], [65, 83], [83, 81]]
+    : [[87, 90], [65, 81]]);
   return events.map((event) =>
     event.kind === "keyboard"
       ? {
@@ -557,7 +568,7 @@ function normalizeProcessName(value) {
   const normalized = String(value || "")
     .trim()
     .replace(/\.exe$/i, "");
-  if (!normalized || !/^[a-z0-9_.-]+$/i.test(normalized)) {
+  if (!normalized || !/^[a-z0-9_][a-z0-9_. -]{0,119}$/i.test(normalized)) {
     throw new Error("Le processus Windows ciblé est invalide.");
   }
   return normalized;

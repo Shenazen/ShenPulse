@@ -1,7 +1,7 @@
 {
   "name": "shenpulse",
   "productName": "ShenPulse",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Plateforme locale d'interactions pour livestreams et jeux",
   "main": "src/main/main.js",
   "author": "Alexandre Leuridan",
@@ -63,6 +63,7 @@
       "src/**/*",
       "!src/renderer/games/original-src/**/*.{ts,mjs,vue,css,md,html,png,mp3}",
       "resources/**/*",
+      "!resources/installer-assets/**",
       "!resources/overlays/media/video/**/*.webm",
       "!resources/overlays/media/video/**/*.mp4",
       "build/icon.png",

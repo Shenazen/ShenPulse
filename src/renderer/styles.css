@@ -10,12 +10,15 @@
 @import url("styles/win-counter-placeholder.css");
 @import url("styles/leaderboard-placeholder.css");
 @import url("styles/game-journey.css");
+@import url("styles/game-categories.css");
+@import url("styles/game-pass.css");
 @import url("styles/membership.css");
 @import url("styles/administration.css");
 @import url("styles/account-and-games.css");
 @import url("styles/super-mario-kart-workspace.css");
 @import url("styles/integrated-games.css");
 @import url("styles/wheel-editor.css");
+@import url("styles/wheel-compact-editor.css");
 @import url("styles/readability.css");
 @import url("styles/irl.css");
 @import url("styles/coin-pusher.css");

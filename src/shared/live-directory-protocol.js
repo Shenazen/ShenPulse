@@ -4,6 +4,16 @@ const LIVE_DIRECTORY_PATH = "publicLiveDirectory";
 const LIVE_DIRECTORY_TTL_MS = 90000;
 const LIVE_DIRECTORY_LIMIT = 100;
 const LIVE_DIRECTORY_DATABASE_URL = "https://shenazenoverlay-default-rtdb.firebaseio.com";
+const LIVE_DIRECTORY_DEFAULTS_VERSION = 1;
+
+/** Active le nouveau défaut une seule fois, puis conserve le choix de chaque compte. */
+function normalizeLiveDirectoryPreference(value) {
+  return {
+    publishEnabled: value?.defaultsVersion === LIVE_DIRECTORY_DEFAULTS_VERSION && typeof value.publishEnabled === "boolean"
+      ? value.publishEnabled : true,
+    defaultsVersion: LIVE_DIRECTORY_DEFAULTS_VERSION
+  };
+}
 
 function directoryUsername(value, platform) {
   const username = String(value || "").trim().replace(/^@+/, "");
@@ -84,4 +94,5 @@ function sanitizeDirectoryRows(entries, { now = Date.now(), ownUid = "" } = {}) 
 }
 
 module.exports = { LIVE_DIRECTORY_PATH, LIVE_DIRECTORY_TTL_MS, LIVE_DIRECTORY_LIMIT, LIVE_DIRECTORY_DATABASE_URL,
+  LIVE_DIRECTORY_DEFAULTS_VERSION, normalizeLiveDirectoryPreference,
   directoryUsername, directoryAvatarUrl, directoryViewers, localLiveStreams, sanitizeDirectoryRows };

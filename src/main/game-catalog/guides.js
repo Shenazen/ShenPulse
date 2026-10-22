@@ -45,6 +45,84 @@ const EXTERNAL_GUIDE_URLS = Object.freeze({
 });
 
 const GAME_GUIDES = Object.freeze({
+  "escape-from-duckov": {
+    mode: "native", summary: "ShenPulse détecte le jeu Steam, installe les 83 interactions et démarre leur connexion locale.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Installe Escape From Duckov dans Steam et lance-le une première fois, puis ferme le jeu.",
+      "Dans Installation, clique sur Installer automatiquement. ShenPulse télécharge le module, vérifie ses fichiers et sauvegarde les fichiers remplacés.",
+      "Associe tes cadeaux et autres déclencheurs aux effets souhaités dans Interactions. Aucun cadeau n’est activé automatiquement.",
+      "Configure les fiches d’interactions dans Overlays, puis lance le jeu depuis Démarrage.",
+      "Charge une partie, pars en expédition hors du refuge et ferme les menus avant de tester les interactions."
+    ],
+    notes: [
+      "Édition Steam PC requise. Le module ne dépend d’aucun raccourci clavier particulier.",
+      "Steam doit être ouvert et connecté au compte qui possède le jeu pour permettre son lancement.",
+      "Les effets sont refusés dans le refuge, pendant les chargements, en pause ou lorsque le canard est mort.",
+      "Remplir, vider ou retirer une arme nécessite une arme à feu tenue en main. Prévois de la place pour recevoir des objets.",
+      "Soigner une altération nécessite de subir cette altération. Les apparitions d’ennemis dépendent des points d’apparition présents dans la zone.",
+      "Le module conserve les sauvegardes et les préférences MelonLoader existantes. Pour les premiers essais, utilise une partie d’essai sans autres mods.",
+      "Conserve ShenPulse ouvert pendant la partie. Le premier lancement peut prendre plus de temps pour préparer MelonLoader."
+    ],
+    sources: [{ label: "Documentation technique du pack", url: "https://crowdcontrol.live/guides/escapefromduckov/" }]
+  },
+  ...require("./four-games-guides"),
+  "ark-survival-ascended": {
+    mode: "input",
+    summary: "ShenPulse détecte ARK Steam ou Xbox Game Pass et prépare ses 29 interactions clavier et souris.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Dans Installation, choisis les déplacements WASD ou ZQSD puis clique sur Installer les interactions. Confirme le dossier détecté.",
+      "Associe tes cadeaux ou autres déclencheurs aux interactions souhaitées.",
+      "Prépare les fiches d’interactions pour ton LIVE dans l’étape Overlays.",
+      "Lance ARK depuis ShenPulse, charge une partie et ferme les menus avant de tester les commandes."
+    ],
+    notes: [
+      "Aucun mod ni autre logiciel d’interactions n’est nécessaire. ShenPulse utilise le jeu déjà installé, sans modifier ses fichiers ni ses sauvegardes.",
+      "Les commandes nécessitent le clavier et la souris avec les raccourcis du jeu par défaut. Le choix ZQSD adapte uniquement les déplacements ; les autres touches doivent correspondre aux commandes indiquées dans ARK.",
+      "Les effets d’arme, d’objet ou d’inventaire dépendent de l’équipement et de la cible. Ferme le chat et les menus pour éviter d’y envoyer les commandes.",
+      "La fenêtre ArkAscended.exe doit être disponible. ShenPulse la place au premier plan pour envoyer les commandes.",
+      "Les interactions du pack officiel agissent sur les commandes du joueur. Aucun effet de ressources, météo ou apparition de dinosaures n’est inclus dans ce pack."
+    ],
+    sources: [{ label: "Référence technique · ARK", url: "https://open-api.crowdcontrol.live/games/ARKSurvivalAscended/packs" }, { label: "Documentation technique des commandes", url: "https://crowdcontrol.live/guides/disrupts" }]
+  },
+  balatro: {
+    mode: "native",
+    summary: "ShenPulse installe les interactions adaptées à Balatro Steam ou Xbox Game Pass, puis les active au lancement du jeu.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Ferme Balatro puis clique sur Installer automatiquement. ShenPulse détecte son dossier Steam ou XboxGames.",
+      "Associe tes cadeaux et autres déclencheurs aux interactions souhaitées.",
+      "Prépare les fiches d’interactions pour ton LIVE dans l’étape Overlays.",
+      "Lance Balatro depuis ShenPulse, commence une manche et choisis une mise avant de tester les effets."
+    ],
+    notes: [
+      "Sur Steam, ShenPulse installe Lovely, Steamodded et le module local. Sur Game Pass, l’adaptateur ShenPulse utilise le moteur GDK déjà installé, sans changer les sauvegardes.",
+      "Les effets s’exécutent pendant la sélection des cartes. Certains nécessitent des cartes, des jokers, des consommables ou assez de ressources.",
+      "Les effets de destruction modifient réellement la manche. Utilise une nouvelle partie pour les essais.",
+      "Garde ShenPulse ouvert pendant le LIVE."
+    ],
+    sources: [{ label: "Code source du module tiers · Balatro", url: "https://github.com/WarpWorld/CCPack-PC-Balatro" }, { label: "Documentation technique · Balatro", url: "https://crowdcontrol.live/guides/balatro/" }]
+  },
+  "blue-prince": {
+    mode: "native",
+    summary: "ShenPulse détecte Blue Prince Steam ou Xbox Game Pass, installe BepInEx et le module officiel, puis active les interactions au lancement.",
+    journey: ["installation", "interactions", "overlays", "launch"],
+    steps: [
+      "Ferme Blue Prince puis clique sur Installer automatiquement.",
+      "Associe les cadeaux et autres déclencheurs aux ressources, objets, déplacements et plans de pièces.",
+      "Prépare les fiches d’interactions pour ton LIVE dans l’étape Overlays.",
+      "Lance le jeu depuis ShenPulse, attends la préparation du premier lancement puis charge une partie et teste un effet."
+    ],
+    notes: [
+      "Le premier lancement peut durer plus longtemps pendant la préparation des composants du mod.",
+      "Les changements de plans nécessitent la sélection de pièces ; les objets et ressources dépendent de la progression et de l’état du joueur.",
+      "Les changements de vitesse sont temporaires. La durée est configurable dans les interactions.",
+      "L’entrée « Forcer les coups de pied » est conservée mais verrouillée : le module officiel ne contient aucune action pour cet effet.",
+      "Garde ShenPulse ouvert pendant le LIVE."
+    ],
+    sources: [{ label: "Documentation technique · Blue Prince", url: "https://crowdcontrol.live/guides/blueprince/" }]
+  },
   "crash-bandicoot-n-sane-trilogy": {
     mode: "native",
     summary: "ShenPulse installe son pont autonome et pilote 26 interactions dans Crash Bandicoot N. Sane Trilogy sur Steam.",
@@ -250,18 +328,18 @@ const GAME_GUIDES = Object.freeze({
     mode: "emulator",
     summary: "ShenPulse installe BizHawk, Pokémon Rouge et le pack d’interactions dans un environnement prêt à jouer.",
     steps: [
-      "Clique sur Installer : BizHawk, Pokémon Rouge, le client et le pack sont téléchargés automatiquement.",
+      "Clique sur Installer : BizHawk, Pokémon Rouge et le module local ShenPulse sont téléchargés automatiquement.",
       "ShenPulse vérifie la ROM et applique automatiquement le correctif d’interactions.",
       "Configure les interactions TikTok que tu souhaites utiliser.",
       "Clique sur Lancer pour ouvrir directement la ROM dans BizHawk avec le connecteur actif."
     ],
     notes: [
       "Aucun fichier supplémentaire n’est demandé à l’utilisateur.",
-      "Garde BizHawk, le client local et ShenPulse ouverts pendant le LIVE."
+      "Garde BizHawk et ShenPulse ouverts pendant le LIVE. Le module local est géré automatiquement et fonctionne sans compte ni logiciel d’interactions tiers."
     ],
     sources: [
       {
-        label: "Guide officiel Crowd Control · Pokémon Rouge/Bleu",
+        label: "Documentation technique · Pokémon Rouge/Bleu",
         url: "https://crowdcontrol.live/guides/pokemonredblue"
       }
     ]
@@ -271,18 +349,18 @@ const GAME_GUIDES = Object.freeze({
     summary:
       "ShenPulse installe BizHawk, Super Mario Kart et le pack de 87 interactions dans un environnement prêt à jouer.",
     steps: [
-      "Clique sur Installer : BizHawk, Super Mario Kart, le client et le pack sont téléchargés automatiquement.",
+      "Clique sur Installer : BizHawk, Super Mario Kart et le module local ShenPulse sont téléchargés automatiquement.",
       "ShenPulse vérifie l’empreinte de la ROM USA incluse.",
       "Configure les interactions TikTok que tu souhaites utiliser.",
       "Clique sur Lancer pour ouvrir directement la ROM dans BizHawk avec le connecteur actif."
     ],
     notes: [
       "Aucun fichier supplémentaire n’est demandé à l’utilisateur.",
-      "Garde BizHawk, le client local et ShenPulse ouverts pendant le LIVE."
+      "Garde BizHawk et ShenPulse ouverts pendant le LIVE. Le module local est géré automatiquement et fonctionne sans compte ni logiciel d’interactions tiers."
     ],
     sources: [
       {
-        label: "Guide officiel Crowd Control · Super Mario Kart",
+        label: "Documentation technique · Super Mario Kart",
         url: "https://crowdcontrol.live/guides/supermariokart"
       }
     ]
@@ -290,10 +368,10 @@ const GAME_GUIDES = Object.freeze({
   fortnite: {
     mode: "input",
     summary:
-      "Aucun mod n’est installé : ShenPulse reproduit les séquences clavier du pack Fortnite officiel de Crowd Control dans la fenêtre du jeu.",
+      "Aucun mod n’est installé : ShenPulse envoie ses interactions clavier directement à la fenêtre Fortnite.",
     steps: [
       "Lance Fortnite sur PC et charge une partie jouable.",
-      "Conserve les touches clavier standard attendues par le pack Crowd Control.",
+      "Configure les touches du jeu indiquées par ShenPulse dans le tableau ci-dessous.",
       "Configure les interactions puis teste-les pendant que Fortnite est ouvert.",
       "Active la session de jeu avant le LIVE."
     ],
@@ -304,7 +382,7 @@ const GAME_GUIDES = Object.freeze({
     ],
     sources: [
       {
-        label: "Pack Fortnite Crowd Control",
+        label: "Référence technique · Fortnite",
         url: "https://crowdcontrol.live/game/fortnite/"
       },
       {
@@ -334,7 +412,7 @@ const GAME_GUIDES = Object.freeze({
   demonologist: {
     mode: "input",
     summary:
-      "Aucun mod n’est requis : ShenPulse reproduit les séquences clavier et souris du pack Demonologist officiel de Crowd Control dans la fenêtre du jeu.",
+      "Aucun mod n’est requis : ShenPulse envoie ses interactions clavier et souris directement à la fenêtre Demonologist.",
     journey: ["installation", "interactions", "overlays", "launch"],
     steps: [
       "Lance Demonologist depuis Steam et charge une partie.",
@@ -350,7 +428,7 @@ const GAME_GUIDES = Object.freeze({
     ],
     sources: [
       {
-        label: "Guide officiel Crowd Control · Input Disrupts",
+        label: "Documentation technique des commandes",
         url: "https://crowdcontrol.live/guides/disrupts"
       },
       {
@@ -362,22 +440,24 @@ const GAME_GUIDES = Object.freeze({
   "euro-truck-simulator-2": {
     mode: "crowd-control-mod",
     summary:
-      "Le plugin local Euro Truck Simulator 2 se connecte à ShenPulse sur le port 51337 et reçoit les interactions TikTok LIVE configurées.",
+      "Le module local Euro Truck Simulator 2 se connecte automatiquement à ShenPulse et reçoit les interactions LIVE configurées, sans autre logiciel d’interactions.",
     journey: ["installation", "interactions", "overlays", "launch"],
     steps: [
-      "Laisse ShenPulse détecter Euro Truck Simulator 2 et installer automatiquement le plugin officiel Crowd Control.",
-      "Ferme Crowd Control pour libérer le port local 51337, puis configure les cadeaux dans ShenPulse.",
+      "Ferme Euro Truck Simulator 2, puis laisse ShenPulse détecter le dossier de l’édition que tu utilises et installer automatiquement les interactions.",
+      "Configure les cadeaux dans ShenPulse. Aucun autre logiciel d’interactions n’est nécessaire.",
       "Prépare si besoin la fiche d’interactions pour ton overlay LIVE.",
-      "Lance Euro Truck Simulator 2 sur Steam, charge une partie puis active la session ShenPulse."
+      "Lance le jeu avec le bouton Démarrer de ShenPulse, confirme le message du SDK avancé si le jeu l’affiche, puis charge une partie. ShenPulse vérifie la connexion du module avant de confirmer le lancement."
     ],
     notes: [
       "Le pack officiel a été testé avec la version Steam du jeu.",
+      "Le jeu doit être fermé pendant l’installation ou la réparation du module. Relance-le ensuite depuis ShenPulse pour charger les fichiers mis à jour.",
+      "Si le jeu demande d’autoriser les fonctionnalités avancées du SDK, confirme ce message pour permettre le chargement du module. Ferme les menus avant de tester les interactions.",
       "Le mode Convoy n’est pas officiellement validé et certains effets peuvent ne pas fonctionner en multijoueur.",
       "Teste toujours quelques interactions dans une sauvegarde chargée avant le LIVE."
     ],
     sources: [
       {
-        label: "Guide officiel Crowd Control · Euro Truck Simulator 2",
+        label: "Documentation technique · Euro Truck Simulator 2",
         url: "https://crowdcontrol.live/guides/eurotrucksimulator2"
       },
       {
@@ -389,7 +469,7 @@ const GAME_GUIDES = Object.freeze({
   "resident-evil-3": {
     mode: "native",
     summary:
-      "ShenPulse détecte Resident Evil 3, installe automatiquement REFramework et le mod d’interactions officiel, puis reçoit les cadeaux TikTok LIVE sur le port local 58431.",
+      "ShenPulse détecte Resident Evil 3, installe automatiquement REFramework et son module local, puis reçoit les interactions LIVE sans autre logiciel d’interactions.",
     journey: ["installation", "interactions", "overlays", "launch"],
     steps: [
       "Ferme Resident Evil 3, puis laisse ShenPulse détecter son dossier Steam et installer le mod officiel recommandé.",
@@ -400,14 +480,14 @@ const GAME_GUIDES = Object.freeze({
     notes: [
       "L’installation recommandée cible la version actuelle de Resident Evil 3 ; l’ancienne branche dx11_non-rt n’est pas sélectionnée automatiquement.",
       "Le bouton Installation ajoute automatiquement le runtime Bureau .NET 8 officiel s’il manque.",
-      "Si Crowd Control utilise déjà le port 58431, ShenPulse ferme uniquement ses processus locaux avant d’activer la session Resident Evil 3.",
+      "Le module utilise une connexion locale dédiée. Conserve ShenPulse ouvert pendant la partie ; aucun autre logiciel d’interactions n’est nécessaire.",
       "Un test manuel remet automatiquement Resident Evil 3 au premier plan avant d’envoyer l’effet. Le jeu doit néanmoins être dans une partie jouable, hors menu, cinématique et chargement.",
       "Certains effets dépendent du personnage, de l’inventaire, des ennemis présents ou de la progression. Ils peuvent être temporairement indisponibles dans un menu, une cinématique ou un chargement.",
       "La touche Inser ouvre le menu REFramework dans le jeu si un diagnostic est nécessaire."
     ],
     sources: [
       {
-        label: "Guide officiel Crowd Control · Resident Evil 3",
+        label: "Documentation technique · Resident Evil 3",
         url: "https://crowdcontrol.live/guides/residentevil3?pack=ResidentEvil3"
       },
       {
@@ -527,7 +607,7 @@ function buildGameGuide(entry, effects) {
   const sources = (EXTERNAL_GUIDE_URLS[entry.id] || []).map((url) => ({
     label: url.includes("streamtoearn.io")
       ? "Référence de compatibilité StreamToEarn"
-      : "Guide du pack Crowd Control",
+      : "Documentation technique du pack",
     url
   }));
   const native = effects.some((effect) => effect.available);
@@ -542,11 +622,15 @@ function buildGameGuide(entry, effects) {
     summary: native
       ? `ShenPulse pilote le pack local de ${entry.name} par la passerelle de jeu.`
       : `La fiche reprend les interactions référencées pour ${entry.name} ; les éléments visuels restent signalés tant qu’aucun pack local exécutable n’est installé.`,
-    steps: [
+    steps: native ? [
       "Installe le jeu depuis sa boutique officielle et lance-le une première fois.",
       "Ouvre ShenPulse, sélectionne le jeu puis configure ou détecte sa passerelle locale.",
-      "Installe le pack compatible avec la version exacte du jeu en suivant le guide lié.",
+      "Installe le module ShenPulse compatible avec la version exacte du jeu.",
       "Charge une sauvegarde jouable et teste plusieurs interactions avant le LIVE."
+    ] : [
+      "Cette fiche permet de consulter les interactions de référence.",
+      "Le module autonome ShenPulse de ce jeu n’est pas encore disponible.",
+      "Les interactions restent désactivées jusqu’à la disponibilité de cette intégration."
     ],
     notes: [
       compatibilityNotes[entry.id] ||

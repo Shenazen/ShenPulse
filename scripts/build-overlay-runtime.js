@@ -30,6 +30,7 @@ function buildOverlayRuntime({ write = true } = {}) {
       ["widgets/timers.js"], ["widgets/wheel-animation.js"]
     ],
     "wheel-match.js": [
+      ["widgets/coin-jar-design.js"],
       ["widgets/wheel-design.js"],
       ["session.js", ["seedStaticLeaderboardPreview", "setupLeaderboard"]]
     ]

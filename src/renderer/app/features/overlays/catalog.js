@@ -62,6 +62,9 @@ function overlayConfig(key) {
     merged.winCounterTitleColor = saved.winCounterTitleColor || saved.textColor || merged.winCounterTitleColor;
     merged.winCounterGoalColor = saved.winCounterGoalColor || saved.textColor || merged.winCounterGoalColor;
   }
+  if (key === "coinJar") {
+    merged.coinJarTitleColor = saved.coinJarTitleColor || saved.textColor || merged.coinJarTitleColor;
+  }
   if (["topDonors", "topTappers"].includes(key)) {
     merged.leaderboardTitleColor = saved.leaderboardTitleColor || saved.textColor || merged.leaderboardTitleColor;
     merged.leaderboardUnitColor = saved.leaderboardUnitColor || saved.scoreColor || merged.leaderboardUnitColor;
@@ -110,6 +113,7 @@ function overlayUrl(
       ? {
           ...config,
           ...selectedWheel.settings,
+          title: selectedWheel.settings?.wheelTitle ?? selectedWheel.name ?? config.title,
           design: selectedWheel.design,
           choices: selectedWheel.segments?.map((segment) => segment.label) || config.choices,
           colors: selectedWheel.segments?.map((segment) => segment.color) || config.colors
@@ -135,7 +139,7 @@ function overlayUrl(
     // manifeste de son overlay, sans devoir modifier ce générateur d'URL.
     const mappings = overlayCatalog.configParameterMappings;
     for (const [key, parameter] of Object.entries(mappings)) {
-      if (effectiveConfig[key] !== undefined && (effectiveConfig[key] !== "" || ["progressLabel", "leaderboardMetricLabel"].includes(key))) {
+      if (effectiveConfig[key] !== undefined && (effectiveConfig[key] !== "" || ["progressLabel", "leaderboardMetricLabel", "wheelTitle"].includes(key) || (item.key === "coinJar" && key === "title"))) {
         url.searchParams.set(parameter, String(effectiveConfig[key]));
       }
     }

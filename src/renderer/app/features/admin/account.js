@@ -166,7 +166,7 @@ async function saveAdminVisibilityScope(section, id, scope) {
   if (catalogItem.ownerOnly) scope = "admin";
   else if (catalogItem.fixedScope) scope = catalogItem.fixedScope;
   const storedId = adminVisibilityStorageKey(id);
-  next[section][storedId] = { scope };
+  next[section][storedId] = { ...next[section][storedId], scope };
   if (section === "actionTypes") {
     next.actionTypeOverrides = next.actionTypeOverrides || {};
     next.actionTypeOverrides[storedId] = true;
@@ -188,6 +188,7 @@ async function saveAdminVisibilityBulk(scope) {
     const storedId = adminVisibilityStorageKey(id);
     const item = items.find((entry) => entry.id === id);
     next[adminVisibilitySection][storedId] = {
+      ...next[adminVisibilitySection][storedId],
       scope: item?.ownerOnly ? "admin" : item?.fixedScope || scope
     };
     if (adminVisibilitySection === "actionTypes") {

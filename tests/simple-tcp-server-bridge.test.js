@@ -7,6 +7,30 @@ const {
   SimpleTcpServerBridge
 } = require("../src/main/simple-tcp-server-bridge");
 
+test("accepte les statuts camelCase du mod Blue Prince et conserve les refus temporaires", async t => {
+  const bridge = new SimpleTcpServerBridge({ port: 0, timeoutMs: 1500 });
+  const status = await bridge.start();
+  const client = net.createConnection({ host: "127.0.0.1", port: status.port });
+  t.after(async () => { client.destroy(); await bridge.close(); });
+  await new Promise((resolve, reject) => { client.once("connect", resolve); client.once("error", reject); });
+  let buffer = "";
+  client.on("data", chunk => {
+    buffer += chunk.toString();
+    let ending;
+    while ((ending = buffer.indexOf("\0")) >= 0) {
+      const request = JSON.parse(buffer.slice(0, ending)); buffer = buffer.slice(ending + 1);
+      assert.equal(request.duration, 3000);
+      const response = { id: request.id, type: "effectRequest", status: request.code, metadata: {}, timeRemaining: 0 };
+      const frame = JSON.stringify(response) + "\0";
+      client.write(frame.slice(0, 5)); client.write(frame.slice(5));
+    }
+  });
+  assert.equal((await bridge.send("success", { duration: 3000 })).status, 0);
+  await assert.rejects(bridge.send("retry", { duration: 3000 }), error => error.status === 3);
+  await assert.rejects(bridge.send("unavailable", { duration: 3000 }), error => error.status === 2);
+  assert.equal((await bridge.send("finished", { duration: 3000 })).status, 8);
+});
+
 test("la passerelle SimpleTCP reçoit le mod puis exécute une interaction", async () => {
   const bridge = new SimpleTcpServerBridge({
     port: 0,

@@ -14,6 +14,7 @@ const { normalizeWheelSegmentActions } = require("./state/overlay-configs");
 const projections = require("./state/projections");
 const { collectGiftReferenceUpdates, applyGiftReferenceUpdates, GIFT_IDENTITY_CORRECTION_REASON } = require("./state/gift-upgrade-migration");
 const { settingsForProfileImport } = require("./settings-access");
+const { normalizeLiveDirectoryPreference } = require("../shared/live-directory-protocol");
 
 /** Façade de l'état local : API stable, mutations, secrets et cadence des sauvegardes. */
 class StateStore {
@@ -397,8 +398,8 @@ class StateStore {
             ? clone(this.state.settings.tiktok.chat)
             : { provider: "none" }
         },
-        // Importer la configuration d'un tiers ne vaut pas consentement à une présence publique.
-        liveDirectory: { publishEnabled: this.state.settings.liveDirectory?.publishEnabled === true }
+        // Un import conserve le choix de visibilité de ce compte, jamais celui de l'exporteur.
+        liveDirectory: normalizeLiveDirectoryPreference(this.state.settings.liveDirectory)
       }
     };
     // Les exports pré-workspaces portent encore les actions à la racine.

@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.0.4',
-  title: 'Des interactions plus rapides, de nouveaux jeux.',
-  summary: 'Déclenche les interactions pendant les combos de cadeaux, prépare tes cadeaux plus vite et retrouve de nouveaux jeux avec des visuels pour leurs interactions.',
+  version: '2.0.5',
+  title: 'Des jeux autonomes et des overlays plus simples.',
+  summary: 'Installe les packs à la demande, retrouve des conditions de jeu détaillées et configure tes overlays plus facilement.',
   highlights: [
-    ['Accélère les cadeaux', 'Les interactions partent pendant les combos, avec suivi des quantités et déduplication. Le sélecteur de cadeaux s’ouvre en un clic et prépare la liste du créateur en mémoire.'],
-    ['Découvre les nouveaux jeux', 'Crash Bandicoot N. Sane Trilogy, The Mortuary Assistant et Unturned rejoignent les intégrations. Les interactions disposent de visuels adaptés à leur jeu et à leur effet.'],
-    ['Pilote ton profil', 'Les contrôleurs locaux peuvent retrouver automatiquement le profil actif. Les boutons de la page Contrôleurs permettent de connecter le plugin et de gérer ses commandes.']
+    ['Connecte tes jeux', 'Correction de la connexion Euro Truck Simulator 2 et passerelles locales autonomes. Les conditions de jeu précisent les étapes de préparation et les commandes à configurer.'],
+    ['Personnalise tes overlays', 'Roue et Coin Jar disposent de réglages plus lisibles. Les designs et les classements sont adaptés à leurs zones de texte et de photo.'],
+    ['Allège ton installation', 'Les packs de jeu sont téléchargés à la demande depuis le stockage ShenPulse, avec contrôle d’intégrité. Les profils et associations existants sont conservés.']
   ]
 }
 
@@ -17,10 +17,10 @@ export const APP_TABS = [
     summary: 'Un point de départ pour préparer le live et retrouver les espaces de création.',
     parts: [
       ['Raccourcis', 'Ouvre les actions, jeux, overlays ou statistiques sans modifier leur configuration.'],
-      ['En direct', 'Présente les créateurs qui ont choisi de rendre leur LIVE visible dans l’annuaire.'],
+      ['En direct', 'Présente les créateurs dont le partage du LIVE dans l’annuaire est actif.'],
       ['Premiers pas', 'Connecte la plateforme, choisis les interactions et prépare les sources de diffusion.']
     ],
-    tips: ['La publication dans l’annuaire est facultative.', 'La barre du haut reste disponible dans tous les espaces.']
+    tips: ['Le partage dans l’annuaire est activé par défaut et peut être désactivé dans le menu du compte.', 'La barre du haut reste disponible dans tous les espaces.']
   },
   {
     id: 'vue-ensemble',

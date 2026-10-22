@@ -4,7 +4,7 @@
 const { SUPER_MARIO_KART_ASSET_BASE } = require("./constants");
 
 module.exports = {
-    version: "1.0.0",
+    version: "1.1.0",
     title: "Super Mario Kart",
     targetLabel: "dossier de la passerelle Super Mario Kart",
     managedTarget: true,
@@ -12,6 +12,7 @@ module.exports = {
     launchExecutables: ["EmuHawk.exe"],
     warning:
       "ShenPulse installe automatiquement BizHawk, Super Mario Kart et le pack d’interactions.",
+    retiredFiles: ["CrowdControl/CrowdControl.Client.Slim.exe", "CrowdControl/CrowdControl.Client.Slim.dll"],
     assets: [
       {
         id: "bizhawk",
@@ -24,20 +25,15 @@ module.exports = {
         url: `${SUPER_MARIO_KART_ASSET_BASE}/Bizhawk-2.9.1.zip`
       },
       {
-        id: "client",
-        fileName: "CrowdControl.Client.Slim-5.0.9736.24149.zip",
-        action: "extract",
-        targetPath: "CrowdControl",
-        size: 65991501,
-        sha256:
-          "13e7b65a6d19fe0804565433499b4a3827e84a86a07f05d99afd396146b6dcb7",
-        url: `${SUPER_MARIO_KART_ASSET_BASE}/CrowdControl.Client.Slim-5.0.9736.24149.zip`
+        id: "bridge", fileName: "emulator-bridge-1.0.0.zip", action: "extract",
+        size: 43051596, sha256: "cd75f36ccaae9a8a8a21ff843abad4a92263773763b33d9e740acb7d4aa3e3ef",
+        url: "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/super-mario-kart/1.1.0/emulator-bridge-1.0.0.zip"
       },
       {
         id: "pack",
         fileName: "SuperMarioKart.dll",
         action: "copy",
-        targetPath: "CrowdControl/Packs",
+        targetPath: "Bridge/Packs",
         size: 58192,
         sha256:
           "44a2c9e04e641532b42a9f3084b4155b3189c8f2afd797fa20919ad798ba6c4b",

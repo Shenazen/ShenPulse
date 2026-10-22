@@ -40,7 +40,7 @@ test("les anciens chemins runtime sont générés depuis les mêmes moteurs", ()
 });
 
 const selectedByView = {
-  "coin-jar": ["coin-jar"], "win-counter": ["win-counter"], timer: ["timers"],
+  "coin-jar": ["coin-jar-design", "coin-jar"], "win-counter": ["win-counter"], timer: ["timers"],
   "multiplier-timer": ["timers"], game: ["game"], wheel: ["wheel-design", "wheel-animation"],
   match: ["match-compatible", "match-audio", "match-reactions", "match-progress", "match-preview", "match"], leaderboard: [], "like-goal": []
 };

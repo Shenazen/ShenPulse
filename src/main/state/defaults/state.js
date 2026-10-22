@@ -10,6 +10,7 @@ const { createDefaultOverlayConfigs } = require("./overlays");
 const { normalizeMatchesConfig, createMatchSession } = require("../../../shared/matches-contract");
 const { createDefaultTtsSettings } = require("./preferences");
 const { normalizeSongRequestSettings } = require("../../spotify/song-request-settings");
+const { normalizeLiveDirectoryPreference } = require("../../../shared/live-directory-protocol");
 
 /** Configuration de profil vierge, sans actions ni droits de compte. */
 function createEmptyProfileWorkspace() {
@@ -67,7 +68,7 @@ function createDefaultState() {
       launchAtStartup: false,
       allowKeystrokes: false,
       telemetry: false,
-      liveDirectory: { publishEnabled: false },
+      liveDirectory: normalizeLiveDirectoryPreference(),
       irl: {
         enabled: false,
         devices: []

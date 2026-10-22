@@ -63,13 +63,14 @@
     heightPercent,
     settings
   }) {
-    const configuredSize = clamp(settings.fontSize || 50, 10, 120);
-    const baseFontPixels = (0.48 + configuredSize / 100) * 16;
+    const configuredSize = settings.wheelTextScale === undefined ? clamp(settings.fontSize || 50, 10, 120) : 50;
+    const textScale = clamp(settings.wheelTextScale ?? 100, 50, 400) / 100;
+    const baseFontPixels = (0.48 + configuredSize / 100) * 16 * textScale;
     const lineHeight = 0.84 + clamp(settings.lineSpacing ?? 50, 0, 100) / 140;
     const configuredLines = clamp(settings.textMaxLines || 4, 1, 4);
     const shouldClamp = settings.textClamp === true || settings.textClamp === "true";
     const countScale = clamp(1 - Math.max(0, segmentCount - 5) * 0.045, 0.5, 1);
-    const minimumScale = clamp(8 / baseFontPixels, 0.34, 0.82);
+    const minimumScale = clamp(8 / baseFontPixels, 0.08, 0.82);
     const widthPixels = Math.max(8, widthPercent / 100 * REFERENCE_DIAMETER);
     const heightPixels = Math.max(8, heightPercent / 100 * REFERENCE_DIAMETER);
     let scale = Math.max(minimumScale, countScale);
@@ -114,16 +115,14 @@
     const count = Math.round(clamp(segmentCount, 2, 16));
     const segmentAngle = 360 / count;
     const centerAngle = segmentAngle * index + segmentAngle / 2 - 90;
-    const segmentOffset = clamp(settings.textSegmentOffset || 0, -100, 100) / 100;
-    const angle = centerAngle + segmentOffset * segmentAngle * 0.46;
+    const angle = centerAngle;
     const orientation = settings.textOrientation === "vertical" ? "radial" : "tangent";
     const innerRadius = design === "royal" ? 19.5 : 18;
     const outerRadius = design === "royal" ? 46.3 : 47.2;
     const middleRadius = (innerRadius + outerRadius) / 2;
     const countBias = clamp((count - 6) * 0.16, -0.55, 1.6);
-    const radiusScale = clamp((settings.textRadius || 100) / 100, 0.2, 1.35);
     const radius = clamp(
-      (middleRadius + countBias) * radiusScale,
+      middleRadius + countBias,
       innerRadius + 2,
       outerRadius - 2
     );
@@ -131,16 +130,14 @@
     const x = 50 + Math.cos(radians) * radius;
     const y = 50 + Math.sin(radians) * radius;
     const rawRotation = orientation === "radial" ? angle : angle + 90;
-    const rotation = uprightRotation(
-      rawRotation + clamp(settings.textAngleOffset || 0, -180, 180)
-    );
+    const rotation = uprightRotation(rawRotation);
     const segmentRadians = segmentAngle * Math.PI / 180;
     const radialLimit = Math.max(
       5,
       Math.min(radius - innerRadius, outerRadius - radius) * 2 * 0.9
     );
-    const widthFactor = clamp((settings.textBoxWidth || 100) / 100, 0.45, 2.6);
-    const heightFactor = clamp((settings.textBoxHeight || 240) / 240, 0.2, 1.34);
+    const widthFactor = 1;
+    const heightFactor = 1;
     let widthPercent;
     let heightPercent;
 

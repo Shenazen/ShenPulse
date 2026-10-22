@@ -1,0 +1,130 @@
+{
+  "assets": [
+    {
+      "gameId": "escape-from-duckov",
+      "id": "mod",
+      "version": "1.1.1",
+      "key": "installer-assets/escape-from-duckov/1.1.1/duckov-shenpulse-1.1.1.zip",
+      "size": 11979534,
+      "sha256": "29142ce78b597beee17b694514da07848d7e8d96a9cedc2efea4875d8924ff75",
+      "buildPath": ".artifacts/game-pack-builds/escape-from-duckov/1.1.1/duckov-shenpulse-1.1.1.zip"
+    },
+    {
+      "gameId": "dredge",
+      "id": "mod",
+      "version": "1.0.0",
+      "key": "installer-assets/dredge/1.0.0/Dredge-CC.zip",
+      "size": 661899,
+      "sha256": "758aceb31692cec940c8a1c9fc11c129a48a88d0851d0a855a01ca5f27d688e7",
+      "sourceUrl": "https://mods.crowdcontrol.live/Dredge/Dredge-CC.zip"
+    },
+    {
+      "gameId": "dredge",
+      "id": "managed-bootstrap",
+      "version": "1.0.0",
+      "key": "installer-assets/dredge/1.0.0/BepInEx.Bootstrap.dll",
+      "size": 5120,
+      "sha256": "d57308a296de5912ed9aad11a091acd16595b3f0cc908d5b7201a89fc0e1c5c3",
+      "buildPath": ".artifacts/game-pack-builds/dredge/1.0.0/BepInEx.Bootstrap.dll"
+    },
+    {
+      "gameId": "egging-on",
+      "id": "mod",
+      "version": "1.0.0",
+      "key": "installer-assets/egging-on/1.0.0/EggingOn-CC-ML.zip",
+      "size": 11870288,
+      "sha256": "aebf50e685692ce7d6f72301495aa172ba9725057ff7d4e44ca806a5ead7b1ae",
+      "sourceUrl": "https://mods.crowdcontrol.live/EggingOn/EggingOn-CC-ML.zip"
+    },
+    {
+      "gameId": "fallout-4",
+      "id": "mod",
+      "version": "1.0.0",
+      "key": "installer-assets/fallout-4/1.0.0/Fallout4Anniversary-CC.zip",
+      "size": 288295,
+      "sha256": "4c176ba939b05d57abc13967e0593217fb9861dc0654d72bf81b38bd95edeba9",
+      "sourceUrl": "https://one-click.crowdcontrol.live/Fallout4Anniversary/Fallout4Anniversary-CC.zip"
+    },
+    {
+      "gameId": "balatro",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/balatro/1.0.0/balatro-shenpulse-1.0.0.zip",
+      "size": 33506,
+      "sha256": "a6448f6bb94f860f4c69d4eb60f19b3389ebd28818028fb3ee9fa1d6bc573f22",
+      "buildPath": ".artifacts/game-pack-builds/balatro/1.0.0/balatro-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "blue-prince",
+      "id": "mod",
+      "version": "1.0.0",
+      "key": "installer-assets/blue-prince/1.0.0/BluePrince-CC.zip",
+      "size": 34688932,
+      "sha256": "cbe4c3cc9d4ec5a3d26e70031f53272ec053f093dd44c4913cc46a891d5e647e",
+      "sourceUrl": "https://mods.crowdcontrol.live/BluePrince/BluePrince-CC.zip"
+    },
+    {
+      "gameId": "crash-bandicoot-n-sane-trilogy",
+      "id": "bridge",
+      "version": "1.0.1",
+      "key": "installer-assets/crash-bandicoot-n-sane-trilogy/1.0.1/crash-bandicoot-shenpulse-1.0.1.zip",
+      "size": 13482,
+      "sha256": "1d86fcb4f33d834a477baed8906c8d01d5ee10e641919ed02eabc8bc6a2b229b",
+      "buildPath": ".artifacts/game-pack-builds/crash-bandicoot-n-sane-trilogy/1.0.1/crash-bandicoot-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "unturned",
+      "id": "mod",
+      "version": "1.0.1",
+      "key": "installer-assets/unturned/1.0.1/unturned-shenpulse-1.0.1.zip",
+      "size": 874358,
+      "sha256": "83f6212de87d4996b67166254e113ff3e7232e73fc829d789886331bc7062134",
+      "buildPath": ".artifacts/game-pack-builds/unturned/1.0.1/unturned-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "euro-truck-simulator-2",
+      "id": "mod",
+      "version": "1.0.4",
+      "key": "installer-assets/euro-truck-simulator-2/1.0.4/TruckSimulator-CC-1.0.4.zip",
+      "size": 181790,
+      "sha256": "e144ab89e14c538baa72c7219c92dc93688f737f9a8f12f14b9b5cdac8c30795",
+      "sourceUrl": "https://one-click.crowdcontrol.live/TruckSimulator/TruckSimulator-CC.zip?ver=1.0.4"
+    },
+    {
+      "gameId": "resident-evil-3",
+      "id": "mod",
+      "version": "2.1.3",
+      "key": "installer-assets/resident-evil-3/2.1.3/RE3net-CC-2.1.2.zip",
+      "size": 20825046,
+      "sha256": "34a5b87eeff7b0fddf7e3069a7af4de42c6c3448ce2c0896f4c64db78fd44fba",
+      "sourceUrl": "https://one-click.crowdcontrol.live/RE3remake/RE3net-CC.zip?ver=2.1.2"
+    },
+    {
+      "gameId": "the-mortuary-assistant",
+      "id": "mod",
+      "version": "1.0.0",
+      "key": "installer-assets/the-mortuary-assistant/1.0.0/the-mortuary-assistant-shenpulse-1.0.0.zip",
+      "size": 20163863,
+      "sha256": "bd43b6cf4beb09d0dcbb10c424e116e2c7e5b75bdee92b539471179ef13b5505",
+      "buildPath": ".artifacts/game-pack-builds/the-mortuary-assistant/1.0.0/the-mortuary-assistant-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "pokemon-red-blue",
+      "id": "bridge",
+      "version": "1.1.0",
+      "key": "installer-assets/pokemon-red-blue/1.1.0/emulator-bridge-1.0.0.zip",
+      "size": 43051596,
+      "sha256": "cd75f36ccaae9a8a8a21ff843abad4a92263773763b33d9e740acb7d4aa3e3ef",
+      "buildPath": ".artifacts/game-pack-builds/emulator-common/1.0.0/emulator-bridge-1.0.0.zip"
+    },
+    {
+      "gameId": "super-mario-kart",
+      "id": "bridge",
+      "version": "1.1.0",
+      "key": "installer-assets/super-mario-kart/1.1.0/emulator-bridge-1.0.0.zip",
+      "size": 43051596,
+      "sha256": "cd75f36ccaae9a8a8a21ff843abad4a92263773763b33d9e740acb7d4aa3e3ef",
+      "buildPath": ".artifacts/game-pack-builds/emulator-common/1.0.0/emulator-bridge-1.0.0.zip"
+    }
+  ]
+}

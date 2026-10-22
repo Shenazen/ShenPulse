@@ -393,7 +393,7 @@ test("la roue utilise ses segments, couleurs, design et réglages persistants", 
             id: "wheel_royal",
             name: "Roue royale",
             design: "royal",
-            settings: { spinDuration: 7, showWinner: true },
+            settings: { spinDuration: 7, showWinner: true, wheelTitle: "Défis du jeu", wheelShowTitle: false, wheelTextScale: 350, wheelWinnerColor: "#123456" },
             segments: [
               { id: "a", label: "Aide", color: "#f59f00", action: "none" },
               { id: "b", label: "Chaos", color: "#7b1fa2", action: "none" }
@@ -414,6 +414,10 @@ test("la roue utilise ses segments, couleurs, design et réglages persistants", 
   assert.deepEqual(result.colors, ["#f59f00", "#7b1fa2"]);
   assert.equal(result.design, "royal");
   assert.equal(result.settings.spinDuration, 7);
+  assert.equal(result.settings.wheelTitle, "Défis du jeu");
+  assert.equal(result.settings.wheelShowTitle, false);
+  assert.equal(result.settings.wheelTextScale, 350);
+  assert.equal(result.settings.wheelWinnerColor, "#123456");
   assert.ok(result.choices.includes(result.winner));
   assert.equal(published[0].event, "wheel");
 });

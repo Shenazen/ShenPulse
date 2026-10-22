@@ -6,7 +6,6 @@ const { loadShenazenGameCatalog } = require("./game-catalog");
 const { assertGameAccess } = require("./game-access");
 const { assertAdminAccount } = require("./account-access");
 const { readState } = require("./state-projection");
-const { releaseCrowdControlPort } = require("./crowd-control-port");
 const { WindowsInputService } = require("./windows-input-service");
 const { ColorStrikeBridge } = require("./color-strike-bridge");
 const { TikLiveClimbBridge } = require("./tiklive-climb-bridge");
@@ -22,6 +21,7 @@ const { GameTransports } = require("./game-hub/transports");
 const { httpBridgeFor } = require("./game-hub/http-bridges");
 const { assertProFeatureAccess, createProFeatureGuard } = require("./pro-feature-access");
 const visibility = require("../shared/visibility-catalog");
+const APP_VERSION = require("../../package.json").version;
 const { ADMIN_OWNER_EMAIL } = require("./account-access");
 const { waitForGameConnection } = require("./game-hub/connection-ready");
 
@@ -29,10 +29,10 @@ const { waitForGameConnection } = require("./game-hub/connection-ready");
 class GameHub extends EventEmitter {
   constructor({
     store,
+    appVersion = APP_VERSION,
     packsDirectory,
     resourcesDirectory,
     windowsInputService,
-    crowdControlPortReleaser,
     colorStrikeBridge,
     tikLiveClimbBridge,
     tikLiveCubeWarsBridge,
@@ -43,6 +43,7 @@ class GameHub extends EventEmitter {
   }) {
     super();
     this.store = store;
+    this.appVersion = String(appVersion || APP_VERSION);
     this.packsDirectory = packsDirectory;
     this.resourcesDirectory = resourcesDirectory || path.dirname(packsDirectory);
     this.packs = [];
@@ -52,8 +53,6 @@ class GameHub extends EventEmitter {
     this.minecraftRuntime = null;
     this.windowsInputService =
       windowsInputService || new WindowsInputService();
-    this.crowdControlPortReleaser =
-      crowdControlPortReleaser || releaseCrowdControlPort;
     this.colorStrikeBridge = colorStrikeBridge || new ColorStrikeBridge();
     this.tikLiveClimbBridge =
       tikLiveClimbBridge || new TikLiveClimbBridge();
@@ -115,6 +114,11 @@ class GameHub extends EventEmitter {
     if (!visibility.canAccessScope(scope, admin)) {
       const error = new Error("Ce jeu est désactivé ou réservé par l’administrateur.");
       error.code = "FEATURE_ACCESS_FORBIDDEN";
+      throw error;
+    }
+    if (!visibility.gameVersionAllowed(state.settings?.siteVisibility, pack, this.appVersion)) {
+      const error = new Error(`Ce jeu nécessite ShenPulse ${visibility.gameMinimumVersionFor(state.settings?.siteVisibility, pack.id)} ou une version plus récente. Mettez ShenPulse à jour.`);
+      error.code = "GAME_APP_VERSION_REQUIRED";
       throw error;
     }
     return assertGameAccess(readState(this.store, ["commerce.subscription", "commerce.gameEntitlements"]), pack);
@@ -180,7 +184,7 @@ class GameHub extends EventEmitter {
       }
       return this.gameRuntime.superMarioKartConnectionStatus(pack.id);
     }
-    if (["tcp-server", "websocket-server"].includes(connector.type)) {
+    if (["tcp-server", "websocket-server", "balatro-gamepass"].includes(connector.type)) {
       const bridge = await this.#getServerBridge(pack, connector);
       const status = bridge.status();
       if (!status.connected) {
@@ -198,7 +202,7 @@ class GameHub extends EventEmitter {
   async prepareConnection(packId) {
     const pack = this.assertAccess(packId);
     const connector = this.#connector(pack);
-    if (!["tcp-server", "websocket-server"].includes(connector.type)) {
+    if (!["tcp-server", "websocket-server", "balatro-gamepass"].includes(connector.type)) {
       return { ok: true, listening: false, type: connector.type };
     }
     const bridge = await this.#getServerBridge(pack, connector);
@@ -241,7 +245,7 @@ class GameHub extends EventEmitter {
     const effect = pack.effects.find((item) => item.id === effectId);
     if (!effect) throw new Error(`Effet introuvable : ${effectId}`);
     if (effect.available === false) {
-      throw new Error("Cet effet est une référence visuelle : aucun pack natif exécutable n’est encore disponible.");
+      throw new Error(effect.unavailableReason || "Cet effet est une référence visuelle : aucun pack natif exécutable n’est encore disponible.");
     }
     const connector = this.#connector(pack);
     const payload = createEffectPayload(effect, context, options);
@@ -260,7 +264,7 @@ class GameHub extends EventEmitter {
     let result;
     if (connector.type === "demo") {
       result = { status: "success", message: "Effet simulé." };
-    } else if (["tcp-server", "websocket-server"].includes(connector.type)) {
+    } else if (["tcp-server", "websocket-server", "balatro-gamepass"].includes(connector.type)) {
       result = await this.#sendTcpServer(pack, connector, payload, { assertAccess });
     } else if (connector.type === "tcp") {
       result = await this.#sendTcp(pack, connector, payload, { assertAccess });
@@ -310,13 +314,20 @@ class GameHub extends EventEmitter {
         effect.name
       );
     } else if (connector.type === "windows-input") {
+      const letterGestures = pack.id === "dead-by-daylight" && connector.gestureKeys === "letters" &&
+        ["dbd_dbd_point", "dbd_dbd_come_here", "dbd_dbd_gesture_spam"].includes(effect.code);
+      const arkFistsAzerty = pack.id === "ark-survival-ascended" && effect.code === "ark_toggle_fists" && connector.keyLayout === "azerty";
+      const inputSequence = letterGestures
+        ? effect.inputSequence.replace(/(^|;)(k,\d+,)(49|50)(,[01])(?=;|$)/g,
+            (_, separator, prefix, key, action) => `${separator}${prefix}${key === "49" ? 80 : 79}${action}`)
+        : arkFistsAzerty ? effect.inputSequence.replace(/,81,/g, ",65,") : effect.inputSequence;
       result = {
         status: "success",
         ...(await this.windowsInputService.play(
           connector.processName,
-          effect.inputSequence,
-          connector.keyLayout,
-          effect.keyboardInputMode || connector.keyboardInputMode,
+          inputSequence,
+          arkFistsAzerty ? "wasd" : connector.keyLayout,
+          letterGestures ? "virtual-key" : effect.keyboardInputMode || connector.keyboardInputMode,
           { assertAccess }
         ))
       };
@@ -347,14 +358,25 @@ class GameHub extends EventEmitter {
   }
 
   #connector(pack) {
+    // Ce plugin natif est livré pour un endpoint local fixe. Les anciennes
+    // valeurs sauvegardées (notamment 51337) ne doivent pas le détourner.
+    if (["euro-truck-simulator-2", "blue-prince", "resident-evil-3", "cult-of-the-lamb", "stardew-valley", "terraria", "escape-from-duckov", "dredge", "egging-on", "fallout-4", "gtav-montchiliad", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)) return { ...pack.connector };
+    if (pack.id === "balatro" && readState(this.store, ["game.installations"]).game.installations?.balatro?.edition === "gamepass") {
+      return { ...pack.connector, type: "balatro-gamepass", focusProcessOnManualTrigger: "love" };
+    }
+    if (pack.id === "balatro") return { ...pack.connector };
     const override = readState(this.store, ["game.connectorOverrides"]).game.connectorOverrides?.[pack.id] || {};
     if (pack.connector?.type === "windows-input") {
       return {
         ...pack.connector,
+        ...(pack.id === "dead-by-daylight" ? {
+          processName: require("./game-runtime/four-games-installation").deadByDaylightProcess(readState(this.store, ["game.installations"]).game.installations?.[pack.id]),
+          gestureKeys: override.gestureKeys === "letters" ? "letters" : "numbers"
+        } : {}),
         keyLayout:
-          String(override.keyLayout || "").toLowerCase() === "azerty"
-            ? "azerty"
-            : "wasd"
+          ["wasd", "azerty", "zsqd"].includes(String(override.keyLayout || "").toLowerCase())
+            ? String(override.keyLayout).toLowerCase()
+            : pack.connector.keyLayout || "azerty"
       };
     }
     return { ...(pack.connector || {}), ...override };

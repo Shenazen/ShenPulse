@@ -665,6 +665,8 @@
 
 .game-gallery-tile .tile-platforms {
   display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   align-items: center;
   gap: 7px;
   min-height: 30px;
@@ -672,6 +674,7 @@
 
 .game-gallery-tile .tile-platform-logo {
   display: inline-flex;
+  flex-shrink: 0;
   width: 30px;
   height: 30px;
   align-items: center;

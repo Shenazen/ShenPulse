@@ -109,7 +109,7 @@ function superMarioKartWorkspaceState(pack) {
     const inputLayout = String(
       snapshot?.state?.game?.connectorOverrides?.[pack.id]?.keyLayout ||
         pack.connector?.keyLayout ||
-        "wasd"
+        "azerty"
     ).toLowerCase() === "azerty"
       ? "azerty"
       : "wasd";
@@ -297,7 +297,7 @@ function renderSuperMarioKartInstallationRail(pack, unlocked, state) {
       <span>${profile.installKicker || "INSTALLATION COMPLÈTE"}</span>
       <strong>Préparer le jeu</strong>
       <p>${profile.installDescription}</p>
-      ${profile.inputOnly ? `<label class="smk-input-layout-field"><span>Disposition du clavier</span><select data-game-key-layout><option value="wasd" ${state.inputLayout === "wasd" ? "selected" : ""}>WASD — clavier standard</option><option value="azerty" ${state.inputLayout === "azerty" ? "selected" : ""}>ZQSD — clavier français</option></select></label>` : ""}
+      ${profile.inputOnly ? `<label class="smk-input-layout-field"><span>Disposition du clavier</span><select data-game-key-layout><option value="azerty" ${state.inputLayout === "azerty" ? "selected" : ""}>ZQSD — clavier français</option><option value="wasd" ${state.inputLayout === "wasd" ? "selected" : ""}>WASD — clavier standard</option></select></label>` : ""}
       <button class="button primary smk-install-all" data-action="${buttonAction}" data-id="${escapeHtml(pack.id)}" ${unlocked && !busy ? "" : "disabled"}>${buttonLabel}</button>
       ${profile.inputOnly ? `<button class="button smk-test-input-game" data-action="test-game" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>◎ Vérifier ${escapeHtml(profile.processLabel || pack.name)} ouvert</button>` : ""}
     </header>
@@ -378,10 +378,12 @@ function renderSuperMarioKartWorkspace(pack) {
         <h2>${escapeHtml(pack.name)}</h2>
         <p>Préparez le jeu, configurez les interactions et pilotez votre session depuis un tableau unique.</p>
         <div class="smk-hero-tags">${profile.platformTags.map((tag) => `<b>${escapeHtml(tag)}</b>`).join("")}<b>${pack.effects.length} interactions</b></div>
+        ${renderGameConditionsButton(pack)}
       </div>
       <div class="smk-hero-status ${state.sessionActive ? "live" : state.allReady ? "ready" : ""}">
         <i></i><span>${state.sessionActive ? "Session active" : state.allReady ? "Prêt à jouer" : "Configuration requise"}</span>
       </div>
+      ${renderGameConditionsPanel(pack)}
     </section>
     ${unlocked ? "" : `<section class="game-access-warning"><span aria-hidden="true">🔒</span><div><strong>Accès requis pour exécuter ce jeu</strong><p>${escapeHtml(gameAccessReason(pack))}</p></div><button class="button primary" data-navigate="membership">Voir les accès</button></section>`}
     <div class="smk-workspace-shell">

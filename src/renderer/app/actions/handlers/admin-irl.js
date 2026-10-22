@@ -23,6 +23,8 @@ const ADMIN_IRL_ACTIONS = new Set([
   "admin-visibility-section",
   "admin-visibility-sync",
   "admin-visibility-bulk",
+  "admin-game-platforms",
+  "admin-game-version",
   "admin-game-cheat-remove",
   "admin-trial-edit",
   "admin-trial-revoke",
@@ -102,6 +104,8 @@ async function handleAdminAndIrlAction({ action, target, id }) {
     }, "Prise retirée");
   }
   if (action === "admin-login") return openAdminLogin();
+  if (action === "admin-game-platforms") return openAdminGamePlatformsEditor(id);
+  if (action === "admin-game-version") return openAdminGameVersionEditor(id);
   if (action === "open-admin") {
     currentPage = "admin";
     render();

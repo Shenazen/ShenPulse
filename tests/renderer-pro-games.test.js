@@ -24,8 +24,11 @@ function gameContext(t, subscription = { tier: "free", source: "free", status: "
   window.openEditor = (options) => { window.editor = options; };
   const run = (code) => vm.runInContext(code, dom.getInternalVMContext());
   run(fs.readFileSync(path.join(sourceRoot, "shared", "pro-access.js"), "utf8"));
-  run("let gameFilter = 'all'; let gameSearch = ''; let gamePageMode = 'catalog';");
+  run(fs.readFileSync(path.join(sourceRoot, "shared", "game-categories.js"), "utf8"));
+  run(fs.readFileSync(path.join(sourceRoot, "shared", "game-pass-catalog.js"), "utf8"));
+  run("let gameFilter = 'all'; let gameCategory = 'all'; let gameSearch = ''; let gamePageMode = 'catalog';");
   run(fs.readFileSync(path.join(sourceRoot, "renderer", "app", "features", "games", "access.js"), "utf8"));
+  run(fs.readFileSync(path.join(sourceRoot, "renderer", "app", "features", "games", "categories.js"), "utf8"));
   return { window, run, render() { window.document.querySelector("main").innerHTML = window.renderGamesV2(); return window.document.querySelector("main"); } };
 }
 

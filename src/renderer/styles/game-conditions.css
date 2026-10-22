@@ -1,0 +1,184 @@
+.game-conditions-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.08);
+  color: #fcd34d;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.035em;
+  cursor: pointer;
+}
+
+.game-conditions-button:hover,
+.game-conditions-button[aria-expanded="true"] {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.game-conditions-button:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 4px;
+}
+
+.game-conditions-button svg {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.game-conditions-button .game-conditions-chevron {
+  width: 14px;
+  height: 14px;
+}
+
+.game-conditions-button[aria-expanded="true"] .game-conditions-chevron {
+  transform: rotate(180deg);
+}
+
+.smk-hero-copy > .game-conditions-button {
+  margin-top: 12px;
+}
+
+.game-conditions-panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-top: 22px;
+  border-top: 1px solid rgba(251, 191, 36, 0.22);
+  color: var(--text);
+  text-align: left;
+}
+
+.game-conditions-panel[hidden] {
+  display: none;
+}
+
+.game-conditions-panel h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.game-conditions-panel h4 {
+  margin: 0 0 14px;
+  color: #fcd34d;
+  font-size: 14px;
+}
+
+.game-conditions-panel p {
+  max-width: none;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.game-conditions-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.game-conditions-columns > section,
+.game-conditions-controls,
+.game-conditions-limits {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(5, 8, 20, 0.65);
+}
+
+.game-conditions-panel ul,
+.game-conditions-panel ol {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.game-conditions-panel li {
+  padding-left: 3px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.game-conditions-panel li::marker {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+.game-conditions-controls,
+.game-conditions-limits,
+.game-conditions-panel footer {
+  margin-top: 18px;
+}
+
+.game-conditions-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.game-conditions-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.game-conditions-table th,
+.game-conditions-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  line-height: 1.6;
+}
+
+.game-conditions-table thead th {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.game-conditions-table kbd {
+  display: inline-block;
+  margin: 0 3px 4px 0;
+  padding: 2px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 5px;
+  background: #111a2b;
+  color: #e2e8f0;
+  font: inherit;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.game-conditions-panel footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .game-conditions-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .game-conditions-columns > section,
+  .game-conditions-controls,
+  .game-conditions-limits {
+    padding: 14px;
+  }
+
+  .game-conditions-table table {
+    min-width: 520px;
+  }
+}

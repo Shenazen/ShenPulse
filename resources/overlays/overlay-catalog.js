@@ -251,6 +251,24 @@
     return CHANNEL_VIEWS[normalizedChannel]?.has(normalizedView) === true;
   }
 
+  /** Garde la première cible des anciennes associations et distingue les copies. */
+  function normalizeWheelIdentities(wheels = []) {
+    const reserved = new Set(wheels.map((wheel) => String(wheel?.id || "").trim()).filter(Boolean));
+    const seen = new Set();
+    return wheels.map((wheel, index) => {
+      const original = String(wheel.id || "").trim();
+      const base = original || `wheel_${index + 1}`;
+      let id = base;
+      if (seen.has(id) || (!original && reserved.has(id))) {
+        let suffix = 2;
+        do { id = `${base}_copy_${suffix++}`; } while (seen.has(id) || reserved.has(id));
+      }
+      seen.add(id);
+      reserved.add(id);
+      return { ...wheel, id };
+    });
+  }
+
   return Object.freeze({
     version: 1,
     themes: shared.themes,
@@ -270,6 +288,7 @@
     definition,
     defaultConfig,
     normalizeDesign,
+    normalizeWheelIdentities,
     settingsFor,
     buildUrls,
     definitionsWithUrls,

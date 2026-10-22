@@ -32,7 +32,8 @@ function safeInstallerAssetUrl(value) {
     !(
       url.hostname === "backblazeb2.com" ||
       url.hostname.endsWith(".backblazeb2.com") ||
-      url.hostname === "one-click.crowdcontrol.live" ||
+      (url.hostname === "builds.bepinex.dev" && url.pathname.startsWith("/projects/bepinex_be/")) ||
+      (url.hostname === "github.com" && /^\/(?:Steamodded\/smods\/archive\/refs\/tags\/|ethangreen-dev\/lovely-injector\/releases\/download\/|BepInEx\/BepInEx\/releases\/download\/)/.test(url.pathname)) ||
       url.hostname === "builds.dotnet.microsoft.com"
     )
   ) {

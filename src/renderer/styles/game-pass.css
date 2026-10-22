@@ -1,0 +1,6 @@
+/* Logo Game Pass lisible, ajouté aux boutiques existantes. */
+.game-gallery-tile .tile-platform-logo.platform-game-pass { width: 68px; border-color: rgba(107, 194, 83, .5); background: rgba(12, 43, 16, .85); }
+.game-gallery-tile .tile-platform-logo.platform-game-pass svg { width: 60px; height: 24px; }
+.game-platform-legend-item:has(.platform-game-pass) { grid-template-columns: 76px minmax(0, 1fr); }
+.game-platform-legend-icon.platform-game-pass { width: 76px; color: #9edb75; border-color: rgba(107, 194, 83, .4); }
+.game-platform-legend-icon.platform-game-pass svg { width: 67px; height: 28px; }

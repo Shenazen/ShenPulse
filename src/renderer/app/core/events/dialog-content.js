@@ -27,7 +27,11 @@ dialog.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-wheel-command]");
   if (!target || !wheelEditorContext) return;
   event.preventDefault();
-  const previousWheelScrollTop = dialogBody.scrollTop;
+  const wheelFields = dialogBody.querySelector(".overlay-config-fields");
+  const wheelScrollArea = wheelFields && wheelFields.scrollHeight > wheelFields.clientHeight
+    ? wheelFields : dialogBody;
+  const previousWheelScrollTop = wheelScrollArea.scrollTop;
+  const wheelAdvancedOpen = dialogBody.querySelector(".dialog-advanced")?.open === true;
   collectWheelEditorForm();
   const config = wheelEditorContext.config;
   const wheel = config.wheels.find(
@@ -93,6 +97,7 @@ dialog.addEventListener("click", async (event) => {
     config.selectedWheelId = config.wheels[0].id;
     wheelEditorContext.section = "setup";
   } else if (command === "segment-add") {
+    if (wheel.segments.length >= 16) return;
     wheel.segments.push({
       id: `segment_${cryptoId()}`,
       label: `Nouveau segment ${wheel.segments.length + 1}`,
@@ -121,14 +126,17 @@ dialog.addEventListener("click", async (event) => {
   }
   openWheelOverlayConfig(wheelEditorContext.item);
   if (command.startsWith("segment-")) {
+    const advanced = dialogBody.querySelector(".dialog-advanced");
+    if (advanced) advanced.open = wheelAdvancedOpen;
     requestAnimationFrame(() => {
+      const fields = dialogBody.querySelector(".overlay-config-fields");
+      const area = fields && fields.scrollHeight > fields.clientHeight ? fields : dialogBody;
       if (command === "segment-add") {
-        dialogBody
-          .querySelector("[data-wheel-segment-row]:last-child")
-          ?.scrollIntoView({ block: "center" });
+        const row = dialogBody.querySelector("[data-wheel-segment-row]:last-child");
+        if (row) area.scrollTop += row.getBoundingClientRect().top - area.getBoundingClientRect().top - 12;
         return;
       }
-      dialogBody.scrollTop = previousWheelScrollTop;
+      area.scrollTop = previousWheelScrollTop;
     });
   }
 });

@@ -699,3 +699,39 @@
   font-size: 10px;
   text-align: center;
 }
+
+.admin-visibility-list article.admin-game-visibility-row {
+  grid-template-columns: 37px minmax(0, 1fr) minmax(140px, 210px) minmax(130px, 155px) minmax(150px, 190px);
+}
+.admin-game-version { display: grid; justify-items: start; gap: 7px; min-width: 0; }
+.admin-game-version > span { color: var(--muted); font-size: 10px; line-height: 1.4; }
+.admin-game-version .button { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.admin-game-platforms { display: grid; justify-items: start; gap: 7px; min-width: 0; }
+.admin-game-platform-preview .tile-platforms { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.admin-game-platform-preview .tile-platform-logo, .admin-platform-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; color: white; flex-shrink: 0; }
+.admin-game-platform-preview svg, .admin-game-platform-preview img, .admin-platform-icon svg, .admin-platform-icon img { width: 24px; height: 24px; object-fit: contain; fill: currentColor; }
+.admin-game-platform-preview .platform-game-pass, .admin-platform-icon.platform-game-pass { width: 65px; }
+.admin-game-platform-preview .platform-game-pass svg, .admin-platform-icon.platform-game-pass svg { width: 60px; }
+.admin-game-platform-preview .platform-cutout, .admin-platform-icon .platform-cutout { fill: #090b15; }
+.admin-game-platforms .button { white-space: normal; }
+.admin-platform-help { color: var(--muted); line-height: 1.5; }
+.admin-game-platform-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border: 0; padding: 0; margin: 18px 0; min-width: 0; }
+.admin-game-platform-options legend { padding: 0 0 12px; font-weight: 700; }
+.admin-game-platform-option { display: flex; align-items: center; gap: 10px; padding: 12px; min-height: 58px; border: 1px solid var(--line); border-radius: 12px; background: #090b15; cursor: pointer; }
+.admin-game-platform-option:has(input:checked) { border-color: var(--cyan); background: var(--cyan-soft); }
+.admin-game-platform-option:focus-within { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.admin-game-platform-option input { width: 17px; height: 17px; margin: 0; flex-shrink: 0; accent-color: var(--cyan); }
+.admin-game-platform-option > span:last-child { overflow-wrap: anywhere; }
+@media (max-width: 1200px) {
+  .admin-visibility-list article.admin-game-visibility-row { grid-template-columns: 37px minmax(0, 1fr) minmax(150px, 190px); }
+  .admin-game-visibility-row .admin-game-platforms { grid-column: 2; grid-row: 2; }
+  .admin-game-visibility-row .admin-game-version { grid-column: 3; grid-row: 2; }
+  .admin-game-visibility-row > select { grid-column: 3; grid-row: 1; }
+}
+@media (max-width: 600px) {
+  .admin-visibility-list article.admin-game-visibility-row { grid-template-columns: 30px minmax(0, 1fr); padding: 12px; gap: 10px; }
+  .admin-game-visibility-row > select { grid-column: 2; grid-row: 2; width: 100%; }
+  .admin-game-visibility-row .admin-game-platforms { grid-column: 2; grid-row: 3; }
+  .admin-game-visibility-row .admin-game-version { grid-column: 2; grid-row: 4; }
+  .admin-game-platform-options { grid-template-columns: minmax(0, 1fr); }
+}

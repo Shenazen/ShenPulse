@@ -13,6 +13,7 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "set-overlay-category",
   "set-sound-category",
   "set-game-filter",
+  "set-game-category",
   "open-game",
   "open-minecraft-mode",
   "close-game",
@@ -35,6 +36,7 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "add-deal-banker-request",
   "remove-deal-banker-request",
   "game-step",
+  "toggle-game-conditions",
   "dismiss-game-message",
   "dismiss-game-progress",
   "save-game-input-layout",
@@ -87,6 +89,10 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
   }
   if (action === "set-game-filter") {
     gameFilter = target.dataset.value;
+    return render();
+  }
+  if (action === "set-game-category") {
+    gameCategory = target.dataset.value;
     return render();
   }
   if (action === "open-game") {
@@ -503,6 +509,10 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     }, "Demandes du banquier mises à jour");
     return;
   }
+  if (action === "toggle-game-conditions") {
+    toggleGameConditions(target, id);
+    return;
+  }
   if (action === "game-step") {
     const nextStep = target.dataset.value || "installation";
     const pack = snapshot.packs.find(
@@ -549,9 +559,12 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
       .closest(".smk-command-rail, .game-simple-step")
       ?.querySelector("[data-game-key-layout]")
       ?.value;
+    const gestureKeys = target.closest(".game-simple-step")
+      ?.querySelector("[data-game-gesture-keys]")?.value;
     await perform(async () => {
       snapshot = await api.configureGame(pack.id, {
-        keyLayout: layout === "azerty" ? "azerty" : "wasd"
+        keyLayout: ["wasd", "zsqd"].includes(layout) ? layout : "azerty",
+        ...(pack.id === "dead-by-daylight" ? { gestureKeys: gestureKeys === "letters" ? "letters" : "numbers" } : {})
       });
       render();
     }, `Interactions ${pack.name} installées`);

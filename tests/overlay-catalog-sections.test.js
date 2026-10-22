@@ -39,7 +39,7 @@ function overlayPage(t, { authenticated = true, pro = true, hiddenKeys = [] } = 
       ? "https://overlays.example.test/m/123456789012/abcdefghijklmnopqrstuvwx?transport=local"
       : "",
     localOverlayUrl: (item) => `http://127.0.0.1:17654/${item.key}`,
-    renderStudioHero: (id, title) => `<section data-hero="${escape(id)}">${escape(title)}</section>`,
+    renderStudioHero: (id, title, description) => `<section data-hero="${escape(id)}"><h2>${escape(title)}</h2><p>${escape(description)}</p></section>`,
     emptyInline: (message) => `<p class="empty-inline">${escape(message)}</p>`,
     api: new Proxy({}, { get() { throw new Error("Le catalogue ne doit effectuer aucun appel API."); } }),
     fetch() { throw new Error("Les ornements ne doivent effectuer aucune requête distante."); },
@@ -68,7 +68,7 @@ test("chaque catégorie visible possède un cadre de titre et un ornement de fin
   const page = context.draw();
   const groups = sections(page);
   assert.deepEqual(groups.map((section) => section.dataset.overlayCategory), [
-    "counters", "rankings", "interactions", "actions", "gifts", "matches"
+    "counters", "rankings", "interactions", "actions", "gifts"
   ]);
   for (const section of groups) {
     const heading = section.querySelector(":scope > .overlay-category-heading");
@@ -106,21 +106,34 @@ test("chaque catégorie visible possède un cadre de titre et un ornement de fin
   }
   assert.equal(groups[0].querySelector("h3").firstChild.textContent, "Objectifs & compteurs");
   assert.equal(page.querySelectorAll("[data-overlay-card]").length,
-    overlayCatalog.definitions.filter((item) => !item.catalogHidden).length);
+    overlayCatalog.definitions.filter((item) => !item.catalogHidden && item.category !== "matches").length);
+  assert.match(page.querySelector('[data-hero="overlays"] p').textContent, /^9 widgets interactifs\./);
   assert.equal(JSON.stringify(context.snapshot.state), before, "Le rendu ne modifie aucune configuration.");
 });
 
-test("le filtre Matchs conserve ses huit cartes et son guide entre le titre et la grille", (t) => {
-  const page = overlayPage(t).draw({ category: "matches" });
-  const groups = sections(page);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0].dataset.overlayCategory, "matches");
-  assert.equal(groups[0].querySelectorAll("[data-overlay-card]").length, 8);
-  const heading = groups[0].querySelector(".overlay-category-heading");
-  const guide = groups[0].querySelector(".match-overlay-guide");
-  assert.equal(heading.nextElementSibling, guide);
-  assert.equal(guide.nextElementSibling.className, "overlay-catalog-grid");
-  assert.equal(page.querySelector('[data-action="set-overlay-category"][data-value="matches"]').className, "active");
+test("les Matchs et leurs vidéos sont absents de la galerie, y compris avec un ancien filtre ou une recherche", (t) => {
+  const matches = overlayCatalog.definitions.filter((item) => item.category === "matches");
+  assert.equal(matches.length, 8, "les fonctionnalités Matchs conservent leur catalogue partagé");
+  for (const access of [{ authenticated: true, pro: true }, { authenticated: true, pro: false }, { authenticated: false, pro: false }]) {
+    const context = overlayPage(t, access);
+    const before = JSON.stringify(context.snapshot.state);
+    for (const filters of [{}, { category: "matches" }, { search: "Match x2" }, { search: "Gladiador" }]) {
+      const page = context.draw(filters);
+      assert.equal(context.overlayCategory, "all");
+      assert.equal(page.querySelector('[data-overlay-category="matches"], [data-action="set-overlay-category"][data-value="matches"], .match-overlay-guide'), null);
+      for (const item of matches) assert.equal(page.querySelector(`[data-overlay-card="${item.key}"], [data-placeholder="${item.key}"]`), null);
+      assert.doesNotMatch(page.textContent, /Matchs|vidéos? Match|animations Match/i);
+    }
+    assert.equal(JSON.stringify(context.snapshot.state), before, "retirer les cartes préserve les configurations existantes");
+  }
+});
+
+test("la synchronisation du relais ne réintroduit pas de texte Matchs dans la page Overlays", (t) => {
+  const context = overlayPage(t);
+  const page = context.draw();
+  context.syncPublicOverlayRelayStatus({ connected: true, status: "connected" });
+  assert.match(page.querySelector('[data-public-overlay-relay-detail]').textContent, /URL HTTPS/);
+  assert.doesNotMatch(page.textContent, /Matchs|lecteur Match|tickets vidéo/i);
 });
 
 test("la recherche dans les designs conserve uniquement la section non vide correspondante", (t) => {

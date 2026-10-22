@@ -7,182 +7,6 @@
  * Il partage uniquement les contrats globaux documentés dans README.md.
  */
 
-function openWheelOverlayConfig(item, rawConfig = null) {
-  if (!wheelEditorContext || wheelEditorContext.item.key !== item.key || rawConfig) {
-    wheelEditorContext = {
-      item,
-      config: normalizeWheelConfig(rawConfig || overlayConfig(item.key)),
-      section: "setup"
-    };
-  }
-  const config = wheelEditorContext.config;
-  const wheel = config.wheels.find((entry) => entry.id === config.selectedWheelId)
-    || config.wheels[0];
-  config.selectedWheelId = wheel.id;
-  const settings = wheel.settings;
-  const wheelTriggerText = wheelTriggerSummary(wheel);
-  const activeSection = ["setup", "segments", "appearance", "playback"].includes(
-    wheelEditorContext.section
-  )
-    ? wheelEditorContext.section
-    : "setup";
-  const wheelTabs = config.wheels.map((entry) =>
-    `<button type="button" class="${entry.id === wheel.id ? "active" : ""}" data-wheel-command="select" data-wheel-id="${escapeHtml(entry.id)}">
-      <span class="wheel-list-dot ${entry.enabled ? "enabled" : ""}"></span>
-      <span><strong>${escapeHtml(entry.name)}</strong><small>${entry.segments.length} segments · ${entry.design === "royal" ? "Royal" : "Classique"}</small></span>
-    </button>`
-  ).join("");
-  openEditor({
-    title: "Configurer la roue d’actions",
-    kicker: "OVERLAY OBS · ROUES & SEGMENTS",
-    variant: "overlay-live",
-    body: `<div class="wheel-config-editor" data-overlay-config-editor="${escapeHtml(item.key)}">
-      <aside class="wheel-config-sidebar">
-        <div class="wheel-sidebar-intro"><span>COLLECTION</span><strong>Mes roues</strong><small>Choisissez la roue à modifier.</small></div>
-        <div class="wheel-config-list">${wheelTabs}</div>
-        <button type="button" class="wheel-add-button" data-wheel-command="add">＋ Créer une roue</button>
-        <button type="button" class="wheel-delete-button" data-wheel-command="delete" ${config.wheels.length <= 1 ? "disabled" : ""}>Supprimer cette roue</button>
-      </aside>
-      <div class="wheel-config-main">
-        <section class="wheel-config-identity">
-          <div>
-            <span class="game-step-kicker">ROUE SÉLECTIONNÉE</span>
-            <h3>${escapeHtml(wheel.name)}</h3>
-            <p>${wheel.segments.length} secteurs · ${escapeHtml(wheelTriggerText)}</p>
-          </div>
-          <div class="wheel-live-toggle">
-            ${fieldLabelWithInfo("État", OVERLAY_FIELD_HELP.wheelEnabled)}
-            <select name="wheelEnabled"><option value="true" ${wheel.enabled ? "selected" : ""}>Active</option><option value="false" ${!wheel.enabled ? "selected" : ""}>Désactivée</option></select>
-          </div>
-        </section>
-        <nav class="wheel-editor-steps" aria-label="Étapes de configuration">
-          <button type="button" class="${activeSection === "setup" ? "active" : ""}" data-wheel-command="section" data-wheel-section="setup"><b>1</b><span><strong>Configuration</strong><small>Nom, design et cadeau</small></span></button>
-          <button type="button" class="${activeSection === "segments" ? "active" : ""}" data-wheel-command="section" data-wheel-section="segments"><b>2</b><span><strong>Secteurs</strong><small>Résultats et actions</small></span></button>
-          <button type="button" class="${activeSection === "appearance" ? "active" : ""}" data-wheel-command="section" data-wheel-section="appearance"><b>3</b><span><strong>Apparence</strong><small>Texte et rendu</small></span></button>
-          <button type="button" class="${activeSection === "playback" ? "active" : ""}" data-wheel-command="section" data-wheel-section="playback"><b>4</b><span><strong>Diffusion</strong><small>Animation et résultat</small></span></button>
-        </nav>
-        <div class="wheel-editor-workspace">
-          <div class="wheel-editor-panels">
-            <section class="wheel-editor-panel" data-wheel-section-panel="setup" ${activeSection === "setup" ? "" : "hidden"}>
-              <header class="wheel-panel-heading"><span>ÉTAPE 1</span><h3>Configurer l’essentiel</h3><p>Donnez un nom clair à la roue, choisissez son style puis décidez comment elle sera déclenchée.</p></header>
-              <div class="wheel-settings-card form-grid">
-                ${overlayField("wheelName", "Nom de la roue", wheel.name, "text", "required full")}
-                ${giftTriggerConditionFields(wheelGiftValueConditions(wheel), {
-                  giftName: "wheelTrigger",
-                  giftLabel: "Cadeau TikTok",
-                  giftValue: wheel.trigger,
-                  giftId: wheel.triggerGift?.giftId || "",
-                  savedReference: wheel.triggerGift,
-                  modeName: "wheelGiftTriggerMode",
-                  operatorName: "wheelGiftValueOperator",
-                  amountName: "wheelGiftValueAmount"
-                })}
-                <div class="wheel-inline-note full"><strong>Déclenchement flexible</strong><span>Configurez une méthode, ou laissez son champ vide pour conserver un lancement manuel.</span></div>
-              </div>
-              <div class="wheel-settings-card">
-                <header><div><h4>Design de la roue</h4><p>L’aperçu réel à droite se met à jour dès votre choix.</p></div></header>
-                <div class="wheel-design-options">
-                  ${wheelDesignOption("classic", "Orange Classique", "Énergique et lisible pour les actions LIVE.", wheel.design)}
-                  ${wheelDesignOption("royal", "Royale Prestige", "Ornements dorés pour les défis et événements.", wheel.design)}
-                </div>
-              </div>
-            </section>
-            <section class="wheel-editor-panel" data-wheel-section-panel="segments" ${activeSection === "segments" ? "" : "hidden"}>
-              <header class="wheel-panel-heading wheel-panel-heading-with-action"><div><span>ÉTAPE 2</span><h3>Définir les secteurs</h3><p>Chaque secteur affiche un résultat et peut lancer une action ShenPulse.</p></div><button type="button" class="button secondary" data-wheel-command="segment-add">＋ Ajouter un secteur</button></header>
-              <div class="wheel-segment-help"><span>${wheel.segments.length}</span><div><strong>secteurs configurés</strong><small>Utilisez les flèches pour définir leur ordre sur la roue.</small></div></div>
-              <div class="wheel-segment-list">${wheel.segments.map((segment, index) => wheelSegmentEditor(segment, index, wheel.segments.length)).join("")}</div>
-            </section>
-            <section class="wheel-editor-panel" data-wheel-section-panel="appearance" ${activeSection === "appearance" ? "" : "hidden"}>
-              <header class="wheel-panel-heading"><span>ÉTAPE 3</span><h3>Régler l’apparence</h3><p>Commencez par la lisibilité. Les ajustements fins restent disponibles dans les options avancées.</p></header>
-              <div class="wheel-settings-card">
-                <header><div><h4>Texte des secteurs</h4><p>Les réglages les plus utiles au quotidien.</p></div></header>
-                <div class="form-grid wheel-form-grid-3">
-                  ${overlaySelect("font", "Police", settings.font, [["Kalam", "Kalam"], ["Inter", "Inter"], ["Impact", "Impact"], ["Arial Rounded", "Arial Rounded"], ["System", "Système"]])}
-                  ${overlayField("fontSize", "Taille", settings.fontSize, "number", 'min="10" max="120"')}
-                  ${overlayField("textColor", "Couleur", settings.textColor, "color")}
-                  ${overlaySelect("textOrientation", "Orientation", settings.textOrientation, [["horizontal", "Horizontale"], ["vertical", "Verticale"]])}
-                  ${overlaySelect("textAlign", "Alignement", settings.textAlign, [["left", "Gauche"], ["center", "Centre"], ["right", "Droite"]])}
-                  ${overlaySelect("textClamp", "Limiter le texte", String(settings.textClamp), [["true", "Oui"], ["false", "Non"]])}
-                </div>
-              </div>
-              <div class="wheel-settings-card">
-                <header><div><h4>Rendu de la roue</h4><p>Taille, lumière et éléments décoratifs.</p></div></header>
-                <div class="form-grid wheel-form-grid-3">
-                  ${overlayField("scale", "Échelle globale (%)", settings.scale, "number", 'min="50" max="180"')}
-                  ${overlayField("glow", "Intensité lumineuse", settings.glow, "number", 'min="0" max="140"')}
-                  ${overlaySelect("showBase", "Afficher le socle", String(settings.showBase), [["true", "Oui"], ["false", "Non"]])}
-                  ${overlaySelect("pointerPosition", "Position du pointeur", settings.pointerPosition, [["top", "En haut"], ["right", "À droite"], ["bottom", "En bas"], ["left", "À gauche"]])}
-                </div>
-              </div>
-              <details class="wheel-settings-card wheel-advanced-settings">
-                <summary><span><strong>Réglages typographiques avancés</strong><small>Ombre, placement et dimensions du texte.</small></span><b>Afficher</b></summary>
-                <div class="form-grid wheel-form-grid-3">
-                  ${overlayField("textShadowColor", "Couleur de l’ombre", settings.textShadowColor, "color")}
-                  ${overlayField("textShadowStrength", "Force de l’ombre", settings.textShadowStrength, "number", 'min="0" max="100"')}
-                  ${overlayField("textRadius", "Rayon du texte (%)", settings.textRadius, "number", 'min="20" max="135"')}
-                  ${overlayField("textSegmentOffset", "Décalage dans le secteur", settings.textSegmentOffset, "number", 'min="-100" max="100"')}
-                  ${overlayField("textBoxWidth", "Largeur du texte", settings.textBoxWidth, "number", 'min="45" max="260"')}
-                  ${overlayField("textBoxHeight", "Hauteur du texte", settings.textBoxHeight, "number", 'min="50" max="320"')}
-                  ${overlayField("textAngleOffset", "Correction d’angle", settings.textAngleOffset, "number", 'min="-180" max="180"')}
-                  ${overlayField("textMaxLines", "Nombre de lignes", settings.textMaxLines, "number", 'min="1" max="4"')}
-                  ${overlayField("lineSpacing", "Interligne (%)", settings.lineSpacing, "number", 'min="0" max="100"')}
-                  ${overlayField("letterSpacing", "Espacement lettres (%)", settings.letterSpacing, "number", 'min="0" max="100"')}
-                </div>
-              </details>
-            </section>
-            <section class="wheel-editor-panel" data-wheel-section-panel="playback" ${activeSection === "playback" ? "" : "hidden"}>
-              <header class="wheel-panel-heading"><span>ÉTAPE 4</span><h3>Préparer la diffusion</h3><p>Contrôlez la durée de la rotation, le son et ce que les spectateurs voient avant et après le résultat.</p></header>
-              <div class="wheel-settings-card">
-                <header><div><h4>Rotation et son</h4><p>La rotation commence toujours immédiatement.</p></div></header>
-                <div class="form-grid wheel-form-grid-3">
-                  ${overlaySelect("soundActive", "Son de rotation", String(settings.soundActive), [["true", "Activé"], ["false", "Désactivé"]])}
-                  ${overlayField("spinDuration", "Durée de rotation (s)", settings.spinDuration, "number", 'min="1" max="30" step="0.1"')}
-                  ${overlayField("waitDuration", "Pause avant résultat (s)", settings.waitDuration, "number", 'min="0" max="15" step="0.1"')}
-                </div>
-              </div>
-              <div class="wheel-settings-card">
-                <header><div><h4>Affichage et résultat</h4><p>Choisissez quand la roue apparaît et combien de temps le résultat reste visible.</p></div></header>
-                <div class="form-grid wheel-form-grid-3">
-                  ${overlaySelect("showWinner", "Afficher le résultat", String(settings.showWinner), [["true", "Oui"], ["false", "Non"]])}
-                  ${overlayField("resultDuration", "Durée du résultat (s)", settings.resultDuration, "number", 'min="1" max="30" step="0.1"')}
-                  ${overlaySelect("alwaysVisible", "Visible au repos", String(settings.alwaysVisible), [["true", "Oui"], ["false", "Seulement pendant l’action"]])}
-                  ${overlaySelect("entranceAnimation", "Animation d’entrée", settings.entranceAnimation, [["zoom", "Zoom"], ["fade", "Fondu"], ["slide", "Glissement"], ["none", "Aucune"]])}
-                  ${overlaySelect("exitAnimation", "Animation de sortie", settings.exitAnimation, [["fade", "Fondu"], ["zoom", "Zoom"], ["slide", "Glissement"], ["none", "Aucune"]])}
-                </div>
-              </div>
-            </section>
-          </div>
-          <aside class="wheel-preview-column">
-            ${overlayLivePreview(item, config, { compact: true })}
-            <div class="wheel-preview-summary">
-              <span><small>Secteurs</small><strong>${wheel.segments.length}</strong></span>
-              <span><small>Design</small><strong>${wheel.design === "royal" ? "Royal" : "Classique"}</strong></span>
-              <span><small>Déclencheur</small><strong>${escapeHtml(wheelTriggerText)}</strong></span>
-            </div>
-            <div class="overlay-config-source"><span>Source HTTPS · 800 × 900</span><code>${escapeHtml(overlayUrl(item))}</code><small>OBS local</small><code>${escapeHtml(localOverlayUrl(item))}</code></div>
-          </aside>
-        </div>
-      </div>
-    </div>`,
-    onSubmit: async () => {
-      collectWheelEditorForm();
-      const next = wheelEditorContext.config;
-      const selected = next.wheels.find((entry) => entry.id === next.selectedWheelId) || next.wheels[0];
-      if (selected.segments.length < 2) {
-        throw new Error("La roue doit contenir au moins deux segments.");
-      }
-      next.title = selected.name;
-      next.design = selected.design;
-      next.choices = selected.segments.map((segment) => segment.label);
-      next.colors = selected.segments.map((segment) => segment.color);
-      Object.assign(next, selected.settings);
-      overlayDesignSelections[item.key] = selected.design;
-      await saveOverlayConfig(item.key, next, { rerender: false });
-      wheelEditorContext = null;
-    }
-  });
-  syncWheelSegmentActionVisibility();
-}
 
 function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
   const next = { ...baseConfig };
@@ -232,7 +56,8 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
     "likeGoalPercentColor",
     "timerTitleColor",
     "timerValueColor",
-    "timerMultiplierColor"
+    "timerMultiplierColor",
+    "coinJarTitleColor"
   ];
   const numberKeys = [
     "scale",
@@ -264,7 +89,8 @@ function overlayDraftConfig(item, baseConfig, data = new FormData(dialogForm)) {
     "multiplier",
     "maxRows",
     "minCoins",
-    "rowOpacity"
+    "rowOpacity",
+    "coinJarTitleScale"
   ];
   const booleanKeys = [
     "enabled",
@@ -344,7 +170,7 @@ function scheduleOverlayLivePreview() {
       ) || wheelEditorContext.config.wheels[0];
       draft = {
         ...wheelEditorContext.config,
-        title: selectedWheel?.name || wheelEditorContext.config.title
+        title: selectedWheel?.settings?.wheelTitle ?? selectedWheel?.name ?? wheelEditorContext.config.title
       };
     } else {
       draft = overlayDraftConfig(item, overlayConfig(item.key));
@@ -411,6 +237,7 @@ function openOverlayConfig(item) {
   if (["topDonors", "topTappers"].includes(item.key)) return openLeaderboardOverlayConfig(item);
   if (item.key === "likeGoal") return openLikeGoalOverlayConfig(item);
   if (item.key === "winCounter") return openWinCounterOverlayConfig(item);
+  if (item.key === "coinJar") return openCoinJarOverlayConfig(item);
   if (["timer", "multiplierTimer"].includes(item.key)) return openTimerOverlayConfig(item);
   if (item.key === "wheel") {
     wheelEditorContext = null;
@@ -445,13 +272,9 @@ function openOverlayConfig(item) {
   if (titledOverlays.includes(item.key)) {
     specialized += overlayField("title", "Titre affiché", config.title || item.name, "text", "full");
   }
-  if (["likeGoal", "coinJar", "winCounter"].includes(item.key)) {
+  if (["likeGoal", "winCounter"].includes(item.key)) {
     specialized += `${overlayField("current", "Valeur de départ hors session", config.current ?? 0, "number", 'min="-999999" max="999999"')}
       ${overlayField("target", "Objectif", config.target ?? 1000, "number", 'min="1" max="999999"')}`;
-  }
-  if (item.key === "coinJar") {
-    specialized += `${overlayField("minCoins", "Minimum de pièces conservé", config.minCoins ?? 0, "number", 'min="0"')}
-      ${overlaySelect("showBase", "Afficher le niveau de remplissage", String(config.showBase !== false), [["true", "Oui"], ["false", "Non"]], false, "Affiche ou masque la jauge lumineuse située derrière les cadeaux dans le bocal.")}`;
   }
   if (["timer", "multiplierTimer"].includes(item.key)) {
     specialized += `${overlayTimerDurationFields(config.seconds ?? 300)}
@@ -673,42 +496,10 @@ function openOverlayConfigLegacy(item) {
   });
 }
 
-function renderMatchOverlayGuide() {
-  return `<aside class="match-overlay-guide">
-    <header>
-      <span aria-hidden="true">LIVE</span>
-      <div>
-        <strong>Une source protégée pour toutes vos animations Matchs</strong>
-        <p>Avec Pro ou Premium, ShenPulse lit les vidéos localement depuis son paquet chiffré, sans exporter de fichier. TikControl, Gladiador et six animations Cyber conservent leurs réglages.</p>
-      </div>
-      <div class="match-overlay-guide-actions">
-        <small>Accès Pro / Premium</small>
-      </div>
-    </header>
-    <ol>
-      <li><b>1</b><span>Choisissez le pack de l’animation, puis cliquez sur <strong>Copier pour TikTok Studio</strong>.</span></li>
-      <li><b>2</b><span>Collez ce lien dans une <strong>source Lien / Navigateur</strong> de TikTok LIVE Studio ou OBS, sur le même PC que ShenPulse. Une seule source suffit pour toutes les animations.</span></li>
-      <li><b>3</b><span>Configurez vos moments dans <strong>Matchs → Automatisations</strong>. La lecture nécessite ShenPulse ouvert et un abonnement <strong>Pro ou Premium actif</strong>. Aucun fichier vidéo n’est exporté.</span></li>
-      <li class="match-overlay-source-settings">
-        <b>4</b>
-        <span>
-          Réglages recommandés de la source Navigateur&nbsp;:
-          <small><strong>Largeur</strong> · 1080 px</small>
-          <small><strong>Hauteur</strong> · 1920 px</small>
-          <small><strong>Fond</strong> · transparent</small>
-          <small><strong>Source active</strong> · conserver activée</small>
-          <small>La vidéo est déchiffrée uniquement en mémoire et délivrée par un ticket temporaire.</small>
-          <small>Cette protection empêche la copie directe des fichiers livrés, pas une extraction experte ou une capture d’écran.</small>
-        </span>
-      </li>
-    </ol>
-  </aside>`;
-}
-
 function renderOverlaysV2() {
   const query = overlaySearch.trim().toLowerCase();
   const accessibleItems = overlayDefinitions().filter(canAccessOverlay);
-  const catalogItems = accessibleItems.filter((item) => !item.catalogHidden);
+  const catalogItems = accessibleItems.filter((item) => !item.catalogHidden && item.category !== "matches" && item.previewKind !== "match");
   const categoryDefinitions = [
     ["counters", "Compteurs"],
     ["rankings", "Classements"],
@@ -721,8 +512,7 @@ function renderOverlaysV2() {
     ["games", "Jeux"],
     ["music", "Musique"],
     ["seasonal", "Saisonnier"],
-    ["tools", "Outils"],
-    ["matches", "Matchs"]
+    ["tools", "Outils"]
   ];
   const availableCategoryIds = new Set(catalogItems.map((item) => item.category));
   const categories = categoryDefinitions.filter(([id]) => availableCategoryIds.has(id));
@@ -751,7 +541,7 @@ function renderOverlaysV2() {
           <div>
             <p class="eyebrow">RELAIS PUBLIC SHENPULSE</p>
             <h3>Sources pour TikTok LIVE Studio et OBS</h3>
-            <p data-public-overlay-relay-detail>Connexion au relais public… Le lecteur Match utilise lui aussi une URL HTTPS courte sur shenpulse-overlays.web.app, avec un canal révocable et des tickets vidéo temporaires.</p>
+            <p data-public-overlay-relay-detail>Connexion au relais public…</p>
           </div>
           <div class="button-row">
             <span class="badge cyan" data-public-overlay-relay-badge>CONNEXION</span>

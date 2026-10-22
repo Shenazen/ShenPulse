@@ -16,12 +16,20 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
   assert.deepEqual(
     Object.keys(GAME_INSTALLERS).sort(),
     [
+      "ark-survival-ascended",
+      "balatro",
+      "blue-prince",
       "clash-of-live",
       "color-strike",
       "crash-bandicoot-n-sane-trilogy",
       "cult-of-the-lamb",
+      "dead-by-daylight",
       "demonologist",
+      "dredge",
+      "egging-on",
+      "escape-from-duckov",
       "euro-truck-simulator-2",
+      "fallout-4",
       "find-the-needle-demo",
       "gtav-montchiliad",
       "minecraft-bedrock-box",
@@ -50,7 +58,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
   );
   assert.deepEqual(
     GAME_INSTALLERS["pokemon-red-blue"].assets.map((asset) => asset.id),
-    ["bizhawk", "client", "pack", "rom", "redPatch", "bluePatch"]
+    ["bizhawk", "bridge", "pack", "rom", "redPatch", "bluePatch"]
   );
   const rom = GAME_INSTALLERS["pokemon-red-blue"].assets.find(
     (asset) => asset.id === "rom"
@@ -67,14 +75,14 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       (asset) =>
         asset.size > 0 &&
         asset.sha256.length === 64 &&
-        /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/pokemon-red-blue\/1\.0\.1\//.test(
+        /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/pokemon-red-blue\/(?:1\.0\.1|1\.1\.0)\//.test(
           asset.url
         )
     )
   );
   assert.deepEqual(
     GAME_INSTALLERS["super-mario-kart"].assets.map((asset) => asset.id),
-    ["bizhawk", "client", "pack", "rom"]
+    ["bizhawk", "bridge", "pack", "rom"]
   );
   const superMarioKartRom = GAME_INSTALLERS["super-mario-kart"].assets.find(
     (asset) => asset.id === "rom"
@@ -91,7 +99,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       (asset) =>
         asset.size > 0 &&
         asset.sha256.length === 64 &&
-        /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/super-mario-kart\/1\.0\.0\//.test(
+        /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/super-mario-kart\/(?:1\.0\.0|1\.1\.0)\//.test(
           asset.url
         )
     )
@@ -165,7 +173,7 @@ test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’éd
 
 test("Euro Truck Simulator 2 installe le plugin officiel Crowd Control en un clic", () => {
   const installer = GAME_INSTALLERS["euro-truck-simulator-2"];
-  assert.equal(installer.version, "1.0.4");
+  assert.equal(installer.version, "1.0.5");
   assert.equal(installer.autoDetect, true);
   assert.equal(installer.unattended, true);
   assert.deepEqual(installer.steamAppIds, ["227300", "231120"]);
@@ -180,13 +188,13 @@ test("Euro Truck Simulator 2 installe le plugin officiel Crowd Control en un cli
   );
   assert.match(
     safeInstallerAssetUrl(installer.assets[0].url),
-    /^https:\/\/one-click\.crowdcontrol\.live\/TruckSimulator\/TruckSimulator-CC\.zip\?ver=1\.0\.4$/
+    /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/euro-truck-simulator-2\/1\.0\.4\/TruckSimulator-CC-1\.0\.4\.zip$/
   );
 });
 
 test("Resident Evil 3 installe le mod officiel recommandé et détecte Steam", () => {
   const installer = GAME_INSTALLERS["resident-evil-3"];
-  assert.equal(installer.version, "2.1.3");
+  assert.equal(installer.version, "2.1.4");
   assert.equal(installer.autoDetect, true);
   assert.equal(installer.unattended, true);
   assert.deepEqual(installer.steamAppIds, ["952060"]);
@@ -213,7 +221,7 @@ test("Resident Evil 3 installe le mod officiel recommandé et détecte Steam", (
   );
   assert.match(
     safeInstallerAssetUrl(installer.assets[1].url),
-    /^https:\/\/one-click\.crowdcontrol\.live\/RE3remake\/RE3net-CC\.zip\?ver=2\.1\.2$/
+    /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/resident-evil-3\/2\.1\.3\/RE3net-CC-2\.1\.2\.zip$/
   );
   const runtimeSource = readMainSource("game-runtime.js");
   assert.match(runtimeSource, /satisfiedAssetCount: candidateAssets\.length/);

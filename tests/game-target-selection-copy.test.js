@@ -37,6 +37,7 @@ function fixture(manifest, response = 0) {
       if (id === "../state-projection") return { readState: (store) => store.getState() };
       if (id === "./paths") return { findLaunchTarget() { throw new Error("Pas de lecture du jeu réel."); } };
       if (id === "./discovery") return { async detectInstalledGame() { return detected; } };
+      if (id === "./four-games-installation") return { validateFourGamesTarget() { throw new Error("Pas de lecture du jeu réel."); } };
       throw new Error(`Dépendance de dialogue non prévue : ${id}`);
     }
   }, { filename: "isolated-game-target-selection.js" });

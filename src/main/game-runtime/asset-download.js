@@ -9,10 +9,8 @@ const { Readable, Transform } = require("node:stream");
 const { ASSET_ORIGIN, ASSET_SECRET, LAUNCHER_VERSION } = require("./constants");
 const { safeInstallerAssetUrl, sha256File } = require("./paths");
 const { installationSlotPercent } = require("./housekeeping");
-const { stageBundledAsset } = require("./bundled-assets");
 
-async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 0, total = 1 } = {}) {
-    if (asset.bundledPath) return stageBundledAsset(runtime, gameId, asset, destinationPath, { index, total });
+async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 0, total = 1, fetchImpl = globalThis.fetch } = {}) {
     const pathname = `/api/installer-assets/${encodeURIComponent(
       gameId
     )}/${encodeURIComponent(asset.id)}`;
@@ -20,6 +18,7 @@ async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 
     const origin =
       process.env.SHENPULSE_INSTALLER_ASSET_ORIGIN || ASSET_ORIGIN;
     const directUrl = safeInstallerAssetUrl(asset.url);
+    if (asset.url && !directUrl) throw new Error("Adresse de téléchargement non sûre.");
     const requestUrl = directUrl || `${origin}${pathname}`;
     const headers = {
       "X-ShenPulse-Launcher-Version": LAUNCHER_VERSION
@@ -38,6 +37,8 @@ async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 
     let lastReportAt = 0;
     let stalled = false;
     let stallTimer = 0;
+    const partialPath = `${destinationPath}.partial`;
+    let partialCreated = false;
     const resetStallTimer = () => {
       clearTimeout(stallTimer);
       stallTimer = setTimeout(() => {
@@ -47,7 +48,7 @@ async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 
     };
     resetStallTimer();
     try {
-      const response = await fetch(requestUrl, {
+      const response = await fetchImpl(requestUrl, {
         headers,
         redirect: directUrl ? "follow" : "error",
         signal: controller.signal
@@ -113,7 +114,6 @@ async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 
       await fs.promises.mkdir(path.dirname(destinationPath), {
         recursive: true
       });
-      const partialPath = `${destinationPath}.partial`;
       const meter = new Transform({
         transform: (chunk, _encoding, callback) => {
           receivedBytes += chunk.length;
@@ -122,10 +122,12 @@ async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 
           callback(null, chunk);
         }
       });
+      const partialFile = await fs.promises.open(partialPath, "wx");
+      partialCreated = true;
       await pipeline(
         Readable.fromWeb(response.body),
         meter,
-        fs.createWriteStream(partialPath, { flags: "wx" })
+        partialFile.createWriteStream()
       );
       report(true);
       const stat = await fs.promises.stat(partialPath);
@@ -180,6 +182,8 @@ async function downloadAsset(runtime, gameId, asset, destinationPath, { index = 
       throw error;
     } finally {
       clearTimeout(stallTimer);
+      controller.abort();
+      if (partialCreated) await fs.promises.rm(partialPath, { force: true }).catch(() => {});
     }
   }
 

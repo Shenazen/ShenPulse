@@ -1,6 +1,7 @@
 "use strict";
 
 const { assertFile, findNamedFile } = require("./runtime-files");
+const { assertStandaloneModuleReady } = require("./game-runtime/standalone-module-installation");
 
 const { readState } = require("./state-projection");
 
@@ -32,7 +33,8 @@ class PokemonRedBlueRuntime {
     this.store = store;
     this.getWindow = getWindow;
     this.dialog = dialog;
-    this.client = new CrowdControlSlimClient({ spawnProcess });
+    this.spawnProcess = spawnProcess;
+    this.client = new LocalEmulatorHostClient({ spawnProcess });
   }
 
   async prepareInstallation(targetPath, previousInstallation = null) {
@@ -91,6 +93,7 @@ class PokemonRedBlueRuntime {
     assertAccess();
     const installation = this.#installation();
     const romPath = String(installation.romPath || "").trim();
+    await assertStandaloneModuleReady(GAME_ID, installation.path);
     if (!installation.romReady || !(await isCompatiblePokemonRom(romPath))) {
       throw new Error(
         "Sélectionnez d’abord votre copie légale de Pokémon Rouge ou Bleu depuis l’étape Installation."
@@ -102,12 +105,11 @@ class PokemonRedBlueRuntime {
       "EmuHawk.exe"
     );
     const connectorPath = await findNamedFile(
-      path.dirname(emulatorPath || path.join(installation.path, "BizHawk")),
-      "connector.lua",
-      (candidate) => candidate.toLowerCase().includes(`${path.sep}crowdcontrol${path.sep}`)
+      path.join(installation.path, "BizHawk", "Lua", "ShenPulse"),
+      "connector.lua"
     );
-    const clientDirectory = path.join(installation.path, "CrowdControl");
-    const clientPath = path.join(clientDirectory, "CrowdControl.Client.Slim.exe");
+    const clientDirectory = path.join(installation.path, "Bridge");
+    const clientPath = path.join(clientDirectory, "ShenPulse.EmulatorHost.exe");
     const packPath = path.join(clientDirectory, "Packs", PACK_FILE_NAME);
 
     await assertFile(emulatorPath, "BizHawk est introuvable. Réparez l’installation.");
@@ -141,7 +143,7 @@ class PokemonRedBlueRuntime {
     }
 
     assertAccess();
-    const child = spawn(emulatorPath, [`--lua=${connectorPath}`, romPath], {
+    const child = this.spawnProcess(emulatorPath, [`--lua=${connectorPath}`, romPath], {
       cwd: path.dirname(emulatorPath),
       windowsHide: false,
       shell: false,
@@ -193,24 +195,10 @@ class PokemonRedBlueRuntime {
             id: String(effectId || "").trim(),
             name: String(effectName || effectId || "").trim()
           },
-          quantity: 1,
-          requester: {
-            service: "twitch",
-            serviceID: "shenpulse-local",
-            crowdControlID: "00000000-0000-0000-0000-000000000001",
-            name: "ShenPulse",
-            login: "shenpulse",
-            avatarURL: ""
-          },
-          sourceDetails: { type: "shenpulse" },
-          free: true,
-          admin: true,
-          localTest: true,
-          ignoreStateChecks: true,
-          skipPipelineDelay: true
+          quantity: 1
         }
       ],
-      5_000
+      15_000
     );
     if (!result.success) {
       throw new Error(result.message || "L’interaction Pokémon a été refusée.");
@@ -244,7 +232,7 @@ class PokemonRedBlueRuntime {
   }
 }
 
-class CrowdControlSlimClient {
+class LocalEmulatorHostClient {
   constructor({
     spawnProcess = spawn,
     packId = NATIVE_PACK_ID,
@@ -306,13 +294,7 @@ class CrowdControlSlimClient {
       "loadPack",
       [
         packPath,
-        this.packId,
-        {
-          name: "ShenPulse",
-          id: "00000000-0000-0000-0000-000000000001",
-          service: "twitch",
-          ccUID: "00000000-0000-0000-0000-000000000002"
-        }
+        this.packId
       ],
       120_000
     );
@@ -379,7 +361,8 @@ class CrowdControlSlimClient {
       this.#rejectPending(new Error(`Le client ${this.gameLabel} est arrêté.`));
       return;
     }
-    child.kill();
+    // EOF lets the local host restore timed effects before terminating.
+    child.stdin?.end();
     await new Promise((resolve) => {
       const timer = setTimeout(resolve, 2_000);
       child.once("exit", () => {
@@ -387,6 +370,7 @@ class CrowdControlSlimClient {
         resolve();
       });
     });
+    if (child.exitCode === null && !child.killed) child.kill();
   }
 
   #handleLine(line) {
@@ -654,7 +638,7 @@ function safeChildPath(rootPath, relativePath) {
 }
 
 module.exports = {
-  CrowdControlSlimClient,
+  LocalEmulatorHostClient,
   GAME_ID,
   PokemonRedBlueRuntime,
   ROM_HASHES,

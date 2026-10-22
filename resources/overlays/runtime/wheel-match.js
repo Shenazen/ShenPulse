@@ -44,6 +44,27 @@
 })();
 
 
+function applyCoinJarAppearance(payload = null) {
+  const style = document.documentElement.style;
+  const previous = Number(style.getPropertyValue("--coin-jar-title-scale")) * 100 || Number(parameters.get("coinJarTitleScale")) || 100;
+  const scale = payload ? previewNumber(payload, "coinJarTitleScale", previous, 50, 400) : previous;
+  style.setProperty("--coin-jar-title-scale", String(Math.min(400, Math.max(50, scale)) / 100));
+  const color = payload?.coinJarTitleColor || style.getPropertyValue("--coin-jar-title-color") || parameters.get("coinJarTitleColor") || parameters.get("textColor") || "#ffffff";
+  style.setProperty("--coin-jar-title-color", color);
+}
+
+function fitCoinJarText() {
+  if (viewName !== "coin-jar") return;
+  const zone = document.getElementById("coin-jar-title");
+  const text = zone?.firstElementChild;
+  if (!text || !zone.clientWidth || !zone.clientHeight) return;
+  zone.style.setProperty("--coin-jar-text-fit", "1");
+  const fit = Math.min(1,
+    Math.max(1, zone.clientWidth - 8) / Math.max(1, text.offsetWidth),
+    Math.max(1, zone.clientHeight - 2) / Math.max(1, text.offsetHeight));
+  zone.style.setProperty("--coin-jar-text-fit", String(fit));
+}
+
 function setupWheel() {
   const wheel = document.getElementById("wheel");
   if (!wheel) return;
@@ -60,6 +81,17 @@ function applyWheelSettings(settings = {}) {
   const stage = document.getElementById("wheel-stage");
   const machine = document.getElementById("wheel-machine");
   if (!stage || !machine) return;
+  const title = document.getElementById("wheel-caption");
+  if (title) {
+    title.hidden = !wheelBoolean(wheelRuntimeSettings.wheelShowTitle, true);
+    if (wheelRuntimeSettings.wheelTitle !== undefined) title.textContent = String(wheelRuntimeSettings.wheelTitle);
+  }
+  stage.style.setProperty("--wheel-title-color", wheelRuntimeSettings.wheelTitleColor || "#fff1c2");
+  stage.style.setProperty("--wheel-winner-color", wheelRuntimeSettings.wheelWinnerColor || "#fff7d3");
+  for (const [key, property] of [["wheelTitleScale", "--wheel-title-scale"], ["wheelWinnerScale", "--wheel-winner-scale"]]) {
+    stage.style.setProperty(property, Math.min(400, Math.max(50, Number(wheelRuntimeSettings[key]) || 100)) / 100);
+  }
+  stage.style.setProperty("--wheel-caption-font", JSON.stringify(String(wheelRuntimeSettings.font || "Kalam")));
   const runtimeDesign = settings.design || document.documentElement.dataset.wheelDesign || wheelDesign;
   document.documentElement.dataset.wheelDesign = runtimeDesign;
   stage.classList.toggle("royal", runtimeDesign === "royal");
@@ -89,13 +121,13 @@ function applyWheelSettings(settings = {}) {
   );
   machine.style.setProperty(
     "--wheel-font-size",
-    `${0.48 + Math.min(120, Math.max(10, Number(wheelRuntimeSettings.fontSize || 50))) / 100}rem`
+    `${(0.48 + 0.5) * Math.min(400, Math.max(50, Number(wheelRuntimeSettings.wheelTextScale) || 100)) / 100}rem`
   );
   machine.style.setProperty("--wheel-text-color", wheelRuntimeSettings.textColor || "#fff8ec");
   machine.style.setProperty("--wheel-shadow-color", wheelRuntimeSettings.textShadowColor || "#2b170c");
   machine.style.setProperty(
     "--wheel-shadow-strength",
-    Math.min(100, Math.max(0, Number(wheelRuntimeSettings.textShadowStrength || 55))) / 100 * 7
+    Math.min(100, Math.max(0, Number(wheelRuntimeSettings.textShadowStrength ?? 55))) / 100 * 7
   );
   machine.style.setProperty(
     "--wheel-text-radius",
@@ -119,21 +151,22 @@ function applyWheelSettings(settings = {}) {
   );
   machine.style.setProperty(
     "--wheel-line-spacing",
-    0.84 + Math.min(100, Math.max(0, Number(wheelRuntimeSettings.lineSpacing || 50))) / 140
+    0.84 + Math.min(100, Math.max(0, Number(wheelRuntimeSettings.lineSpacing ?? 50))) / 140
   );
   machine.style.setProperty(
     "--wheel-letter-spacing",
-    `${(Math.min(100, Math.max(0, Number(wheelRuntimeSettings.letterSpacing || 50))) - 50) / 900}em`
+    `${(Math.min(100, Math.max(0, Number(wheelRuntimeSettings.letterSpacing ?? 50))) - 50) / 900}em`
   );
   machine.style.setProperty(
     "--wheel-glow",
-    Math.min(140, Math.max(0, Number(wheelRuntimeSettings.glow || 82))) / 100
+    Math.min(140, Math.max(0, Number(wheelRuntimeSettings.glow ?? 82))) / 100
   );
   machine.style.setProperty("--wheel-local-scale", "1");
   machine.style.setProperty(
     "--wheel-spin-duration",
     `${Math.min(30, Math.max(1, Number(wheelRuntimeSettings.spinDuration || 5)))}s`
   );
+  requestAnimationFrame(syncWheelResponsiveTypography);
 }
 
 function drawWheel(choices, customColors = []) {
@@ -169,7 +202,7 @@ function drawWheel(choices, customColors = []) {
       `${-360 / choices.length * (index + 0.5)}deg`
     );
     label.dataset.orientation = wheelRuntimeSettings.textOrientation || "radial";
-    label.style.textAlign = wheelRuntimeSettings.textAlign || "center";
+    label.style.textAlign = "center";
     const layout = wheelSegmentLabelStyle(index, choices.length, choice);
     Object.entries(layout.styles).forEach(
       ([property, value]) => label.style.setProperty(property, value)
@@ -220,14 +253,42 @@ function syncWheelResponsiveTypography() {
   const responsiveScale = Math.min(1.35, Math.max(.72, diameter / 420));
   const configuredSize = Math.min(
     120,
-    Math.max(10, Number(wheelRuntimeSettings.fontSize || 50))
+    Math.max(10, wheelRuntimeSettings.wheelTextScale === undefined ? Number(wheelRuntimeSettings.fontSize || 50) : 50)
   );
   const baseFontPixels = (0.48 + configuredSize / 100) * 16;
+  const textScale = Math.min(400, Math.max(50, Number(wheelRuntimeSettings.wheelTextScale) || 100)) / 100;
   wheel.querySelectorAll(".segment-label").forEach((label) => {
     const scale = Number(label.dataset.fontScale || 1);
-    const pixels = Math.min(34, Math.max(8, baseFontPixels * scale * responsiveScale));
-    label.querySelector("span")?.style.setProperty("font-size", `${pixels.toFixed(2)}px`);
+    let pixels = Math.min(96, Math.max(8, baseFontPixels * textScale * scale * responsiveScale));
+    const copy = label.querySelector("span");
+    if (!copy) return;
+    copy.style.setProperty("font-size", `${pixels.toFixed(2)}px`);
+    // Le calcul géométrique est affiné avec la police réellement chargée.
+    while (pixels > 8 && label.clientWidth > 0 && label.clientHeight > 0 &&
+      (copy.scrollWidth > label.clientWidth + 1 || copy.scrollHeight > label.clientHeight + 1)) {
+      pixels = Math.max(8, pixels - 0.5);
+      copy.style.setProperty("font-size", `${pixels.toFixed(2)}px`);
+    }
   });
+  fitWheelText(document.getElementById("wheel-caption"));
+  fitWheelText(document.getElementById("wheel-winner"));
+}
+
+function fitWheelText(target) {
+  if (!target) return;
+  let copy = target.firstElementChild;
+  if (!copy) {
+    copy = document.createElement("span");
+    copy.textContent = target.textContent;
+    target.replaceChildren(copy);
+  }
+  copy.style.removeProperty("transform");
+  const style = getComputedStyle(target);
+  const width = target.clientWidth - parseFloat(style.paddingLeft || 0) - parseFloat(style.paddingRight || 0);
+  const height = target.clientHeight - parseFloat(style.paddingTop || 0) - parseFloat(style.paddingBottom || 0);
+  if (width <= 0 || height <= 0) return;
+  const scale = Math.min(1, width / Math.max(1, copy.scrollWidth), height / Math.max(1, copy.scrollHeight));
+  copy.style.transform = `scale(${scale})`;
 }
 
 function renderWheelDecorations(segmentCount) {

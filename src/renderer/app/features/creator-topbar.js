@@ -120,7 +120,7 @@ function syncCreatorAccountChrome() {
         : tier === "premium" ? "PREMIUM" : "PRO";
   const badge = document.getElementById("account-plan");
   badge.textContent = label;
-  badge.dataset.tier = tier;
+  badge.dataset.tier = session.authenticated ? tier : "guest";
   accountMenuButton.title = session.authenticated ? accountDisplayName(session) : "Se connecter à ShenPulse";
   syncCreatorLiveDirectoryPreference();
 }

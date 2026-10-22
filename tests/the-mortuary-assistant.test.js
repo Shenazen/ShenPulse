@@ -10,7 +10,7 @@ const { once } = require("node:events");
 const { WebSocket } = require("ws");
 const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
 const { SimpleWebSocketGameBridge } = require("../src/main/simple-websocket-game-bridge");
-const { downloadAsset } = require("../src/main/game-runtime/asset-download");
+const { downloadFixtureAsset: downloadAsset } = require("./helpers/installer-download-fixture");
 const { commitInstallationDeployment } = require("../src/main/game-runtime/deployments");
 const { extractArchiveSafe } = require("../src/main/game-runtime/archives");
 const { GameHub } = require("../src/main/game-hub");
@@ -121,7 +121,7 @@ test("WebSocket ne transmet rien lorsque l’accès est révoqué après démarr
   assert.equal(bridge.pending.size, 0);
 });
 
-test("l’asset intégré est vérifié, extrait et déployé avec sauvegarde du mod précédent", async (t) => {
+test("le pack téléchargé est vérifié, extrait et déployé avec sauvegarde du mod précédent", async (t) => {
   const directory = await temporary(t);
   const asset = manifest.assets.find((entry) => entry.id === "mod");
   const destination = path.join(directory, "mod.zip");
@@ -150,7 +150,7 @@ test("l’asset intégré est vérifié, extrait et déployé avec sauvegarde du
   assert.deepEqual(await fs.readFile(path.join(target, "Mods/ShenPulse.TheMortuaryAssistant.dll")), mod);
 });
 
-test("l’asset intégré refuse la corruption et les sorties de dossier", async (t) => {
+test("le pack téléchargé refuse la corruption et les sorties de dossier", async (t) => {
   const directory = await temporary(t);
   const asset = manifest.assets.find((entry) => entry.id === "mod");
   const runtime = { resourcesDirectory, progress() {} };
@@ -158,7 +158,7 @@ test("l’asset intégré refuse la corruption et les sorties de dossier", async
   await assert.rejects(downloadAsset(runtime, "the-mortuary-assistant", { ...asset, sha256: "0".repeat(64) }, destination), /intégrité/);
   await assert.rejects(fs.access(destination));
   await assert.rejects(fs.access(`${destination}.partial`));
-  await assert.rejects(downloadAsset(runtime, "the-mortuary-assistant", { ...asset, bundledPath: "../package.json" }, destination), /non sûr/);
+  await assert.rejects(downloadAsset(runtime, "the-mortuary-assistant", { ...asset, url: "https://untrusted.invalid/pack.zip" }, destination), /non autorisé/);
 });
 
 test("le hub prépare Mortuary, initialise ses cadeaux et transmet la durée au mod", async (t) => {

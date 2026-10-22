@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { LiveDirectoryService } = require("../src/main/live-directory-service");
 const { localLiveStreams, sanitizeDirectoryRows, directoryAvatarUrl } = require("../src/shared/live-directory-protocol");
+const { createDefaultState } = require("../src/main/defaults");
 
 async function settle() { for (let index = 0; index < 30; index += 1) await Promise.resolve(); }
 
@@ -131,6 +132,20 @@ test("publication contains exactly public LIVE metadata and a server timestamp",
   assert.equal(fx.service.status().publishing, true);
   assert.doesNotMatch(request.init.body, /private|secret|email|roomId|nickname/);
   assert.equal(JSON.stringify(fx.service.status()).includes("private-token"), false);
+  await fx.service.stop();
+});
+
+test("un nouveau compte publie son LIVE détecté sans devoir activer une option", async () => {
+  const current = createDefaultState();
+  Object.assign(current.settings.account, { uid: "newCreator" });
+  Object.assign(current.settings.tiktok, { username: "new_creator", status: "live", currentViewers: 9 });
+  current.connections = [{ id: "source_tiktok", type: "tiktok-direct", enabled: true,
+    status: "connected", liveStatus: "live", config: { username: "new_creator" } }];
+  const fx = fixture({ state: current });
+  await fx.start();
+  assert.equal(fx.writes().length, 1);
+  assert.equal(JSON.parse(fx.writes()[0].init.body).streams.tiktok.username, "new_creator");
+  assert.equal(fx.service.status().publishing, true);
   await fx.service.stop();
 });
 

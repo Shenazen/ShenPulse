@@ -1,0 +1,126 @@
+/* Bocal : décor, cadeaux et textes centrés. */
+
+.coin-jar-widget {
+  position: relative;
+  /* Repère natif : le bocal mesure 500 px dans une source 720 x 520. */
+  width: min(69.444444vw, 96.153846vh);
+  aspect-ratio: 1;
+  margin: 0;
+  isolation: isolate;
+  container-type: inline-size;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.4));
+}
+
+.coin-jar-layer {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.coin-jar-front {
+  z-index: 4;
+}
+
+.coin-jar-clip-definitions {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.coin-jar-drops {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.coin-jar-text-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  text-align: center;
+}
+
+.coin-jar-text-zone > span {
+  display: inline-block;
+  flex: none;
+  max-width: none;
+  white-space: nowrap;
+}
+
+#coin-jar-title {
+  position: absolute;
+  z-index: 6;
+  /* Le haut du décor commence à 4,5 % : garder aussi les titres longs au-dessus. */
+  top: -1.6%;
+  left: 14%;
+  width: 72%;
+  height: 5.6%;
+  color: var(--coin-jar-title-color, #fff);
+  font-size: calc(4.8cqw * var(--coin-jar-title-scale, 1) * var(--coin-jar-text-fit, 1));
+  font-weight: 900;
+  line-height: 1.1;
+  text-shadow: 0 2px 5px #000;
+}
+
+.coin-jar-text-zone[hidden] { display: none; }
+
+.coin-jar-drop-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.coin-jar-contained-drops {
+  clip-path: polygon(31% 9%, 69% 9%, 69% 17%, 75% 19%, 78.5% 24%, 78.5% 80%, 77% 84%, 66% 87.5%, 34% 87.5%, 23% 84%, 21.5% 80%, 21.5% 31%, 22% 24%, 25% 19%, 31% 17%);
+}
+
+.coin-jar-overflow-drops {
+  clip-path: polygon(31% -35%, 69% -35%, 69% 17%, 75% 19%, 78.5% 24%, 78.5% 80%, 77% 84%, 66% 87.5%, 34% 87.5%, 23% 84%, 21.5% 80%, 21.5% 31%, 22% 24%, 25% 19%, 31% 17%);
+}
+
+.coin-jar-drops .coin-jar-gift {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 900;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.46));
+  will-change: transform;
+}
+
+.coin-jar-drops .coin-jar-gift.settled {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.34));
+  will-change: auto;
+}
+
+.coin-jar-gift > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.coin-jar-gift-fallback {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #ff4f86 55%, #3b0921);
+  color: #ffffff;
+}
+

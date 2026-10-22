@@ -60,7 +60,14 @@ function bridgeSource() {
       method: "POST",
       body: JSON.stringify({ id, options: options || {} })
     }),
-    on: () => () => {},
+    on: (channel, callback) => {
+      if (channel !== "live-directory-status") return () => {};
+      const feed = new EventSource("/__codex-preview-api/live-directory/events");
+      feed.addEventListener(channel, (event) => {
+        try { callback(JSON.parse(event.data)); } catch { /* Ignore malformed public frames. */ }
+      });
+      return () => feed.close();
+    },
     updates: { check: async () => ({ available: false }), install: noop },
     account: {
       status: () => request("/__codex-preview-api/account/status"),

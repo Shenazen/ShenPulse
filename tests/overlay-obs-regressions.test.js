@@ -22,7 +22,7 @@ test("le runtime OBS réserve TTS/audio à l'écran numéroté et ne transforme 
   );
   const channels = overlayScript.slice(
     overlayScript.indexOf("const overlayChannels"),
-    overlayScript.indexOf('window.addEventListener("resize"')
+    overlayScript.indexOf('window.addEventListener("resize"', overlayScript.indexOf("const overlayChannels"))
   );
 
   assert.doesNotMatch(interactiveWidgets, /winCounter\s*\+=/);

@@ -98,7 +98,7 @@ test("compile le pont Windows clavier et souris utilisé par Demonologist", () =
       "-NoProfile",
       "-NonInteractive",
       "-Command",
-      "$source=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:SHENPULSE_TEST_CSHARP)); Add-Type -TypeDefinition $source; 'OK'"
+      "$source=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:SHENPULSE_TEST_CSHARP)); Add-Type -TypeDefinition $source; $flags=@(0..2 | ForEach-Object { [ShenPulseGameInput]::MouseButtonFlags($_,$false); [ShenPulseGameInput]::MouseButtonFlags($_,$true) }); if (($flags -join ',') -ne '2,4,8,16,32,64') { throw 'Clics gauche, droit et molette inversés' }; 'OK'"
     ],
     {
       encoding: "utf8",
@@ -179,9 +179,9 @@ test("le démarrage de Demonologist lance le jeu avant d’activer sa session", 
     installer.waitForWindowProcess,
     "Shivers-Win64-Shipping"
   );
-  assert.match(renderer, /demonologistAutoLaunch = pack\.id === "demonologist"/);
-  assert.match(renderer, /▶ Lancer Demonologist et activer/);
-  assert.match(renderer, /demonologistAutoLaunch && ready[\s\S]*?data-action="launch-game"/);
+  assert.match(renderer, /inputAutoLaunch = inputDriven && AUTOMATED_GAME_INSTALLERS\.has\(pack\.id\)/);
+  assert.match(renderer, /▶ Lancer \$\{pack\.name\} et activer/);
+  assert.match(renderer, /inputAutoLaunch && ready[\s\S]*?data-action="launch-game"/);
 });
 
 function proAccountState() {

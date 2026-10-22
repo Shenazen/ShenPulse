@@ -1,0 +1,5 @@
+Crowd Control - Balatro
+Copyright The Crowd Control Team / Warp World. Apache License 2.0.
+Source: https://github.com/WarpWorld/CCPack-PC-Balatro
+The gameplay implementations are retained. ShenPulse adds local transports, validation, reconnect handling, and a GDK loader.
+JSON library: Copyright (c) 2020 rxi, MIT license included in json.lua.

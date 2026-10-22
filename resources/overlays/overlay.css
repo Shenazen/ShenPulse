@@ -1,6 +1,7 @@
 /* Point d'entrée CSS de compatibilité et des tests du runtime overlay. */
 @import url("styles/like-goal-layout.css");
 @import url("styles/core.css");
+@import url("styles/coin-jar.css");
 @import url("styles/wheel.css");
 @import url("styles/themes.css");
 @import url("styles/configuration.css");

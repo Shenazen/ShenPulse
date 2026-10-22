@@ -67,8 +67,8 @@ test("l'enregistrement propriétaire publie et met en cache les mêmes choix de 
   });
 
   const games = {
-    fortnite: { scope: "public" },
-    "find-the-needle-demo": { scope: "hidden" }
+    fortnite: { scope: "public", platforms: ["epic-games", "game-pass"], platformsConfigured: true },
+    "find-the-needle-demo": { scope: "hidden", platforms: [], platformsConfigured: true }
   };
   const saved = await service.saveSiteSettings({ schemaVersion: VISIBILITY_SCHEMA_VERSION, games });
   assert.deepEqual(saved.games, games);
@@ -80,6 +80,22 @@ test("l'enregistrement propriétaire publie et met en cache les mêmes choix de 
   // Une déconnexion réseau ultérieure doit conserver le choix publié.
   service.fetch = async () => { throw new Error("hors ligne"); };
   assert.deepEqual((await service.getPublicVisibility()).games, games);
+});
+
+test("les logos restent validés et le choix aucun survit aux tableaux vides supprimés par Firebase", () => {
+  for (const normalize of [normalizeSiteSettings, normalizePublicVisibility]) {
+    const settings = normalize({ games: {
+      custom: { scope: "admin", platforms: ["steam", "steam", "game-pass", "arbitrary", { id: "nintendo" }], platformsConfigured: true },
+      none: { scope: "hidden", platformsConfigured: true },
+      defaults: { scope: "public" }
+    } });
+    assert.deepEqual(settings.games.custom, { scope: "admin", platforms: ["steam", "game-pass"], platformsConfigured: true });
+    assert.deepEqual(settings.games.none, { scope: "hidden", platforms: [], platformsConfigured: true });
+    assert.deepEqual(settings.games.defaults, { scope: "public" });
+    const { canonicalizeVisibility } = require("../src/shared/visibility-catalog");
+    const canonical = canonicalizeVisibility(settings, { games: [{ id: "custom" }, { id: "none" }, { id: "defaults" }] });
+    assert.deepEqual(canonical.games, settings.games);
+  }
 });
 
 test("un autre compte ne peut pas modifier la visibilité partagée des jeux", async () => {

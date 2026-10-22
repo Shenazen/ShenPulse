@@ -16,6 +16,74 @@
   // Le seuil de l'ancienne migration IRL ne suit pas les migrations futures.
   const IRL_PUBLIC_SCHEMA_VERSION = 9;
   const SHARED_MEDIA_FEATURES = Object.freeze(["backblaze.sounds", "backblaze.media"]);
+  const GAME_PLATFORM_IDS = Object.freeze(["shenpulse", "steam", "game-pass", "epic-games", "rockstar-games", "microsoft-store", "nintendo"]);
+
+  function gamePlatformConfig(entry) {
+    if (!Array.isArray(entry?.platforms) && entry?.platformsConfigured !== true) return {};
+    const platforms = [...new Set((Array.isArray(entry.platforms) ? entry.platforms : [])
+      .filter(id => GAME_PLATFORM_IDS.includes(id)))];
+    // Firebase retire les tableaux vides : ce marqueur conserve le choix « aucun ».
+    return { platforms, platformsConfigured: true };
+  }
+
+  function gamePlatformsFor(source, id) {
+    const entry = source?.games?.[storageKey(id)] ?? source?.games?.[id];
+    return gamePlatformConfig(entry).platforms;
+  }
+
+  function parseAppVersion(value) {
+    if (typeof value !== "string" || value.length > 128) return null;
+    const match = value.trim().match(/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/);
+    if (!match) return null;
+    const core = match.slice(1, 4).map(Number);
+    const prerelease = match[4] ? match[4].split(".") : [];
+    if (!core.every(Number.isSafeInteger) || prerelease.some(part => /^\d+$/.test(part) && (part.length > 1 && part[0] === "0"))) return null;
+    return { core, prerelease, normalized: `${core.join(".")}${match[4] ? `-${match[4]}` : ""}${match[5] ? `+${match[5]}` : ""}` };
+  }
+
+  function normalizeAppVersion(value) {
+    return parseAppVersion(value)?.normalized || "";
+  }
+
+  function compareAppVersions(current, minimum) {
+    const left = parseAppVersion(current), right = parseAppVersion(minimum);
+    if (!left || !right) return null;
+    for (let index = 0; index < 3; index += 1) {
+      if (left.core[index] !== right.core[index]) return left.core[index] > right.core[index] ? 1 : -1;
+    }
+    if (!left.prerelease.length || !right.prerelease.length) {
+      return left.prerelease.length === right.prerelease.length ? 0 : left.prerelease.length ? -1 : 1;
+    }
+    for (let index = 0; index < Math.max(left.prerelease.length, right.prerelease.length); index += 1) {
+      const a = left.prerelease[index], b = right.prerelease[index];
+      if (a === b) continue;
+      if (a === undefined || b === undefined) return a === undefined ? -1 : 1;
+      const aNumeric = /^\d+$/.test(a), bNumeric = /^\d+$/.test(b);
+      if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
+      if (aNumeric && a.length !== b.length) return a.length > b.length ? 1 : -1;
+      return a > b ? 1 : -1;
+    }
+    return 0;
+  }
+
+  function gameVersionConfig(entry) {
+    if (entry?.minAppVersion === undefined || entry?.minAppVersion === null) return {};
+    const raw = typeof entry.minAppVersion === "string" ? entry.minAppVersion.trim() : "invalid";
+    // Une borne distante malformée reste restrictive, sans devenir « toutes versions ».
+    return raw ? { minAppVersion: normalizeAppVersion(raw) || (raw.length <= 128 ? raw : "invalid") } : {};
+  }
+
+  function gameMinimumVersionFor(source, id, fallback = "") {
+    return gameVersionConfig(source?.games?.[storageKey(id)] ?? source?.games?.[id]).minAppVersion || normalizeAppVersion(fallback);
+  }
+
+  function gameVersionAllowed(source, pack, appVersion) {
+    if (gameScopeFor(source, pack) !== "public") return true;
+    const minimum = gameMinimumVersionFor(source, pack?.id, pack?.minAppVersion);
+    if (!minimum) return true;
+    const comparison = compareAppVersions(appVersion, minimum);
+    return comparison !== null && comparison >= 0;
+  }
 
   function isSharedMediaFeature(id) {
     return SHARED_MEDIA_FEATURES.includes(id);
@@ -182,8 +250,8 @@
       ? "admin" : scope;
   }
 
-  function canAccessGame(source, pack, isOwner) {
-    return Boolean(pack?.id && canAccessScope(gameScopeFor(source, pack), isOwner));
+  function canAccessGame(source, pack, isOwner, appVersion) {
+    return Boolean(pack?.id && canAccessScope(gameScopeFor(source, pack), isOwner) && gameVersionAllowed(source, pack, appVersion));
   }
 
   function storageKey(id) {
@@ -305,6 +373,8 @@
         const id = String(item?.id || "").trim();
         if (!id) continue;
         result[section][storageKey(id)] = {
+          ...(section === "games" ? gamePlatformConfig(candidate.games?.[storageKey(id)] ?? candidate.games?.[id]) : {}),
+          ...(section === "games" ? gameVersionConfig(candidate.games?.[storageKey(id)] ?? candidate.games?.[id] ?? item) : {}),
           scope: section === "games"
             ? gameScopeFor(candidate, { id, ownerOnly: item.defaultScope === "admin" })
             : scopeFor(
@@ -374,6 +444,14 @@
 
   return Object.freeze({
     VISIBILITY_SCHEMA_VERSION,
+    GAME_PLATFORM_IDS,
+    gamePlatformConfig,
+    gamePlatformsFor,
+    normalizeAppVersion,
+    compareAppVersions,
+    gameVersionConfig,
+    gameMinimumVersionFor,
+    gameVersionAllowed,
     FEATURE_ITEMS,
     SHARED_MEDIA_FEATURES,
     isSharedMediaFeature,

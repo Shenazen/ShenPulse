@@ -11,7 +11,7 @@ const ADMIN_VISIBILITY_SECTIONS = [
   ["navigation", "Pages ShenPulse", "Les pages actuelles de ShenPulse"],
   ["features", "Fonctionnalités", "Les services réellement disponibles dans l’application"],
   ["actionTypes", "Actions disponibles", "Les actions proposées dans les éditeurs ShenPulseNew"],
-  ["overlays", "Overlays", "Les 17 overlays réellement présents dans la galerie"],
+  ["overlays", "Overlays", "Les overlays et widgets disponibles dans ShenPulse"],
   ["games", "Jeux", "Le catalogue actuel de jeux et packs ShenPulseNew"]
 ];
 
@@ -68,6 +68,7 @@ function adminVisibilityCatalog() {
         pack.accessMode === "purchase" ? "achat séparé" : "inclus"
       }`,
       icon: "◇",
+      ...(pack.minAppVersion ? { minAppVersion: pack.minAppVersion } : {}),
       // Un jeu privé reste privé par défaut, sans figer le choix du propriétaire.
       // Les pages sensibles conservent, elles, leur verrou ownerOnly ci-dessus.
       ...(pack.ownerOnly === true
@@ -277,9 +278,11 @@ function renderAdminVisibility() {
         <button class="button small ghost" data-action="admin-visibility-bulk" data-value="hidden">Masqué</button>
       </div>
       <div class="admin-visibility-list" data-admin-scroll="visibility-${escapeHtml(adminVisibilitySection)}">
-        ${entries.length ? entries.map((item) => `<article>
+        ${entries.length ? entries.map((item) => `<article${adminVisibilitySection === "games" ? ' class="admin-game-visibility-row"' : ""}>
           <span class="admin-item-icon">${escapeHtml(item.icon || adminVisibilityIcon(item.scope))}</span>
           <div class="admin-item-copy"><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.detail || "")}</small><code>${escapeHtml(item.id)}</code></div>
+          ${adminVisibilitySection === "games" ? renderAdminGamePlatforms(item.id, settings) : ""}
+          ${adminVisibilitySection === "games" ? renderAdminGameVersion(item.id, settings) : ""}
           <select data-action="admin-scope" data-section="${escapeHtml(adminVisibilitySection)}" data-id="${escapeHtml(item.id)}" class="scope-${escapeHtml(item.scope)}" aria-label="Visibilité de ${escapeHtml(item.label)}" ${item.ownerOnly ? "disabled title=\"Accès propriétaire forcé\"" : item.fixedScope ? "disabled title=\"Disponible pour tous les comptes connectés\"" : ""}>
             <option value="public" ${item.scope === "public" ? "selected" : ""}>Visible par tous</option>
             <option value="admin" ${item.scope === "admin" ? "selected" : ""}>Moi uniquement</option>

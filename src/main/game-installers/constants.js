@@ -40,9 +40,9 @@ const STARDEW_VALLEY_ASSET_BASE =
 const TERRARIA_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/terraria/1.0.0";
 const EURO_TRUCK_SIMULATOR_2_ASSET_BASE =
-  "https://one-click.crowdcontrol.live/TruckSimulator";
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/euro-truck-simulator-2/1.0.4";
 const RESIDENT_EVIL_3_ASSET_BASE =
-  "https://one-click.crowdcontrol.live/RE3remake";
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/resident-evil-3/2.1.3";
 const DOTNET_DESKTOP_RUNTIME_8_ASSET_BASE =
   "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.31";
 const POKEMON_RED_BLUE_ASSET_BASE =

@@ -4,6 +4,14 @@
 const { INTEGRATED_GAME_IDS } = require("./game-installers/constants");
 
 const GAME_INSTALLERS = Object.freeze({
+  "escape-from-duckov": require("./game-installers/escape-from-duckov"),
+  "dead-by-daylight": require("./game-installers/dead-by-daylight"),
+  dredge: require("./game-installers/dredge"),
+  "egging-on": require("./game-installers/egging-on"),
+  "fallout-4": require("./game-installers/fallout-4"),
+  "ark-survival-ascended": require("./game-installers/ark-survival-ascended"),
+  balatro: require("./game-installers/balatro"),
+  "blue-prince": require("./game-installers/blue-prince"),
   "crash-bandicoot-n-sane-trilogy": require("./game-installers/crash-bandicoot-n-sane-trilogy"),
   unturned: require("./game-installers/unturned"),
   "clash-of-live": require("./game-installers/clash-of-live"),

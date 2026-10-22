@@ -1,6 +1,6 @@
 # Politique de confidentialité de ShenPulse
 
-Dernière mise à jour : 13 octobre 2026
+Dernière mise à jour : 21 octobre 2026
 
 ShenPulse traite localement les événements de livestream nécessaires aux
 automatisations choisies par l'utilisateur : pseudonyme public, avatar public,
@@ -10,7 +10,7 @@ Par défaut, ShenPulse :
 
 - n'impose aucun compte ShenPulse pour les fonctions locales gratuites ;
 - n'envoie aucune télémétrie ;
-- ne vend ni ne partage de données ;
+- ne vend pas de données et ne publie que les informations LIVE décrites ci-dessous ;
 - stocke la configuration et l'historique sur l'appareil ;
 - chiffre les jetons de session et autres secrets avec le coffre-fort du système ;
 - n'écoute que sur l'interface locale `127.0.0.1`.
@@ -28,12 +28,15 @@ TikTok.
 
 ## Annuaire public des créateurs en direct
 
-La participation à l'annuaire « En direct avec ShenPulse » est facultative et
-désactivée par défaut. Elle nécessite un compte ShenPulse connecté et une
-activation explicite dans l'application. Consulter cet annuaire n'active pas
-la publication de votre propre live.
+À partir du 21 octobre 2026, la participation à l'annuaire « En direct avec
+ShenPulse » est activée par défaut pour les comptes ShenPulse connectés.
+La mise à jour active aussi ce nouveau défaut pour les anciennes installations.
+Vous pouvez désactiver le partage dans le menu du compte avec l'option
+« Afficher mes LIVE dans l'annuaire public » ; ce choix est ensuite conservé,
+y compris après un redémarrage ou un changement de compte. Consulter l'annuaire
+sans compte connecté ne publie aucune présence.
 
-Après activation, ShenPulse publie dans Firebase Realtime Database uniquement
+Lorsque le partage est actif, ShenPulse publie dans Firebase Realtime Database uniquement
 les lives TikTok ou Kick réellement détectés par l'application : la plateforme,
 le pseudonyme public `@`, l'URL de la photo publique et le nombre de spectateurs
 actuels lorsqu'il est disponible. Sont aussi transmis un horodatage serveur,

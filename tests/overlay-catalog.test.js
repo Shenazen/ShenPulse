@@ -36,7 +36,8 @@ test("les valeurs d'un overlay sont isolées dans son manifeste", () => {
   assert.equal(overlayCatalog.defaultConfig("likeGoal").title, "LIKE GOAL");
   assert.equal(overlayCatalog.defaultConfig("likeGoal").target, 50000);
   assert.equal(coinJar.title, "COIN JAR");
-  assert.equal(coinJar.target, 1000);
+  assert.equal(coinJar.target, undefined);
+  assert.equal(overlayCatalog.settingsFor("coinJar").includes("target"), false);
   assert.deepEqual(overlayCatalog.settingsFor("match"), [
     "variant", "fit", "autoplay", "loop"
   ]);

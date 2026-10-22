@@ -119,6 +119,7 @@ let soundsSection = "audio";
 let catalogSearchRenderTimer = null;
 let gameSearch = "";
 let gameFilter = "all";
+let gameCategory = "all";
 let subscriptionCheckoutBusyTier = "";
 let subscriptionStopBusy = false;
 let selectedGameId = "";
@@ -385,7 +386,7 @@ const pages = [
   { id: "dashboard", label: "Vue d’ensemble", icon: "⌁", title: "Vue d’ensemble", kicker: "CENTRE DE CONTRÔLE" },
   { section: "CRÉATION" },
   { id: "overlays", label: "Overlays", icon: "▱", title: "Overlays & widgets", kicker: "SOURCES NAVIGATEUR" },
-  { id: "games", label: "Jeux & effets", icon: "◇", title: "Jeux & effets", kicker: "INTERACTIONS EN JEU", count: () => snapshot?.packs.length },
+  { id: "games", label: "Jeux & effets", icon: "◇", title: "Jeux & effets", kicker: "INTERACTIONS EN JEU", count: () => ShenPulseGameCategories.countGames(visibleGamePacks()) },
   {
     id: "irl",
     label: "Machines IRL",
@@ -489,6 +490,10 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  "dead-by-daylight", "dredge", "egging-on", "fallout-4",
+  "ark-survival-ascended",
+  "balatro",
+  "blue-prince",
   "crash-bandicoot-n-sane-trilogy",
   "unturned",
   "the-mortuary-assistant",
@@ -518,6 +523,10 @@ const MANAGED_BIZHAWK_GAME_IDS = new Set([
 ]);
 
 const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set([
+  "dead-by-daylight", "dredge", "egging-on", "fallout-4",
+  "ark-survival-ascended",
+  "balatro",
+  "blue-prince",
   "crash-bandicoot-n-sane-trilogy",
   "unturned",
   "the-mortuary-assistant",

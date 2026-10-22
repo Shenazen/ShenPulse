@@ -2,23 +2,27 @@
 
 /** Façade publique du catalogue de jeux ; assemblage et copie isolée pour les consommateurs. */
 const path = require("node:path");
-const { LOCAL_BRIDGE } = require("./game-catalog/connectors");
 const { INTERNAL_GAMES } = require("./game-catalog/internal-games");
 const { EXTERNAL_GAMES } = require("./game-catalog/external-games");
 const { buildGameGuide } = require("./game-catalog/guides");
 const { interactionEffects } = require("./game-catalog/effects");
 const { interactionArtwork } = require("./game-catalog/interaction-art");
+const gameCategories = require("../shared/game-categories");
 
 function loadShenazenGameCatalog(resourcesDirectory) {
   const interactionsDirectory = path.join(resourcesDirectory, "game-interactions");
   const external = EXTERNAL_GAMES.map((entry) => {
+    if (entry.effects?.length) return { ...entry, guide: buildGameGuide(entry, entry.effects) };
     const effects = interactionEffects(interactionsDirectory, entry.id);
-    const hasNativeEffects = effects.some((effect) => effect.available);
+    // Une illustration marquée « native » ne fournit aucun module exécutable.
+    // Les fiches sans intégration restent consultables, sans envoyer de commandes
+    // à l’ancien port générique d’une passerelle tierce.
+    const unavailableReason = "Le module autonome ShenPulse de ce jeu n’est pas encore disponible.";
     return {
       ...entry,
-      connector: hasNativeEffects ? { ...LOCAL_BRIDGE } : { type: "demo" },
-      effects,
-      guide: buildGameGuide(entry, effects)
+      connector: { type: "demo" },
+      effects: effects.map(effect => ({ ...effect, available: false, unavailableReason, description: unavailableReason })),
+      guide: buildGameGuide(entry, effects.map(effect => ({ ...effect, available: false })))
     };
   });
   return [
@@ -27,7 +31,7 @@ function loadShenazenGameCatalog(resourcesDirectory) {
       guide: buildGameGuide(entry, entry.effects)
     })),
     ...external
-  ].map(interactionArtwork(resourcesDirectory)).map((entry) => structuredClone(entry));
+  ].map(interactionArtwork(resourcesDirectory)).map((entry) => structuredClone({ ...entry, catalogCategory: gameCategories.categoryFor(entry) }));
 }
 
 module.exports = { loadShenazenGameCatalog };

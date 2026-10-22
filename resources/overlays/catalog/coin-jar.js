@@ -24,16 +24,16 @@
   defaults: {
     title: "COIN JAR",
     model: "fantasy",
-    current: 0,
-    target: 1000,
-    minCoins: 0,
-    showGoal: true,
-    showBase: true
+    showHeader: true,
+    coinJarTitleScale: 100,
+    coinJarTitleColor: "#ffffff"
   },
-  settings: ["title", "model", "target", "minCoins", "showGoal", "showBase"],
+  settings: [
+    "title", "model", "showHeader", "coinJarTitleScale", "coinJarTitleColor"
+  ],
   parameters: {
     model: "model",
-    minCoins: "minCoins",
-    showBase: "showBase"
+    coinJarTitleScale: "coinJarTitleScale",
+    coinJarTitleColor: "coinJarTitleColor"
   }
 }));

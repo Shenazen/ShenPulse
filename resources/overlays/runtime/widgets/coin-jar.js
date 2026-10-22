@@ -3,23 +3,20 @@
 /** Bocal de cadeaux : physique et rendu, chargés uniquement pour cette vue. */
 
 function renderCoinJar() {
-  const current = document.getElementById("coin-jar-current");
-  const target = document.getElementById("coin-jar-target");
-  const level = document.getElementById("coin-jar-level");
-  const widget = document.querySelector(".coin-jar-widget");
-  const meter = document.querySelector(".coin-jar-meter");
-  if (current) current.textContent = formatNumber(coinJarCurrent);
-  if (target) target.textContent = formatNumber(coinJarTarget);
-  if (level) {
-    const range = Math.max(1, coinJarTarget - coinJarMinimum);
-    const progress = Math.min(
-      100,
-      Math.max(0, ((coinJarCurrent - coinJarMinimum) / range) * 100)
-    );
-    level.style.height = `${progress}%`;
+  const title = document.getElementById("coin-jar-title");
+  applyCoinJarAppearance();
+  if (title) {
+    title.firstElementChild.textContent = overlayTitle;
+    title.hidden = !showHeader || !overlayTitle.trim();
   }
-  widget?.classList.toggle("without-base", !showBase);
-  if (meter) meter.hidden = !showGoal;
+  fitCoinJarText();
+}
+
+document.fonts?.ready?.then(fitCoinJarText);
+if (typeof ResizeObserver === "function") {
+  const coinJarTextObserver = new ResizeObserver(fitCoinJarText);
+  const coinJarWidget = document.querySelector(".coin-jar-widget");
+  if (coinJarWidget) coinJarTextObserver.observe(coinJarWidget);
 }
 
 function updateCoinJar(payload = {}) {
@@ -36,6 +33,17 @@ function updateCoinJar(payload = {}) {
         ? Math.max(minimum, amount)
         : Math.max(minimum, coinJarCurrent + amount);
   if (operation === "reset") clearCoinJarDrops();
+  renderCoinJar();
+}
+
+function receiveCoinJarGift(event = {}, { authoritativeState = false } = {}) {
+  if (event.type !== "gift" || (event.id && coinJarEventIds.has(String(event.id).trim()))) return;
+  revealOverlay();
+  if (!authoritativeState) {
+    const count = Math.max(1, Number(event.data?.count || 1));
+    coinJarCurrent += Math.max(1, Number(event.data?.value || 1)) * count;
+  }
+  spawnCoinJarDrop(event);
   renderCoinJar();
 }
 
@@ -294,6 +302,7 @@ function clearCoinJarDrops() {
   coinJarAnimationTimestamp = 0;
   coinJarSettledFrames = 0;
   for (const gift of coinJarDrops.splice(0)) gift.node.remove();
-  coinJarEventIds.clear();
+  // Les événements déjà reçus restent connus : une hydratation ne doit pas
+  // remettre les anciens cadeaux dans le bocal que l’utilisateur vient de vider.
   coinJarGeometry = null;
 }

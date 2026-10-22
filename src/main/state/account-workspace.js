@@ -11,6 +11,7 @@ const { normalizeProfileWorkspace } = require("./profile-workspace");
 const { normalizeGameInteractionRules } = require("./rule-normalization");
 const { normalizeObjectMap } = require("./normalization-utils");
 const { makeDemoConnectionsManual, removeLegacyAutomaticDemoActivity } = require("./legacy-demo");
+const { normalizeLiveDirectoryPreference } = require("../../shared/live-directory-protocol");
 
 /** Valide un identifiant de propriétaire sans imposer un format spécifique à Firebase. */
 function cleanAccountUid(value) {
@@ -128,6 +129,7 @@ function normalizeAccountWorkspace(workspace, ownerUid = "") {
       cleanAccountUid(saved.ownerUid),
     settings: Object.fromEntries(
       ACCOUNT_SETTING_KEYS.map((key) => {
+        if (key === "liveDirectory") return [key, normalizeLiveDirectoryPreference(settings[key])];
         const defaultValue = defaults.settings[key];
         const savedValue = settings[key];
         if (

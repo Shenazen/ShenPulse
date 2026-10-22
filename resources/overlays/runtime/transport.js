@@ -77,7 +77,7 @@ const overlayChannels = {
     ? (payload, context = {}) => addFeedEvent(payload, {
         skipInteractiveState: context.authoritativeState === true
       })
-    : null,
+    : typeof receiveCoinJarGift === "function" ? receiveCoinJarGift : null,
   game: typeof addGameEffect === "function" ? addGameEffect : null,
   goal: typeof renderGoals === "function"
     ? (goal) => {

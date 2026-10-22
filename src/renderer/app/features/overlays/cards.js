@@ -48,13 +48,8 @@ function overlayTimerPauseButton(item) {
 }
 
 function overlayQuickActions(item, allowed = true) {
-  if (["timer", "multiplierTimer", "winCounter"].includes(item.key)) return "";
+  if (["timer", "multiplierTimer", "winCounter", "wheel", "coinJar"].includes(item.key)) return "";
   const definitions = {
-    coinJar: [
-      ["add", 10, "＋10"],
-      ["remove", 10, "−10"],
-      ["reset", 0, "Vider"]
-    ],
     wheel: [["test", 0, "Lancer"]]
   };
   const actions = definitions[item.key] || [];
@@ -86,7 +81,6 @@ function renderOverlayCategorySection(section) {
       <img class="overlay-category-frame" src="assets/studio/overlay-section-frame.webp" alt="" aria-hidden="true" width="1600" height="307" decoding="async">
       <h3>${escapeHtml(title)}<span class="overlay-category-count"> · ${section.items.length} overlay${section.items.length > 1 ? "s" : ""}</span></h3>
     </header>
-    ${section.id === "matches" ? renderMatchOverlayGuide() : ""}
     <div class="overlay-catalog-grid">${section.items.map((item) => renderOverlayCard(item)).join("")}</div>
     <img class="overlay-category-divider" src="assets/studio/overlay-section-divider.webp" alt="" aria-hidden="true" width="1600" height="228" loading="lazy" decoding="async">
   </section>`;
@@ -158,9 +152,9 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
           <div class="entity-actions">
             <button class="button small primary" data-action="preview-overlay" data-id="${escapeHtml(item.key)}">${isMatchOverlay ? "Relancer à 0" : "Tester en direct"}</button>
             <button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer</button>
-            ${["likeGoal", "timer", "multiplierTimer", "winCounter"].includes(item.key)
+            ${["likeGoal", "timer", "multiplierTimer", "winCounter", "coinJar"].includes(item.key)
               ? `${["timer", "multiplierTimer"].includes(item.key) ? overlayTimerPauseButton(item) : ""}${item.key === "winCounter" ? overlayWinCounterButtons() : ""}<button type="button" class="button small ghost" data-action="overlay-quick" data-id="${escapeHtml(item.key)}" data-operation="reset" data-amount="0">Réinitialiser</button>`
-              : ["topDonors", "topTappers"].includes(item.key) ? "" : `<button class="button small" data-action="open-url" data-value="${escapeHtml(isMatchOverlay ? matchStudioUrl : url)}" ${isMatchOverlay && !matchStudioUrl ? "disabled" : ""}>Ouvrir</button>
+              : ["topDonors", "topTappers", "wheel"].includes(item.key) ? "" : `<button class="button small" data-action="open-url" data-value="${escapeHtml(isMatchOverlay ? matchStudioUrl : url)}" ${isMatchOverlay && !matchStudioUrl ? "disabled" : ""}>Ouvrir</button>
                  ${isMatchOverlay ? "" : `<button class="button small ghost" data-action="copy" data-value="${escapeHtml(localOverlayUrl(item))}">OBS local</button>`}`}
           </div>
         </div>`
@@ -203,7 +197,7 @@ function syncPublicOverlayRelayStatus(relay = snapshot?.publicOverlayRelay || {}
   const description = card.querySelector("[data-public-overlay-relay-detail]");
   const badge = card.querySelector("[data-public-overlay-relay-badge]");
   if (description) {
-    description.textContent = `${detail} Le lecteur Match utilise lui aussi une URL HTTPS courte sur shenpulse-overlays.web.app, avec un canal révocable et des tickets vidéo temporaires.`;
+    description.textContent = detail;
   }
   if (badge) {
     badge.className = `badge ${tone}`;

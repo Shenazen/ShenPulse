@@ -4,7 +4,7 @@
 const { POKEMON_RED_BLUE_ASSET_BASE } = require("./constants");
 
 module.exports = {
-    version: "1.0.1",
+    version: "1.1.0",
     title: "Pokémon Rouge/Bleu",
     targetLabel: "dossier de la passerelle Pokémon",
     managedTarget: true,
@@ -12,6 +12,7 @@ module.exports = {
     launchExecutables: ["EmuHawk.exe"],
     warning:
       "ShenPulse installe automatiquement BizHawk, Pokémon Rouge et le pack d’interactions.",
+    retiredFiles: ["CrowdControl/CrowdControl.Client.Slim.exe", "CrowdControl/CrowdControl.Client.Slim.dll"],
     assets: [
       {
         id: "bizhawk",
@@ -24,20 +25,15 @@ module.exports = {
         url: `${POKEMON_RED_BLUE_ASSET_BASE}/Bizhawk-2.9.1.zip`
       },
       {
-        id: "client",
-        fileName: "CrowdControl.Client.Slim-5.0.9661.26214.zip",
-        action: "extract",
-        targetPath: "CrowdControl",
-        size: 70255381,
-        sha256:
-          "b9d894e4e39650e1a0b5a9a34d99c53f2a1f7918d0705778b931112c1ef0318d",
-        url: `${POKEMON_RED_BLUE_ASSET_BASE}/CrowdControl.Client.Slim-5.0.9661.26214.zip`
+        id: "bridge", fileName: "emulator-bridge-1.0.0.zip", action: "extract",
+        size: 43051596, sha256: "cd75f36ccaae9a8a8a21ff843abad4a92263773763b33d9e740acb7d4aa3e3ef",
+        url: "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/pokemon-red-blue/1.1.0/emulator-bridge-1.0.0.zip"
       },
       {
         id: "pack",
         fileName: "PokemonRedBlue.dll",
         action: "copy",
-        targetPath: "CrowdControl/Packs",
+        targetPath: "Bridge/Packs",
         size: 259408,
         sha256:
           "586f82e6a888abda25ba5c518d11d70befa52495b2484890759b6e45c7578329",

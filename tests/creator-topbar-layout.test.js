@@ -142,7 +142,7 @@ test("le module de contrôle live Accueil est chargé avant son rendu et le chro
     assert.ok(rules.some((rule) => rule.conditionText === "(max-width:1500px)"), "La barre doit se resserrer avant les largeurs intermédiaires");
     assert.equal(shellRule.style.gridTemplateRows, "64px minmax(0,1fr)");
     assert.equal(rules.find((rule) => rule.selectorText === ".creator-tiktok-control").style.height, "44px");
-    assert.equal(rules.find((rule) => rule.selectorText === ".creator-topbar .user-chip").style.height, "42px");
+    assert.equal(rules.find((rule) => rule.selectorText === ".creator-topbar .user-chip").style.height, "44px");
     const compactRules = rules.filter((rule) => rule.conditionText === "(max-width:1250px)");
     assert.ok(compactRules.length);
     assert.equal(compactRules.some((rule) => [...rule.cssRules].some((item) => item.selectorText === ".app-shell")), false,

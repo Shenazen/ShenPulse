@@ -1,6 +1,7 @@
 "use strict";
 const { createMatchSession, normalizeMatchesConfig } = require("../shared/matches-contract");
 const visibility = require("../shared/visibility-catalog");
+const APP_VERSION = require("../../package.json").version;
 
 const PRIVATE_RENDERER_CHANNELS = new Set([
   "deal-host-state",
@@ -120,7 +121,7 @@ function canUseOwnerOnlyCatalog(store) {
 function withoutRestrictedGamePacks(snapshot = {}, store) {
   const source = store?.getStateProjection?.(["settings.siteVisibility"])?.settings?.siteVisibility ??
     store?.getState?.()?.settings?.siteVisibility ?? snapshot.state?.settings?.siteVisibility;
-  const packs = (snapshot.packs || []).filter(pack => visibility.canAccessGame(source, pack, false));
+  const packs = (snapshot.packs || []).filter(pack => visibility.canAccessGame(source, pack, false, snapshot.appVersion || APP_VERSION));
   return packs.length === (snapshot.packs || []).length ? snapshot : { ...snapshot, packs };
 }
 

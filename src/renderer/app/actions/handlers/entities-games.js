@@ -137,6 +137,8 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
           ?.querySelector("[data-game-key-layout]")
           ?.value
       : "";
+    const gestureKeys = target.closest(".game-simple-step")
+      ?.querySelector("[data-game-gesture-keys]")?.value;
     gamePageMessages.delete(id);
     gameInstallBusyId = id;
     const startedAt = new Date().toISOString();
@@ -157,7 +159,8 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
     try {
       if (pack.connector?.type === "windows-input") {
         acceptSnapshot(await api.configureGame(pack.id, {
-          keyLayout: inputLayout === "azerty" ? "azerty" : "wasd"
+          keyLayout: ["wasd", "zsqd"].includes(inputLayout) ? inputLayout : "azerty",
+          ...(pack.id === "dead-by-daylight" ? { gestureKeys: gestureKeys === "letters" ? "letters" : "numbers" } : {})
         }));
       }
       const result = await api.installGame(id);

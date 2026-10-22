@@ -11,6 +11,12 @@ const { selectRuntimeWheel } = require("./wheel-selection");
 
 function normalizeWheelRuntimeSettings(settings = {}, design = "classic") {
   const referenceDefaults = {
+    wheelShowTitle: true,
+    wheelTitleColor: "#fff1c2",
+    wheelTitleScale: 100,
+    wheelTextScale: 100,
+    wheelWinnerColor: "#fff7d3",
+    wheelWinnerScale: 100,
     font: "Kalam",
     fontSize: 50,
     textOrientation: "horizontal",
@@ -48,14 +54,15 @@ function normalizeWheelRuntimeSettings(settings = {}, design = "classic") {
     Number(settings.textRadius) === 34 &&
     Number(settings.textBoxHeight) === 42;
   const overrides = usesRegressedDefaults
-    ? design === "royal"
-      ? {
-          font: "Georgia",
-          textColor: "#fff5cb",
-          glow: 100,
-          spinDuration: 7
-        }
-      : {}
+    ? {
+        ...settings,
+        font: design === "royal" ? "Georgia" : "Kalam",
+        fontSize: 50,
+        textOrientation: "horizontal",
+        textRadius: 100,
+        textBoxWidth: 100,
+        textBoxHeight: 240
+      }
     : settings;
   return { ...referenceDefaults, ...overrides, announceDuration: 0 };
 }

@@ -137,7 +137,7 @@ export const LEGAL_PAGES = {
         'La bibliothèque locale conserve les informations nécessaires pour retrouver et lire le média. Les sources de diffusion peuvent charger ce média distant. L’utilisateur doit vérifier les droits sur le fichier et éviter d’y inclure des données confidentielles.'
       ]],
       ['Annuaire des créateurs en LIVE', [
-        'La publication dans l’annuaire public est facultative. Lorsqu’elle est activée, les informations publiques du LIVE telles que le pseudonyme, la photo publique, la plateforme et l’audience disponible peuvent apparaître sur l’accueil de ShenPulse.',
+        'À partir du 21 octobre 2026, la publication dans l’annuaire public est activée par défaut pour les comptes connectés, y compris lors de la mise à jour des anciennes installations. Elle peut être désactivée dans le menu du compte ; ce choix est ensuite conservé. Les informations publiques du LIVE telles que le pseudonyme, la photo publique, la plateforme et l’audience disponible peuvent apparaître sur l’accueil de ShenPulse lorsque ce partage est actif.',
         'L’annuaire ne publie pas les profils de configuration, les secrets locaux ou l’adresse e-mail du compte ShenPulse.'
       ]],
       ['Paiement et services tiers', [

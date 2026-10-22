@@ -109,6 +109,7 @@ const GAME_PLATFORM_OVERRIDES = Object.freeze({
 });
 
 const GAME_PLATFORM_LABELS = Object.freeze({
+  "game-pass": "Game Pass",
   "epic-games": "Epic Games",
   "microsoft-store": "Microsoft Store",
   nintendo: "Nintendo",
@@ -117,23 +118,33 @@ const GAME_PLATFORM_LABELS = Object.freeze({
   steam: "Steam"
 });
 
-function gamePlatformIds(pack) {
+const GAME_PASS_BADGE_GAME_IDS = new Set(["ark-survival-ascended", "balatro", "blue-prince"]);
+
+function gamePlatformIds(pack, settings = typeof siteVisibility === "undefined" ? null : siteVisibility) {
+  const selected = typeof visibilityTools === "undefined" ? undefined : visibilityTools.gamePlatformsFor(settings, pack?.id);
+  if (selected !== undefined) return selected;
+  // La jaquette Minecraft regroupe uniquement les logos de ses modes visibles.
+  if (pack?.modeSelector && pack.modes?.length) {
+    return [...new Set(pack.modes.flatMap(mode => gamePlatformIds(mode, settings)))];
+  }
   const configured = Array.isArray(pack?.storefronts)
-    ? pack.storefronts.filter((id) => GAME_PLATFORM_LABELS[id])
+    ? pack.storefronts.filter((id) => id !== "game-pass" && GAME_PLATFORM_LABELS[id])
     : [];
-  if (configured.length) return [...new Set(configured)];
-  if (
+  let platforms = configured;
+  if (!platforms.length && (
     pack?.modeSelector ||
     pack?.id === "minecraft" ||
     String(pack?.id || "").startsWith("minecraft-")
-  ) {
-    return ["microsoft-store"];
-  }
-  if (SHENPULSE_PLATFORM_GAME_IDS.has(pack?.id)) return ["shenpulse"];
-  return GAME_PLATFORM_OVERRIDES[pack?.id] || ["steam"];
+  )) platforms = ["microsoft-store"];
+  if (!platforms.length) platforms = SHENPULSE_PLATFORM_GAME_IDS.has(pack?.id) ? ["shenpulse"] : GAME_PLATFORM_OVERRIDES[pack?.id] || ["steam"];
+  const showGamePass = GAME_PASS_BADGE_GAME_IDS.has(pack?.id) && ShenPulseGamePassCatalog.offerFor(pack);
+  return [...new Set([...platforms, ...(showGamePass ? ["game-pass"] : [])])];
 }
 
 function gamePlatformIcon(platformId) {
+  if (platformId === "game-pass") {
+    return `<svg viewBox="0 0 86 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#107c10"/><path d="M7 5.5c3.5.5 6.7 2.6 9 4.6 2.3-2 5.5-4.1 9-4.6-2.5 2.2-4.5 4.7-6.4 7.3 4.4 5.1 7.5 10 7.9 13.2-3.4-4.5-7-8.5-10.5-11.2C12.5 17.5 8.9 21.5 5.5 26c.4-3.2 3.5-8.1 7.9-13.2C11.5 10.2 9.5 7.7 7 5.5Z" fill="#fff"/><g fill="#fff" font-family="Arial, sans-serif" font-size="13" font-weight="800"><text x="36" y="14">GAME</text><text x="36" y="28">PASS</text></g></svg>`;
+  }
   if (platformId === "shenpulse") {
     return '<img src="assets/brand/shenpulse-512.png" alt="">';
   }
@@ -152,15 +163,18 @@ function gamePlatformIcon(platformId) {
   return `<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="18" rx="9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M11 20V12l5 8v-8h5v8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"/></svg>`;
 }
 
-function gamePlatformLogos(pack) {
-  const platformIds = gamePlatformIds(pack);
-  const labels = platformIds.map((id) => GAME_PLATFORM_LABELS[id]);
-  return `<div class="tile-platforms" aria-label="Disponible sur ${escapeHtml(labels.join(", "))}">${platformIds.map((id) => `<span class="tile-platform-logo platform-${escapeHtml(id)}" title="${escapeHtml(GAME_PLATFORM_LABELS[id])}">${gamePlatformIcon(id)}</span>`).join("")}</div>`;
+function gamePlatformLogos(pack, settings = typeof siteVisibility === "undefined" ? null : siteVisibility) {
+  const platformIds = gamePlatformIds(pack, settings);
+  if (!platformIds.length) return "";
+  const labelFor = id => id === "game-pass" ? (ShenPulseGamePassCatalog.offerFor(pack)?.kind === "benefits" ? "Avantages Game Pass Ultimate" : "PC Game Pass") : GAME_PLATFORM_LABELS[id];
+  const labels = platformIds.map(labelFor);
+  return `<div class="tile-platforms" aria-label="Disponible sur ${escapeHtml(labels.join(", "))}">${platformIds.map((id) => `<span class="tile-platform-logo platform-${escapeHtml(id)}" title="${escapeHtml(labelFor(id))}">${gamePlatformIcon(id)}</span>`).join("")}</div>`;
 }
 
 const GAME_CATALOG_PLATFORM_EXPLANATIONS = Object.freeze({
   shenpulse: "Jeu et interactions accessibles avec Pro · achat supplémentaire si indiqué.",
   steam: "Jeu à télécharger sur Steam · accès Pro requis pour les interactions.",
+  "game-pass": "Jeux PC et avantages selon votre formule Microsoft · abonnement distinct de ShenPulse Pro, version compatible requise pour les interactions.",
   "epic-games": "Jeu à télécharger sur Epic Games · accès Pro requis pour les interactions.",
   "rockstar-games": "Jeu à télécharger via Rockstar Games · accès Pro requis pour les interactions.",
   "microsoft-store": "Jeu à télécharger sur Microsoft Store · accès Pro requis pour les interactions.",
@@ -451,6 +465,7 @@ function renderGamesCatalogLegacy() {
 
 function renderGamesV2() {
   const availablePacks = visibleGamePacks();
+  if (!ShenPulseGameCategories.categories.some((category) => category.id === gameCategory)) gameCategory = "all";
   if (!["all", "included", "purchase"].includes(gameFilter)) {
     gameFilter = "all";
   }
@@ -464,7 +479,7 @@ function renderGamesV2() {
     gamePageMode = "catalog";
   }
   const query = gameSearch.trim().toLocaleLowerCase();
-  const packs = availablePacks.filter((pack) => {
+  const matchingPacks = availablePacks.filter((pack) => {
     const effects = (pack.effects || []).map((effect) => effect.name).join(" ");
     const matchesSearch =
       !query ||
@@ -475,6 +490,8 @@ function renderGamesV2() {
       gameFilter === "all" || gameAccessGroup(pack) === gameFilter;
     return matchesSearch && matchesFilter;
   });
+  const packs = matchingPacks.filter((pack) => gameCategory === "all" || ShenPulseGameCategories.categoryFor(pack) === gameCategory);
+  const resultCount = ShenPulseGameCategories.countGames(packs);
   return `
     <div class="reference-page games-gallery-page">
       ${renderStudioHero("games", "Jeux vidéo compatibles", "Vos spectateurs agissent dans votre jeu avec Pro ou Premium. Jeu original et pack adapté nécessaires ; achat supplémentaire si indiqué.")}
@@ -482,8 +499,9 @@ function renderGamesV2() {
       ${hasProAccess() ? "" : `<section class="game-access-warning game-catalog-access-warning"><span aria-hidden="true">◇</span><div><strong>Jeux vidéo : accès Pro requis</strong><p>Un accès Pro ou Premium actif est nécessaire, y compris pour les packs déjà achetés. Le jeu original et son pack compatible restent requis ; les modules vendus séparément exigent aussi leur achat ou un essai produit actif.</p></div><button class="button small primary" type="button" data-navigate="membership">Découvrir Pro</button></section>`}
       <section class="catalog-toolbar games-toolbar">
         <label class="search-control"><span>⌕</span><input data-search="games" type="search" value="${escapeHtml(gameSearch)}" placeholder="Rechercher un jeu, un connecteur ou un effet"></label>
-        <div class="filter-pills"><button class="${gameFilter === "all" ? "active" : ""}" data-action="set-game-filter" data-value="all">Tous</button><button class="${gameFilter === "included" ? "active" : ""}" data-action="set-game-filter" data-value="included">Inclus avec Pro</button><button class="${gameFilter === "purchase" ? "active" : ""}" data-action="set-game-filter" data-value="purchase">Achat + accès Pro</button></div>
-        <span class="result-count">${packs.length} résultat${packs.length > 1 ? "s" : ""}</span>
+        <label class="game-access-filter"><span>Accès</span><select data-game-access-filter aria-label="Filtrer les jeux par accès">${[["all", "Tous les accès"], ["included", "Inclus avec Pro"], ["purchase", "Achat + accès Pro"]].map(([value, label]) => `<option value="${value}" ${gameFilter === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+        <span class="result-count" aria-live="polite">${resultCount} jeu${resultCount > 1 ? "x" : ""} / mode${resultCount > 1 ? "s" : ""}</span>
+        ${renderGameCategoryFilters(matchingPacks)}
       </section>
       <section class="games-tile-grid">
         ${packs.map((pack) => `
@@ -586,12 +604,14 @@ function renderGameWorkspace(pack) {
         <div class="entity-meta">
           <span class="badge ${unlocked ? "success" : ""}">${escapeHtml(gameAccessLabel(pack))}</span>
           <span class="badge cyan">Configuration guidée</span>
+          ${renderGameConditionsButton(pack)}
         </div>
       </div>
       <div class="game-hero-stats">
         <span><strong>${pack.effects.length}</strong><small>interactions</small></span>
         <span><strong>${mappedEffects.length}</strong><small>configurées</small></span>
       </div>
+      ${renderGameConditionsPanel(pack)}
     </section>
     ${unlocked ? "" : `<section class="game-access-warning"><span aria-hidden="true">🔒</span><div><strong>Accès requis pour exécuter ce jeu</strong><p>${escapeHtml(gameAccessReason(pack))}</p></div><button class="button primary" data-navigate="membership">Voir les accès</button></section>`}
     <nav class="game-journey-tabs" aria-label="Parcours de configuration">

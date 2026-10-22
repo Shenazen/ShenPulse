@@ -156,9 +156,7 @@ test("un aperçu n'est révélé qu'après le signal de rendu complet", () => {
 });
 
 test("chaque champ des configurations overlay possède une aide information", () => {
-  const start = renderer.indexOf("function openWheelOverlayConfig");
-  const end = renderer.indexOf("function openOverlayConfigLegacy", start);
-  const editors = renderer.slice(start, end);
+  const editors = ["editor", "wheel-editor", "like-goal-editor", "timer-editor", "win-counter-editor", "leaderboard-editor"].map((name) => fs.readFileSync(path.join(root, `src/renderer/app/features/overlays/${name}.js`), "utf8")).join("\n");
   const helpStart = renderer.indexOf("const OVERLAY_FIELD_HELP");
   const helpEnd = renderer.indexOf("function fieldLabelWithInfo", helpStart);
   const helpCatalog = renderer.slice(helpStart, helpEnd);
@@ -342,25 +340,14 @@ test("la roue affiche dans ShenPulse exactement le résultat diffusé à l’URL
   assert.doesNotMatch(wheelTest, /winnerIndex:\s*0/);
 });
 
-test("l'éditeur de roue sépare les tâches et garde un aperçu unique", () => {
-  const start = renderer.indexOf("function openWheelOverlayConfig");
-  const end = renderer.indexOf("function overlayDraftConfig", start);
-  const editor = renderer.slice(start, end);
-
-  for (const section of ["setup", "segments", "appearance", "playback"]) {
-    assert.match(editor, new RegExp(`data-wheel-section="${section}"`));
-    assert.match(
-      editor,
-      new RegExp(`data-wheel-section-panel="${section}"`)
-    );
-  }
-  assert.match(editor, /wheel-editor-workspace/);
-  assert.match(editor, /wheel-preview-column/);
-  assert.match(editor, /const wheelTriggerText = wheelTriggerSummary\(wheel\)/);
-  assert.match(editor, /Réglages typographiques avancés/);
+test("l’éditeur de roue regroupe les réglages et garde un aperçu unique", () => {
+  const editor = fs.readFileSync(path.join(root, "src/renderer/app/features/overlays/wheel-editor.js"), "utf8");
+  assert.match(editor, /overlay-config-compact/);
+  assert.match(editor, /Réglages avancés/);
+  assert.equal([...editor.matchAll(/overlayLivePreview\(/g)].length, 1);
+  assert.doesNotMatch(editor, /data-wheel-section-panel|textRadius|textSegmentOffset|textAngleOffset/);
   assert.match(renderer, /function syncWheelSegmentActionVisibility/);
-  assert.match(rendererCss, /\.wheel-editor-steps/);
-  assert.match(rendererCss, /\.wheel-preview-column/);
+  assert.match(rendererCss, /\.wheel-config-compact/);
 });
 
 test("les éditeurs overlay standards restent compacts dans quatre onglets", () => {
@@ -608,18 +595,14 @@ test("les timers forcent les heures et dimensionnent titre et valeur séparémen
   assert.match(rendererCss, /@media \(max-width:\s*620px\)[\s\S]*grid-template-columns:\s*1fr/);
 });
 
-test("le Coin Jar expose une jauge réellement pilotée par ses quatre champs", () => {
+test("la Coin Jar affiche uniquement le bocal et son titre, sans objectif ni compteur", () => {
   const overlayHtml = fs.readFileSync(
     path.join(root, "resources", "overlays", "index.html"),
     "utf8"
   );
-  assert.match(overlayHtml, /id="coin-jar-current"/);
-  assert.match(overlayHtml, /id="coin-jar-target"/);
-  assert.match(overlayHtml, /id="coin-jar-level"/);
-  assert.match(overlayRuntime, /coinJarTarget - coinJarMinimum/);
-  assert.match(overlayRuntime, /widget\?\.classList\.toggle\("without-base", !showBase\)/);
-  assert.match(overlayRuntime, /meter\.hidden = !showGoal/);
-  assert.match(renderer, /\["likeGoal", "coinJar", "winCounter"\]/);
+  assert.match(overlayHtml, /id="coin-jar-title"/);
+  assert.doesNotMatch(overlayHtml, /id="coin-jar-(?:current|target|level|percent|label)"|coin-jar-meter/);
+  assert.match(overlayRuntime, /if \(operation === "reset"\) clearCoinJarDrops\(\)/);
 });
 
 test("chaque popup overlay se rouvre en haut avec des champs lisibles", () => {

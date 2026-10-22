@@ -14,6 +14,12 @@ const { detectGtaEdition, deployGtaEnhancedSave } = require("./gta-save");
 const { commitInstallationDeployment, deployAdditionalInstallTargets } = require("./deployments");
 const { installationSlotPercent, cleanupStaleInstallerRuns } = require("./housekeeping");
 const { installFindTheNeedleMod } = require("./find-the-needle-mod-installation");
+const { detectBalatroEdition, stageBalatroInstallation } = require("./balatro-installation");
+const { stageBluePrinceInstallation } = require("./blue-prince-installation");
+const { assertModGameClosed } = require("./mod-installation-ready");
+const { stageFourGamesInstallation, detectDredgeEdition } = require("./four-games-installation");
+const { stageTruckSimulatorInstallation } = require("./truck-simulator-installation");
+const { stageStandaloneModule } = require("./standalone-module-installation");
 
 async function installGame(runtime, gameId) {
     runtime.assertAccess(gameId);
@@ -61,6 +67,9 @@ async function installGame(runtime, gameId) {
     if (!targetPath) return { canceled: true };
     assertAccess();
     await runtime.validateTarget(targetPath, manifest);
+    await assertModGameClosed(gameId, targetPath);
+    if (gameId === "pokemon-red-blue") await runtime.pokemonRedBlue?.stop();
+    if (gameId === "super-mario-kart") await runtime.superMarioKart?.stop();
     assertAccess();
     if (manifest.localArchiveOnly) {
       return await installFindTheNeedleMod(runtime, { gameId, manifest, targetPath, previousInstallation, assertAccess });
@@ -100,7 +109,8 @@ async function installGame(runtime, gameId) {
     const edition =
       gameId === "gtav-montchiliad"
         ? await detectGtaEdition(targetPath)
-        : "";
+        : gameId === "balatro" ? await detectBalatroEdition(targetPath)
+        : gameId === "dredge" ? await detectDredgeEdition(targetPath) : "";
     const candidateAssets = manifest.assets.filter(
       (asset) =>
         !asset.editions?.length || asset.editions.includes(edition)
@@ -222,6 +232,12 @@ async function installGame(runtime, gameId) {
           preparedSaveDirectory = assetResult.preparedSaveDirectory;
         }
       }
+      if (gameId === "balatro") await stageBalatroInstallation({ targetPath, deploymentRoot, edition, assertAccess });
+      if (gameId === "euro-truck-simulator-2") await stageTruckSimulatorInstallation({ deploymentRoot, assertAccess });
+      if (["blue-prince", "dredge"].includes(gameId)) await stageBluePrinceInstallation({ targetPath, deploymentRoot, tempRoot, assertAccess });
+      const preparedModule = ["dredge", "egging-on", "fallout-4", "escape-from-duckov"].includes(gameId)
+        ? await stageFourGamesInstallation({ gameId, targetPath, deploymentRoot, edition, assertAccess }) : null;
+      await stageStandaloneModule({ gameId, deploymentRoot, assertAccess });
       runtime.progress(gameId, {
         phase: "install",
         current: total,
@@ -243,12 +259,13 @@ async function installGame(runtime, gameId) {
         await fs.promises.mkdir(targetPath, { recursive: true });
       }
       assertAccess();
+      await assertModGameClosed(gameId, targetPath);
       const deployment = await commitInstallationDeployment({
         deploymentRoot,
         targetPath,
         backupRoot,
         tempRoot,
-        retiredFiles: manifest.retiredFiles,
+        retiredFiles: [...(manifest.retiredFiles || []), ...(preparedModule?.retiredFiles || [])],
         assertAccess
       });
       assertAccess();
@@ -258,6 +275,8 @@ async function installGame(runtime, gameId) {
           targetPath,
           backupRoot,
           documentsPath: runtime.app.getPath("documents"),
+          appDataPath: runtime.app.getPath("appData"),
+          edition,
           assertAccess
         });
       assertAccess();

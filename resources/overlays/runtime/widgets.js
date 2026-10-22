@@ -3,23 +3,13 @@
 /* FICHIER GÉNÉRÉ — compatibilité anciens loaders ; sources : widgets/ et session.js. */
 
 function renderCoinJar() {
-  const current = document.getElementById("coin-jar-current");
-  const target = document.getElementById("coin-jar-target");
-  const level = document.getElementById("coin-jar-level");
-  const widget = document.querySelector(".coin-jar-widget");
-  const meter = document.querySelector(".coin-jar-meter");
-  if (current) current.textContent = formatNumber(coinJarCurrent);
-  if (target) target.textContent = formatNumber(coinJarTarget);
-  if (level) {
-    const range = Math.max(1, coinJarTarget - coinJarMinimum);
-    const progress = Math.min(
-      100,
-      Math.max(0, ((coinJarCurrent - coinJarMinimum) / range) * 100)
-    );
-    level.style.height = `${progress}%`;
+  const title = document.getElementById("coin-jar-title");
+  applyCoinJarAppearance();
+  if (title) {
+    title.firstElementChild.textContent = overlayTitle;
+    title.hidden = !showHeader || !overlayTitle.trim();
   }
-  widget?.classList.toggle("without-base", !showBase);
-  if (meter) meter.hidden = !showGoal;
+  fitCoinJarText();
 }
 
 function updateCoinJar(payload = {}) {
@@ -36,6 +26,17 @@ function updateCoinJar(payload = {}) {
         ? Math.max(minimum, amount)
         : Math.max(minimum, coinJarCurrent + amount);
   if (operation === "reset") clearCoinJarDrops();
+  renderCoinJar();
+}
+
+function receiveCoinJarGift(event = {}, { authoritativeState = false } = {}) {
+  if (event.type !== "gift" || (event.id && coinJarEventIds.has(String(event.id).trim()))) return;
+  revealOverlay();
+  if (!authoritativeState) {
+    const count = Math.max(1, Number(event.data?.count || 1));
+    coinJarCurrent += Math.max(1, Number(event.data?.value || 1)) * count;
+  }
+  spawnCoinJarDrop(event);
   renderCoinJar();
 }
 
@@ -294,7 +295,8 @@ function clearCoinJarDrops() {
   coinJarAnimationTimestamp = 0;
   coinJarSettledFrames = 0;
   for (const gift of coinJarDrops.splice(0)) gift.node.remove();
-  coinJarEventIds.clear();
+  // Les événements déjà reçus restent connus : une hydratation ne doit pas
+  // remettre les anciens cadeaux dans le bocal que l’utilisateur vient de vider.
   coinJarGeometry = null;
 }
 
@@ -650,7 +652,11 @@ function spinWheel(payload) {
   const wheel = document.getElementById("wheel");
   const winner = document.getElementById("wheel-winner");
   const choices = payload.choices || [];
-  const settings = { ...(payload.settings || {}), design: payload.design };
+  const settings = {
+    ...(payload.settings || {}),
+    wheelTitle: payload.settings?.wheelTitle ?? payload.wheelName ?? wheelRuntimeSettings.wheelTitle,
+    design: payload.design
+  };
   applyWheelSettings(settings);
   if (choices.length) drawWheel(choices, payload.colors || []);
   const stage = document.getElementById("wheel-stage");
@@ -658,7 +664,8 @@ function spinWheel(payload) {
     ? payload.winnerIndex
     : Math.max(0, choices.indexOf(payload.winner));
   const segmentAngle = choices.length ? 360 / choices.length : 0;
-  const stopAngle = 360 - (winnerIndex + 0.5) * segmentAngle;
+  const pointerAngle = { top: 0, right: 90, bottom: 180, left: 270 }[wheelRuntimeSettings.pointerPosition] || 0;
+  const stopAngle = 360 - (winnerIndex + 0.5) * segmentAngle + pointerAngle;
   wheel.style.setProperty("--wheel-spin-rotation", `${360 * 7 + stopAngle}deg`);
   wheel.classList.remove("spinning");
   winner.classList.remove("visible");
@@ -722,6 +729,7 @@ function spinWheel(payload) {
   }, spinSeconds * 1000);
   setTimeout(() => {
     winner.textContent = payload.winner || "Surprise !";
+    fitWheelText(winner);
     if (wheelBoolean(wheelRuntimeSettings.showWinner, true)) {
       winner.classList.add("visible");
     }

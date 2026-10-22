@@ -74,6 +74,9 @@ test("le banc de test expose les vrais catalogues et les overlays", () => {
   assert.ok(preview.catalogCounts.sounds > 0);
   assert.ok(preview.catalogCounts.media > 0);
   assert.ok(preview.packs.length > 0);
+  assert.ok(preview.liveDirectory);
+  assert.equal(typeof preview.liveDirectory.connected, "boolean");
+  assert.ok(Array.isArray(preview.liveDirectory.rows));
   assert.ok(Object.keys(preview.previewOverlayUrls).length > 0);
 });
 

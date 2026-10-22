@@ -14,7 +14,11 @@ function spinWheel(payload) {
   const wheel = document.getElementById("wheel");
   const winner = document.getElementById("wheel-winner");
   const choices = payload.choices || [];
-  const settings = { ...(payload.settings || {}), design: payload.design };
+  const settings = {
+    ...(payload.settings || {}),
+    wheelTitle: payload.settings?.wheelTitle ?? payload.wheelName ?? wheelRuntimeSettings.wheelTitle,
+    design: payload.design
+  };
   applyWheelSettings(settings);
   if (choices.length) drawWheel(choices, payload.colors || []);
   const stage = document.getElementById("wheel-stage");
@@ -22,7 +26,8 @@ function spinWheel(payload) {
     ? payload.winnerIndex
     : Math.max(0, choices.indexOf(payload.winner));
   const segmentAngle = choices.length ? 360 / choices.length : 0;
-  const stopAngle = 360 - (winnerIndex + 0.5) * segmentAngle;
+  const pointerAngle = { top: 0, right: 90, bottom: 180, left: 270 }[wheelRuntimeSettings.pointerPosition] || 0;
+  const stopAngle = 360 - (winnerIndex + 0.5) * segmentAngle + pointerAngle;
   wheel.style.setProperty("--wheel-spin-rotation", `${360 * 7 + stopAngle}deg`);
   wheel.classList.remove("spinning");
   winner.classList.remove("visible");
@@ -86,6 +91,7 @@ function spinWheel(payload) {
   }, spinSeconds * 1000);
   setTimeout(() => {
     winner.textContent = payload.winner || "Surprise !";
+    fitWheelText(winner);
     if (wheelBoolean(wheelRuntimeSettings.showWinner, true)) {
       winner.classList.add("visible");
     }

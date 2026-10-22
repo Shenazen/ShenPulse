@@ -11,6 +11,7 @@
 
 const { bridgeSource, previewIndexHtml } = require("./preview/browser-bridge");
 const { defaultStateFile, readStoredAccount, loadLocalRuntime } = require("./preview/persisted-runtime");
+const { createPreviewLiveDirectory } = require("./preview/live-directory");
 
 const fs = require("node:fs");
 const http = require("node:http");
@@ -41,6 +42,7 @@ const giftCatalog = new GiftCatalog(resourcesDirectory);
 const gamePacks = loadShenazenGameCatalog(resourcesDirectory);
 const includedMediaCatalog = createMediaCatalog(resourcesDirectory);
 const defaultPreviewState = createDefaultState();
+const liveDirectory = createPreviewLiveDirectory();
 defaultPreviewState.settings.overlayToken = "codex-preview";
 defaultPreviewState.settings.apiToken = "codex-preview";
 defaultPreviewState.settings.publicOverlayRelay = {
@@ -135,6 +137,7 @@ function snapshot() {
     : previewOverlayUrls;
   return {
     appVersion: pkg.version,
+    liveDirectory: liveDirectory.status(),
     state: currentState,
     packs: structuredClone(gamePacks),
     soundCatalog: [...structuredClone(SOUND_CATALOG), ...customSounds],
@@ -551,6 +554,9 @@ const server = http.createServer(async (request, response) => {
     if (requestPath === "/__codex-preview-api/snapshot") {
       return sendJson(response, 200, snapshot());
     }
+    if (requestPath === "/__codex-preview-api/live-directory/events") {
+      return liveDirectory.connect(request, response);
+    }
     if (requestPath === "/__codex-preview-api/account/status") {
       return sendJson(response, 200, accountStatus);
     }
@@ -691,6 +697,7 @@ const server = http.createServer(async (request, response) => {
 });
 
 if (require.main === module) {
+  liveDirectory.start();
   server.listen(PORT, HOST, () => {
     process.stdout.write(`Aperçu ShenPulse prêt : ${previewBase}\n`);
   });

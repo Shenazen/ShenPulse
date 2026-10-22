@@ -4,13 +4,14 @@ const dgram = require("node:dgram");
 const net = require("node:net");
 const { SimpleTcpServerBridge } = require("../simple-tcp-server-bridge");
 const { SimpleWebSocketGameBridge } = require("../simple-websocket-game-bridge");
+const { BalatroGamePassBridge } = require("../balatro-gamepass-bridge");
+const { readState } = require("../state-projection");
 
 /** Transports réseau isolés ; caches et événements restent ceux du hub. */
 class GameTransports {
   constructor(hub) { this.hub = hub; }
   get sockets() { return this.hub.sockets; }
   get serverBridges() { return this.hub.serverBridges; }
-  crowdControlPortReleaser(port) { return this.hub.crowdControlPortReleaser(port); }
   emit(...args) { return this.hub.emit(...args); }
 
   /** Réutilise le pont serveur et nettoie les démarrages échoués. */
@@ -18,11 +19,9 @@ class GameTransports {
     const cacheKey = `${pack.id}:${connector.type}`;
     let bridge = this.serverBridges.get(cacheKey);
     if (!bridge) {
-      if (connector.closeCrowdControlOnConflict === true) {
-        await this.crowdControlPortReleaser(connector.port);
-      }
-      const Bridge = connector.type === "websocket-server" ? SimpleWebSocketGameBridge : SimpleTcpServerBridge;
+      const Bridge = connector.type === "balatro-gamepass" ? BalatroGamePassBridge : connector.type === "websocket-server" ? SimpleWebSocketGameBridge : SimpleTcpServerBridge;
       bridge = new Bridge({
+        installationPath: connector.type === "balatro-gamepass" ? readState(this.hub.store, ["game.installations"]).game.installations?.balatro?.path : undefined,
         host: connector.host || "127.0.0.1",
         port: Number(connector.port),
         timeoutMs: Number(connector.timeoutMs || 12000),

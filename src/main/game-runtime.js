@@ -27,8 +27,6 @@ const {
 const {
   SuperMarioKartRuntime
 } = require("./super-mario-kart-runtime");
-
-
 const {
   writeMinecraftEula, configureMinecraftServerCommandFeedback,
   silenceMinecraftCommandFeedback, enforceMinecraftCreativeMode,
@@ -48,10 +46,8 @@ const { extractArchiveSafe } = require("./game-runtime/archives");
 const { detectGtaEdition, stageGtaEnhancedSave, deployGtaEnhancedSave, findGtaEnhancedProfile } = require("./game-runtime/gta-save");
 const { commitInstallationDeployment, deployAdditionalInstallTargets } = require("./game-runtime/deployments");
 const { detectInstalledGame, steamGameInstallCandidates } = require("./game-runtime/discovery");
-
-
 const { installGame } = require("./game-runtime/installation");
-const { launchSteamDemo } = require("./game-runtime/steam-launch");
+const { launchExternalGame } = require("./game-runtime/external-launch");
 const { pickTarget, showInvalidTarget, validateTarget } = require("./game-runtime/target-selection");
 const { downloadAsset } = require("./game-runtime/asset-download");
 const { installAsset } = require("./game-runtime/asset-deployment");
@@ -74,6 +70,7 @@ class GameRuntimeService {
     this.onMinecraftWinCounter = onMinecraftWinCounter;
     this.gameWindows = new Map();
     this.activeInstalls = new Set();
+    this.launchJobs = new Map();
     this.installProgress = new Map();
     this.minecraftServers = new Map();
     this.minecraftAutoClickers = new Map();
@@ -244,6 +241,14 @@ class GameRuntimeService {
 
   async launch(gameId) {
     this.assertAccess(gameId);
+    if (this.launchJobs.has(gameId)) return this.launchJobs.get(gameId);
+    const job = this.#launchGame(gameId).finally(() => this.launchJobs.delete(gameId));
+    this.launchJobs.set(gameId, job);
+    return job;
+  }
+
+  async #launchGame(gameId) {
+    this.assertAccess(gameId);
     const assertAccess = this.#accessGuard(gameId);
     if (gameId === "thiercelieux") {
       this.store.mutate((state) => {
@@ -276,6 +281,7 @@ class GameRuntimeService {
           : "Le dossier d’installation mémorisé n’existe plus. Réinstallez le pack depuis l’étape Installation."
       );
     }
+    if (manifest.preflight) await validateTarget(this, installation.path, manifest);
     if (manifest.minecraftServer) {
       const server = await this.#startMinecraftServer(
         gameId,
@@ -300,38 +306,8 @@ class GameRuntimeService {
       assertAccess();
       return this.superMarioKart.launch({ assertAccess });
     }
-    const executable = await findLaunchTarget(
-      installation.path,
-      manifest.launchExecutables || manifest.executables || []
-    );
-    assertAccess();
-    if (gameId === "find-the-needle-demo") return launchSteamDemo({ gameId, manifest, executable, shell, assertAccess });
-    if (!executable) {
-      await shell.openPath(installation.path);
-      return {
-        ok: true,
-        openedFolder: true,
-        path: installation.path,
-        message:
-          "Le dossier installé est ouvert. Aucun exécutable sûr n’a été détecté automatiquement."
-      };
-    }
-    const error = await shell.openPath(executable);
-    if (error) throw new Error(error);
-    if (manifest.waitForWindowProcess) {
-      await waitForWindowsProcessWindow(
-        manifest.waitForWindowProcess,
-        manifest.waitForWindowTimeoutMs
-      );
-    }
-    if (
-      gameId === "gtav-montchiliad" &&
-      installation.edition === "enhanced"
-    ) {
-      assertAccess();
-      this.#scheduleGtaSaveDeployment(gameId, { assertAccess });
-    }
-    return { ok: true, path: executable };
+    return launchExternalGame({ gameId, manifest, installation, shell, assertAccess,
+      waitForWindowsProcessWindow, scheduleGtaSaveDeployment: () => this.#scheduleGtaSaveDeployment(gameId, { assertAccess }) });
   }
 
   async stop(gameId) {

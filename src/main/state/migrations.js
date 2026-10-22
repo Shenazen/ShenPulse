@@ -12,6 +12,7 @@ const { synchronizeLikeGoalWithLive } = require("../overlay-session-state");
 const { normalizeViewerDatabase } = require("../viewers/normalization");
 const { migrateVisibility } = require("../../shared/visibility-catalog");
 const { normalizeMatchesConfig, createMatchSession } = require("../../shared/matches-contract");
+const { normalizeLiveDirectoryPreference } = require("../../shared/live-directory-protocol");
 
 /** Met à niveau le schéma en conservant les configurations et en réinitialisant uniquement le runtime arrêté. */
 function migrateState(store) {
@@ -22,9 +23,7 @@ function migrateState(store) {
   store.state.settings.matches = normalizeMatchesConfig(store.state.settings.matches);
   store.state.matchSession = createMatchSession(store.state.matchSession, { disconnected: true });
   store.state.settings.siteVisibility = migrateVisibility(store.state.settings.siteVisibility);
-  store.state.settings.liveDirectory = {
-    publishEnabled: store.state.settings.liveDirectory?.publishEnabled === true
-  };
+  store.state.settings.liveDirectory = normalizeLiveDirectoryPreference(store.state.settings.liveDirectory);
   store.state.settings.tts = {
     ...defaults.settings.tts,
     ...(store.state.settings.tts || {})

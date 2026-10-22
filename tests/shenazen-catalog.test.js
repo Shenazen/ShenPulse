@@ -44,11 +44,11 @@ const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 52);
-  assert.equal(new Set(games.map((game) => game.id)).size, 52);
+  assert.equal(games.length, 53);
+  assert.equal(new Set(games.map((game) => game.id)).size, 53);
   assert.equal(
     games.filter((game) => !["fortnite", "thiercelieux"].includes(game.id)).length,
-    50
+    51
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(
@@ -180,14 +180,16 @@ test("reprend les 30 interactions actives du pack Crowd Control Euro Truck Simul
 
   assert.ok(game);
   assert.equal(game.guide.mode, "crowd-control-mod");
-  assert.equal(game.installerVersion, "1.0.4");
+  assert.equal(game.installerVersion, "1.0.5");
   assert.deepEqual(game.connector, {
     type: "tcp-server",
     host: "127.0.0.1",
-    port: 51337,
+    port: 58441,
     timeoutMs: 12000,
     durationMultiplier: 1000,
-    expectResponse: true
+    expectResponse: true,
+    launchConnectionTimeoutMs: 90000,
+    launchConnectionFailureMessage: "Euro Truck Simulator 2 n’a pas établi sa connexion à ShenPulse. Confirmez le message du SDK avancé dans le jeu s’il apparaît. Si le jeu était déjà ouvert, fermez-le puis relancez-le depuis ShenPulse. Si nécessaire, réinstallez les interactions dans le dossier de cette édition du jeu."
   });
   assert.equal(EURO_TRUCK_SIMULATOR_2_EFFECTS.length, 30);
   assert.equal(EURO_TRUCK_SIMULATOR_2_DEFAULT_MAPPINGS.length, 30);
@@ -241,15 +243,14 @@ test("reprend les 67 interactions du pack Crowd Control Resident Evil 3 recomman
 
   assert.ok(game);
   assert.equal(game.guide.mode, "native");
-  assert.equal(game.installerVersion, "2.1.3");
+  assert.equal(game.installerVersion, "2.1.4");
   assert.deepEqual(game.connector, {
     type: "tcp-server",
     host: "127.0.0.1",
-    port: 58431,
+    port: 58443,
     timeoutMs: 12000,
     durationMultiplier: 1000,
     expectResponse: true,
-    closeCrowdControlOnConflict: true,
     focusProcessOnManualTrigger: "re3",
     temporaryFailureRetryMs: 15000,
     temporaryFailureRetryIntervalMs: 500,
@@ -430,7 +431,8 @@ test("limite la galerie aux 17 overlays activés et conserve leurs réglages", (
       "matchEnigma"
     ]
   );
-  assert.equal(configs.coinJar.current, 0);
+  assert.equal(configs.coinJar.current, undefined);
+  assert.equal(configs.coinJar.target, undefined);
   assert.equal(configs.wheel.schemaVersion, 11);
   assert.equal(configs.wheel.wheels.length, 2);
   assert.equal(configs.wheel.choices.length, 8);
@@ -447,8 +449,8 @@ test("réintègre les deux rendus de roue ShenazenOverlay dans l’éditeur et l
   const renderer = readRendererSource();
   const overlayRuntime = readOverlayRuntimeSource();
   const overlayStyles = readOverlayStyles();
-  assert.match(renderer, /wheelDesignOption\("classic"/);
-  assert.match(renderer, /wheelDesignOption\("royal"/);
+  assert.deepEqual(overlayCatalog.definition("wheel").options.map(([design]) => design), ["classic", "royal"]);
+  assert.match(renderer, /overlaySelect\("wheelDesign"/);
   assert.match(overlayRuntime, /wheel-rim-star/);
   assert.match(overlayRuntime, /wheel-royal-light/);
   assert.match(overlayRuntime, /wheel-royal-bead/);

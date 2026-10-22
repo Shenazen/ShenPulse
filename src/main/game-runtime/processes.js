@@ -164,9 +164,8 @@ async function waitForWindowsProcessWindow(
 ) {
   if (process.platform !== "win32") return;
   const safeProcessName = String(processName || "")
-    .replace(/\.exe$/i, "")
-    .replace(/[^a-zA-Z0-9_.-]/g, "");
-  if (!safeProcessName) {
+    .replace(/\.exe$/i, "").trim();
+  if (!/^[a-z0-9_][a-z0-9_. -]{0,119}$/i.test(safeProcessName)) {
     throw new Error("Le processus du jeu à attendre est invalide.");
   }
   const safeTimeout = Math.min(
@@ -176,7 +175,7 @@ async function waitForWindowsProcessWindow(
   const script = [
     `$deadline = [DateTime]::UtcNow.AddMilliseconds(${safeTimeout})`,
     "do {",
-    `  $target = Get-Process -Name '${safeProcessName}' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1`,
+    `  $target = Get-CimInstance Win32_Process -Filter "Name = '${safeProcessName}.exe'" -ErrorAction SilentlyContinue | ForEach-Object { try { [Diagnostics.Process]::GetProcessById([int]$_.ProcessId) } catch {} } | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1`,
     "  if ($target) { exit 0 }",
     "  Start-Sleep -Milliseconds 500",
     "} while ([DateTime]::UtcNow -lt $deadline)",

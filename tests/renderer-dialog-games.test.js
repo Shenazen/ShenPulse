@@ -44,7 +44,7 @@ test("les cartes de jeu partagent un titre, les plateformes et le prix avant le 
     app.indexOf("function openMinecraftModeSelector", renderStart)
   );
 
-  assert.match(app, /function gamePlatformLogos\(pack\)/);
+  assert.match(app, /function gamePlatformLogos\(pack, settings =/);
   assert.match(app, /<circle cx="16" cy="16" r="15" fill="#1b75bb"\/>/);
   assert.match(app, /fortnite: \["epic-games"\]/);
   assert.match(app, /"rocket-league": \["epic-games", "steam"\]/);

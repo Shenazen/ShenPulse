@@ -1,6 +1,7 @@
 "use strict";
 
 const { assertFile, findNamedFile } = require("./runtime-files");
+const { assertStandaloneModuleReady } = require("./game-runtime/standalone-module-installation");
 
 const { readState } = require("./state-projection");
 
@@ -9,7 +10,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const {
-  CrowdControlSlimClient,
+  LocalEmulatorHostClient,
   md5File
 } = require("./pokemon-red-blue-runtime");
 
@@ -29,7 +30,7 @@ class SuperMarioKartRuntime {
     this.app = app;
     this.store = store;
     this.spawnProcess = spawnProcess;
-    this.client = new CrowdControlSlimClient({
+    this.client = new LocalEmulatorHostClient({
       spawnProcess,
       packId: NATIVE_PACK_ID,
       gameLabel: "Super Mario Kart"
@@ -64,6 +65,7 @@ class SuperMarioKartRuntime {
     assertAccess();
     const installation = this.#installation();
     const romPath = String(installation.romPath || "").trim();
+    await assertStandaloneModuleReady(GAME_ID, installation.path);
     if (!installation.romReady || !(await isCompatibleSuperMarioKartRom(romPath))) {
       throw new Error(
         "La ROM Super Mario Kart USA n’est pas prête. Réparez l’installation."
@@ -75,12 +77,11 @@ class SuperMarioKartRuntime {
       "EmuHawk.exe"
     );
     const connectorPath = await findNamedFile(
-      path.dirname(emulatorPath || path.join(installation.path, "BizHawk")),
-      "connector.lua",
-      (candidate) => candidate.toLowerCase().includes(`${path.sep}crowdcontrol${path.sep}`)
+      path.join(installation.path, "BizHawk", "Lua", "ShenPulse"),
+      "connector.lua"
     );
-    const clientDirectory = path.join(installation.path, "CrowdControl");
-    const clientPath = path.join(clientDirectory, "CrowdControl.Client.Slim.exe");
+    const clientDirectory = path.join(installation.path, "Bridge");
+    const clientPath = path.join(clientDirectory, "ShenPulse.EmulatorHost.exe");
     const packPath = path.join(clientDirectory, "Packs", PACK_FILE_NAME);
 
     await assertFile(emulatorPath, "BizHawk est introuvable. Réparez l’installation.");
@@ -170,24 +171,10 @@ class SuperMarioKartRuntime {
             id: String(effectId || "").trim(),
             name: String(effectName || effectId || "").trim()
           },
-          quantity: 1,
-          requester: {
-            service: "twitch",
-            serviceID: "shenpulse-local",
-            crowdControlID: "00000000-0000-0000-0000-000000000001",
-            name: "ShenPulse",
-            login: "shenpulse",
-            avatarURL: ""
-          },
-          sourceDetails: { type: "shenpulse" },
-          free: true,
-          admin: true,
-          localTest: true,
-          ignoreStateChecks: true,
-          skipPipelineDelay: true
+          quantity: 1
         }
       ],
-      5_000
+      15_000
     );
     if (!result.success) {
       throw new Error(

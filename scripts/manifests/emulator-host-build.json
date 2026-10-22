@@ -1,0 +1,17 @@
+{
+  "sdk": {
+    "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/super-mario-kart/1.0.0/CrowdControl.Client.Slim-5.0.9736.24149.zip",
+    "size": 65991501,
+    "sha256": "13e7b65a6d19fe0804565433499b4a3827e84a86a07f05d99afd396146b6dcb7"
+  },
+  "lua": {
+    "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/pokemon-red-blue/1.0.1/CrowdControl.Client.Slim-5.0.9661.26214.zip",
+    "size": 70255381,
+    "sha256": "b9d894e4e39650e1a0b5a9a34d99c53f2a1f7918d0705778b931112c1ef0318d"
+  },
+  "apphost": {
+    "url": "https://api.nuget.org/v3-flatcontainer/microsoft.netcore.app.host.win-x64/8.0.30/microsoft.netcore.app.host.win-x64.8.0.30.nupkg",
+    "size": 5475990,
+    "sha256": "6ecf2a71888de5a9f008d1760f68ed31736ce6d0011ae14765da39b3dcb22eff"
+  }
+}

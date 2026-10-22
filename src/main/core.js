@@ -77,6 +77,7 @@ class ShenPulseCore extends EventEmitter {
       catalogChanged: () => reconcileGiftReferencesSafely(this, { immediate: false }) };
     this.gameHub = new GameHub({
       store,
+      appVersion: this.appVersion,
       packsDirectory: path.join(resourcesDirectory, "packs"),
       resourcesDirectory,
       giftCatalog: this.giftCatalog

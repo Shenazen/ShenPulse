@@ -123,6 +123,11 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     }
     const gamesPage = dom.window.eval("pages.find(page => page.id === 'games')");
     const originalGamesCount = gamesPage.count;
+    assert.equal(gamesPage.count(), 1);
+    dom.window.eval('siteVisibility.games = { "connect-four": { scope: "hidden" } };');
+    assert.equal(gamesPage.count(), 0, "le menu ignore les jeux masqués");
+    dom.window.eval('siteVisibility.games = {};');
+    assert.equal(gamesPage.count(), 1);
     const gamesNavigation = navigation.querySelector('[data-navigate="games"]');
     const gamesProBadge = gamesNavigation.querySelector(".nav-pro-badge");
     gamesPage.count = () => 49;

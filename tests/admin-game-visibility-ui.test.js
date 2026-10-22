@@ -20,6 +20,7 @@ function fixture(t, settings = {}) {
   t.after(() => dom.window.close());
   const context = vm.createContext({
     visibilityTools,
+    ShenPulseGamePassCatalog: require("../src/shared/game-pass-catalog"),
     pages: [
       { section: "Application" },
       { id: "games", label: "Jeux", title: "Jeux", kicker: "CATALOGUE" },
@@ -36,6 +37,7 @@ function fixture(t, settings = {}) {
     adminSession: { authorized: true, uid: "owner", email: "owner@example.invalid" },
     escapeHtml: (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;"),
     render: () => {}, saved: [],
+    openEditor: options => { context.editor = options; },
     api: { admin: {
       saveSiteSettings: async (value) => {
         const saved = JSON.parse(JSON.stringify(value));
@@ -45,7 +47,7 @@ function fixture(t, settings = {}) {
       visibility: async () => context.saved.at(-1)
     } }
   });
-  for (const file of ["core/access-navigation.js", "features/admin/page.js", "features/admin/account.js"]) {
+  for (const file of ["core/access-navigation.js", "features/games/access.js", "features/admin/page.js", "features/admin/game-platforms.js", "features/admin/game-versions.js", "features/admin/account.js"]) {
     vm.runInContext(fs.readFileSync(path.join(renderer, file), "utf8"), context, { filename: file });
   }
   context.render = () => {};
@@ -56,6 +58,100 @@ function fixture(t, settings = {}) {
   };
   return context;
 }
+
+test("chaque jeu expose sa version minimale sans publier au rendu ou à l’ouverture", async t => {
+  const context = fixture(t, { games: { "public-game": { scope: "public", minAppVersion: "2.0.5" } } });
+  context.snapshot.appVersion = "2.0.4";
+  const page = context.renderVisibility();
+  assert.equal(page.querySelectorAll('[data-action="admin-game-version"]').length, context.snapshot.packs.length);
+  assert.equal(page.querySelector('[data-action="admin-game-version"][data-id="public-game"]').textContent, "≥ 2.0.5");
+  context.registerActionHandler = () => {};
+  vm.runInContext(fs.readFileSync(path.join(renderer, "actions/handlers/admin-irl.js"), "utf8"), context);
+  await context.handleAdminAndIrlAction({ action: "admin-game-version", id: "public-game" });
+  const editor = JSDOM.fragment(context.editor.body);
+  assert.equal(editor.querySelector('[name="minAppVersion"]').value, "2.0.5");
+  assert.match(editor.textContent, /Version actuelle : 2\.0\.4/);
+  assert.equal(context.saved.length, 0);
+});
+
+test("la version minimale conserve les logos et survit aux portées, sauvegardes de logos et synchronisations", async t => {
+  const context = fixture(t);
+  context.snapshot.appVersion = "2.0.4";
+  await context.saveAdminGamePlatforms("public-game", ["steam", "game-pass"]);
+  context.openAdminGameVersionEditor("public-game");
+  await context.editor.onSubmit({ get: () => "  v2.0.5  " });
+  assert.equal(context.siteVisibility.games["public-game"].minAppVersion, "2.0.5");
+  assert.equal(context.siteVisibility.games["public-game"].scope, "public");
+  assert.deepEqual(Array.from(context.siteVisibility.games["public-game"].platforms), ["steam", "game-pass"]);
+  assert.equal(context.canAccessGame(context.snapshot.packs.find(pack => pack.id === "public-game")), false);
+  await context.saveAdminVisibilityScope("games", "public-game", "admin");
+  await context.saveAdminGamePlatforms("public-game", []);
+  await context.saveAdminVisibilityBulk("public");
+  await context.syncAdminVisibilityCatalog();
+  assert.equal(context.siteVisibility.games["public-game"].minAppVersion, "2.0.5");
+  assert.equal(context.siteVisibility.games["public-game"].platformsConfigured, true);
+  context.snapshot.appVersion = "2.0.5";
+  assert.equal(context.canAccessGame(context.snapshot.packs.find(pack => pack.id === "public-game")), true);
+  await context.saveAdminGameVersion("public-game", "");
+  assert.equal(Object.hasOwn(context.siteVisibility.games["public-game"], "minAppVersion"), false);
+  assert.deepEqual(Array.from(context.siteVisibility.games["public-game"].platforms), []);
+  assert.equal(context.renderVisibility().querySelector('[data-action="admin-game-version"][data-id="public-game"]').textContent, "Toutes les versions");
+});
+
+test("la saisie de version refuse une borne invalide, un autre propriétaire ou un jeu absent sans publication", async t => {
+  const context = fixture(t);
+  for (const value of ["2.0", "2.0.5<script>", "-1.2.3", "2.0.5.0"]) {
+    await assert.rejects(context.saveAdminGameVersion("public-game", value), /Version invalide/);
+  }
+  await assert.rejects(context.saveAdminGameVersion("absent", "2.0.5"), /introuvable/);
+  context.openAdminGameVersionEditor("public-game");
+  context.accountSession = { authenticated: true, uid: "other", email: "other@example.test" };
+  await assert.rejects(context.editor.onSubmit({ get: () => "2.0.5" }), /session propriétaire/);
+  await assert.rejects(context.saveAdminGameVersion("public-game", "2.0.5"), /propriétaire/);
+  assert.equal(context.saved.length, 0);
+});
+
+test("chaque jeu ouvre un choix de sept logos multiples sans enregistrer à l’ouverture", async t => {
+  const context = fixture(t);
+  const page = context.renderVisibility();
+  assert.equal(page.querySelectorAll('[data-action="admin-game-platforms"]').length, context.snapshot.packs.length);
+  context.registerActionHandler = () => {};
+  vm.runInContext(fs.readFileSync(path.join(renderer, "actions/handlers/admin-irl.js"), "utf8"), context);
+  await context.handleAdminAndIrlAction({ action: "admin-game-platforms", id: "fortnite" });
+  const editor = JSDOM.fragment(context.editor.body);
+  assert.equal(editor.querySelectorAll('input[type="checkbox"][name="platforms"]').length, 7);
+  assert.deepEqual([...editor.querySelectorAll("input:checked")].map(input => input.value), ["epic-games"]);
+  assert.equal(context.saved.length, 0);
+  await context.editor.onSubmit({ getAll: name => { assert.equal(name, "platforms"); return ["steam", "game-pass", "epic-games"]; } });
+  assert.deepEqual(Array.from(context.siteVisibility.games.fortnite.platforms), ["steam", "game-pass", "epic-games"]);
+  assert.equal(context.siteVisibility.games.fortnite.scope, "admin");
+  assert.equal(context.renderVisibility().querySelector('[data-action="admin-game-platforms"][data-id="fortnite"]').closest("article").querySelectorAll(".tile-platform-logo").length, 3);
+});
+
+test("les logos, y compris aucun, survivent aux changements individuels, en masse et à la synchronisation", async t => {
+  const context = fixture(t);
+  await context.saveAdminGamePlatforms("fortnite", ["steam", "game-pass"]);
+  await context.saveAdminGamePlatforms("public-game", []);
+  await context.saveAdminVisibilityScope("games", "fortnite", "hidden");
+  await context.saveAdminVisibilityBulk("public");
+  await context.syncAdminVisibilityCatalog();
+  assert.deepEqual(Array.from(context.siteVisibility.games.fortnite.platforms), ["steam", "game-pass"]);
+  assert.equal(context.siteVisibility.games.fortnite.scope, "public");
+  assert.deepEqual(Array.from(context.siteVisibility.games["public-game"].platforms), []);
+  assert.equal(context.siteVisibility.games["public-game"].platformsConfigured, true);
+  context.openAdminGamePlatformsEditor("public-game");
+  assert.equal(JSDOM.fragment(context.editor.body).querySelectorAll("input:checked").length, 0);
+});
+
+test("le sélecteur refuse un autre compte et un jeu absent avant toute publication", async t => {
+  const context = fixture(t);
+  assert.throws(() => context.openAdminGamePlatformsEditor("absent"), /introuvable/);
+  context.openAdminGamePlatformsEditor("fortnite");
+  context.accountSession = { authenticated: true, uid: "other", email: "other@example.test" };
+  await assert.rejects(context.editor.onSubmit({ getAll: () => ["steam"] }), /session propriétaire/);
+  await assert.rejects(context.saveAdminGamePlatforms("fortnite", ["steam"]), /propriétaire/);
+  assert.equal(context.saved.length, 0);
+});
 
 test("les jeux privés ont un sélecteur actif, restent privés par défaut et ne sont pas publiés à l'ouverture", (t) => {
   const context = fixture(t);

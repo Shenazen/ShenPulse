@@ -127,6 +127,11 @@ content.addEventListener("input", (event) => {
 });
 
 content.addEventListener("change", (event) => {
+  if (event.target.matches("[data-game-access-filter]")) {
+    gameFilter = event.target.value;
+    render();
+    return;
+  }
   if (handleCreatorAudienceChange(event.target)) return;
   if (handleCreatorMusicChange(event.target)) return;
   if (

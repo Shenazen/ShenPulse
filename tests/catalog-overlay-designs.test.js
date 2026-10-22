@@ -39,17 +39,11 @@ test("les anciennes couleurs Like Goal alimentent les trois couleurs de texte", 
 });
 
 test("les deux designs de roue prevus utilisent aussi le rendu OBS reel", () => {
-  assert.match(renderer, /\["classic", "Orange classique"\]/);
-  assert.match(renderer, /\["royal", "Royale Prestige"\]/);
-  assert.match(
-    renderer,
-    /overlayLivePreview\(item, config, \{ compact: true \}\)/
-  );
-  assert.match(renderer, /data-wheel-design-thumbnail/);
-  assert.match(
-    renderer,
-    /wheelDesignOption\("classic"[\s\S]*wheelDesignOption\("royal"/
-  );
+  assert.deepEqual(overlayCatalog.definition("wheel").options, [["classic", "Orange"], ["royal", "Royale Prestige"]]);
+  const editor = fs.readFileSync(path.join(root, "src/renderer/app/features/overlays/wheel-editor.js"), "utf8");
+  assert.match(editor, /overlaySelect\("wheelDesign"/);
+  assert.match(editor, /overlayLivePreview\(item, config\)/);
+  assert.match(editor, /overlay-config-compact/);
 });
 
 test("la roue ne superpose plus de rayons jaunes aux secteurs", () => {
@@ -167,10 +161,8 @@ test("la Coin Jar utilise les images cadeaux et les empile au fond", () => {
   assert.match(overlayRuntime, /function coinJarGiftRandom\(/);
   assert.match(overlayRuntime, /gift\.y - visualRadius >= coinJarGeometry\.mouthTop/);
   assert.match(overlayRuntime, /jar-test-back-clean-localized\.png/);
-  assert.match(overlayHtml, /id="coin-jar-level"/);
-  assert.match(overlayHtml, /id="coin-jar-current"[\s\S]*id="coin-jar-target"/);
-  assert.match(overlayHtml, /coin-jar-meter/);
-  assert.match(overlayCss, /\.coin-jar-meter/);
+  assert.doesNotMatch(overlayHtml, /id="coin-jar-(?:level|current|target|percent|label)"|coin-jar-meter/);
+  assert.doesNotMatch(overlayCss, /\.coin-jar-meter/);
   assert.doesNotMatch(overlayRuntime, /packContainedBodies/);
   assert.doesNotMatch(coinJarPhysics, /packContainedBodies/);
   assert.doesNotMatch(overlayCss, /rgba\(255,\s*213,\s*82/);
@@ -193,10 +185,8 @@ test("les objectifs gardent leur cadre devant la progression et les timers n'ont
   assert.doesNotMatch(overlayCss, /\.timer-line/);
 });
 
-test("les matchs expliquent leur source protégée et les super fans ne deviennent pas des abonnements", () => {
-  assert.match(renderer, /function renderMatchOverlayGuide\(\)/);
-  assert.match(renderer, /Largeur<\/strong> · 1080 px/);
-  assert.match(renderer, /Hauteur<\/strong> · 1920 px/);
+test("le guide Matchs quitte la galerie et les super fans ne deviennent pas des abonnements", () => {
+  assert.doesNotMatch(renderer, /function renderMatchOverlayGuide\(\)/);
   assert.doesNotMatch(renderer, /Utiliser les 8 Matchs comme fichiers vidéo temporaires/);
   assert.doesNotMatch(sourceHub, /WebcastEvent\.SUPER_FAN/);
   assert.match(sourceHub, /WebcastSubNotifyMessage: "subscribe"/);

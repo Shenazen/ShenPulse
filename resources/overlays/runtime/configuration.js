@@ -56,7 +56,7 @@ let matchVariant = parameters.get("variant") || "tikcontrol";
 let overlayScale = Math.min(1.8, Math.max(0.5, Number(parameters.get("scale") || 100) / 100));
 let overlayX = Math.min(1000, Math.max(-1000, Number(parameters.get("x") || 0)));
 let overlayY = Math.min(1000, Math.max(-1000, Number(parameters.get("y") || 0)));
-let overlayTitle = parameters.get("title") || "";
+let overlayTitle = parameters.get("title") ?? (viewName === "coin-jar" ? "COIN JAR" : "");
 let showHeader = parameters.get("showHeader") !== "false";
 let showGoal = parameters.get("showGoal") !== "false";
 let showBase = parameters.get("showBase") !== "false";
@@ -113,6 +113,13 @@ let wheelRuntimeChoices = String(parameters.get("choices") || "Cadeau mystère|+
   .filter(Boolean)
   .slice(0, 16);
 let wheelRuntimeSettings = {
+  wheelTitle: parameters.has("wheelTitle") ? parameters.get("wheelTitle") : undefined,
+  wheelShowTitle: parameters.get("wheelShowTitle") !== "false",
+  wheelTitleColor: parameters.get("wheelTitleColor") || "#fff1c2",
+  wheelTitleScale: Number(parameters.get("wheelTitleScale") || 100),
+  wheelTextScale: Number(parameters.get("wheelTextScale") || 100),
+  wheelWinnerColor: parameters.get("wheelWinnerColor") || "#fff7d3",
+  wheelWinnerScale: Number(parameters.get("wheelWinnerScale") || 100),
   font: parameters.get("font") || "Kalam",
   fontSize: Number(parameters.get("fontSize") || 50),
   textOrientation: parameters.get("textOrientation") || "horizontal",
@@ -211,7 +218,6 @@ let coinJarCurrent = Math.max(
   coinJarMinimum,
   Number(parameters.get("current") || 0)
 );
-let coinJarTarget = Math.max(1, Number(parameters.get("target") || 1000));
 const coinJarDrops = [];
 const coinJarEventIds = new Set();
 const coinJarSpawnTimers = new Set();
@@ -457,7 +463,6 @@ function updatePreviewConfiguration(payload = {}) {
       likeGoalInitialTarget = target;
       likeGoalTarget = target;
     }
-    if (viewName === "coin-jar") coinJarTarget = target;
     if (viewName === "win-counter") winCounterTarget = target;
   }
   if (Object.prototype.hasOwnProperty.call(payload, "seconds")) {
@@ -470,6 +475,7 @@ function updatePreviewConfiguration(payload = {}) {
   winCounterNeutralColor = payload.neutralColor || winCounterNeutralColor;
   winCounterPositiveColor = payload.positiveColor || winCounterPositiveColor;
   if (viewName === "win-counter" && typeof applyWinCounterAppearance === "function") applyWinCounterAppearance(payload);
+  if (viewName === "coin-jar" && typeof applyCoinJarAppearance === "function") applyCoinJarAppearance(payload);
 
   document.documentElement.style.setProperty("--overlay-scale", overlayScale);
   document.documentElement.style.setProperty("--overlay-x", `${overlayX}px`);
@@ -540,6 +546,13 @@ function updatePreviewConfiguration(payload = {}) {
       .slice(0, 16);
   }
   const wheelSettingKeys = [
+    "wheelTitle",
+    "wheelShowTitle",
+    "wheelTitleColor",
+    "wheelTitleScale",
+    "wheelTextScale",
+    "wheelWinnerColor",
+    "wheelWinnerScale",
     "font",
     "fontSize",
     "textOrientation",
@@ -757,5 +770,4 @@ function setupConfiguration() {
   });
   activeView.classList.toggle("leaderboard-without-rank", !showRank);
   activeView.classList.toggle("leaderboard-without-avatars", !showAvatars);
-  document.querySelector(".coin-jar-widget")?.classList.toggle("without-base", !showBase);
 }

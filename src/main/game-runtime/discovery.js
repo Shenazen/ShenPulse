@@ -8,6 +8,8 @@ const { findLaunchTarget } = require("./paths");
 
 async function detectInstalledGame(gameId, manifest, previousPath = "") {
   const candidates = [previousPath].filter(Boolean);
+  if (manifest.xboxDirectoryNames?.length) candidates.push(...await xboxGameInstallCandidates(manifest));
+  if (manifest.xboxIdentity) candidates.push(...await registeredXboxInstallCandidates(manifest));
   if (gameId === "gtav-montchiliad") {
     candidates.push(...(await gtaInstallCandidates()));
   }
@@ -30,6 +32,37 @@ async function detectInstalledGame(gameId, manifest, previousPath = "") {
     if (executable) return candidate;
   }
   return "";
+}
+
+/** Les packages Xbox peuvent être rangés sous un GUID. On résout leur jonction
+ * officielle vers XboxGames sans modifier WindowsApps ni ses autorisations. */
+async function registeredXboxInstallCandidates(manifest, { platform = process.platform, execute = runProcess } = {}) {
+  if (platform !== "win32" || !/^[A-Za-z0-9.-]+$/.test(manifest.xboxIdentity || "")) return [];
+  const output = await execute("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+    `Get-AppxPackage -Name '${manifest.xboxIdentity}' | Select-Object -ExpandProperty InstallLocation`]).catch(() => "");
+  const candidates = [];
+  for (const location of String(output).trim().split(/\r?\n/).filter(Boolean)) {
+    const actual = await fs.promises.realpath(location.trim()).catch(() => "");
+    if (actual) candidates.push(actual);
+  }
+  return candidates;
+}
+
+/** Dossiers modifiables gérés par l’application Xbox, sans parcourir WindowsApps. */
+async function xboxGameInstallCandidates(manifest) {
+  if (process.platform !== "win32") return [];
+  const drives = [...new Set([process.env.SystemDrive || "C:", ...Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:`)])];
+  const candidates = [];
+  for (const drive of drives) {
+    for (const name of manifest.xboxDirectoryNames || []) {
+      if (/[\\/]/.test(name) || name === "..") continue;
+      const candidate = path.join(`${drive}\\`, "XboxGames", name, "Content");
+      const config = await fs.promises.readFile(path.join(candidate, "MicrosoftGame.Config"), "utf8").catch(() => "");
+      const identity = config.match(/<Identity\s+Name="([^"]+)"/i)?.[1];
+      if (identity === manifest.xboxIdentity) candidates.push(candidate);
+    }
+  }
+  return candidates;
 }
 
 async function steamGameInstallCandidates(manifest) {
@@ -178,6 +211,7 @@ async function gtaInstallCandidates() {
 }
 
 module.exports = {
+  registeredXboxInstallCandidates,
   detectInstalledGame,
   steamGameInstallCandidates,
   windowsSteamInstallRoots,

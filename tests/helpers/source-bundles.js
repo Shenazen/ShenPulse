@@ -48,6 +48,8 @@ function rendererSource() {
     (source) =>
       source.startsWith("../../resources/overlays/catalog/") ||
       source === "../shared/pro-access.js" ||
+      source === "../shared/game-categories.js" ||
+      source === "../shared/game-pass-catalog.js" ||
       source === "../shared/matches-contract.js" ||
       source === "../../resources/overlays/overlay-catalog.js" ||
       source.startsWith("app/")
@@ -96,6 +98,7 @@ function overlayRuntimeSource() {
     "runtime/widgets/match-preview.js",
     "runtime/widgets/match.js",
     "runtime/alerts-feed.js",
+    "runtime/widgets/coin-jar-design.js",
     "runtime/widgets/coin-jar.js",
     "runtime/widgets/win-counter.js",
     "runtime/widgets/timers.js",

@@ -229,7 +229,9 @@ class SimpleTcpServerBridge extends EventEmitter {
     }
     clearTimeout(pending.timeout);
     this.pending.delete(requestId);
-    const status = Number(message.status);
+    // Les versions récentes de ConnectorLib.JSON écrivent les enums en camelCase.
+    const statusNames = { success: 0, failure: 1, unavailable: 2, retry: 3, queue: 4, running: 5, paused: 6, resumed: 7, finished: 8, wait: 9, remoteScheduled: 10, notReady: 255 };
+    const status = Object.hasOwn(statusNames, message.status) ? statusNames[message.status] : Number(message.status);
     const result = {
       ok: status === 0 || status === 8,
       status,

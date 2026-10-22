@@ -14,7 +14,7 @@ async function waitForGameConnection(hub, packId, { now = Date.now, sleep = dela
     if (status.connected === true) return status;
     await sleep(Math.min(intervalMs, Math.max(0, deadline - now())));
   } while (now() < deadline);
-  throw new Error(`${pack.name} est ouvert, mais son pont local n’a pas établi la connexion à ShenPulse. Le lancement n’a pas pu être confirmé. Vérifiez l’éventuel message affiché par le pont au démarrage.`);
+  throw new Error(pack.connector?.launchConnectionFailureMessage || `${pack.name} est ouvert, mais son pont local n’a pas établi la connexion à ShenPulse. Le lancement n’a pas pu être confirmé. Vérifiez l’éventuel message affiché par le pont au démarrage.`);
 }
 
 module.exports = { waitForGameConnection };

@@ -1,0 +1,144 @@
+/* Les fiches roue et bocal disposent de deux zones bornées : formulaire et aperçu. */
+#editor-dialog:is([data-variant="overlay-wheel"], [data-variant="overlay-coin-jar"]) {
+  width: min(1440px, calc(100vw - 40px));
+  max-width: none;
+  height: min(900px, calc(100dvh - 40px));
+  max-height: calc(100dvh - 40px);
+}
+
+#editor-dialog:is([data-variant="overlay-wheel"], [data-variant="overlay-coin-jar"]) > form { height: 100%; min-height: 0; }
+#editor-dialog:is([data-variant="overlay-wheel"], [data-variant="overlay-coin-jar"]) .dialog-body { min-height: 0; padding: 18px; overflow: hidden; }
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) {
+  grid-template-columns: minmax(0, 1.75fr) minmax(290px, .85fr);
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-config-fields {
+  container: wheel-fields / inline-size;
+  min-height: 0;
+  padding-right: 6px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .dialog-section > .form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+  padding: 16px;
+  align-items: end;
+}
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .dialog-section > header { padding: 16px 18px; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .dialog-section > header h3 { font-size: 17px; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .dialog-section > header p { font-size: 13px; }
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .field,
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .field-label-with-info {
+  min-width: 0;
+  color: #cdd4e5;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .field :is(input:not([type="range"]), select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  color: #f1f5ff;
+  background: #090e1b;
+  font-size: 14px;
+}
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .field input[type="color"] { padding: 6px; cursor: pointer; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .button { min-height: 42px; font-size: 13px; white-space: normal; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-size-control { min-height: 46px; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-size-control output { flex-basis: 50px; font-size: 13px; }
+
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-collection-toolbar { display: flex; grid-column: 1 / -1; align-items: end; gap: 12px; flex-wrap: wrap; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-collection-picker { flex: 1 1 270px; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-collection-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-sectors-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-sectors-heading .button { flex-shrink: 0; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-list { padding: 16px; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-row { padding: 16px; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-header { gap: 12px; align-items: start; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-heading { align-items: start; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-heading strong { max-width: none; font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-heading small { font-size: 12px; white-space: normal; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-controls { display: flex; gap: 6px; flex-shrink: 0; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-controls button { width: 34px; height: 34px; font-size: 16px; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-fields { display: grid; grid-template-columns: minmax(0, 1fr) 86px; gap: 14px; align-items: end; }
+:is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-fields > label { min-width: 0; }
+:is(.wheel-config-compact, .coin-jar-config-compact) :is(.wheel-segment-result-field, .wheel-segment-action-select) { grid-column: 1 / -1; }
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-live-preview-panel {
+  position: static;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  align-self: stretch;
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  box-sizing: border-box;
+  padding: 16px;
+  overflow: hidden;
+}
+
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-live-preview-panel > header { flex-direction: column; align-items: start; gap: 8px; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-live-preview-panel > header b { font-size: 12px; white-space: normal; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-runtime-frame--live {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  overflow: hidden;
+  contain: layout paint;
+}
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-live-preview-panel > p { font-size: 13px; line-height: 1.5; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-live-preview-actions { align-items: stretch; }
+#editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-live-preview-actions .button { flex: 1 1 150px; }
+
+@container wheel-fields (min-width: 560px) {
+  #editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-title-settings > .form-grid { grid-template-columns: minmax(0, 1.7fr) minmax(140px, 1fr) minmax(130px, 1fr); }
+  #editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-visibility-settings > .form-grid,
+  #editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-playback-settings > .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-fields { grid-template-columns: minmax(180px, 1.25fr) 80px minmax(190px, 1fr); }
+  :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-result-field { grid-column: auto; }
+}
+
+@container wheel-fields (min-width: 740px) {
+  #editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-render-settings > .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+[data-overlay-card="wheel"] .overlay-design-picker { width: min(100%, 460px); margin-inline: auto; }
+
+[data-overlay-card="coinJar"] .overlay-design-picker { width: min(100%, 460px); margin-inline: auto; }
+
+@container wheel-fields (min-width: 560px) {
+  #editor-dialog .coin-jar-config-compact .coin-jar-title-settings > .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #editor-dialog .coin-jar-config-compact .coin-jar-visibility-settings > .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #editor-dialog .coin-jar-config-compact .coin-jar-render-settings > .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 980px) {
+  #editor-dialog:is([data-variant="overlay-wheel"], [data-variant="overlay-coin-jar"]) .dialog-body { overflow: auto; }
+  #editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) { grid-template-columns: minmax(0, 1fr); height: auto; }
+  #editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-config-fields { height: auto; padding-right: 0; overflow: visible; }
+  #editor-dialog :is(.wheel-config-compact, .coin-jar-config-compact) .overlay-live-preview-panel { order: -1; height: min(420px, 60dvh); }
+}
+
+@media (max-width: 620px) {
+  #editor-dialog:is([data-variant="overlay-wheel"], [data-variant="overlay-coin-jar"]) { width: calc(100vw - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
+  #editor-dialog:is([data-variant="overlay-wheel"], [data-variant="overlay-coin-jar"]) .dialog-body { padding: 10px; }
+  :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-sectors-heading { align-items: stretch; flex-direction: column; }
+  :is(.wheel-config-compact, .coin-jar-config-compact) .wheel-segment-header { flex-wrap: wrap; }
+}

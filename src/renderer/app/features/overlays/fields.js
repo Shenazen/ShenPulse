@@ -89,7 +89,14 @@ const OVERLAY_FIELD_HELP = {
   incrementShortcut: "Combinaisons clavier qui ajoutent une unité. Séparez plusieurs raccourcis par une virgule.",
   decrementShortcut: "Combinaisons clavier qui retirent une unité. Séparez plusieurs raccourcis par une virgule.",
   resetShortcut: "Combinaisons clavier qui remettent la valeur à zéro.",
-  wheelName: "Nom interne de cette roue et libellé utilisé dans la source lorsqu’il est affiché.",
+  wheelName: "Nom interne utilisé pour retrouver cette roue dans les actions et les jeux. Le titre affiché se règle séparément.",
+  wheelTitle: "Titre affiché dans le cartouche de la roue, indépendant de son nom interne.",
+  wheelShowTitle: "Affiche ou masque le titre sans modifier la roue ni ses secteurs.",
+  wheelTitleColor: "Couleur du titre affiché sous la roue.",
+  wheelTitleScale: "Règle la taille du titre en le gardant centré dans son cartouche.",
+  wheelTextScale: "Règle la taille du texte des secteurs. Il s’adapte automatiquement à chaque secteur.",
+  wheelWinnerColor: "Couleur du résultat après la rotation.",
+  wheelWinnerScale: "Règle la taille du résultat en conservant son centrage.",
   wheelEnabled: "Autorise cette roue à être choisie et déclenchée par ShenPulse.",
   wheelDesign: "Style graphique de la roue sélectionnée.",
   wheelTrigger: "Choisissez soit un cadeau TikTok précis, soit un filtre de valeur en pièces pour lancer cette roue.",
@@ -168,7 +175,8 @@ function overlayTimerDurationFields(totalSeconds = 0) {
 }
 
 function overlaySizeField(name, label, value = 100, { min = 50, max = 400 } = {}) {
-  const size = Math.round(Math.min(max, Math.max(min, Number(value) || 100)));
+  const parsed = Number(value);
+  const size = Math.round(Math.min(max, Math.max(min, Number.isFinite(parsed) ? parsed : 100)));
   const id = `${escapeHtml(name)}-range`;
   return `<label class="field overlay-size-field">
     ${fieldLabelWithInfo(label, OVERLAY_FIELD_HELP[name])}
@@ -191,6 +199,12 @@ function overlayActionSelect(name, label, selectedId = "", full = true) {
 
 function wheelDefaultSettings(overrides = {}) {
   return {
+    wheelShowTitle: true,
+    wheelTitleColor: "#fff1c2",
+    wheelTitleScale: 100,
+    wheelTextScale: 100,
+    wheelWinnerColor: "#fff7d3",
+    wheelWinnerScale: 100,
     font: "Kalam",
     fontSize: 50,
     textOrientation: "horizontal",
@@ -269,17 +283,15 @@ function normalizedWheelSettings(wheel = {}) {
     Number(settings.textRadius) === 34 &&
     Number(settings.textBoxHeight) === 42;
   if (!usesRegressedDefaults) return wheelDefaultSettings(settings);
-  return wheelDefaultSettings(
-    wheel.design === "royal"
-      ? {
-          font: "Georgia",
-          fontSize: 50,
-          textColor: "#fff5cb",
-          glow: 100,
-          spinDuration: 7
-        }
-      : {}
-  );
+  return wheelDefaultSettings({
+    ...settings,
+    font: wheel.design === "royal" ? "Georgia" : "Kalam",
+    fontSize: 50,
+    textOrientation: "horizontal",
+    textRadius: 100,
+    textBoxWidth: 100,
+    textBoxHeight: 240
+  });
 }
 
 function normalizeWheelConfig(rawConfig = {}) {
@@ -305,7 +317,8 @@ function normalizeWheelConfig(rawConfig = {}) {
           actionId: ""
         }))
       }];
-  const wheels = sourceWheels.map((wheel, wheelIndex) => ({
+  const wheels = overlayCatalog.normalizeWheelIdentities(sourceWheels).map((wheel, wheelIndex) => ({
+    ...wheel,
     id: wheel.id || `wheel_${cryptoId()}`,
     name: wheel.name || `Roue ${wheelIndex + 1}`,
     enabled: wheel.enabled !== false,
@@ -319,6 +332,7 @@ function normalizeWheelConfig(rawConfig = {}) {
     settings: normalizedWheelSettings(wheel),
     segments: (wheel.segments?.length ? wheel.segments : wheelSeedSegments(wheel.design)).map(
       (segment, index) => ({
+        ...segment,
         id: segment.id || `segment_${cryptoId()}`,
         label: segment.label || `Segment ${index + 1}`,
         color: segment.color || "#ff6a00",
@@ -334,36 +348,6 @@ function normalizeWheelConfig(rawConfig = {}) {
       })
     )
   }));
-  if (!wheels.some((wheel) => wheel.design === "classic")) {
-    wheels.push({
-      id: "wheel_classic",
-      name: "Roue Orange Classique - Actions LIVE",
-      enabled: true,
-      trigger: "",
-      giftValueFilter: null,
-      design: "classic",
-      settings: wheelDefaultSettings(),
-      segments: wheelSeedSegments("classic")
-    });
-  }
-  if (!wheels.some((wheel) => wheel.design === "royal")) {
-    wheels.push({
-      id: "wheel_royal",
-      name: "Roue Royale Prestige - Défis Sport",
-      enabled: false,
-      trigger: "",
-      giftValueFilter: null,
-      design: "royal",
-      settings: wheelDefaultSettings({
-        font: "Georgia",
-        fontSize: 17,
-        textColor: "#fff5cb",
-        glow: 100,
-        spinDuration: 7
-      }),
-      segments: wheelSeedSegments("royal")
-    });
-  }
   return {
     ...rawConfig,
     schemaVersion: 11,
@@ -430,14 +414,14 @@ function wheelSegmentEditor(segment, index, count) {
       </div>
     </header>
     <div class="wheel-segment-fields">
-      <label class="wheel-segment-label-field">${fieldLabelWithInfo("Texte affiché", OVERLAY_FIELD_HELP.wheelSegmentLabel)}<input name="wheelSegmentLabel" value="${escapeHtml(segment.label)}" maxlength="70" required></label>
-      <label class="wheel-color-field">${fieldLabelWithInfo("Couleur", OVERLAY_FIELD_HELP.wheelSegmentColor)}<input name="wheelSegmentColor" type="color" value="${escapeHtml(segment.color)}"></label>
-      <label class="wheel-segment-result-field">${fieldLabelWithInfo("Quand ce secteur gagne", OVERLAY_FIELD_HELP.wheelSegmentAction)}<select name="wheelSegmentAction">
-        <option value="none" ${segment.action === "none" ? "selected" : ""}>Afficher le résultat uniquement</option>
-        <option value="action" ${segment.action === "action" ? "selected" : ""}>Lancer une action ShenPulse</option>
-        <option value="spin" ${segment.action === "spin" ? "selected" : ""}>Relancer automatiquement la roue</option>
+      <label class="field wheel-segment-label-field">${fieldLabelWithInfo("Texte affiché", OVERLAY_FIELD_HELP.wheelSegmentLabel)}<input name="wheelSegmentLabel" value="${escapeHtml(segment.label)}" maxlength="70" required></label>
+      <label class="field wheel-color-field">${fieldLabelWithInfo("Couleur", OVERLAY_FIELD_HELP.wheelSegmentColor)}<input name="wheelSegmentColor" type="color" value="${escapeHtml(segment.color)}"></label>
+      <label class="field wheel-segment-result-field">${fieldLabelWithInfo("Quand ce secteur gagne", OVERLAY_FIELD_HELP.wheelSegmentAction)}<select name="wheelSegmentAction">
+        <option value="none" ${segment.action === "none" ? "selected" : ""}>Résultat uniquement</option>
+        <option value="action" ${segment.action === "action" ? "selected" : ""}>Action ShenPulse</option>
+        <option value="spin" ${segment.action === "spin" ? "selected" : ""}>Relancer la roue</option>
       </select></label>
-      <label class="wheel-segment-action-select">${fieldLabelWithInfo("Action à lancer", OVERLAY_FIELD_HELP.wheelSegmentActionId)}<select name="wheelSegmentActionId">${wheelActionOptions(segment.actionId)}</select></label>
+      <label class="field wheel-segment-action-select">${fieldLabelWithInfo("Action à lancer", OVERLAY_FIELD_HELP.wheelSegmentActionId)}<select name="wheelSegmentActionId">${wheelActionOptions(segment.actionId)}${segment.actionId && !flattenActions().some(({ action }) => action.id === segment.actionId) ? `<option value="${escapeHtml(segment.actionId)}" selected>Action liée indisponible dans ce profil</option>` : ""}</select></label>
     </div>
   </article>`;
 }
@@ -483,9 +467,12 @@ function collectWheelEditorForm() {
     : null;
   wheel.design = data.get("wheelDesign") === "royal" ? "royal" : "classic";
   const settings = wheel.settings;
-  const wheelTriggerText = wheelTriggerSummary(wheel);
+  settings.textAlign = "center";
   for (const key of [
     "font",
+    "wheelTitle",
+    "wheelTitleColor",
+    "wheelWinnerColor",
     "textOrientation",
     "textColor",
     "textShadowColor",
@@ -498,6 +485,9 @@ function collectWheelEditorForm() {
   }
   for (const key of [
     "fontSize",
+    "wheelTitleScale",
+    "wheelTextScale",
+    "wheelWinnerScale",
     "textShadowStrength",
     "textRadius",
     "textSegmentOffset",
@@ -517,6 +507,7 @@ function collectWheelEditorForm() {
   }
   for (const key of [
     "textClamp",
+    "wheelShowTitle",
     "showBase",
     "soundActive",
     "showWinner",
@@ -524,6 +515,7 @@ function collectWheelEditorForm() {
   ]) {
     if (data.has(key)) settings[key] = data.get(key) === "true";
   }
+  const previousSegments = new Map(wheel.segments.map((segment) => [segment.id, segment]));
   wheel.segments = [...dialogBody.querySelectorAll("[data-wheel-segment-row]")].map(
     (row) => {
       const actionId =
@@ -531,6 +523,7 @@ function collectWheelEditorForm() {
       const selectedMode =
         row.querySelector('[name="wheelSegmentAction"]').value;
       return {
+        ...previousSegments.get(row.dataset.segmentId),
         id: row.dataset.segmentId || `segment_${cryptoId()}`,
         label: row.querySelector('[name="wheelSegmentLabel"]').value.trim(),
         color: row.querySelector('[name="wheelSegmentColor"]').value,

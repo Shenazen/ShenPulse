@@ -54,7 +54,7 @@
                 <div class="account-language-preference"><span>Langue</span><button class="account-preference-button" id="studio-language" type="button" data-action="studio-toggle-language" role="menuitem" title="Français / English" aria-label="Français / English">FR</button></div>
                 <div class="account-directory-preference" id="account-directory-preference" hidden>
                   <button class="account-preference-button" id="account-directory-toggle" type="button" role="menuitemcheckbox" aria-checked="false" aria-describedby="account-directory-description"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3"></circle><path d="M5 21v-2a7 7 0 0 1 14 0v2M18 5h4M20 3v4"></path></svg><span>Afficher mes LIVE dans l’annuaire public</span><span class="account-directory-switch" aria-hidden="true"></span></button>
-                  <small id="account-directory-description">Partage votre @, photo publique, plateforme et audience. Retrait à l’arrêt du LIVE, ou après 90 s sans connexion. Désactivé par défaut.</small>
+                  <small id="account-directory-description">Actif par défaut. Partage votre @, photo publique, plateforme et audience pendant votre LIVE. Vous pouvez le désactiver ici. Retrait à l’arrêt du LIVE, ou après 90 s sans connexion.</small>
                 </div>
               </div>
               <div class="account-menu-actions">
@@ -92,7 +92,7 @@
                 <strong id="account-name">Aucun compte</strong>
                 <small id="account-email">Se connecter à ShenPulse</small>
               </span>
-              <span class="chevron" aria-hidden="true">›</span>
+              <span class="chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"></path></svg></span>
             </button>
           </div>
         </div>
@@ -259,6 +259,8 @@
     <div id="audio-stage" aria-hidden="true"></div>
     <datalist id="gift-catalog-options"></datalist>
     <script src="../shared/visibility-catalog.js"></script>
+    <script src="../shared/game-categories.js"></script>
+    <script src="../shared/game-pass-catalog.js"></script>
     <script src="../shared/pro-access.js"></script>
     <script src="../shared/matches-contract.js"></script>
     <script src="../shared/controller-contract.js"></script>
@@ -311,9 +313,14 @@
     <script src="app/features/overlays/win-counter-editor.js"></script>
     <script src="app/features/overlays/leaderboard-editor.js"></script>
     <script src="app/features/overlays/editor.js"></script>
+    <script src="app/features/overlays/wheel-editor.js"></script>
+    <script src="app/features/overlays/coin-jar-editor.js"></script>
     <script src="app/features/overlays/scene.js"></script>
     <script src="app/features/audio.js"></script>
+    <script src="app/features/games/control-bindings.js"></script>
+    <script src="app/features/games/conditions.js"></script>
     <script src="app/features/games/access.js"></script>
+    <script src="app/features/games/categories.js"></script>
     <script src="app/features/games/settings-defaults.js"></script>
     <script src="app/features/games/settings-deal.js"></script>
     <script src="app/features/games/settings-coin-pusher.js"></script>
@@ -350,6 +357,8 @@
     <script src="app/features/creator-sidebar.js"></script>
     <script src="app/features/controllers.js"></script>
     <script src="app/features/admin/page.js"></script>
+    <script src="app/features/admin/game-platforms.js"></script>
+    <script src="app/features/admin/game-versions.js"></script>
     <script src="app/features/admin/account.js"></script>
     <script src="app/editors/core.js"></script>
     <script src="app/editors/game-interactions.js"></script>

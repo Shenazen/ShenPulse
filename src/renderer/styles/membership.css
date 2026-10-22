@@ -318,13 +318,6 @@
     grid-template-columns: 1fr;
   }
 
-  .match-overlay-guide > ol {
-    grid-template-columns: 1fr;
-  }
-
-  .match-overlay-guide .match-overlay-source-settings {
-    grid-column: auto;
-  }
 }
 
 @media (max-width: 1320px) {

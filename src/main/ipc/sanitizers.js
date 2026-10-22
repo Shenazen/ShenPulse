@@ -43,7 +43,7 @@ function sanitizeGameConfiguration(packId, value) {
   ) {
     return {
       keyLayout:
-        String(input.keyLayout || "").toLowerCase() === "azerty"
+        String(input.keyLayout || "azerty").toLowerCase() === "azerty"
           ? "azerty"
           : "wasd"
     };

@@ -9,6 +9,7 @@ const { sanitizeEntity } = require("./sanitizers");
 const { notify } = require("./notifications");
 const { readState } = require("../state-projection");
 const { registerChatbotTransportIpc } = require("./chatbot-transport");
+const { normalizeLiveDirectoryPreference, LIVE_DIRECTORY_DEFAULTS_VERSION } = require("../../shared/live-directory-protocol");
 
 function registerIntegrationsIpc({ handle, core, store, integrationChange }) {
   registerChatbotTransportIpc({ handle, core, store, integrationChange });
@@ -40,7 +41,7 @@ function registerIntegrationsIpc({ handle, core, store, integrationChange }) {
   
   handle("live-directory:configure", async (_event, incoming) => {
     if (typeof incoming?.publishEnabled !== "boolean") throw new Error("Choisissez la visibilité de vos LIVE.");
-    store.set("settings.liveDirectory", { publishEnabled: incoming.publishEnabled });
+    store.set("settings.liveDirectory", normalizeLiveDirectoryPreference({ publishEnabled: incoming.publishEnabled, defaultsVersion: LIVE_DIRECTORY_DEFAULTS_VERSION }));
     if (!incoming.publishEnabled) await core.liveDirectory?.suspendPublication();
     else core.liveDirectory?.resumePublication();
     core.liveDirectory?.sync();

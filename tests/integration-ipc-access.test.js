@@ -282,11 +282,12 @@ test("public LIVE visibility requires a deliberate boolean from the authenticate
   await assert.rejects(() => configure(event, { publishEnabled: "true" }), /visibilité/);
   const optedIn = await configure(event, { publishEnabled: true, email: "must-not-save@example.com" });
   assert.equal(state.settings.liveDirectory.publishEnabled, true);
-  assert.deepEqual(Object.keys(state.settings.liveDirectory), ["publishEnabled"]);
+  assert.deepEqual(state.settings.liveDirectory, { publishEnabled: true, defaultsVersion: 1 });
   assert.equal(optedIn.state.settings.liveDirectory.publishEnabled, true);
   assert.deepEqual(calls.map((entry) => entry.name), ["directory:resume", "directory:sync"]);
   calls.length = 0;
   await configure(event, { publishEnabled: false });
+  assert.deepEqual(state.settings.liveDirectory, { publishEnabled: false, defaultsVersion: 1 });
   assert.deepEqual(calls.map((entry) => entry.name), ["directory:suspend", "directory:sync"]);
   state.settings.account = {};
   assert.throws(() => configure(event, { publishEnabled: true }), { code: "ACCOUNT_REQUIRED" });

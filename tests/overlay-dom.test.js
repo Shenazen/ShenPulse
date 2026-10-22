@@ -260,49 +260,93 @@ test("tous les réglages communs et visuels du Like Goal modifient le DOM réel"
   dom.window.close();
 });
 
-test("le Coin Jar affiche ses valeurs, son objectif, son minimum et sa jauge", async () => {
-  const dom = await loadOverlay("coin-jar", { model: "fantasy" });
+test("la Coin Jar reste sans compteur ni jauge même avec une configuration historique", async (t) => {
+  const dom = await loadOverlay("coin-jar", { model: "fantasy", current: "600", target: "1000", minCoins: "10", showGoal: "true", showBase: "true", showPercent: "true" });
+  t.after(() => dom.window.close());
   const { window } = dom;
   const { document } = window;
-  const widget = document.querySelector(".coin-jar-widget");
-  const meter = document.querySelector(".coin-jar-meter");
+  for (const config of [{}, { model: "space", current: 500, target: 1000, showGoal: true, showBase: true, showPercent: true, coinJarLabel: "PIÈCES", coinJarShowLabel: true }]) {
+    sendCardMessage(window, "configuration", { overlayKey: "coinJar", config });
+    assert.equal(document.querySelector(".coin-jar-meter, .coin-jar-level, #coin-jar-current, #coin-jar-target, #coin-jar-percent, #coin-jar-label"), null);
+    assert.equal(document.querySelector(".coin-jar-widget").textContent.trim(), "COIN JAR");
+    assert.equal(document.querySelectorAll(".coin-jar-gift").length, 0, "aucun cadeau artificiel au repos");
+  }
+});
 
-  sendCardMessage(window, "configuration", {
-    overlayKey: "coinJar",
-    config: {
-      model: "space",
-      current: 60,
-      target: 100,
-      minCoins: 10,
-      showGoal: true,
-      showBase: true
+test("les 14 bocaux appliquent les titres et tailles sans compteur ni perte des cadeaux", async () => {
+  const catalog = require("../resources/overlays/overlay-catalog");
+  const dom = await loadOverlay("coin-jar", { current: 60, target: 100, minCoins: 10 });
+  const { window } = dom;
+  const { document } = window;
+  try {
+    sendCardMessage(window, "event", { id: "jar-preserved-gift", type: "gift", user: { name: "Test" }, data: { count: 1, value: 1, giftName: "Rose" } });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const gift = document.querySelector(".coin-jar-gift");
+    assert.ok(gift);
+    const count = window.eval("coinJarCurrent");
+    sendCardMessage(window, "event", { id: "jar-preserved-gift", type: "gift", data: { count: 1, value: 1 } });
+    assert.equal(window.eval("coinJarCurrent"), count);
+    for (const [model] of catalog.coinJarModels) {
+      sendCardMessage(window, "configuration", { overlayKey: "coinJar", config: {
+        model, title: "MON BOCAL", showHeader: true, coinJarLabel: "cadeaux", coinJarShowLabel: true,
+        coinJarTitleScale: 350, coinJarValueScale: 400, coinJarLabelScale: 50,
+        coinJarTitleColor: "#123456", coinJarValueColor: "#abcdef", coinJarLabelColor: "#654321", coinJarPercentColor: "#fedcba", showPercent: true
+      } });
+      assert.equal(document.documentElement.dataset.jarModel, model);
+      assert.equal(document.getElementById("coin-jar-title").textContent, "MON BOCAL");
+      assert.equal(document.querySelector(".coin-jar-meter, .coin-jar-level, #coin-jar-percent, #coin-jar-label"), null);
+      assert.equal(window.eval("coinJarCurrent"), count);
+      assert.equal(gift.isConnected, true, model);
+      assert.equal(document.documentElement.style.getPropertyValue("--coin-jar-title-scale"), "3.5");
+      assert.equal(document.documentElement.style.getPropertyValue("--coin-jar-title-color"), "#123456");
     }
+    sendCardMessage(window, "configuration", { overlayKey: "timer", config: { title: "NE PAS APPLIQUER", current: 0 } });
+    assert.equal(document.getElementById("coin-jar-title").textContent, "MON BOCAL");
+    sendCardMessage(window, "configuration", { overlayKey: "coinJar", config: { title: "", coinJarLabel: "", showPercent: false } });
+    assert.equal(document.getElementById("coin-jar-title").hidden, true);
+    sendCardMessage(window, "configuration", { overlayKey: "coinJar", config: { title: "RETOUR", coinJarLabel: "PIÈCES", showHeader: false, coinJarShowLabel: false } });
+    assert.equal(document.getElementById("coin-jar-title").hidden, true);
+    sendCardMessage(window, "coin-jar", { operation: "reset" });
+    assert.equal(gift.isConnected, false);
+    assert.equal(window.eval("coinJarCurrent"), 10);
+  } finally {
+    dom.window.close();
+  }
+});
+
+test("les actions, la session et les cadeaux de la Coin Jar restent synchronisés après reconfiguration", async (t) => {
+  const dom = await loadOverlay("coin-jar", { preview: "" }, (window) => {
+    window.EventSource = class { addEventListener() {} close() {} };
   });
-
-  assert.equal(document.documentElement.dataset.jarModel, "space");
-  assert.equal(document.getElementById("coin-jar-current").textContent, "60");
-  assert.equal(document.getElementById("coin-jar-target").textContent, "100");
-  assert.equal(document.getElementById("coin-jar-level").style.height, "55.55555555555556%");
-  assert.equal(widget.classList.contains("without-base"), false);
-  assert.equal(meter.hidden, false);
-
-  sendCardMessage(window, "configuration", {
-    overlayKey: "coinJar",
-    config: {
-      current: 0,
-      target: 100,
-      minCoins: 80,
-      showGoal: false,
-      showBase: false
-    }
-  });
-
-  assert.equal(document.getElementById("coin-jar-current").textContent, "80");
-  assert.equal(document.getElementById("coin-jar-level").style.height, "0%");
-  assert.equal(widget.classList.contains("without-base"), true);
-  assert.equal(meter.hidden, true);
-
-  dom.window.close();
+  t.after(() => dom.window.close());
+  const { window } = dom;
+  const { document } = window;
+  window.updateCoinJar({ operation: "set", current: 250 });
+  window.receiveCoinJarGift({ id: "live-gift", type: "gift", data: { count: 2, value: 10 } });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  const gift = document.querySelector(".coin-jar-gift");
+  assert.ok(gift);
+  assert.equal(String(window.eval("coinJarCurrent")), "270");
+  window.updateOverlayConfiguration({ overlayKey: "coinJar", config: { model: "cyberpunk", current: 0, title: "MON LIVE", coinJarLabel: "cadeaux", coinJarValueScale: 400, showBase: false } });
+  assert.equal(String(window.eval("coinJarCurrent")), "270");
+  assert.equal(gift.isConnected, true);
+  window.updateCoinJar({ operation: "adjust", amount: 5 });
+  assert.equal(String(window.eval("coinJarCurrent")), "275");
+  window.receiveCoinJarGift({ id: "hydrated-gift", type: "gift", data: { count: 2, value: 10 } }, { authoritativeState: true });
+  assert.equal(String(window.eval("coinJarCurrent")), "275", "le total de session inclut déjà ce cadeau");
+  window.receiveCoinJarGift({ id: "hydrated-gift", type: "gift", data: { count: 2, value: 10 } });
+  assert.equal(String(window.eval("coinJarCurrent")), "275");
+  assert.equal(document.getElementById("coin-jar-title").textContent, "MON LIVE");
+  window.updateCoinJar({ operation: "reset" });
+  assert.equal(gift.isConnected, false);
+  assert.equal(String(window.eval("coinJarCurrent")), "0");
+  window.hydrateOverlaySession({ hasData: true, coinJarCurrent: 0, recentEvents: [{ id: "live-gift", type: "gift", data: { count: 2, value: 10 } }, { id: "hydrated-gift", type: "gift", data: { count: 2, value: 10 } }] });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(document.querySelectorAll(".coin-jar-gift").length, 0, "la session ne remet pas les anciens cadeaux après réinitialisation");
+  window.receiveCoinJarGift({ id: "new-gift-after-reset", type: "gift", data: { value: 5 } });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(String(window.eval("coinJarCurrent")), "5");
+  assert.equal(document.querySelectorAll(".coin-jar-gift").length, 1);
 });
 
 test("les champs de classement pilotent le titre, les lignes, badges et couleurs", async () => {
@@ -753,6 +797,66 @@ test("modifier le design des wins conserve la valeur LIVE, le multiplicateur et 
   assert.equal(value.textContent, "0");
 });
 
+test("les titres, tailles et résultats de chaque design de roue restent indépendants", async (t) => {
+  for (const design of ["classic", "royal"]) {
+    const dom = await loadOverlay("wheel", { design, choices: "A|B", wheelTitle: "", wheelShowTitle: "false", wheelTextScale: "50" });
+    t.after(() => dom.window.close());
+    const { window } = dom;
+    const { document } = window;
+    const title = document.getElementById("wheel-caption");
+    const stage = document.getElementById("wheel-stage");
+    assert.equal(title.textContent, "");
+    assert.equal(title.hidden, true);
+    window.syncWheelResponsiveTypography();
+    const before = parseFloat(document.querySelector(".segment-label > span").style.fontSize);
+    sendCardMessage(window, "configuration", { overlayKey: "wheel", config: {
+      wheelTitle: "Ma roue <LIVE>", wheelShowTitle: true, wheelTitleColor: "#123456", wheelTitleScale: 400,
+      wheelTextScale: 400, wheelWinnerColor: "#abcdef", wheelWinnerScale: 350, glow: 0, textShadowStrength: 0, lineSpacing: 0, letterSpacing: 0
+    } });
+    window.syncWheelResponsiveTypography();
+    assert.equal(title.textContent, "Ma roue <LIVE>");
+    assert.equal(title.querySelector("live"), null);
+    assert.equal(title.hidden, false);
+    assert.equal(stage.style.getPropertyValue("--wheel-title-scale"), "4");
+    assert.equal(stage.style.getPropertyValue("--wheel-winner-scale"), "3.5");
+    assert.equal(stage.style.getPropertyValue("--wheel-title-color"), "#123456");
+    assert.equal(stage.style.getPropertyValue("--wheel-winner-color"), "#abcdef");
+    assert.equal(document.getElementById("wheel-machine").style.getPropertyValue("--wheel-glow"), "0");
+    assert.equal(document.getElementById("wheel-machine").style.getPropertyValue("--wheel-shadow-strength"), "0");
+    assert.equal(document.getElementById("wheel-machine").style.getPropertyValue("--wheel-line-spacing"), "0.84");
+    assert.equal(document.getElementById("wheel-machine").style.getPropertyValue("--wheel-letter-spacing"), `${-50 / 900}em`);
+    assert.ok(parseFloat(document.querySelector(".segment-label > span").style.fontSize) > before);
+    for (const label of document.querySelectorAll(".segment-label")) assert.equal(label.style.textAlign, "center");
+    sendCardMessage(window, "configuration", { overlayKey: "wheel", config: { wheelTitle: "", wheelShowTitle: false } });
+    assert.equal(title.hidden, true);
+    assert.equal(title.textContent, "");
+  }
+});
+
+test("le résultat de la roue s’arrête sur son pointeur dans les deux designs", async (t) => {
+  for (const design of ["classic", "royal"]) {
+    for (const [pointer, angle] of Object.entries({ top: 0, right: 90, bottom: 180, left: 270 })) {
+      const dom = await loadOverlay("wheel", { design });
+      t.after(() => dom.window.close());
+      const { window } = dom;
+      const pending = [];
+      window.setTimeout = (callback, delay) => { pending.push({ callback, delay }); return 0; };
+      sendCardMessage(window, "wheel", {
+        design, wheelName: "Roue liée au jeu", choices: ["A", "B", "C", "D"], winner: "C", winnerIndex: 2,
+        settings: { pointerPosition: pointer, spinDuration: 1, waitDuration: 0, soundActive: false, wheelShowTitle: true }
+      });
+      const rotation = parseFloat(window.document.getElementById("wheel").style.getPropertyValue("--wheel-spin-rotation"));
+      assert.equal((225 + rotation) % 360, angle, `${design} · ${pointer}`);
+      assert.equal(window.document.getElementById("wheel-caption").textContent, "Roue liée au jeu");
+      pending.filter((timer) => timer.delay === 1000).forEach((timer) => timer.callback());
+      const result = window.document.getElementById("wheel-winner");
+      assert.equal(result.textContent, "C");
+      assert.equal(result.classList.contains("visible"), true);
+      assert.equal(result.firstElementChild.tagName, "SPAN");
+    }
+  }
+});
+
 test("tous les champs visuels de la roue atteignent son moteur", async () => {
   const dom = await loadOverlay("wheel", { design: "classic" });
   const { window } = dom;
@@ -825,7 +929,7 @@ test("tous les champs visuels de la roue atteignent son moteur", async () => {
     ["RÉSULTAT A", "RÉSULTAT B"]
   );
   assert.equal(document.documentElement.dataset.wheelDesign, "classic");
-  assert.equal(document.getElementById("wheel").style.getPropertyValue("--wheel-spin-rotation"), "2610deg");
+  assert.equal(document.getElementById("wheel").style.getPropertyValue("--wheel-spin-rotation"), "2880deg");
 
   dom.window.close();
 });

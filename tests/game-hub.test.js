@@ -419,6 +419,7 @@ test("initialise le catalogue Cult of the Lamb et parle au bridge BepInEx", asyn
     )
   );
 
+  hub.packs.find(p => p.id === "cult-of-the-lamb").connector.port = 0;
   const status = await hub.prepareConnection("cult-of-the-lamb");
   const frames = [];
   const client = net.createConnection({
@@ -530,6 +531,7 @@ test("initialise et exécute les catalogues Stardew Valley et Terraria", async (
     25
   );
 
+  for (const id of ["stardew-valley", "terraria"]) hub.packs.find(p => p.id === id).connector.port = 0;
   const stardewStatus = await hub.prepareConnection("stardew-valley");
   const stardewFrames = [];
   const stardewClient = mockSimpleTcpGame(
@@ -649,15 +651,17 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
     .listPacks()
     .find((entry) => entry.id === "resident-evil-3");
   assert.equal(pack.connector.type, "tcp-server");
-  assert.equal(pack.connector.port, 58431);
+  assert.equal(pack.connector.port, 58443);
   assert.equal(pack.effects.length, 67);
   assert.equal(
     hub.initializeDefaultInteractions("resident-evil-3").added,
     67
   );
 
+  hub.packs.find(p => p.id === "resident-evil-3").connector.port = 0;
+  hub.packs.find(p => p.id === "resident-evil-3").connector.temporaryFailureRetryIntervalMs = 50;
   const status = await hub.prepareConnection("resident-evil-3");
-  assert.deepEqual(releasedPorts, [0]);
+  assert.deepEqual(releasedPorts, []);
   const frames = [];
   let temporaryFailureSent = false;
   const client = mockSimpleTcpGame(status.port, frames, (request) => {
