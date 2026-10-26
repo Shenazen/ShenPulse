@@ -1,0 +1,26 @@
+{
+  "preview": {
+    "width": 675,
+    "height": 1200
+  },
+  "viewport": {
+    "width": 1080,
+    "height": 665
+  },
+  "transform": {
+    "translateX": 64.06863403320312,
+    "translateY": 763.6875,
+    "rotateAngle": 0,
+    "scaleX": 0.5077648162841797,
+    "scaleY": 0.5077648162841797,
+    "flipH": false,
+    "flipV": false,
+    "size": {
+      "cx": 1077,
+      "cy": 664
+    },
+    "preview_cx": 675,
+    "preview_cy": 1200,
+    "fixed_edge": 1
+  }
+}

@@ -523,6 +523,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
       render();
       return;
     }
+    if (pack.id === "supermarket-simulator") return revealSupermarketSection(nextStep);
     if (!gameJourneyFor(pack).some((step) => step.id === nextStep)) {
       return;
     }

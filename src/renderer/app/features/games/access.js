@@ -490,7 +490,13 @@ function renderGamesV2() {
       gameFilter === "all" || gameAccessGroup(pack) === gameFilter;
     return matchesSearch && matchesFilter;
   });
-  const packs = matchingPacks.filter((pack) => gameCategory === "all" || ShenPulseGameCategories.categoryFor(pack) === gameCategory);
+  const packs = matchingPacks.flatMap((pack) => {
+    if (pack.modeSelector && Array.isArray(pack.modes)) {
+      const modes = pack.modes.filter((mode) => ShenPulseGameCategories.matchesCategory(mode, gameCategory));
+      return modes.length ? [minecraftLauncherPack(modes)] : [];
+    }
+    return ShenPulseGameCategories.matchesCategory(pack, gameCategory) ? [pack] : [];
+  });
   const resultCount = ShenPulseGameCategories.countGames(packs);
   return `
     <div class="reference-page games-gallery-page">
@@ -558,22 +564,64 @@ function openMinecraftModeSelector(launcher) {
   });
 }
 
+// Page data is already available in the renderer. Only migrations and the
+// selected game's installation status need to be reconciled after first paint.
+let gameWorkspaceEntry = null;
+function gameWorkspaceScope(value = snapshot) {
+  return JSON.stringify([value?.state?.settings?.account?.uid || '', value?.state?.session?.profileId || '']);
+}
+function gameWorkspaceInteractionsReady(pack) {
+  return !(gameWorkspaceEntry?.packId === pack.id &&
+    gameWorkspaceEntry.scope === gameWorkspaceScope() && gameWorkspaceEntry.initializing);
+}
 async function enterGameWorkspace(pack) {
+  const entry = gameWorkspaceEntry = {
+    packId: pack.id, scope: gameWorkspaceScope(),
+    initializing: pack.id === 'supermarket-simulator' &&
+      Number(snapshot.state.game.interactionCatalogVersions?.[pack.id] || 0) < Number(pack.interactionCatalogVersion || 0)
+  };
+  const current = () => gameWorkspaceEntry === entry && gameWorkspaceScope() === entry.scope &&
+    currentPage === 'games' && gamePageMode === 'detail' && selectedGameId === pack.id;
   selectedGameId = pack.id;
-  gamePageMode = "detail";
-  gameWorkspaceStep = "installation";
-  gameEffectSearch = "";
-  gameEffectCategory = "all";
-  await api.selectGame(pack.id);
-  snapshot = await api.getSnapshot();
-  await restoreActiveGameInstallProgress(pack.id, {
-    renderWhenFound: false
-  });
+  gamePageMode = 'detail';
+  gameWorkspaceStep = 'installation';
+  gameEffectSearch = '';
+  gameEffectCategory = 'all';
   render();
   content.scrollTop = 0;
+  try {
+    const beforeSelection = snapshot;
+    const selected = await api.selectGame(pack.id);
+    if (!current()) return;
+    // The IPC already returns a snapshot; don't request it again or overwrite
+    // a more recent state event, edit, account or profile with a late response.
+    if (selected?.state && snapshot === beforeSelection && gameWorkspaceScope(selected) === entry.scope) {
+      acceptSnapshot(selected);
+    }
+    if (entry.initializing) {
+      const beforeInitialization = snapshot;
+      const initialized = await api.initializeGameInteractions(pack.id);
+      if (!current()) return;
+      if (initialized?.snapshot && snapshot === beforeInitialization && gameWorkspaceScope(initialized.snapshot) === entry.scope) {
+        acceptSnapshot(initialized.snapshot);
+      }
+      entry.initializing = false;
+      const scroll = content.scrollTop;
+      render();
+      content.scrollTop = scroll;
+    }
+    await restoreActiveGameInstallProgress(pack.id, { shouldApply: current });
+  } catch (error) {
+    if (!current()) return;
+    entry.initializing = false;
+    gamePageMode = 'catalog';
+    render();
+    throw error;
+  }
 }
 
 function renderGameWorkspace(pack) {
+  if (pack.id === "supermarket-simulator") return renderSupermarketWorkspace(pack);
   if (pack.id === "super-mario-kart") {
     return renderSuperMarioKartWorkspace(pack);
   }

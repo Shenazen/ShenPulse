@@ -125,6 +125,42 @@
       "size": 43051596,
       "sha256": "cd75f36ccaae9a8a8a21ff843abad4a92263773763b33d9e740acb7d4aa3e3ef",
       "buildPath": ".artifacts/game-pack-builds/emulator-common/1.0.0/emulator-bridge-1.0.0.zip"
+    },
+    {
+      "gameId": "tcg-card-shop-simulator",
+      "id": "module",
+      "version": "1.0.14",
+      "key": "installer-assets/tcg-card-shop-simulator/1.0.14/tcg-card-shop-simulator-shenpulse-1.0.14.zip",
+      "size": 864145,
+      "sha256": "eccd8619ea1775f5bf7c290b3c9a980f93e8cef8e2010a9023a97071358c836a",
+      "buildPath": ".artifacts/game-pack-builds/tcg-card-shop-simulator/1.0.14/tcg-card-shop-simulator-shenpulse-1.0.14.zip"
+    },
+    {
+      "gameId": "shift-at-midnight",
+      "id": "module",
+      "version": "1.0.16",
+      "key": "installer-assets/shift-at-midnight/1.0.16/shift-at-midnight-shenpulse-1.0.16.zip",
+      "size": 34701854,
+      "sha256": "3d856749b632ab84872e0f7c3c5fe80daae10d38b119fe062ee05d8b140718ed",
+      "buildPath": ".artifacts/game-pack-builds/shift-at-midnight/1.0.16/shift-at-midnight-shenpulse-1.0.16.zip"
+    },
+    {
+      "gameId": "supermarket-simulator",
+      "id": "module",
+      "version": "1.0.25",
+      "key": "installer-assets/supermarket-simulator/1.0.25/supermarket-simulator-shenpulse-1.0.25.zip",
+      "size": 43610726,
+      "sha256": "06357c2b49cfe5656920da00c506843557dabde1f1d442b196b0279d226f8ee3",
+      "buildPath": ".artifacts/game-pack-builds/supermarket-simulator/1.0.25/supermarket-simulator-shenpulse-1.0.25.zip"
+    },
+    {
+      "gameId": "hogwarts-legacy",
+      "id": "module",
+      "version": "1.0.10",
+      "key": "installer-assets/hogwarts-legacy/1.0.10/hogwarts-legacy-shenpulse-1.0.10.zip",
+      "size": 8732404,
+      "sha256": "ee851721082539c47af85046eb9a4a6fca4928fcb568ad31d6228b0ffb08f26a",
+      "buildPath": ".artifacts/game-pack-builds/hogwarts-legacy/1.0.10/hogwarts-legacy-shenpulse-1.0.10.zip"
     }
   ]
 }

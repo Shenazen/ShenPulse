@@ -310,6 +310,11 @@ class GameRuntimeService {
       waitForWindowsProcessWindow, scheduleGtaSaveDeployment: () => this.#scheduleGtaSaveDeployment(gameId, { assertAccess }) });
   }
 
+  async uninstall(gameId, options = {}) {
+    const assertAccess = this.createAccessGuard?.(gameId) || (() => this.assertAccess(gameId));
+    return require('./game-runtime/shop-game-uninstall').uninstallShopGame(this, gameId, {...options,assertAccess});
+  }
+
   async stop(gameId) {
     if (gameId === "pokemon-red-blue") {
       return this.pokemonRedBlue.stop();

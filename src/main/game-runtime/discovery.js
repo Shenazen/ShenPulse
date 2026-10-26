@@ -5,33 +5,31 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { runProcess } = require("./processes");
 const { findLaunchTarget } = require("./paths");
+const { installationPlatform, canonicalPath } = require("./installation-platform");
 
 async function detectInstalledGame(gameId, manifest, previousPath = "") {
+  return (await detectInstalledGames(gameId, manifest, previousPath))[0]?.path || "";
+}
+
+/** Retourne toutes les éditions valides, sans compter deux fois les jonctions Xbox. */
+async function detectInstalledGames(gameId, manifest, previousPath = "", sources = {}) {
   const candidates = [previousPath].filter(Boolean);
-  if (manifest.xboxDirectoryNames?.length) candidates.push(...await xboxGameInstallCandidates(manifest));
-  if (manifest.xboxIdentity) candidates.push(...await registeredXboxInstallCandidates(manifest));
-  if (gameId === "gtav-montchiliad") {
-    candidates.push(...(await gtaInstallCandidates()));
-  }
-  if (
-    Array.isArray(manifest.steamAppIds) ||
-    Array.isArray(manifest.directoryNames)
-  ) {
-    candidates.push(...(await steamGameInstallCandidates(manifest)));
-  }
-  for (const candidate of [
-    ...new Set(candidates.map((item) => path.resolve(item)))
-  ]) {
+  if (manifest.xboxDirectoryNames?.length) candidates.push(...await (sources.xbox || xboxGameInstallCandidates)(manifest));
+  if (manifest.xboxIdentity) candidates.push(...await (sources.registeredXbox || registeredXboxInstallCandidates)(manifest));
+  if (gameId === "gtav-montchiliad") candidates.push(...await (sources.gta || gtaInstallCandidates)());
+  if (Array.isArray(manifest.steamAppIds) || Array.isArray(manifest.directoryNames)) candidates.push(...await (sources.steam || steamGameInstallCandidates)(manifest));
+  const found = [], seen = new Set();
+  for (const candidate of [...new Set(candidates.map(value => path.resolve(value)))]) {
     const stat = await fs.promises.stat(candidate).catch(() => null);
     if (!stat?.isDirectory()) continue;
-    const executable = await findLaunchTarget(
-      candidate,
-      manifest.executables || [],
-      false
-    );
-    if (executable) return candidate;
+    const executable = await findLaunchTarget(candidate, manifest.executables || [], false);
+    if (!executable) continue;
+    const canonical = await canonicalPath(candidate);
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    found.push({ path: candidate, platform: await installationPlatform(candidate, manifest) });
   }
-  return "";
+  return found;
 }
 
 /** Les packages Xbox peuvent être rangés sous un GUID. On résout leur jonction
@@ -213,6 +211,7 @@ async function gtaInstallCandidates() {
 module.exports = {
   registeredXboxInstallCandidates,
   detectInstalledGame,
+  detectInstalledGames,
   steamGameInstallCandidates,
   windowsSteamInstallRoots,
   gtaInstallCandidates,

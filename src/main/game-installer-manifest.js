@@ -4,6 +4,7 @@
 const { INTEGRATED_GAME_IDS } = require("./game-installers/constants");
 
 const GAME_INSTALLERS = Object.freeze({
+  ...require("./game-installers/shop-games"),
   "escape-from-duckov": require("./game-installers/escape-from-duckov"),
   "dead-by-daylight": require("./game-installers/dead-by-daylight"),
   dredge: require("./game-installers/dredge"),

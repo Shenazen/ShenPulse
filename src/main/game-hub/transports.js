@@ -5,6 +5,8 @@ const net = require("node:net");
 const { SimpleTcpServerBridge } = require("../simple-tcp-server-bridge");
 const { SimpleWebSocketGameBridge } = require("../simple-websocket-game-bridge");
 const { BalatroGamePassBridge } = require("../balatro-gamepass-bridge");
+const { ShopGameBridge } = require("../shop-game-bridge");
+const { shopInstallationPath } = require("../game-runtime/shop-games-installation");
 const { readState } = require("../state-projection");
 
 /** Transports réseau isolés ; caches et événements restent ceux du hub. */
@@ -19,9 +21,10 @@ class GameTransports {
     const cacheKey = `${pack.id}:${connector.type}`;
     let bridge = this.serverBridges.get(cacheKey);
     if (!bridge) {
-      const Bridge = connector.type === "balatro-gamepass" ? BalatroGamePassBridge : connector.type === "websocket-server" ? SimpleWebSocketGameBridge : SimpleTcpServerBridge;
+      const Bridge = connector.type === "shop-mod" ? ShopGameBridge : connector.type === "balatro-gamepass" ? BalatroGamePassBridge : connector.type === "websocket-server" ? SimpleWebSocketGameBridge : SimpleTcpServerBridge;
       bridge = new Bridge({
-        installationPath: connector.type === "balatro-gamepass" ? readState(this.hub.store, ["game.installations"]).game.installations?.balatro?.path : undefined,
+        gameId: pack.id,
+        installationPath: ["shop-mod", "balatro-gamepass"].includes(connector.type) ? readState(this.hub.store, ["game.installations"]).game.installations?.[pack.id]?.path : undefined,
         host: connector.host || "127.0.0.1",
         port: Number(connector.port),
         timeoutMs: Number(connector.timeoutMs || 12000),
@@ -34,6 +37,12 @@ class GameTransports {
         this.emit("bridge-error", { pack, error })
       );
       this.serverBridges.set(cacheKey, bridge);
+    }
+    if (connector.type === "shop-mod") {
+      const installed = readState(this.hub.store, ["game.installations"]).game.installations?.[pack.id]?.path;
+      const currentPath = installed ? await shopInstallationPath(pack.id, installed) : "";
+      if (bridge.installationPath && bridge.installationPath !== currentPath) await bridge.close();
+      bridge.installationPath = currentPath;
     }
     try {
       await bridge.start();

@@ -29,7 +29,7 @@ async function commitInstallationDeployment({
     throw new Error("Les fichiers préparés pour l’installation sont absents.");
   }
   const files = await collectFiles(source);
-  if (!files.length) {
+  if (!files.length && !retiredFiles.length) {
     return { elevated: false, fileCount: 0 };
   }
   if (await canWriteToDirectory(target)) {

@@ -292,3 +292,21 @@ test("public LIVE visibility requires a deliberate boolean from the authenticate
   state.settings.account = {};
   assert.throws(() => configure(event, { publishEnabled: true }), { code: "ACCOUNT_REQUIRED" });
 });
+
+
+test("les modèles d’overlay exigent le renderer principal, le compte et Pro avant toute écriture",()=>{
+ const f=fixture(),save=f.handlers.get("overlay:game-pack-presentation");
+ assert.throws(()=>save({sender:f.contents,senderFrame:{url:MAIN_RENDERER_URL}},{model:2}),{code:"IPC_SENDER_FORBIDDEN"});
+ assert.throws(()=>save(f.event,{model:2}),{code:"PRO_FEATURE_REQUIRED"});
+ f.state.settings.account={};assert.throws(()=>save(f.event,{model:2}),{code:"ACCOUNT_REQUIRED"});assert.equal(f.calls.length,0);
+});
+
+
+test('désinstaller et rétablir les interactions exigent le document principal authentifié avant toute opération',()=>{
+ const f=fixture();for(const channel of ['game:uninstall','game:interactions:reset']){
+  const handler=f.handlers.get(channel);assert.equal(typeof handler,'function');
+  assert.throws(()=>handler({sender:f.contents,senderFrame:{url:MAIN_RENDERER_URL}},'supermarket-simulator',{confirmed:true}),{code:'IPC_SENDER_FORBIDDEN'});
+  assert.throws(()=>handler({sender:{},senderFrame:{url:'https://remote.example/'}},'supermarket-simulator',{confirmed:true}),{code:'IPC_SENDER_FORBIDDEN'});
+ }
+ f.state.settings.account={};for(const channel of ['game:uninstall','game:interactions:reset'])assert.throws(()=>f.handlers.get(channel)(f.event,'supermarket-simulator',{confirmed:true}),{code:'ACCOUNT_REQUIRED'});assert.equal(f.calls.length,0);
+});

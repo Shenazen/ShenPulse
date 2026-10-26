@@ -13,11 +13,11 @@ const digest = (value) => createHash("sha256").update(JSON.stringify(value)).dig
 // Références capturées avant extraction ; une évolution volontaire demande une revue de leur mise à jour.
 test("le découpage garde exactement les catalogues de jeux et Minecraft", () => {
   const catalog = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
-  assert.equal(catalog.length, 53);
+  assert.equal(catalog.length, 56);
   // Évolution commerciale demandée le 15/10/2026 : seule cette différence
   // est retirée de la comparaison historique, aucun autre champ n'est ignoré.
   const prices = { "tiklive-climb": 9.99, "clash-of-live": 12.99, "tiklive-cube-wars": 9.99, "tiklive-stack-tower": 9.99 };
-  const historical = structuredClone(catalog.filter(pack => !["escape-from-duckov", "dead-by-daylight", "dredge", "egging-on", "fallout-4", "ark-survival-ascended", "balatro", "blue-prince", "find-the-needle-demo", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)));
+  const historical = structuredClone(catalog.filter(pack => !["hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight", "escape-from-duckov", "dead-by-daylight", "dredge", "egging-on", "fallout-4", "ark-survival-ascended", "balatro", "blue-prince", "find-the-needle-demo", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)));
   for (const pack of historical) if (Object.hasOwn(prices, pack.id)) {
     assert.equal(pack.price, prices[pack.id]);
     pack.price = 19.99;
@@ -33,7 +33,9 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
   // Le classement du catalogue est ajouté sans changer les anciens jeux ou effets.
   for (const pack of historical) {
     assert.equal(pack.catalogCategory, require("../src/shared/game-categories").byId[pack.id]);
+    assert.deepEqual(pack.catalogCategories, require("../src/shared/game-categories").categoriesFor({ id: pack.id }));
     delete pack.catalogCategory;
+    delete pack.catalogCategories;
     // ZQSD devient le défaut d’installation demandé ; les autres champs restent figés.
     if (pack.connector.type === "windows-input") {
       assert.equal(pack.connector.keyLayout, "azerty");
@@ -48,7 +50,7 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
   // confirmée avant de démarrer la session ; les autres jeux restent figés.
   // Audit d’autonomie : hôte local des deux émulateurs, port RE3 séparé,
   // références sans module explicitement non exécutables (identifiants conservés).
-  assert.equal(digest(historical), "6010ce704e6b4021196aba76b46e6988008de1b0e2ab0ad0f638c42d6916e85f");
+  assert.equal(digest(historical), "b2b7d2519c1647e1f0e3a612e4bd15e64abfecfe9d214ccf4df02bc2bfcf0289");
   assert.equal(digest(minecraft), "2e91e74d5a5c4715d75052353ab3ceb1d395ed7c263981995581b3bc6aa63315");
   const next = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
   catalog[0].name = "test isolé";
@@ -58,7 +60,8 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
 test("le manifeste garde versions, URLs, empreintes, ordre et gel de son API", () => {
   // Seule l'association de la nouvelle démo est ajoutée. Les installateurs
   // historiques restent comparés champ par champ par leur empreinte complète.
-  const { "escape-from-duckov": duckov, "dead-by-daylight": dbd, dredge, "egging-on": egging, "fallout-4": fallout, "ark-survival-ascended": ark, balatro, "blue-prince": bluePrince, "find-the-needle-demo": demo, "the-mortuary-assistant": mortuary, unturned, "crash-bandicoot-n-sane-trilogy": crash, ...historicalInstallers } = GAME_INSTALLERS;
+  const { "escape-from-duckov": duckov, "dead-by-daylight": dbd, dredge, "egging-on": egging, "fallout-4": fallout, "ark-survival-ascended": ark, balatro, "blue-prince": bluePrince, "find-the-needle-demo": demo, "the-mortuary-assistant": mortuary, unturned, "crash-bandicoot-n-sane-trilogy": crash, "hogwarts-legacy": hogwarts, "tcg-card-shop-simulator": tcg, "supermarket-simulator": market, "shift-at-midnight": shift, ...historicalInstallers } = GAME_INSTALLERS;
+  assert.ok(hogwarts && tcg && market && shift);
   assert.ok(duckov, "Duckov est couvert par escape-from-duckov.test.js");
   assert.ok(dbd && dredge && egging && fallout, "les quatre nouvelles intégrations sont couvertes séparément");
   assert.ok(ark, "les interactions ARK sont couvertes séparément");

@@ -38,7 +38,9 @@ async function main() {
   if (config.publicBaseUrl !== "https://f003.backblazeb2.com/file/shenpulse-media") throw new Error("Destination différente des manifestes ShenPulse");
   await fs.promises.mkdir(cache, { recursive: true });
   const results = [];
-  for (const asset of manifest.assets) {
+  const requested = process.argv.filter(argument => argument.startsWith("--game=")).map(argument => argument.slice(7));
+  for (const gameId of requested) if (!manifest.assets.some(asset => asset.gameId === gameId)) throw new Error(`Jeu absent du registre de publication : ${gameId}`);
+  for (const asset of manifest.assets.filter(asset => !requested.length || requested.includes(asset.gameId))) {
     process.stdout.write(`${asset.gameId}/${asset.id} : `);
     let uploaded = false;
     if (!await verifyRemote(asset)) {
@@ -64,7 +66,7 @@ async function main() {
     results.push({ key: asset.key, size: asset.size, sha256: asset.sha256, uploaded, verified: true });
     process.stdout.write(`SHA-256 et taille vérifiés${uploaded ? " après envoi" : ""}\n`);
   }
-  await fs.promises.writeFile(path.join(cache, "verification.json"), JSON.stringify({ verifiedAt: new Date().toISOString(), assets: results }, null, 2));
+  await fs.promises.writeFile(path.join(cache, requested.length ? "verification-selected.json" : "verification.json"), JSON.stringify({ verifiedAt: new Date().toISOString(), assets: results }, null, 2));
   process.stdout.write(`${results.length} packs disponibles et vérifiés sur Backblaze.\n`);
 }
 

@@ -673,6 +673,51 @@
   text-transform: uppercase;
 }
 
+.game-interaction-session {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 14px;
+  background: rgba(251, 191, 36, 0.07);
+}
+
+.game-interaction-session > span {
+  color: #fbbf24;
+  font-size: 22px;
+}
+
+.game-interaction-session p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.game-interaction-session.active {
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(52, 211, 153, 0.06);
+}
+
+.game-interaction-session.active > span {
+  color: #34d399;
+}
+
+@media (max-width: 1100px) {
+  .game-interaction-session {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .game-interaction-session > button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 .game-interaction-toolbar {
   margin-bottom: 10px;
 }
+
+.game-install-platform-path { display: block; margin-top: 6px; overflow-wrap: anywhere; color: var(--muted); }

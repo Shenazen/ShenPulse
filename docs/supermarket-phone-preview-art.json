@@ -1,0 +1,5 @@
+{
+  "mode": "Built-in image_gen",
+  "asset": "src/renderer/assets/games/market-webcam-preview.jpg",
+  "prompt": "Use case: photorealistic-natural. Asset type: wide webcam demonstration photo inside a fictional livestream phone preview in ShenPulse desktop app. Primary request: a friendly adult female gaming streamer, approximately 28 years old, wearing large over-ear headphones, smiling naturally toward her webcam, seated in her cozy gaming room with purple, magenta and cyan accent lighting. Composition: wide horizontal 16:9 webcam frame, head and upper torso centered, face fully visible with generous safe space above head for UI, slightly blurred shelves and gaming setup behind her. Style: realistic polished webcam photography, warm skin, soft studio key light. Constraints: fictional person, casual dark T-shirt, no text, no logos, no badges, no phone frame, no watermark, no app interface, no borders. This is only the camera background photo for an example layout; keep all pixels image-only."
+}

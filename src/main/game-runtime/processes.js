@@ -160,16 +160,17 @@ async function runProcess(file, args) {
 
 async function waitForWindowsProcessWindow(
   processName,
-  timeoutMs = 90_000
+  timeoutMs = 90_000,
+  { platform = process.platform, execute = runProcess } = {}
 ) {
-  if (process.platform !== "win32") return;
+  if (platform !== "win32") return;
   const safeProcessName = String(processName || "")
     .replace(/\.exe$/i, "").trim();
   if (!/^[a-z0-9_][a-z0-9_. -]{0,119}$/i.test(safeProcessName)) {
     throw new Error("Le processus du jeu à attendre est invalide.");
   }
   const safeTimeout = Math.min(
-    180_000,
+    600_000,
     Math.max(5_000, Number(timeoutMs || 90_000))
   );
   const script = [
@@ -182,7 +183,7 @@ async function waitForWindowsProcessWindow(
     "exit 1"
   ].join("\n");
   try {
-    await runProcess("powershell.exe", [
+    await execute("powershell.exe", [
       "-NoProfile",
       "-NonInteractive",
       "-Command",

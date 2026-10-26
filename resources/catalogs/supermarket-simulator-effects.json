@@ -1,0 +1,743 @@
+[
+  {
+    "id": "supermarket-simulator-spawn-customers",
+    "code": "SpawnCustomers",
+    "name": "Invasion clients",
+    "category": "Clients",
+    "description": "Fait spawner une vague de clients dans le magasin. Partie chargée, hors menus. Magasin ouvert, pendant les heures de visite et dans les limites du jeu. Chaque client créé porte le nom du donateur.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-spawn-customers.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Quantité",
+        "type": "number",
+        "defaultValue": 5,
+        "min": 1,
+        "max": 20,
+        "step": 1
+      }
+    ],
+    "previousNames": [
+      "Invasion de clients"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-customer-rush",
+    "code": "CustomerRush",
+    "name": "Rush clients",
+    "category": "Clients",
+    "description": "Énorme vague de clients qui envahissent le magasin. Partie chargée, hors menus. Magasin ouvert, pendant les heures de visite et dans les limites du jeu. Chaque client créé porte le nom du donateur.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-customer-rush.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Rush de clients"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-give-money",
+    "code": "GiveMoney",
+    "name": "Argent offert",
+    "category": "Finances",
+    "description": "Donne de l'argent au joueur. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-give-money.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Montant",
+        "type": "number",
+        "defaultValue": 100,
+        "min": 1,
+        "max": 10000,
+        "step": 1
+      }
+    ],
+    "previousNames": [
+      "Donner de l'argent"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-take-money",
+    "code": "TakeMoney",
+    "name": "Argent volé",
+    "category": "Finances",
+    "description": "Retire de l'argent au joueur. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-take-money.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Montant",
+        "type": "number",
+        "defaultValue": 50,
+        "min": 1,
+        "max": 5000,
+        "step": 1
+      }
+    ],
+    "previousNames": [
+      "Voler de l'argent"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-jackpot",
+    "code": "Jackpot",
+    "name": "Jackpot",
+    "category": "Finances",
+    "description": "Gros cadeau d'argent aléatoire. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-jackpot.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "JACKPOT !"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-bankrupt",
+    "code": "Bankrupt",
+    "name": "Faillite",
+    "category": "Finances",
+    "description": "Met l'argent du joueur à 0. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-bankrupt.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-spawn-shoplifter",
+    "code": "SpawnShoplifter",
+    "name": "Voleur",
+    "category": "Clients",
+    "description": "Ajoute un voleur portant le nom du donateur. Magasin ouvert pendant les heures de visite, avec une place disponible parmi les clients.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-spawn-shoplifter.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Voleur à l'étalage"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-fill-shelves",
+    "code": "FillShelves",
+    "name": "Rayons pleins",
+    "category": "Boutique",
+    "description": "Remplit les emplacements de vente déjà étiquetés à leur capacité. Nécessite des rayons installés et des produits autorisés.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-fill-shelves.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Remplir les rayons"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-speed-up-time",
+    "code": "SpeedUpTime",
+    "name": "Avancer l’heure",
+    "category": "Boutique",
+    "description": "Avance le cycle et l’horloge du magasin de deux heures, dans la limite de la journée en cours. Ne modifie pas la vitesse du jeu.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-speed-up-time.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Avancer de deux heures"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-max-level",
+    "code": "MaxLevel",
+    "name": "Niveau MAX",
+    "category": "Boutique",
+    "description": "Monte le magasin au niveau maximum et ajoute 50 000 $ au solde. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-max-level.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-spawn-trash",
+    "code": "SpawnTrash",
+    "name": "Poubelle party",
+    "category": "Chaos",
+    "description": "Fait spawner des déchets partout dans le magasin. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-spawn-trash.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Quantité",
+        "type": "number",
+        "defaultValue": 10,
+        "min": 1,
+        "max": 50,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "supermarket-simulator-throw-item",
+    "code": "ThrowItem",
+    "name": "Lancer l'objet",
+    "category": "Chaos",
+    "description": "Lance l'objet que le joueur tient. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-throw-item.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-drop-all-items",
+    "code": "DropAllItems",
+    "name": "Tout lâcher",
+    "category": "Chaos",
+    "description": "Le joueur lâche tout ce qu'il porte. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-drop-all-items.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-empty-shelf",
+    "code": "EmptyShelf",
+    "name": "Rayon vidé",
+    "category": "Chaos",
+    "description": "Vide les compartiments de vente d’un rayon choisi au hasard, en conservant leurs étiquettes. Nécessite un rayon contenant des produits.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-empty-shelf.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Vider un rayon"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-cart-chaos",
+    "code": "CartChaos",
+    "name": "Chaos total",
+    "category": "Chaos",
+    "description": "Projette des produits des rayons et les cartons libres à moins de huit mètres. Les cartons tenus, occupés, stockés ou en cours de placement sont conservés.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-cart-chaos.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-anti-chaos",
+    "code": "AntiChaos",
+    "name": "Grand rangement",
+    "category": "Chaos",
+    "description": "Ramasse les produits libres au sol et les remet dans les emplacements étiquetés correspondants, dans la limite de leur capacité. Les produits sans place restent au sol.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-anti-chaos.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-randomize-prices",
+    "code": "RandomizePrices",
+    "name": "Prix fous",
+    "category": "Chaos",
+    "description": "Change les prix de vente des produits étiquetés dans les rayons. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-randomize-prices.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-teleport",
+    "code": "Teleport",
+    "name": "Téléportation",
+    "category": "Joueur",
+    "description": "Téléporte le joueur à un endroit aléatoire du magasin. Partie chargée, hors menus. Le personnage doit être libre, hors caisse, ordinateur et déplacement de meubles.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-teleport.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-invert-controls",
+    "code": "InvertControls",
+    "name": "Contrôles inversés",
+    "category": "Joueur",
+    "description": "Inverse les contrôles du joueur pendant 15 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-invert-controls.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 15,
+    "durationParameter": "count",
+    "previousNames": [
+      "Inverser les contrôles"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-speed-boost",
+    "code": "SpeedBoost",
+    "name": "Speed boost",
+    "category": "Joueur",
+    "description": "Vitesse de déplacement x3 pendant 20 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-speed-boost.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 20,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 20,
+    "durationParameter": "count"
+  },
+  {
+    "id": "supermarket-simulator-slow-motion",
+    "code": "SlowMotion",
+    "name": "Slow motion",
+    "category": "Joueur",
+    "description": "Ralentit le joueur pendant 15 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-slow-motion.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 15,
+    "durationParameter": "count"
+  },
+  {
+    "id": "supermarket-simulator-force-math",
+    "code": "ForceMath",
+    "name": "Calcul mental",
+    "category": "Joueur",
+    "description": "Masque le montant de monnaie à rendre sur la caisse pendant 20 secondes réelles pour imposer le calcul mental. Le total et le montant reçu restent visibles. Nécessite une caisse installée.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-force-math.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20,
+    "durationParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 20,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "supermarket-simulator-teleport-outside",
+    "code": "TeleportOutside",
+    "name": "Éjecté dehors",
+    "category": "Joueur",
+    "description": "Téléporte le joueur à l'extérieur du magasin. Partie chargée, hors menus. Le personnage doit être libre, hors caisse, ordinateur et déplacement de meubles.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-teleport-outside.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-open-store",
+    "code": "OpenStore",
+    "name": "Ouvrir magasin",
+    "category": "Boutique",
+    "description": "Force l'ouverture du magasin. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-open-store.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Ouvrir le magasin"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-close-store",
+    "code": "CloseStore",
+    "name": "Fermer magasin",
+    "category": "Boutique",
+    "description": "Force la fermeture du magasin. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-close-store.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Fermer le magasin"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-lights-off",
+    "code": "LightsOff",
+    "name": "Coupure courant",
+    "category": "Boutique",
+    "description": "Éteint les lumières du magasin pendant 20 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-lights-off.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 20,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 20,
+    "durationParameter": "count",
+    "previousNames": [
+      "Coupure de courant"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-deliver-products",
+    "code": "DeliverProducts",
+    "name": "Livraison surprise",
+    "category": "Boutique",
+    "description": "Force une livraison de produits. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-deliver-products.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "supermarket-simulator-change-f-o-v",
+    "code": "ChangeFOV",
+    "name": "FOV délirant",
+    "category": "visuel",
+    "description": "Change le FOV de la caméra pendant 15 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-change-f-o-v.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 15,
+    "durationParameter": "count"
+  },
+  {
+    "id": "supermarket-simulator-flip-camera",
+    "code": "FlipCamera",
+    "name": "Caméra retournée",
+    "category": "visuel",
+    "description": "Retourne la caméra à l'envers pendant 15 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-flip-camera.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 15,
+    "durationParameter": "count"
+  },
+  {
+    "id": "supermarket-simulator-game-speed-up",
+    "code": "GameSpeedUp",
+    "name": "Jeu accéléré",
+    "category": "visuel",
+    "description": "Accélère le temps du jeu x2 pendant 20 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-game-speed-up.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 20,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 20,
+    "durationParameter": "count",
+    "previousNames": [
+      "Accélérer le jeu"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-game-slow-down",
+    "code": "GameSlowDown",
+    "name": "Jeu ralenti",
+    "category": "visuel",
+    "description": "Ralentit le temps du jeu x0.5 pendant 20 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-game-slow-down.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 20,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 20,
+    "durationParameter": "count",
+    "previousNames": [
+      "Ralentir le jeu"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-change-language",
+    "code": "ChangeLanguage",
+    "name": "Changer langue",
+    "category": "visuel",
+    "description": "Change la langue du jeu aléatoirement pendant 30 secondes. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-change-language.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 30,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 30,
+    "durationParameter": "count",
+    "previousNames": [
+      "Changement de langue"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-hire-employees",
+    "code": "HireEmployees",
+    "name": "Recruter employés",
+    "category": "Boutique",
+    "description": "Embauche X employés au hasard (caissiers, restockers, etc.). Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-hire-employees.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Nombre d’employés",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ],
+    "previousNames": [
+      "Embaucher des employés"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-fire-all-employees",
+    "code": "FireAllEmployees",
+    "name": "Employés virés",
+    "category": "Boutique",
+    "description": "Renvoie tous les employés engagés, y compris boulangers et glaciers. Les renvois suivent les fonctions natives du jeu.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-fire-all-employees.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Renvoyer les employés",
+      "Virer les employés"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-unlock-all-licenses",
+    "code": "UnlockAllLicenses",
+    "name": "Licences débloquées",
+    "category": "Boutique",
+    "description": "Débloque toutes les licences produits. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-unlock-all-licenses.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Débloquer les licences"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-upgrade-store",
+    "code": "UpgradeStore",
+    "name": "Agrandir magasin",
+    "category": "Boutique",
+    "description": "Débloque la prochaine extension du magasin. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-upgrade-store.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Agrandir le magasin"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-clear-inventory",
+    "code": "ClearInventory",
+    "name": "Stock supprimé",
+    "category": "Boutique",
+    "description": "Vide les rayons et supprime les cartons de produits. Le mobilier et les étiquettes sont conservés. Posez le carton tenu avant de déclencher cet effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-clear-inventory.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Supprimer le stock"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-auto-discount",
+    "code": "AutoDiscount",
+    "name": "Soldes générales",
+    "category": "Boutique",
+    "description": "Applique 20% de remise puis restaure les prix. Partie chargée, hors menus. Durée en secondes réelles ; les répétitions ne prolongent pas l’effet.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-auto-discount.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 20,
+        "min": 1,
+        "max": 120,
+        "step": 1
+      }
+    ],
+    "duration": 20,
+    "durationParameter": "count"
+  },
+  {
+    "id": "supermarket-simulator-finish-day",
+    "code": "FinishDay",
+    "name": "Finir journée",
+    "category": "Boutique",
+    "description": "Force la fin de la journée. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-finish-day.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Terminer la journée"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-deliver-furniture",
+    "code": "DeliverFurniture",
+    "name": "Livraison meubles",
+    "category": "Boutique",
+    "description": "Force une livraison de meubles. Partie chargée, hors menus.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-deliver-furniture.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Livraison de meubles"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-reset-game",
+    "code": "ResetGame",
+    "name": "Recharger partie",
+    "category": "Chaos",
+    "description": "Recharge la scène courante du jeu. Les changements non sauvegardés peuvent être perdus. Cette interaction ne crée pas une nouvelle sauvegarde.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-reset-game.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Recharger la partie"
+    ]
+  },
+  {
+    "id": "supermarket-simulator-reset-effects",
+    "code": "ResetEffects",
+    "name": "Rétablir effets",
+    "category": "Joueur",
+    "description": "Annule les modifications temporaires de vitesse, contrôles, caméra, langue, éclairage et prix. Conserve les clients créés et la progression.",
+    "image": "../../resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-reset-effects.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "previousNames": [
+      "Rétablir les effets temporaires"
+    ]
+  }
+]

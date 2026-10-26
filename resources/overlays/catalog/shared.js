@@ -107,7 +107,8 @@
     { key: "scene", view: "scene" },
     { key: "alerts", view: "alerts" },
     { key: "goals", view: "goals" },
-    { key: "feed", view: "feed" }
+    { key: "feed", view: "feed" },
+    { key: "gamePack", view: "game-pack", document: "game-pack.html", requiresPro: true }
   ]);
 
   return Object.freeze({

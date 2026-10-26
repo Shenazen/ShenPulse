@@ -1,5 +1,6 @@
 "use strict";
 
+const { migrateSupermarketDefaults } = require("./supermarket-defaults");
 const { defaultGameInteractionRule, repairDefaultGiftInteraction, repairDefaultWinCounterInteraction } = require("./interaction-defaults");
 
 /** Désactive les références visuelles non exécutables. */
@@ -115,6 +116,10 @@ function initializeDefaultInteractions(hub, packId) {
     state.game.interactionRulesByPack ||= {};
     const interactionRules =
       state.game.interactionRulesByPack[pack.id] ||= [];
+    const supermarketMigration = canAddDefaults
+      ? migrateSupermarketDefaults(pack, interactionRules, currentVersion)
+      : { removed: 0, preserve: false };
+    removed += supermarketMigration.removed;
     const deprecatedPresetIds = new Set(
       Array.isArray(pack.deprecatedDefaultMappingIds)
         ? pack.deprecatedDefaultMappingIds
@@ -175,7 +180,7 @@ function initializeDefaultInteractions(hub, packId) {
         }
         continue;
       }
-      if (!canAddDefaults) continue;
+      if (!canAddDefaults || supermarketMigration.preserve) continue;
       interactionRules.push(rule);
       existingRulesById.set(rule.id, rule);
       added += 1;

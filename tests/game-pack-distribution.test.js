@@ -11,7 +11,7 @@ const { downloadAsset } = require("../src/main/game-runtime/asset-download");
 const publication = require("../scripts/manifests/game-packs.json");
 
 test("les packs migrés gardent exactement leurs versions et empreintes sur Backblaze", () => {
-  assert.equal(publication.assets.length, 14);
+  assert.equal(publication.assets.length, 18);
   const keys = new Set();
   for (const entry of publication.assets) {
     const installer = GAME_INSTALLERS[entry.gameId];

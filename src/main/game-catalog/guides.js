@@ -67,6 +67,7 @@ const GAME_GUIDES = Object.freeze({
     sources: [{ label: "Documentation technique du pack", url: "https://crowdcontrol.live/guides/escapefromduckov/" }]
   },
   ...require("./four-games-guides"),
+  ...require("./shop-games-guides"),
   "ark-survival-ascended": {
     mode: "input",
     summary: "ShenPulse détecte ARK Steam ou Xbox Game Pass et prépare ses 29 interactions clavier et souris.",

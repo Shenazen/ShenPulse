@@ -14,6 +14,8 @@ const { safeString, timingSafeToken } = require("./utils");
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
 const sceneLayout = require("../../resources/overlays/scene-layout");
 
+const { STATE_PATHS: GAME_PACK_STATE_PATHS, createGamePackOverlay } = require("../shared/game-pack-overlay");
+
 const PRO_ACCESS_STATE_PATHS = ["commerce.subscription"];
 const OVERLAY_BOOTSTRAP_STATE_PATHS = [
   "goals", "session", "overlaySession", "statistics",
@@ -83,7 +85,8 @@ const CONTENT_TYPES = {
   ".webm": "video/webm",
   ".webp": "image/webp",
   ".woff": "font/woff",
-  ".woff2": "font/woff2"
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf"
 };
 
 class OverlayServer {
@@ -367,6 +370,10 @@ class OverlayServer {
       }
       return this.#serveStatic(url.pathname, request, response);
     }
+    // Public catalog artwork; custom media and Match videos keep their access checks.
+    if (/^\/overlay\/media\/game-interactions\/[a-z0-9_-]+\/[a-z0-9_-]+\.png$/i.test(url.pathname)) {
+      return this.#serveStatic(url.pathname, request, response);
+    }
     if (url.pathname.startsWith("/overlay/media/lottie/")) {
       if (!this.#authorized(request, settings.overlayToken)) {
         return this.#json(response, 401, { error: "Jeton local invalide." });
@@ -389,7 +396,7 @@ class OverlayServer {
       return this.#serveStatic(url.pathname, request, response);
     }
     if (
-      /^\/overlay\/(?!media\/)(?:[^/]+\/)*[^/]+\.(?:css|js|png|svg|woff|woff2)$/i.test(
+      /^\/overlay\/(?!media\/)(?:[^/]+\/)*[^/]+\.(?:css|js|png|svg|woff|woff2|ttf)$/i.test(
         url.pathname
       )
     ) {
@@ -397,6 +404,9 @@ class OverlayServer {
     }
     if (!this.#authorized(request, settings.overlayToken)) {
       return this.#json(response, 401, { error: "Jeton local invalide." });
+    }
+    if (url.pathname === "/api/game-pack") {
+      return this.#json(response, 200, createGamePackOverlay(readState(this.store, GAME_PACK_STATE_PATHS)));
     }
     if (url.pathname === "/api/state") {
       if (isMatchWidgetView(url.searchParams.get("view"))) {
@@ -430,7 +440,9 @@ class OverlayServer {
       });
       response.write(": ShenPulse connected\n\n");
       const state = isMatchWidgetView(view) ? null : readState(this.store, OVERLAY_BOOTSTRAP_STATE_PATHS);
-      const bootstrapPayload = isMatchWidgetView(view)
+      const bootstrapPayload = view === "game-pack"
+        ? { gamePacks: createGamePackOverlay(readState(this.store, GAME_PACK_STATE_PATHS)) }
+        : isMatchWidgetView(view)
         ? { matches: projectMatchesOverlayState(readState(this.store, MATCH_OVERLAY_STATE_PATHS)) }
         : { goals: state.goals, session: state.session, overlaySession: state.overlaySession,
           overlayScene: sceneLayout.stateForScene(state), configurations: state.settings?.overlayConfigs || {}, statistics: state.statistics };
@@ -556,7 +568,7 @@ class OverlayServer {
     }
     const extension = path.extname(target).toLowerCase();
     const isOverlayDocument = extension === ".html";
-    const isCacheableOverlayCode = [".css", ".js", ".woff", ".woff2"].includes(extension);
+    const isCacheableOverlayCode = [".css", ".js", ".woff", ".woff2", ".ttf"].includes(extension);
     const isProtectedMatchVideo = /^\/overlay\/media\/video\//i.test(
       String(requestPath || "")
     );

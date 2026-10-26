@@ -25,7 +25,8 @@ async function main() {
   };
   const args = [
     path.join(__dirname, "upload-game-packs.js"),
-    ...(process.argv.includes("--verify-only") ? ["--verify-only"] : [])
+    ...(process.argv.includes("--verify-only") ? ["--verify-only"] : []),
+    ...process.argv.filter(argument => argument.startsWith("--game="))
   ];
   const environment = {
     ...process.env,

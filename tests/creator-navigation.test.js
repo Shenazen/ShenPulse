@@ -564,6 +564,19 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     assert.equal(dom.window.document.querySelector(".creator-matches-page"), null);
     assert.deepEqual(operationalCalls, [], "Le badge Pro ne déclenche ni effet ni achat.");
     assert.equal(errors.length, 0, errors.map((error) => error.stack || error.message).join("\n"));
+    // Une commande qui reconstruit son bouton ne doit pas être rejouée par body.
+    dom.window.eval(`
+      window.replacementActionCalls = 0;
+      ACTION_HANDLERS.unshift(({ action }) => {
+        if (action !== 'test-replace-content') return ACTION_NOT_HANDLED;
+        window.replacementActionCalls++;
+        content.innerHTML = '<p>Commande terminée</p>';
+      });
+      content.innerHTML = '<button data-action="test-replace-content">Remplacer le contenu</button>';
+    `);
+    dom.window.document.querySelector('[data-action="test-replace-content"]').click();
+    await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(dom.window.replacementActionCalls, 1, 'Un clic dans le contenu reste une seule commande après reconstruction du DOM.');
   } finally { dom.window.close(); }
 });
 

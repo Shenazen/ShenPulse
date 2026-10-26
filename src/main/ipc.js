@@ -17,6 +17,8 @@ const { registerSessionIpc } = require("./ipc/session");
 const { registerSettingsIpc } = require("./ipc/settings");
 const { registerWorkspaceIpc } = require("./ipc/workspace");
 const { registerGamesIpc } = require("./ipc/games");
+const { registerStudiosIpc } = require("./ipc/studios");
+const { registerGamePackPresentationIpc } = require("./ipc/game-pack-presentation");
 const { registerDesktopIpc } = require("./ipc/desktop");
 const { registerUsersIpc } = require("./ipc/users");
 const { registerMatchesIpc } = require("./ipc/matches");
@@ -67,7 +69,7 @@ function registerIpc({
   const handle = (channel, listener) => {
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, (...args) => {
-      if (["sound:remove", "startup:ready"].includes(channel) || ["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:"].some((prefix) => channel.startsWith(prefix))) {
+      if (["sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset"].includes(channel) || ["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:"].some((prefix) => channel.startsWith(prefix))) {
         assertIntegrationIpcSender(channel, args[0], getWindow());
       }
       if (["entity:upsert", "entity:remove"].includes(channel) && args[1] === "commands") {
@@ -172,6 +174,9 @@ function registerIpc({
   registerSettingsIpc({ handle, core, store, localServerSettingsSignature });
   registerWorkspaceIpc({ handle, core, store, accountService });
   const { auditGameInteraction } = registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog, requireGameAccess, requireGameSessionAvailability });
+  require("./ipc/game-maintenance").registerGameMaintenanceIpc({handle,core,store,gameRuntime,requireGameAccess});
+  registerStudiosIpc({ handle, core, store, requireGameAccess });
+  registerGamePackPresentationIpc({ handle, core, store, requireGameAccess });
   registerDesktopIpc({ handle, core, store, getWindow, clipboard, dialog, shell });
   registerUsersIpc({ handle, core, store });
   registerMatchesIpc({ handle, core, store });

@@ -174,10 +174,10 @@ test("tous les jeux réutilisent le générateur historique ShenazenOverlay", ()
 });
 
 test("les jeux avec mod, dont Mortuary, affichent uniquement le générateur de cadeaux", () => {
-  assert.match(
-    renderer,
-    /const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set\(\[\s*"dead-by-daylight",\s*"dredge",\s*"egging-on",\s*"fallout-4",\s*"ark-survival-ascended",\s*"balatro",\s*"blue-prince",\s*"crash-bandicoot-n-sane-trilogy",\s*"unturned",\s*"the-mortuary-assistant",\s*"cult-of-the-lamb",\s*"stardew-valley",\s*"terraria"\s*\]\)/
-  );
+  const declaration = renderer.match(/const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set\(\[[\s\S]*?\]\);/);
+  assert.ok(declaration);
+  const games = require("node:vm").runInNewContext(`${declaration[0]} GAME_OVERLAY_GENERATOR_ONLY_IDS;`);
+  for (const id of ["dead-by-daylight", "dredge", "egging-on", "fallout-4", "ark-survival-ascended", "balatro", "blue-prince", "crash-bandicoot-n-sane-trilogy", "unturned", "the-mortuary-assistant", "cult-of-the-lamb", "stardew-valley", "terraria", "hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight"]) assert.equal(games.has(id), true, id);
   const branchStart = renderer.indexOf(
     "if (GAME_OVERLAY_GENERATOR_ONLY_IDS.has(pack.id))"
   );

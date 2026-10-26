@@ -13,6 +13,25 @@ function renderGameInteractions(pack, unlocked) {
     : renderStandardGameInteractions(pack, unlocked);
 }
 
+function renderGameInteractionSession(pack, unlocked) {
+  const session = activeGameSession();
+  const active = session?.packId === pack.id;
+  const conflict = session && !active;
+  return `<section class="game-interaction-session ${active ? "active" : "inactive"}" role="status">
+    <span aria-hidden="true">${active ? "✓" : "⚠"}</span>
+    <div><strong>${active ? "Déclenchements viewers actifs" : "Déclenchements viewers inactifs"}</strong>
+      <p>${active
+        ? "La session de ce jeu est active. Les événements des viewers peuvent déclencher vos interactions configurées."
+        : conflict
+          ? `La session ${escapeHtml(session.pack.name)} est déjà active. Arrêtez-la avant d’activer les interactions de ${escapeHtml(pack.name)}.`
+          : "Les tests manuels restent disponibles. Pour déclencher les interactions avec les événements des viewers, ouvrez une partie puis activez la session."}</p>
+    </div>
+    ${active || conflict
+      ? '<button type="button" class="button" data-action="game-step" data-value="launch">Démarrage →</button>'
+      : `<button type="button" class="button primary" data-action="start-game-session" data-id="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>▶ Activer pour les viewers</button>`}
+  </section>`;
+}
+
 function renderStandardGameInteractions(pack, unlocked, options = {}) {
   const availableEffectCount = (pack.effects || []).filter(
     (effect) => effect.available !== false
@@ -61,6 +80,7 @@ function renderStandardGameInteractions(pack, unlocked, options = {}) {
         ${options.hideHeaderAdd ? "" : `<button class="button primary" data-action="add-game-interaction" data-pack="${escapeHtml(pack.id)}" ${unlocked ? "" : "disabled"}>＋ Ajouter une interaction</button>`}
       </div>
     </header>
+    ${renderGameInteractionSession(pack, unlocked)}
     <section class="game-interaction-toolbar">
       <label class="search-control"><span>⌕</span><input data-search="game-effects" type="search" value="${escapeHtml(gameEffectSearch)}" placeholder="Rechercher dans vos interactions"></label>
     </section>
@@ -119,13 +139,12 @@ function renderGamePageMessage(pack, scope) {
 
 async function restoreActiveGameInstallProgress(
   preferredGameId = "",
-  { renderWhenFound = true } = {}
+  { renderWhenFound = true, shouldApply = () => true } = {}
 ) {
   if (!snapshot || !isAccountAuthenticated()) return null;
-  const gameIds = [
-    preferredGameId,
-    ...AUTOMATED_GAME_INSTALLERS
-  ].filter(
+  const scope = JSON.stringify([snapshot.state.settings.account?.uid || '', snapshot.state.session.profileId]);
+  // Full recovery is reserved for startup. Opening one page queries one game.
+  const gameIds = (preferredGameId ? [preferredGameId] : [...AUTOMATED_GAME_INSTALLERS]).filter(
     (gameId, index, entries) =>
       gameId &&
       entries.indexOf(gameId) === index &&
@@ -136,6 +155,7 @@ async function restoreActiveGameInstallProgress(
       api.getGameRuntimeStatus(gameId).catch(() => null)
     )
   );
+  if (!shouldApply() || scope !== JSON.stringify([snapshot.state.settings.account?.uid || '', snapshot.state.session.profileId])) return null;
   const active = statuses.find(
     (status) => status?.installing && status.installProgress
   );

@@ -489,6 +489,7 @@ api.on("state-changed", handleRendererStateChanged);
 
 api.on("gift-room-catalog-updated", (result) => {
   updateGiftPickerCatalogCache(result);
+  if (typeof refreshSupermarketGiftCatalog === "function") refreshSupermarketGiftCatalog();
   if (!rememberRoomGifts(result?.roomGifts, result?.room)) return;
   if (!rendererVisualsActive()) return;
   updateAllGiftPickerSelections();
@@ -501,6 +502,7 @@ api.on("gift-catalog-updated", (gifts) => {
   if (!Array.isArray(gifts) || !gifts.length) return;
   rememberGifts(gifts);
   updateGiftPickerCatalogCache({ gifts });
+  if (typeof refreshSupermarketGiftCatalog === "function") refreshSupermarketGiftCatalog();
   if (rendererVisualsActive()) {
     updateAllGiftPickerSelections();
     refreshGiftVisuals();

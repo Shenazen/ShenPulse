@@ -16,10 +16,13 @@ const { installationSlotPercent, cleanupStaleInstallerRuns } = require("./housek
 const { installFindTheNeedleMod } = require("./find-the-needle-mod-installation");
 const { detectBalatroEdition, stageBalatroInstallation } = require("./balatro-installation");
 const { stageBluePrinceInstallation } = require("./blue-prince-installation");
+const { installationPlatform } = require("./installation-platform");
 const { assertModGameClosed } = require("./mod-installation-ready");
 const { stageFourGamesInstallation, detectDredgeEdition } = require("./four-games-installation");
 const { stageTruckSimulatorInstallation } = require("./truck-simulator-installation");
 const { stageStandaloneModule } = require("./standalone-module-installation");
+const { prepareShopUninstallReceipt } = require("./shop-game-uninstall");
+const { stageShopGameInstallation, assertShopModuleReady } = require("./shop-games-installation");
 
 async function installGame(runtime, gameId) {
     runtime.assertAccess(gameId);
@@ -67,6 +70,7 @@ async function installGame(runtime, gameId) {
     if (!targetPath) return { canceled: true };
     assertAccess();
     await runtime.validateTarget(targetPath, manifest);
+    const platform = await installationPlatform(targetPath, manifest);
     await assertModGameClosed(gameId, targetPath);
     if (gameId === "pokemon-red-blue") await runtime.pokemonRedBlue?.stop();
     if (gameId === "super-mario-kart") await runtime.superMarioKart?.stop();
@@ -81,6 +85,7 @@ async function installGame(runtime, gameId) {
         state.game.installations[gameId] = {
           gameId,
           path: targetPath,
+          ...(platform ? { platform } : {}),
           backupPath: "",
           installedAt,
           assetCount: 0,
@@ -101,6 +106,7 @@ async function installGame(runtime, gameId) {
         ok: true,
         gameId,
         path: targetPath,
+        ...(platform ? { platform } : {}),
         backupPath: "",
         installedAt,
         setupOnly: true
@@ -238,6 +244,7 @@ async function installGame(runtime, gameId) {
       const preparedModule = ["dredge", "egging-on", "fallout-4", "escape-from-duckov"].includes(gameId)
         ? await stageFourGamesInstallation({ gameId, targetPath, deploymentRoot, edition, assertAccess }) : null;
       await stageStandaloneModule({ gameId, deploymentRoot, assertAccess });
+      const preparedShop = await stageShopGameInstallation({ gameId, targetPath, deploymentRoot, assertAccess });
       runtime.progress(gameId, {
         phase: "install",
         current: total,
@@ -260,14 +267,16 @@ async function installGame(runtime, gameId) {
       }
       assertAccess();
       await assertModGameClosed(gameId, targetPath);
+      const uninstallReceiptPath = gameId === 'supermarket-simulator' ? await prepareShopUninstallReceipt({gameId,targetPath,deploymentRoot,backupRoot,userData:runtime.app.getPath('userData'),previousInstallation,assertAccess}) : ''; 
       const deployment = await commitInstallationDeployment({
         deploymentRoot,
         targetPath,
         backupRoot,
         tempRoot,
-        retiredFiles: [...(manifest.retiredFiles || []), ...(preparedModule?.retiredFiles || [])],
+        retiredFiles: [...(manifest.retiredFiles || []), ...(preparedModule?.retiredFiles || []), ...(preparedShop?.retiredFiles || [])],
         assertAccess
       });
+      await assertShopModuleReady(gameId, targetPath);
       assertAccess();
       const additionalDeployments =
         await deployAdditionalInstallTargets({
@@ -332,12 +341,14 @@ async function installGame(runtime, gameId) {
           path: targetPath,
           backupPath: manifest.temporaryTarget ? "" : backupRoot,
           installedAt,
+          ...(uninstallReceiptPath ? {uninstallReceiptPath} : {}),
           assetCount: assets.length,
           satisfiedAssetCount: candidateAssets.length,
           satisfiedAssetIds: candidateAssets
             .map((asset) => String(asset.id || "").trim())
             .filter(Boolean),
           installerVersion: String(manifest.version || ""),
+          ...(platform ? { platform } : {}),
           edition: edition || undefined,
           elevated: deployment.elevated,
           additionalDeployments,

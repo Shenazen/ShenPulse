@@ -92,3 +92,25 @@ test("la résolution des images conserve les visuels existants et ignore les che
   assert.notEqual(resolve(pack).effects[0].image, "changed");
   assert.equal(resolve({ id: "game", effects: [{ id: "heal", image: "existing.webp" }] }).effects[0].image, "existing.webp");
 });
+
+test("les 42 effets Supermarket ont des illustrations distinctes et optimisées", () => {
+  const plan = require("../docs/supermarket-interaction-art.prompts.json");
+  const pack = loadShenazenGameCatalog(resources).find(item => item.id === "supermarket-simulator");
+  assert.equal(plan.tool, "built-in image_gen");
+  assert.equal(plan.entries.length, 42);
+  const hashes = new Set();
+  for (const effect of pack.effects) {
+    const entry = plan.entries.find(item => item.id === effect.id);
+    assert.equal(entry.code, effect.code);
+    assert.ok(entry.prompt);
+    assert.equal(effect.image, "../../resources/overlays/media/game-interactions/supermarket-simulator/" + effect.id + ".png");
+    const bytes = fs.readFileSync(path.resolve(root, "src/renderer", effect.image));
+    assert.equal(bytes.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(bytes.readUInt32BE(16), 384); assert.equal(bytes.readUInt32BE(20), 384);
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    assert.equal(hash, entry.sha256);
+    assert.ok(!hashes.has(hash), effect.id); hashes.add(hash);
+    assert.ok(bytes.length < 500000);
+  }
+  assert.equal(hashes.size, 42);
+});

@@ -1,6 +1,15 @@
 "use strict";
 
 /** Contrôle des filtres dans Chromium, avec un catalogue de test et un profil isolé. */
+if (!process.versions.electron) {
+  const environment = { ...process.env };
+  delete environment.ELECTRON_RUN_AS_NODE;
+  const child = require("node:child_process").spawnSync(require("electron"), [__filename], {
+    env: environment, stdio: "inherit", windowsHide: true
+  });
+  if (child.error) process.stderr.write(`${child.error.message}\n`);
+  process.exit(child.status ?? 1);
+}
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert/strict");
@@ -8,6 +17,7 @@ const { pathToFileURL } = require("node:url");
 const { app, BrowserWindow } = require("electron");
 const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
 const { gameCatalogRenderer } = require("../tests/helpers/game-catalog-renderer");
+const { categories } = require("../src/shared/game-categories");
 const root = path.resolve(__dirname, "..");
 const output = path.join(root, ".artifacts/game-category-review");
 fs.mkdirSync(output, { recursive: true });
@@ -20,9 +30,12 @@ app.whenReady().then(async () => {
   const fixture = gameCatalogRenderer(loadShenazenGameCatalog(path.join(root, "resources")));
   const results = [];
   try {
-    for (const category of ["all", "horror", "gta", "shenpulse"]) {
+    for (const { id: category } of categories) {
       fixture.context.gameCategory = category;
       const page = fixture.render();
+      const displayed = [...page.querySelectorAll(".game-gallery-tile")].map(tile => tile.dataset.id);
+      assert.equal(new Set(displayed).size, displayed.length, `${category} : cartes dupliquées`);
+      if (["horror", "simulation", "adventure"].includes(category)) assert.ok(displayed.includes("dredge"), `${category} : DREDGE absent`);
       const toolbar = page.querySelector(".games-toolbar").outerHTML;
       const html = path.join(output, "fixture.html");
       fs.writeFileSync(html, `<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="${pathToFileURL(path.join(root, "src/renderer/styles.css"))}"><style>body{margin:0;padding:24px;box-sizing:border-box}main{width:100%;min-width:0}</style><body><main class="games-gallery-page">${toolbar}</main>`);

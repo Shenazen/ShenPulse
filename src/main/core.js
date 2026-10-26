@@ -67,7 +67,9 @@ class ShenPulseCore extends EventEmitter {
   constructor({ store, resourcesDirectory, notifyRenderer, appVersion = "", liveDirectoryIdentityProvider }) {
     super();
     this.store = store;
-    this.notifyRenderer = notifyRenderer;
+    this.notifyRenderer = (channel, value) => {
+      if (channel === "state-changed") this.publicOverlayRelay?.publishState();
+      notifyRenderer(channel, value); };
     this.appVersion = String(appVersion || "");
     this.giftCatalog = new GiftCatalog(resourcesDirectory);
     this.viewerService = new ViewerService({ store });

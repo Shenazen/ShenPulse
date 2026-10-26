@@ -1,6 +1,6 @@
 "use strict";
 
-/** Classement commun au catalogue et à ses filtres ; une catégorie principale par jeu. */
+/** Catégories communes au catalogue et à ses filtres ; un jeu peut appartenir à plusieurs familles. */
 (function exposeGameCategories(root, factory) {
   const catalog = factory();
   if (typeof module !== "undefined" && module.exports) module.exports = catalog;
@@ -18,21 +18,34 @@
     { id: "shenpulse", label: "Jeux ShenPulse", icon: "♛", color: "#ee57d7" }
   ].map(Object.freeze));
   const groups = {
-    horror: ["the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge"],
+    horror: ["the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge", "shift-at-midnight"],
     action: ["escape-from-duckov", "fortnite", "deep-rock-galactic", "deep-rock-galactic-survivor", "fallout-4", "hades", "hades-ii", "vampire-survivors"],
     gta: ["gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas"],
     racing: ["super-mario-kart", "rocket-league", "euro-truck-simulator-2"],
-    simulation: ["find-the-needle-demo", "supermarket-simulator", "stardew-valley", "cities-skylines", "cult-of-the-lamb", "balatro"],
-    adventure: ["crash-bandicoot-n-sane-trilogy", "unturned", "pokemon-red-blue", "blue-prince", "hollow-knight-silksong", "hollow-knight", "egging-on", "celeste", "no-mans-sky", "palworld", "ark-survival-ascended", "kingdom-come-deliverance-2"],
+    simulation: ["find-the-needle-demo", "supermarket-simulator", "tcg-card-shop-simulator", "stardew-valley", "cities-skylines", "cult-of-the-lamb", "balatro"],
+    adventure: ["crash-bandicoot-n-sane-trilogy", "unturned", "pokemon-red-blue", "blue-prince", "hollow-knight-silksong", "hollow-knight", "egging-on", "celeste", "no-mans-sky", "palworld", "ark-survival-ascended", "kingdom-come-deliverance-2", "hogwarts-legacy"],
     sandbox: ["minecraft", "minecraft-java", "minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-survival-plugin", "terraria", "wobbly-life"],
     shenpulse: ["thiercelieux", "coin-pusher", "connect-four", "deal-or-no-deal", "diamond-bridge", "diamond-drop", "color-strike", "tiklive-climb", "tiklive-cube-wars", "tiklive-stack-tower", "clash-of-live", "generic-sandbox"]
   };
   const byId = Object.freeze(Object.fromEntries(Object.entries(groups).flatMap(([category, ids]) => ids.map((id) => [id, category]))));
   const ids = new Set(categories.slice(1).map((category) => category.id));
+  // La catégorie principale reste compatible avec les consommateurs existants.
+  // Les familles supplémentaires décrivent le jeu, pas ses boutiques ou son moteur d’interactions.
+  const additionalGroups = {
+    action: ["hogwarts-legacy", "crash-bandicoot-n-sane-trilogy", "unturned", "rocket-league", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "demonologist", "hollow-knight", "hollow-knight-silksong", "egging-on", "celeste", "palworld", "ark-survival-ascended", "kingdom-come-deliverance-2", "terraria", "no-mans-sky", "wobbly-life", "cult-of-the-lamb", "color-strike", "tiklive-climb", "tiklive-cube-wars", "clash-of-live", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "minecraft-survival-plugin"],
+    racing: ["gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas"],
+    simulation: ["euro-truck-simulator-2", "dredge", "the-mortuary-assistant", "no-mans-sky", "palworld", "wobbly-life", "coin-pusher", "tiklive-stack-tower", "shift-at-midnight"],
+    adventure: ["the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge", "escape-from-duckov", "fortnite", "deep-rock-galactic", "deep-rock-galactic-survivor", "fallout-4", "hades", "hades-ii", "vampire-survivors", "cult-of-the-lamb", "stardew-valley", "terraria", "wobbly-life", "minecraft", "minecraft-java", "minecraft-survival-plugin", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "tiklive-climb", "diamond-bridge"],
+    sandbox: ["unturned", "ark-survival-ascended", "palworld", "no-mans-sky", "fallout-4", "stardew-valley", "fortnite", "generic-sandbox"]
+  };
+  const additionalById = new Map();
+  for (const [category, games] of Object.entries(additionalGroups)) {
+    for (const id of games) additionalById.set(id, [...(additionalById.get(id) || []), category]);
+  }
 
   function categoryFor(pack = {}) {
     if (ids.has(pack.catalogCategory)) return pack.catalogCategory;
-    if (byId[pack.id]) return byId[pack.id];
+    if (Object.hasOwn(byId, pack.id)) return byId[pack.id];
     if (pack.guide?.mode === "integrated") return "shenpulse";
     const text = `${pack.id || ""} ${pack.name || ""} ${(pack.tags || []).join(" ")}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     if (/minecraft|sandbox|bac a sable/.test(text)) return "sandbox";
@@ -44,10 +57,21 @@
     return "adventure";
   }
 
-  /** Le lanceur Minecraft regroupe plusieurs modes déjà filtrés par visibilité. */
-  function countGames(packs = []) {
-    return packs.reduce((total, pack) => total + (pack.modeSelector && Array.isArray(pack.modes) ? pack.modes.length : 1), 0);
+  function categoriesFor(pack = {}) {
+    if (pack.modeSelector && Array.isArray(pack.modes)) return [...new Set(pack.modes.flatMap(categoriesFor))];
+    const configured = Array.isArray(pack.catalogCategories) ? pack.catalogCategories.filter(id => ids.has(id)) : [];
+    return [...new Set(configured.length ? configured : [categoryFor(pack), ...(additionalById.get(pack.id) || [])])];
   }
 
-  return Object.freeze({ categories, byId, categoryFor, countGames });
+  function matchesCategory(pack, category = "all") {
+    return category === "all" || categoriesFor(pack).includes(category);
+  }
+
+  /** Chaque jeu/mode visible compte une fois, même s’il possède plusieurs catégories. */
+  function countGames(packs = [], category = "all") {
+    return packs.reduce((total, pack) => total + (pack.modeSelector && Array.isArray(pack.modes)
+      ? countGames(pack.modes, category) : Number(matchesCategory(pack, category))), 0);
+  }
+
+  return Object.freeze({ categories, byId, categoryFor, categoriesFor, matchesCategory, countGames });
 });

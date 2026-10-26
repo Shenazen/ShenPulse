@@ -490,6 +490,7 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  "hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight",
   "dead-by-daylight", "dredge", "egging-on", "fallout-4",
   "ark-survival-ascended",
   "balatro",
@@ -523,6 +524,7 @@ const MANAGED_BIZHAWK_GAME_IDS = new Set([
 ]);
 
 const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set([
+  "hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight",
   "dead-by-daylight", "dredge", "egging-on", "fallout-4",
   "ark-survival-ascended",
   "balatro",

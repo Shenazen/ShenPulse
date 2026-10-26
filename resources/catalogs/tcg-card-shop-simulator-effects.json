@@ -1,0 +1,591 @@
+[
+  {
+    "id": "tcg-card-shop-simulator-tout-annuler",
+    "code": "tout_annuler",
+    "name": "Rétablir les effets temporaires",
+    "category": "Ambiance & joueur",
+    "description": "Rétablir les effets temporaires. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-argent-plus",
+    "code": "argent_plus",
+    "name": "Ajouter de l’argent",
+    "category": "Finances",
+    "description": "Ajouter de l’argent. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "montant",
+        "label": "Montant",
+        "type": "number",
+        "defaultValue": 100,
+        "min": 1,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "tcg-card-shop-simulator-argent-moins",
+    "code": "argent_moins",
+    "name": "Retirer de l’argent",
+    "category": "Finances",
+    "description": "Retirer de l’argent. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "montant",
+        "label": "Montant",
+        "type": "number",
+        "defaultValue": 100,
+        "min": 1,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "tcg-card-shop-simulator-jackpot",
+    "code": "jackpot",
+    "name": "Jackpot",
+    "category": "Finances",
+    "description": "Jackpot. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "montant",
+        "label": "Montant",
+        "type": "number",
+        "defaultValue": 5000,
+        "min": 1,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "tcg-card-shop-simulator-xp-boutique",
+    "code": "xp_boutique",
+    "name": "Expérience de la boutique",
+    "category": "Ambiance & joueur",
+    "description": "Expérience de la boutique. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "montant",
+        "label": "Expérience",
+        "type": "number",
+        "defaultValue": 200,
+        "min": 1,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "tcg-card-shop-simulator-reputation",
+    "code": "reputation",
+    "name": "Un spectateur devient client",
+    "category": "Clients",
+    "description": "Un spectateur devient client. Le nom du donateur est affiché au-dessus du client. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-viewer-client",
+    "code": "viewer_client",
+    "name": "Client au nom du spectateur",
+    "category": "Clients",
+    "description": "Client au nom du spectateur. Le nom du donateur est affiché au-dessus du client. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-clients",
+    "code": "clients",
+    "name": "Faire entrer des clients",
+    "category": "Clients",
+    "description": "Faire entrer des clients. Chaque client créé porte le nom du donateur. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "nombre",
+        "label": "Nombre de clients",
+        "type": "number",
+        "defaultValue": 3,
+        "min": 1,
+        "max": 20,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "tcg-card-shop-simulator-foule",
+    "code": "foule",
+    "name": "Foule de clients",
+    "category": "Clients",
+    "description": "Foule de clients. Tous les clients de la foule portent le nom du donateur. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "nombre",
+        "label": "Nombre de clients",
+        "type": "number",
+        "defaultValue": 10,
+        "min": 1,
+        "max": 20,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "tcg-card-shop-simulator-clients-rapides",
+    "code": "clients_rapides",
+    "name": "Clients rapides",
+    "category": "Clients",
+    "description": "Clients rapides. Les clients accélérés portent le nom du donateur, y compris les nouvelles arrivées pendant l’effet. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-clients-lents",
+    "code": "clients_lents",
+    "name": "Clients lents",
+    "category": "Clients",
+    "description": "Clients lents. Les clients ralentis portent le nom du donateur, y compris les nouvelles arrivées pendant l’effet. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-appoint",
+    "code": "appoint",
+    "name": "Clients sans appoint",
+    "category": "Clients",
+    "description": "Clients sans appoint. Les clients concernés portent le nom du donateur, y compris les nouvelles arrivées pendant l’effet. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-rush",
+    "code": "rush",
+    "name": "Accélérer les arrivées",
+    "category": "Clients",
+    "description": "Accélérer les arrivées. Les clients qui arrivent pendant l’effet portent le nom du donateur. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-client-puant",
+    "code": "client_puant",
+    "name": "Client malodorant",
+    "category": "Clients",
+    "description": "Client malodorant. Chaque client malodorant créé porte le nom du donateur. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "nombre",
+        "label": "Nombre de clients",
+        "type": "number",
+        "defaultValue": 3,
+        "min": 1,
+        "max": 20,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "tcg-card-shop-simulator-file-appoint",
+    "code": "file_appoint",
+    "name": "Clients avec l’appoint exact",
+    "category": "Clients",
+    "description": "Clients avec l’appoint exact. Les clients concernés portent le nom du donateur, y compris les nouvelles arrivées pendant l’effet. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-avis-positif",
+    "code": "avis_positif",
+    "name": "Avis positif",
+    "category": "Clients",
+    "description": "Avis positif. Si un client est présent, le plus proche porte le nom du donateur de cet avis. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-avis-negatif",
+    "code": "avis_negatif",
+    "name": "Avis négatif",
+    "category": "Clients",
+    "description": "Avis négatif. Si un client est présent, le plus proche porte le nom du donateur de cet avis. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-employe-arrive",
+    "code": "employe_arrive",
+    "name": "Engager un employé",
+    "category": "Employés",
+    "description": "Engager un employé. Nécessite une partie chargée, hors menus. Le niveau de la boutique et les déblocages du jeu doivent le permettre.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-agrandir-magasin",
+    "code": "agrandir_magasin",
+    "name": "Agrandir le magasin",
+    "category": "Boutique",
+    "description": "Agrandir le magasin. Nécessite une partie chargée, hors menus. Le niveau de la boutique et les déblocages du jeu doivent le permettre.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-licence-offerte",
+    "code": "licence_offerte",
+    "name": "Offrir une licence produit",
+    "category": "Boutique",
+    "description": "Offrir une licence produit. Nécessite une partie chargée, hors menus. Le niveau de la boutique et les déblocages du jeu doivent le permettre.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-employes-rapides",
+    "code": "employes_rapides",
+    "name": "Employés rapides",
+    "category": "Employés",
+    "description": "Employés rapides. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-employes-lents",
+    "code": "employes_lents",
+    "name": "Employés lents",
+    "category": "Employés",
+    "description": "Employés lents. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-colis",
+    "code": "colis",
+    "name": "Livrer des produits",
+    "category": "Boutique",
+    "description": "Livrer des produits. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-gros-colis",
+    "code": "gros_colis",
+    "name": "Livrer un grand carton",
+    "category": "Boutique",
+    "description": "Livrer un grand carton. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-meuble-offert",
+    "code": "meuble_offert",
+    "name": "Livrer un meuble",
+    "category": "Boutique",
+    "description": "Livrer un meuble. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-boom-marche",
+    "code": "boom_marche",
+    "name": "Hausse du marché",
+    "category": "Finances",
+    "description": "Hausse du marché. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-crash-marche",
+    "code": "crash_marche",
+    "name": "Baisse du marché",
+    "category": "Finances",
+    "description": "Baisse du marché. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-lumieres",
+    "code": "lumieres",
+    "name": "Panne de lumière temporaire",
+    "category": "Ambiance & joueur",
+    "description": "Panne de lumière temporaire. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-muet",
+    "code": "muet",
+    "name": "Couper le son temporairement",
+    "category": "Ambiance & joueur",
+    "description": "Couper le son temporairement. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-son",
+    "code": "son",
+    "name": "Jouer un son",
+    "category": "Ambiance & joueur",
+    "description": "Jouer un son. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-fanfare",
+    "code": "fanfare",
+    "name": "Fanfare",
+    "category": "Ambiance & joueur",
+    "description": "Fanfare. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-relooking",
+    "code": "relooking",
+    "name": "Changer la décoration temporairement",
+    "category": "Ambiance & joueur",
+    "description": "Changer la décoration temporairement. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-temps-rapide",
+    "code": "temps_rapide",
+    "name": "Accélérer l’horloge",
+    "category": "Ambiance & joueur",
+    "description": "Accélérer l’horloge. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-joueur-rapide",
+    "code": "joueur_rapide",
+    "name": "Joueur rapide",
+    "category": "Ambiance & joueur",
+    "description": "Joueur rapide. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-joueur-lent",
+    "code": "joueur_lent",
+    "name": "Joueur lent",
+    "category": "Ambiance & joueur",
+    "description": "Joueur lent. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-fov-fou",
+    "code": "fov_fou",
+    "name": "Changer le champ de vision",
+    "category": "Ambiance & joueur",
+    "description": "Changer le champ de vision. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-teleport",
+    "code": "teleport",
+    "name": "Téléportation proche",
+    "category": "Ambiance & joueur",
+    "description": "Téléportation proche. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-lancer-carton",
+    "code": "lancer_carton",
+    "name": "Projeter un carton",
+    "category": "Ambiance & joueur",
+    "description": "Projette le carton libre le plus proche, à moins de 8 mètres du joueur. Posez-le au sol ; les cartons tenus ou rangés dans les étagères sont exclus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-bloque",
+    "code": "bloque",
+    "name": "Immobiliser le joueur",
+    "category": "Ambiance & joueur",
+    "description": "Immobilise les déplacements pendant 6 secondes réelles par défaut, en laissant la caméra et les menus utilisables. Les déclenchements pendant l’effet ne prolongent pas sa durée.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 6
+  },
+  {
+    "id": "tcg-card-shop-simulator-jeu-accelere",
+    "code": "jeu_accelere",
+    "name": "Accélérer le jeu",
+    "category": "Ambiance & joueur",
+    "description": "Accélère le jeu pendant 20 secondes réelles par défaut, puis rétablit sa vitesse initiale. Les déclenchements pendant l’effet ne prolongent pas sa durée.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-jeu-ralenti",
+    "code": "jeu_ralenti",
+    "name": "Ralentir le jeu",
+    "category": "Ambiance & joueur",
+    "description": "Ralentit le jeu pendant 20 secondes réelles par défaut, puis rétablit sa vitesse initiale. Les déclenchements pendant l’effet ne prolongent pas sa durée.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20
+  },
+  {
+    "id": "tcg-card-shop-simulator-remplir-rayons",
+    "code": "remplir_rayons",
+    "name": "Remplir les rayons",
+    "category": "Boutique",
+    "description": "Remplit jusqu’à leur capacité maximale tous les rayons déjà étiquetés, avec leur produit habituel. Nécessite une boutique chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-vider-rayon",
+    "code": "vider_rayon",
+    "name": "Vider un rayon",
+    "category": "Boutique",
+    "description": "Vide entièrement un rayon en conservant son étiquette pour pouvoir le remplir à nouveau. Nécessite un rayon contenant des articles.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-chaos-cartons",
+    "code": "chaos_cartons",
+    "name": "Chaos dans les cartons",
+    "category": "Ambiance & joueur",
+    "description": "Fait voler et tourner les cartons libres au sol à moins de 8 mètres du joueur, y compris ceux stabilisés par le jeu. Les cartons tenus ou rangés dans les étagères sont exclus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "tcg-card-shop-simulator-faillite",
+    "code": "faillite",
+    "name": "Vider la caisse",
+    "category": "Finances",
+    "description": "Vider la caisse. Nécessite une partie chargée, hors menus.",
+    "image": "assets/games/catalog/tcg-card-shop-simulator.jpg",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  }
+]

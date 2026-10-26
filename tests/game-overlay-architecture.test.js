@@ -16,6 +16,7 @@ test("le bundle livré correspond exactement aux sources modulaires d’export",
   const build = await buildGameOverlays({ write: false });
   assert.equal(build.outputFiles.length, 1);
   assert.equal(build.outputFiles[0].text, source);
+  assert.equal(build.publicOutputFiles[0].text,fs.readFileSync(path.join(__dirname,"../resources/overlays/vendor/game-pack-generator.js"),"utf8"));
 });
 
 for (const expected of expectedTraces) {

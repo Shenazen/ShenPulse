@@ -6,14 +6,34 @@ const { readState } = require("../state-projection");
 const fs = require("node:fs");
 const path = require("node:path");
 const { findLaunchTarget } = require("./paths");
-const { detectInstalledGame } = require("./discovery");
+const { detectInstalledGame, detectInstalledGames } = require("./discovery");
+const { PLATFORM_LABELS, supportsPlatformChoice, canonicalPath } = require("./installation-platform");
 const { validateFourGamesTarget } = require("./four-games-installation");
 
 async function pickTarget(runtime, gameId, manifest) {
     const previous =
       readState(runtime.store, ["game.installations"]).game.installations?.[gameId]?.path;
     let detected = "";
-    if (manifest.autoDetect) {
+    let choseFolder = false;
+    if (manifest.autoDetect && supportsPlatformChoice(manifest)) {
+      const installations = await detectInstalledGames(gameId, manifest, previous);
+      if (installations.length > 1) {
+        const previousCanonical = previous ? await canonicalPath(previous) : "";
+        const labels = installations.map(item => PLATFORM_LABELS[item.platform] || "Autre installation");
+        const buttons = labels.map((label, index) => labels.filter(value => value === label).length > 1 ? label + " (" + (index + 1) + ")" : label);
+        const selection = await runtime.dialog.showMessageBox(runtime.getWindow(), {
+          type: "question", title: "Choisir la plateforme de " + manifest.title,
+          message: "Sur quelle installation souhaitez-vous utiliser les interactions ?",
+          detail: installations.map((item, index) => buttons[index] + " : " + item.path).join("\n\n") + "\n\nLe bouton Lancer utilisera uniquement l’installation choisie. Vous pourrez changer d’édition en relançant l’installation des interactions.",
+          buttons: [...buttons, "Choisir un autre dossier", "Annuler"],
+          defaultId: Math.max(0, (await Promise.all(installations.map(item => canonicalPath(item.path)))).indexOf(previousCanonical)),
+          cancelId: installations.length + 1, noLink: true
+        });
+        if (!Number.isInteger(selection.response) || selection.response < 0 || selection.response > installations.length) return "";
+        if (selection.response < installations.length) detected = installations[selection.response].path;
+        else choseFolder = true;
+      } else detected = installations[0]?.path || "";
+    } else if (manifest.autoDetect) {
       detected = await detectInstalledGame(
         gameId,
         manifest,
@@ -58,7 +78,7 @@ async function pickTarget(runtime, gameId, manifest) {
           if (!retry) return "";
         }
       }
-    } else if (manifest.autoDetect) {
+    } else if (manifest.autoDetect && !choseFolder) {
       const missing = await runtime.dialog.showMessageBox(runtime.getWindow(), {
         type: "info",
         title: `${manifest.title} n’a pas été détecté`,

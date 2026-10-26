@@ -40,7 +40,7 @@ async function renderMinecraftStyledOverlay(options) {
   if (!ctx) throw new Error("Canvas indisponible.");
   const entries = options.entries.filter((entry) => String(entry.label || "").trim());
   if (!entries.length) throw new Error("Active au moins une interaction complete avant de telecharger l overlay.");
-  await ensureMinecraftOverlayFont();
+  await ensureMinecraftOverlayFont(options.fontUrl);
   const preparedItems = await prepareMinecraftStyledOverlayItems(entries);
   const winItems = preparedItems.filter((item) => item.effect.kind === "win");
   const effectItems = groupOverlayEffectItems(
@@ -49,17 +49,18 @@ async function renderMinecraftStyledOverlay(options) {
   const positiveWins = sortWinItems(winItems.filter((item) => item.effect.winTone !== "negative" && item.effect.winTone !== "random"));
   const negativeWins = sortWinItems(winItems.filter((item) => item.effect.winTone === "negative" || item.effect.winTone === "random"));
   if (options.model === 1) {
-    const logo2 = await loadOverlayImage("assets/brand/shenpulse-banner-transparent.png");
+    const logo2 = await loadOverlayImage(options.logoUrl || "assets/brand/shenpulse-banner-transparent.png");
     const panel = modelOneBottomPanelBounds(effectItems.length);
     ctx.clearRect(0, 0, OVERLAY_WIDTH, OVERLAY_HEIGHT);
     drawWinColumn(ctx, positiveWins, "left", panel.y);
     drawWinColumn(ctx, negativeWins, "right", panel.y);
     drawModelOneBottomPanel(ctx, effectItems, panel, logo2, options.backgroundColor);
+    canvas.overlayPanelBounds=panel;
     return canvas;
   }
   const effectIconUrls = Array.from(new Set(effectItems.map((item) => item.effect.imageUrl).filter((url) => Boolean(url))));
   const [logo, effectIconEntries] = await Promise.all([
-    loadOverlayImage("assets/brand/shenpulse-banner-transparent.png"),
+    loadOverlayImage(options.logoUrl || "assets/brand/shenpulse-banner-transparent.png"),
     Promise.all(effectIconUrls.map(async (url) => [url, await loadOverlayImage(url)]))
   ]);
   const assets = {
@@ -70,6 +71,7 @@ async function renderMinecraftStyledOverlay(options) {
   drawWinColumn(ctx, positiveWins, "left");
   drawWinColumn(ctx, negativeWins, "right");
   drawBottomPanel(ctx, effectItems, logo, assets);
+  canvas.overlayPanelBounds={x:0,y:1484,width:1080,height:436};
   return canvas;
 }
 

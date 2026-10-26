@@ -365,7 +365,7 @@ function openGameInteractionEditor(pack, effect, row = null) {
     : `<span>${escapeHtml(effect.icon || "◇")}</span>`;
   const rowData = gameInteractionRowData(row);
   const interactionTitle =
-    currentRule.gameInteraction?.title || effect.name;
+    ShenPulseGameInteractionTitles.title(currentRule, effect);
   gameInteractionCatalogContext = null;
   gameInteractionEditorContext = {
     packId: pack.id,

@@ -5,6 +5,7 @@
  */
 const { isGameInteractionActionType } = require("../../shared/game-interaction-action-types");
 const { sanitizeThiercelieuxEntitlements } = require("../../shared/thiercelieux-products");
+const { readState } = require("../state-projection");
 const { id, safeString } = require("../utils");
 const { sanitizeEntity, sanitizeGameConfiguration, sanitizeDealOrNoDealHostState, sanitizeThiercelieuxCommand, sanitizeThiercelieuxHostState } = require("./sanitizers");
 const { notify } = require("./notifications");
@@ -13,9 +14,11 @@ function registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog,
   handle("game:select", (_event, packId) => {
     const targetId = requireGameSessionAvailability(packId);
     requireGameAccess(targetId);
-    store.set("session.activeGamePackId", targetId);
-    notify(core, "state-changed", core.snapshot());
-    return core.snapshot();
+    const changed = readState(store, ["session.activeGamePackId"]).session?.activeGamePackId !== targetId;
+    if (changed) store.set("session.activeGamePackId", targetId);
+    const nextSnapshot = core.snapshot();
+    if (changed) notify(core, "state-changed", nextSnapshot);
+    return nextSnapshot;
   });
   
   handle("game:configure", (_event, packId, config) => {

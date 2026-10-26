@@ -27,12 +27,17 @@ function renderer() {
     CONFIGURABLE_INTEGRATED_GAMES: new Set(), MANAGED_BIZHAWK_GAME_IDS: new Set(), MINECRAFT_MODE_IDS: [],
     isGameUnlocked: () => true, gameMappedEffects: () => [], gameArtwork: () => "",
     gameAccessLabel: () => "Pro", activeGameSession: () => null,
-    renderGamePageMessage: () => "", renderGameLaunchProgressModal: () => "",
+    renderGamePageMessage: () => "", renderGameLaunchProgressModal: () => "", renderGameInteractionSession: () => "",
     visibilityTools: { gameScopeFor: () => "public" }, siteVisibility: {},
     escapeHtml: value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]),
+    ShenPulseGameInteractionTitles: require('../src/shared/game-interaction-titles'),
+    hasAutomaticTrigger: rule => rule.trigger?.enabled !== false, eventIconMarkup: () => '',
+    normalizeGiftName: value => String(value || ''), giftPickerSearchText: gift => gift.name || '',
+    GTA_INTERACTION_OVERLAY_BACKGROUNDS: [],
     registerActionHandler() {}, ACTION_NOT_HANDLED: Symbol("unhandled"),
     render() { assert.fail("L’ouverture de l’aide ne doit pas recréer les formulaires."); }
   });
+  for (const file of ['core', 'interactions', 'free-events', 'catalog', 'preview', 'updates', 'sections', 'dialogs']) vm.runInContext(read('features/games/workspace/' + file + '.js'), context);
   const bootstrap = read("core/bootstrap.js");
   for (const name of ["DEFAULT_GAME_JOURNEY", "AUTOMATED_GAME_INSTALLERS"]) {
     const expression = name === "DEFAULT_GAME_JOURNEY"
@@ -40,7 +45,7 @@ function renderer() {
       : /const AUTOMATED_GAME_INSTALLERS = new Set\(\[[\s\S]*?\]\);/;
     vm.runInContext(bootstrap.match(expression)[0], context);
   }
-  for (const file of ["features/games/control-bindings.js", "features/games/conditions.js", "features/games/access.js", "features/games/overlay-cards.js", "features/games/super-mario-kart-workspace.js", "actions/handlers/navigation-games.js"]) {
+  for (const file of ["features/games/control-bindings.js", "features/games/conditions.js", "features/games/access.js", "features/games/overlay-cards.js", "features/games/super-mario-kart-workspace.js", "features/games/supermarket-workspace.js", "actions/handlers/navigation-games.js"]) {
     vm.runInContext(read(file), context, { filename: file });
   }
   context.isGameUnlocked = () => true;
@@ -52,6 +57,8 @@ function renderer() {
 test("chaque jeu propose ses conditions dans son en-tête, y compris les tableaux de session", t => {
   const r = renderer(); t.after(r.close);
   r.context.renderGameWorkspaceStep = () => "";
+  r.context.renderSupermarketWins = () => "";
+  r.context.renderGameOverlays = () => "";
   r.context.renderSuperMarioKartInstallationRail = () => "";
   r.context.renderSuperMarioKartSessionLanding = () => "";
   for (const pack of packs) {

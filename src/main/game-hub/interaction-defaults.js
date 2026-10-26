@@ -50,7 +50,9 @@ function defaultGameInteractionRule(
       catalogVersion: version,
       default: true,
       presetId: mapping.id,
-      title
+      title,
+      ...(["help", "neutral", "trap"].includes(mapping.marketColumn)
+        ? { marketColumn: mapping.marketColumn } : {})
     },
     actions: [
       {
@@ -129,6 +131,7 @@ function defaultGiftCondition(mapping, gifts = []) {
 /** Répare une association héritée connue sans modifier son activation. */
 function repairDefaultGiftInteraction(rule, expectedRule, mapping, version) {
   if (
+    mapping.preserveExisting === true ||
     !mapping.giftId ||
     rule?.gameInteraction?.default !== true ||
     String(rule.gameInteraction.presetId || "") !== String(mapping.id || "") ||

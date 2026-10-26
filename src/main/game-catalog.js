@@ -31,7 +31,11 @@ function loadShenazenGameCatalog(resourcesDirectory) {
       guide: buildGameGuide(entry, entry.effects)
     })),
     ...external
-  ].map(interactionArtwork(resourcesDirectory)).map((entry) => structuredClone({ ...entry, catalogCategory: gameCategories.categoryFor(entry) }));
+  ].map(interactionArtwork(resourcesDirectory)).map((entry) => structuredClone({
+    ...entry,
+    catalogCategory: gameCategories.categoryFor(entry),
+    catalogCategories: gameCategories.categoriesFor(entry)
+  }));
 }
 
 module.exports = { loadShenazenGameCatalog };

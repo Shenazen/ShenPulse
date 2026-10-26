@@ -1,0 +1,524 @@
+[
+  {
+    "id": "shift-at-midnight-spawn-mystery",
+    "code": "spawn_mystery",
+    "name": "Client surprise",
+    "category": "Apparitions",
+    "description": "Client surprise. Partie solo ou hébergée par vous, magasin chargé. La nuit doit être active et des clients disponibles. Le client entre selon la file de nuit et porte le nom du donateur à son arrivée.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-human",
+    "code": "spawn_human",
+    "name": "Client humain",
+    "category": "Apparitions",
+    "description": "Client humain. Partie solo ou hébergée par vous, magasin chargé. La nuit doit être active et des clients disponibles. Le client entre selon la file de nuit et porte le nom du donateur à son arrivée.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-doppel",
+    "code": "spawn_doppel",
+    "name": "Client sosie",
+    "category": "Apparitions",
+    "description": "Client sosie. Partie solo ou hébergée par vous, magasin chargé. La nuit doit être active et des clients disponibles. Le client entre selon la file de nuit et porte le nom du donateur à son arrivée.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-thief",
+    "code": "spawn_thief",
+    "name": "Voleur",
+    "category": "Apparitions",
+    "description": "Voleur. Partie solo ou hébergée par vous, magasin chargé. Le nom du donateur est affiché au-dessus du personnage.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-rat",
+    "code": "spawn_rat",
+    "name": "Rat",
+    "category": "Apparitions",
+    "description": "Rat. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-roach",
+    "code": "spawn_roach",
+    "name": "Cafard",
+    "category": "Apparitions",
+    "description": "Cafard. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-monster",
+    "code": "spawn_monster",
+    "name": "Monstre pendant la chasse",
+    "category": "Apparitions",
+    "description": "Monstre pendant la chasse. Partie solo ou hébergée par vous, magasin chargé. Une chasse doit être en cours.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Monstre (0 = hasard)",
+        "type": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-spawn-pet",
+    "code": "spawn_pet",
+    "name": "Animal de compagnie",
+    "category": "Apparitions",
+    "description": "Animal de compagnie. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Espèce (0 = hasard)",
+        "type": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-funds",
+    "code": "funds",
+    "name": "Ajouter de l’argent",
+    "category": "Ressources",
+    "description": "Ajouter de l’argent. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Quantité",
+        "type": "number",
+        "defaultValue": 100,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-blackout",
+    "code": "blackout",
+    "name": "Panne de courant",
+    "category": "Ambiance & joueur",
+    "description": "Panne de courant. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-stuck-player",
+    "code": "stuck_player",
+    "name": "Bloquer le joueur",
+    "category": "Ambiance & joueur",
+    "description": "Bloque le joueur pendant 6 secondes réelles par défaut, puis le libère automatiquement. Les cadeaux répétés ne prolongent pas le blocage. Partie solo ou hébergée par vous, joueur vivant.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 6
+  },
+  {
+    "id": "shift-at-midnight-heal-player",
+    "code": "heal_player",
+    "name": "Soigner le joueur",
+    "category": "Ambiance & joueur",
+    "description": "Soigner le joueur. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Quantité",
+        "type": "number",
+        "defaultValue": 50,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-damage-player",
+    "code": "damage_player",
+    "name": "Blesser le joueur",
+    "category": "Ambiance & joueur",
+    "description": "Blesser le joueur. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Quantité",
+        "type": "number",
+        "defaultValue": 25,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-tax",
+    "code": "tax",
+    "name": "Retirer de l’argent",
+    "category": "Ressources",
+    "description": "Retirer de l’argent. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Quantité",
+        "type": "number",
+        "defaultValue": 100,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-wheel-token",
+    "code": "wheel_token",
+    "name": "Jetons de roue",
+    "category": "Ressources",
+    "description": "Jetons de roue. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Quantité",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-spawn-nuisance",
+    "code": "spawn_nuisance",
+    "name": "Client pénible",
+    "category": "Apparitions",
+    "description": "Client pénible. Partie solo ou hébergée par vous, magasin chargé. Le nom du donateur est affiché au-dessus du personnage.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-panic",
+    "code": "panic",
+    "name": "Panique",
+    "category": "Ambiance & joueur",
+    "description": "Panique. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-surprise-delivery",
+    "code": "surprise_delivery",
+    "name": "Livraison surprise",
+    "category": "Ambiance & joueur",
+    "description": "Livraison surprise. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-box",
+    "code": "spawn_box",
+    "name": "Carton de livraison",
+    "category": "Apparitions",
+    "description": "Carton de livraison. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-blood-delivery",
+    "code": "blood_delivery",
+    "name": "Livraison sanglante",
+    "category": "Ambiance & joueur",
+    "description": "Livraison sanglante. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-item",
+    "code": "spawn_item",
+    "name": "Offrir un objet",
+    "category": "Apparitions",
+    "description": "Offrir un objet. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Objet (0 = hasard)",
+        "type": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 10000,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-red-fog",
+    "code": "red_fog",
+    "name": "Brouillard rouge",
+    "category": "Ambiance & joueur",
+    "description": "Brouillard rouge pendant 10 secondes réelles par défaut, puis restauration du brouillard initial. Les déclenchements répétés ne prolongent pas la durée.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 10,
+    "parameters": [
+      {
+        "id": "densite",
+        "label": "Densité du brouillard",
+        "type": "number",
+        "defaultValue": 0.08,
+        "min": 0.01,
+        "max": 0.4,
+        "step": 0.01
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-empty-shelves",
+    "code": "empty_shelves",
+    "name": "Vider des rayons",
+    "category": "Ambiance & joueur",
+    "description": "Vider des rayons. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-trapped-parcel",
+    "code": "trapped_parcel",
+    "name": "Colis piégé",
+    "category": "Ambiance & joueur",
+    "description": "Colis piégé. Partie solo ou hébergée par vous, magasin chargé. Se déclenche au prochain rangement de carton dans un rayon.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-invert-camera",
+    "code": "invert_camera",
+    "name": "Caméra inversée",
+    "category": "Ambiance & joueur",
+    "description": "Inverse la caméra pendant 10 secondes réelles par défaut, puis rétablit son rendu. Les cadeaux répétés ne prolongent pas la durée. Partie solo ou hébergée par vous.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 10
+  },
+  {
+    "id": "shift-at-midnight-inventory-max",
+    "code": "inventory_max",
+    "name": "Grand inventaire",
+    "category": "Ambiance & joueur",
+    "description": "Grand inventaire. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-inventory-min",
+    "code": "inventory_min",
+    "name": "Petit inventaire",
+    "category": "Ambiance & joueur",
+    "description": "Petit inventaire. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-search-name",
+    "code": "search_name",
+    "name": "Frayeur sur l’ordinateur",
+    "category": "Ambiance & joueur",
+    "description": "Frayeur sur l’ordinateur. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-break-barricade",
+    "code": "break_barricade",
+    "name": "Casser une barricade",
+    "category": "Ambiance & joueur",
+    "description": "Casser une barricade. Partie solo ou hébergée par vous, magasin chargé. Une porte doit être barricadée.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-trigger-trap",
+    "code": "trigger_trap",
+    "name": "Déclencher un piège",
+    "category": "Ambiance & joueur",
+    "description": "Déclencher un piège. Partie solo ou hébergée par vous, magasin chargé. Un piège à loup doit être armé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-dumpster-monster",
+    "code": "dumpster_monster",
+    "name": "Monstre de la benne",
+    "category": "Ambiance & joueur",
+    "description": "Monstre de la benne. Partie solo ou hébergée par vous, magasin chargé. La benne doit contenir un monstre ce soir-là.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-spawn-clones",
+    "code": "spawn_clones",
+    "name": "Clones du spectateur",
+    "category": "Apparitions",
+    "description": "Clones du spectateur. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-exorcise",
+    "code": "exorcise",
+    "name": "Retirer les clones",
+    "category": "Apparitions",
+    "description": "Retirer les clones. Partie solo ou hébergée par vous, magasin chargé.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  },
+  {
+    "id": "shift-at-midnight-slow-motion",
+    "code": "slow_motion",
+    "name": "Ralenti",
+    "category": "Ambiance & joueur",
+    "description": "Ralentit le jeu pendant 20 secondes réelles par défaut, puis restaure sa vitesse initiale. Les déclenchements répétés ne prolongent pas la durée.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20,
+    "parameters": [
+      {
+        "id": "facteur",
+        "label": "Facteur de vitesse",
+        "type": "number",
+        "defaultValue": 0.5,
+        "min": 0.25,
+        "max": 1,
+        "step": 0.05
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-fast-forward",
+    "code": "fast_forward",
+    "name": "Accélération",
+    "category": "Ambiance & joueur",
+    "description": "Accélère le jeu pendant 20 secondes réelles par défaut, puis restaure sa vitesse initiale. Les déclenchements répétés ne prolongent pas la durée.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native",
+    "duration": 20,
+    "parameters": [
+      {
+        "id": "facteur",
+        "label": "Facteur de vitesse",
+        "type": "number",
+        "defaultValue": 1.5,
+        "min": 1,
+        "max": 2,
+        "step": 0.05
+      }
+    ]
+  },
+  {
+    "id": "shift-at-midnight-reset-effects",
+    "code": "reset_effects",
+    "name": "Rétablir les effets temporaires",
+    "category": "Ambiance & joueur",
+    "description": "Annule les effets temporaires ShenPulse : vitesse du jeu, blocage du joueur, caméra et brouillard. Les personnages créés restent dans la partie.",
+    "image": "assets/games/catalog/shift-at-midnight.png",
+    "icon": "◇",
+    "available": true,
+    "service": "native"
+  }
+]

@@ -6,14 +6,14 @@ const imageLoadCache = /* @__PURE__ */ new Map();
 
 let minecraftFontLoadPromise = null;
 
-function ensureMinecraftOverlayFont() {
+function ensureMinecraftOverlayFont(fontSource = MINECRAFT_FONT_SRC) {
   if (minecraftFontLoadPromise) return minecraftFontLoadPromise;
   minecraftFontLoadPromise = (async () => {
     if (typeof document === "undefined" || typeof FontFace === "undefined" || !document.fonts) return;
     try {
       const alreadyLoaded = Array.from(document.fonts).some((font) => font.family === MINECRAFT_FONT_FACE);
       if (!alreadyLoaded) {
-        const font = new FontFace(MINECRAFT_FONT_FACE, `url("${MINECRAFT_FONT_SRC}")`, {
+        const font = new FontFace(MINECRAFT_FONT_FACE, `url("${fontSource}")`, {
           style: "normal",
           weight: "900"
         });

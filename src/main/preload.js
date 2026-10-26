@@ -8,6 +8,8 @@ const listeners = new Map();
 contextBridge.exposeInMainWorld("shenPulse", {
   getSnapshot: () => invoke("snapshot:get"),
   startupReady: () => invoke("startup:ready"),
+  saveGamePackPresentation: (options) => ipcRenderer.invoke("overlay:game-pack-presentation", options),
+  studios: { status: () => invoke("studio:status"), install: (options) => invoke("studio:install", options) },
   liveDirectoryConfigure: (options) => invoke("live-directory:configure", options),
   chatbot: {
     transportStatus: () => invoke("chatbot:transport-status"),
@@ -158,6 +160,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
     invoke("game:interaction-audit", id, effectId, progress),
   getGameRuntimeStatus: (id) => invoke("game:runtime-status", id),
   installGame: (id) => invoke("game:install", id),
+  uninstallGame: (id,options) => invoke("game:uninstall",id,options),
+  resetGameInteractions: (id,options) => invoke("game:interactions:reset",id,options),
   selectGameRom: (id) => invoke("game:select-rom", id),
   launchGame: (id) => invoke("game:launch", id),
   setGameWindowFormat: (id, format) =>

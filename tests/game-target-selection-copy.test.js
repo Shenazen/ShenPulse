@@ -32,6 +32,7 @@ function fixture(manifest, response = 0) {
   vm.runInNewContext(source, {
     module,
     require(id) {
+      if (id === "./installation-platform") return require("../src/main/game-runtime/installation-platform");
       if (id === "node:fs") return fs;
       if (id === "node:path") return path;
       if (id === "../state-projection") return { readState: (store) => store.getState() };

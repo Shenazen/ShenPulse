@@ -55,6 +55,7 @@ test("l’éditeur propose les identifiants texte, les conserve et refuse les en
     isMinecraftWinCounterPack: () => false,
     field: (name, label, value, type, extra) => `<input name="${name}" type="${type}" value="${value}" ${extra}>`
   });
+  context.ShenPulseGameInteractionTitles = require("../src/shared/game-interaction-titles");
   vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/renderer/app/editors/game-interactions.js"), "utf8"), context);
   const effect = effects.find(e => e.code === "unlocktech");
   const html = context.gameEffectParameterFields(effect, {});

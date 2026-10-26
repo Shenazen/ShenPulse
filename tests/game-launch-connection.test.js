@@ -39,6 +39,33 @@ test("la révocation d’accès interrompt l’attente sans nouvelle tentative",
   await assert.rejects(waitForGameConnection(f.hub, "crash", f.options), /Accès révoqué/);
 });
 
+test("les nouveaux modules peuvent terminer leur premier chargement après la limite habituelle de 90 secondes", async () => {
+  const f = fixture([{ connected: false }], 600_000);
+  f.pack.connector.type = "shop-mod";
+  let elapsed = 0;
+  f.hub.prepareConnection = async () => ({ connected: elapsed >= 240_000 });
+  const result = await waitForGameConnection(f.hub, "shop", { now: () => elapsed, sleep: async ms => { elapsed += ms; }, intervalMs: 30_000 });
+  assert.equal(result.connected, true);
+  assert.equal(elapsed, 240_000);
+});
+
+test("l'attente longue des nouveaux modules reste bornée et ne prolonge pas celle des autres connecteurs", async () => {
+  for (const [type, limit] of [["shop-mod", 600_000], ["tcp-server", 90_000]]) {
+    const f = fixture([{ connected: false }], 900_000); f.pack.connector.type = type;
+    let elapsed = 0;
+    await assert.rejects(waitForGameConnection(f.hub, "shop", { now: () => elapsed, sleep: async ms => { elapsed += ms; }, intervalMs: 30_000 }), /pont local/);
+    assert.equal(elapsed, limit);
+  }
+});
+
+test("l'attente de la fenêtre respecte le délai de préparation sans lancer ou fermer un processus de jeu", async () => {
+  const { waitForWindowsProcessWindow } = require("../src/main/game-runtime/processes");
+  let command = "";
+  await waitForWindowsProcessWindow("Card Shop Simulator", 600_000, { platform: "win32", execute: async (program, args) => { assert.equal(program, "powershell.exe"); command = args.at(-1); } });
+  assert.match(command, /AddMilliseconds\(600000\)/);
+  assert.doesNotMatch(command, /Start-Process|Stop-Process|Kill/);
+});
+
 function launchFixture() {
   const handlers = new Map(), order = [];
   let confirm, fail;

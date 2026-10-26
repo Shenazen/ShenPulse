@@ -166,14 +166,14 @@
   } = {}) {
     const base = trimTrailingSlash(baseUrl);
     const credential = String(credentialValue || "").trim();
-    const overlayUrl = (view, parameters = {}) => {
+    const overlayUrl = (view, parameters = {}, document = "") => {
       if (!base || !credential || !credentialName) return "";
       const query = new URLSearchParams({
         view,
         [credentialName]: credential,
         ...parameters
       });
-      return `${base}/${publicDelivery ? "" : "overlay/"}?${query.toString()}`;
+      return `${base}/${publicDelivery ? "" : "overlay/"}${document}?${query.toString()}`;
     };
     const urls = { base };
     urls.mediaScreens = Array.from({ length: 8 }, (_value, index) =>
@@ -184,7 +184,7 @@
       const unavailable = publicDelivery && route.public === false;
       urls[route.key] = denied || unavailable
         ? ""
-        : overlayUrl(route.view, route.parameters);
+        : overlayUrl(route.view, route.parameters, route.document);
     }
     return urls;
   }
@@ -214,6 +214,7 @@
   } = {}) {
     const normalizedView = String(view || "alerts").trim().toLowerCase();
     const normalizedChannel = String(channel || "").trim().toLowerCase();
+    if (normalizedView === "game-pack") return ["game-pack-state", "game-pack-trigger"].includes(normalizedChannel);
     if (normalizedView === "scene") {
       return !["match", "match-state"].includes(normalizedChannel) && Boolean(normalizedChannel);
     }

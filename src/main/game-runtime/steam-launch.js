@@ -15,13 +15,16 @@ async function launchSteamDemo({ gameId, manifest, executable, shell, assertAcce
 
 async function launchSteamGame({ gameId, manifest, executable, shell, assertAccess }) {
   const allowed = { "escape-from-duckov": "3167020" };
-  if (!allowed[gameId] || manifest.steamLaunchAppId !== allowed[gameId]) {
+  const compiled = require("../game-installer-manifest").installerForGame(gameId);
+  const dualPlatform = compiled && require("./installation-platform").supportsPlatformChoice(compiled);
+  const appId = allowed[gameId] || (dualPlatform ? compiled.steamAppIds[0] : "");
+  if (!/^\d+$/.test(appId) || (allowed[gameId] ? manifest.steamLaunchAppId !== appId : !manifest.steamAppIds?.includes(appId))) {
     throw new Error("Identifiant de lancement Steam non autorisé.");
   }
   if (!executable) throw new Error("L’exécutable du jeu Steam est introuvable. Réparez son installation puis réessayez.");
   assertAccess();
-  await shell.openExternal(`steam://rungameid/${allowed[gameId]}`);
-  return { ok: true, gameId, launcher: "steam", steamAppId: allowed[gameId], path: executable };
+  await shell.openExternal(`steam://rungameid/${appId}`);
+  return { ok: true, gameId, launcher: "steam", steamAppId: appId, path: executable };
 }
 
 module.exports = { launchSteamDemo, launchSteamGame };

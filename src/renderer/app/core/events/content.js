@@ -1,6 +1,9 @@
 "use strict";
 
 /** Événements des pages, filtres et formulaires dynamiques. */
+if (globalThis.ShenPulseGameWorkspace?.createGuidedTour) {
+  globalThis.ShenPulseGameWorkspace.createGuidedTour(document);
+}
 
 async function updateToggle(collection, id, enabled) {
   const item = snapshot.state[collection].find((entry) => entry.id === id);
@@ -526,7 +529,8 @@ document.body.addEventListener("click", (event) => {
     accountMenuButton.setAttribute("aria-expanded", "false");
   }
   const globalAction = event.target.closest("[data-action]");
-  if (globalAction && !content.contains(globalAction)) {
+  // Le rendu peut remplacer le bouton pendant la propagation du même clic.
+  if (globalAction && !event.composedPath().includes(content)) {
     handleAction(globalAction).catch(() => {});
   }
   const windowButton = event.target.closest("[data-window]");

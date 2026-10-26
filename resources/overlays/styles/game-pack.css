@@ -1,0 +1,66 @@
+@font-face{font-family:Inter;src:url("../fonts/inter-latin-wght-normal.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+:root{color-scheme:dark;font-family:Inter,Arial,Helvetica,sans-serif;--shen-blue:#00dadd;--shen-red:#ff3e49}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent!important}
+#pack{position:absolute;width:1080px;height:1920px;transform-origin:top left;pointer-events:none}
+#cards{position:absolute;bottom:52px;left:18px;right:18px;display:grid;gap:12px;padding:12px 10px 15px;border:2px solid #e6edff70;border-radius:22px;background:linear-gradient(145deg,#101321e8,#090b12f0);box-shadow:0 0 20px #9b90e51a,inset 0 0 18px #ffffff09}
+#cards:empty{display:none}
+#cards::before{content:"";position:absolute;top:-3px;left:18px;right:18px;height:3px;border-radius:100%;background:linear-gradient(90deg,transparent,var(--shen-blue),#d8faff,var(--shen-red),transparent);box-shadow:0 0 14px #5fdbe599}
+.pack-row{--accent:#4dff99;--glow:#1bdb6e70;--shade:#102c21;--ink:#08160f;display:flex;justify-content:center;gap:12px}
+.pack-row.trap{--accent:#ff548c;--glow:#ff175b66;--shade:#36111f;--ink:#1c0710}
+.gift-card.neutral{--accent:#ffda66;--glow:#ffc14566;--shade:#362915;--ink:#191307}
+.gift-card{position:relative;min-width:0;flex:0 0 calc((100% - 60px)/6);height:242px;border:2px solid #e4effb;border-radius:14px;padding:3px;background:linear-gradient(145deg,#f8fdff,#7d8999 24%,#e8f2ff 45%,#515b6e 73%,#eff7ff);box-shadow:0 0 9px #becfff40,inset 0 0 0 1px #ffffff75;color:var(--accent);text-align:center;isolation:isolate}
+.gift-card.gold{border-color:#ffe187;background:linear-gradient(145deg,#fff2bb,#a47b29 24%,#ffeb88 47%,#795312 73%,#ffe9a1);box-shadow:0 0 14px #ffcf554d,inset 0 0 0 1px #fff0b899}
+.card-face{position:relative;height:100%;overflow:hidden;border:1px solid #ffffff35;border-radius:9px;display:grid;grid-template-rows:24px 116px minmax(47px,1fr) 14px;gap:3px;align-items:center;justify-items:center;padding:5px 7px 7px;background:radial-gradient(ellipse at 50% 42%,var(--glow),transparent 72%),linear-gradient(var(--shade),var(--ink))}
+.card-face>:not(.card-rays):not(.card-foil){position:relative;z-index:2}
+.card-rays{position:absolute;width:390px;height:390px;left:calc(50% - 195px);top:-88px;opacity:.25;background:repeating-conic-gradient(from 8deg,#ffffffa0 0deg 7deg,transparent 7deg 25deg);mask-image:radial-gradient(circle,#000 1%,#0009 18%,transparent 58%);transform-origin:center;pointer-events:none}
+.card-foil{position:absolute;inset:-70% -110%;z-index:3;pointer-events:none;opacity:0;background:linear-gradient(110deg,transparent 37%,#ffffff0a 42%,#b0ffff47 48%,#ffb8f452 52%,#ffffff0a 59%,transparent 65%);transform:translateX(-50%)}
+.gift-card .category{align-self:center;border-radius:8px;padding:3px 12px;color:white;background:var(--accent);box-shadow:0 0 13px var(--glow);font-size:12px;line-height:1;font-weight:900;letter-spacing:.3px;text-shadow:0 1px 3px #000;max-width:90px}
+.gift-card .card-stars{position:absolute!important;right:4px;top:5px;font-size:9px;line-height:12px;letter-spacing:-1px;color:#fff2a7;text-shadow:0 0 5px #d69e13}
+.gift-card .art{display:grid;place-items:center;width:110px;height:110px;font-size:70px;filter:drop-shadow(0 3px 8px #0007)}
+.gift-card .social-art{display:block;width:104px;height:104px;overflow:visible;filter:drop-shadow(0 5px 8px #0005)}
+.gift-card img{display:block;width:104px;height:104px;object-fit:contain}
+.gift-card h2{font-size:17px;font-weight:900;line-height:1.14;margin:0;overflow-wrap:anywhere;text-transform:uppercase;text-shadow:0 0 8px var(--glow),0 2px 2px #000,-.5px -.5px 0 #fff5}
+.gift-card small{justify-self:end;color:var(--accent);font-size:10px;line-height:14px;font-weight:800;opacity:.85}
+.brand{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 330px minmax(0,1fr);align-items:center;gap:24px;height:90px;padding:2px 14px;isolation:isolate}
+.brand-mark{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;height:100%}
+.brand-mark::before{content:"";position:absolute;inset:-35px -32px;z-index:-1;opacity:.45;background:radial-gradient(ellipse at 20% 50%,#00dadd90,transparent 62%),radial-gradient(ellipse at 80% 50%,#ff3e4980,transparent 62%);filter:blur(9px)}
+.brand img{display:block;width:100%;height:auto;max-height:80px;object-fit:contain;filter:drop-shadow(0 0 8px #0009)}
+.brand-line{display:block;position:relative;height:4px;border-radius:10px;overflow:hidden;box-shadow:0 0 9px currentColor,0 0 22px currentColor}
+.brand-line.left{color:var(--shen-blue);background:linear-gradient(90deg,transparent,var(--shen-blue) 24%,#b8ffff)}
+.brand-line.right{color:var(--shen-red);background:linear-gradient(90deg,#ffd2d5,var(--shen-red) 76%,transparent)}
+.brand-line::after{content:"";position:absolute;top:-4px;bottom:-4px;width:55%;left:-65%;background:linear-gradient(90deg,transparent,#fff,transparent);opacity:.8}
+.animated .art{animation:gift-float 3.2s ease-in-out infinite;will-change:transform}
+.animated .card-rays{animation:card-rays 14s linear infinite;will-change:transform}
+.animated .card-foil{animation:card-foil 7s ease-in-out infinite;animation-delay:var(--foil-delay,0s);will-change:transform,opacity}
+.animated .brand-mark::before{animation:brand-glow 2.4s ease-in-out infinite}
+.animated .brand-line::after{animation:line-sweep 3.2s ease-in-out infinite}
+.animated .brand-line.right::after{animation-direction:reverse}
+.animated .gift-card.hit{animation:gift-hit 1.5s ease-out;z-index:4}
+.animated .gift-card.hit .card-face{box-shadow:inset 0 0 35px var(--glow)}
+#reaction{position:absolute;bottom:740px;left:90px;right:90px;text-align:center;color:#fff;background:#0d131eef;border:2px solid var(--shen-blue);border-right-color:var(--shen-red);border-radius:18px;padding:20px 30px;font-size:30px;font-weight:800;opacity:0;transform:translateY(16px);transition:opacity .2s,transform .25s;box-shadow:0 0 26px #00dadd30}
+#reaction.visible{opacity:1;transform:translateY(0)}
+.compact #pack{height:650px}.compact #cards{bottom:20px}.compact #reaction{bottom:580px;font-size:24px}
+.fixed *, .fixed *::before, .fixed *::after{animation:none!important;transition:none!important;will-change:auto!important}
+.fixed .card-foil{opacity:.1;transform:translateX(0)}
+@keyframes gift-float{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-15px) rotate(3deg)}}
+@keyframes card-rays{to{transform:rotate(360deg)}}
+@keyframes card-foil{0%,12%{transform:translateX(-45%);opacity:0}20%{opacity:.7}47%{transform:translateX(45%);opacity:.55}58%,100%{transform:translateX(45%);opacity:0}}
+@keyframes brand-glow{0%,100%{transform:scale(.9);opacity:.35}50%{transform:scale(1.12);opacity:.8}}
+@keyframes line-sweep{0%,20%{left:-65%;opacity:0}35%{opacity:.85}75%,100%{left:110%;opacity:0}}
+@keyframes gift-hit{0%,100%{transform:scale(1)}25%,55%{transform:scale(1.12);filter:brightness(1.4);box-shadow:0 0 32px var(--accent)}}
+
+.pack-pages{position:relative;display:grid;min-height:598px}
+.pack-page{grid-area:1/1;display:grid;grid-template-rows:242px 90px 242px;gap:12px;opacity:0;visibility:hidden;transition:opacity .6s ease,visibility 0s linear .6s}
+.pack-page.is-current{opacity:1;visibility:visible;transition-delay:0s}
+.pack-page>.pack-row.help{grid-row:1}.pack-page>.pack-row.trap{grid-row:3}
+.pack-pages>.brand{grid-area:1/1;align-self:center;z-index:1}
+
+.legacy #cards{border:0;border-radius:0;padding:0;background:none;box-shadow:none;display:block;gap:0;left:0;right:0}.legacy #cards::before{display:none}.legacy:not(.compact) #cards{inset:0;width:1080px;height:1920px}.legacy.compact #cards{bottom:20px}.legacy-pack-canvas{display:block;width:1080px;height:auto}
+
+/* Le chargement reste dans l’aperçu compact ; le LIVE garde le dernier rendu. */
+.pack-render-status{position:fixed;inset:0;z-index:20;display:grid;place-content:center;justify-items:center;gap:7px;background:#090b1370;color:#f1eafa;font-size:11px;line-height:1.4;text-align:center;padding:12px;pointer-events:none}
+.pack-render-status[hidden],body:not(.compact) .pack-render-status{display:none}
+.pack-render-status i{display:block;width:19px;height:19px;border:2px solid #b9a3df44;border-top-color:#27d9e5;border-right-color:#d65bc4;border-radius:50%;animation:pack-loading-spin .8s linear infinite!important}
+.pack-render-status[data-state=error] i{display:none}
+@keyframes pack-loading-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.pack-render-status i{animation:none!important}}

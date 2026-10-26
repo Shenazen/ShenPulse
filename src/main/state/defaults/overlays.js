@@ -127,6 +127,7 @@ function createDefaultOverlayConfigs() {
   };
   const wheels = createDefaultWheels();
   return {
+    gameInteractionOverlays: {},
     wheel: {
       ...positioned,
       schemaVersion: 11,

@@ -4,11 +4,11 @@
 const { external } = require("./builders");
 
 const EXTERNAL_GAMES = [
+  ...require("./shop-games"),
   require("./escape-from-duckov"),
   require("./crowd-control-games").BLUE_PRINCE,
   external("hollow-knight-silksong", "Hollow Knight: Silksong", "https://resources.crowdcontrol.live/images/HollowKnightSilksong/box.jpg", "Crowd Control + StreamToEarn"),
   external("hollow-knight", "Hollow Knight", "https://resources.crowdcontrol.live/images/HollowKnight/box.jpg", "Crowd Control + StreamToEarn"),
-  external("supermarket-simulator", "Supermarket Simulator", "https://resources.crowdcontrol.live/images/SupermarketSimulator/box.jpg", "Crowd Control + StreamToEarn"),
   require("./four-crowd-control-games").EGGING_ON,
   require("./crowd-control-games").BALATRO,
   external("celeste", "Celeste", "https://resources.crowdcontrol.live/images/Celeste/box.jpg", "Crowd Control"),

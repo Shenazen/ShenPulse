@@ -598,10 +598,13 @@ function render({ prepareHidden = false } = {}) {
     applyStudioLanguage(content);
     return;
   }
-  if (typeof disposeOverlayRuntimePreviews === "function") {
-    disposeOverlayRuntimePreviews(content);
+  const workspacePatched = renderedContentPage === currentPage && currentPage === "games" &&
+    typeof globalThis.ShenPulseGameWorkspace?.patchPage === "function" &&
+    globalThis.ShenPulseGameWorkspace.patchPage(content, renderedContentMarkup, nextContentMarkup);
+  if (!workspacePatched) {
+    if (typeof disposeOverlayRuntimePreviews === "function") disposeOverlayRuntimePreviews(content);
+    content.innerHTML = nextContentMarkup;
   }
-  content.innerHTML = nextContentMarkup;
   renderedContentPage = currentPage;
   renderedContentMarkup = nextContentMarkup;
   if (currentPage === "home" && typeof syncCreatorHomeLive === "function") syncCreatorHomeLive();
@@ -711,6 +714,7 @@ function applyGuestReadOnlyMode(root) {
     const action = control.dataset.action || "";
     const browsingControl =
       control.hasAttribute("data-navigate") ||
+      control.hasAttribute("data-game-tour-start") ||
       GUEST_BROWSING_ACTIONS.has(action);
     if (browsingControl) return;
     lockControl(

@@ -7,6 +7,11 @@
  * Il partage uniquement les contrats globaux documentés dans README.md.
  */
 
+function gameInstallationPlatformLabel(installation) {
+  const platform = installation?.platform || (installation?.edition === "gamepass" ? "xbox" : installation?.edition);
+  return { steam: "Steam", xbox: "Xbox / Game Pass" }[platform] || "";
+}
+
 function renderGameInstallation(pack, unlocked) {
   const userProvidedMod = pack.id === "find-the-needle-demo";
   if (userProvidedMod) return renderSteamDemoModInstallation(pack, unlocked);
@@ -23,6 +28,7 @@ function renderGameInstallation(pack, unlocked) {
   const automated = AUTOMATED_GAME_INSTALLERS.has(pack.id);
   const managedMinecraft = MINECRAFT_MODE_IDS.includes(pack.id);
   const installation = snapshot.state.game.installations?.[pack.id];
+  const platformLabel = gameInstallationPlatformLabel(installation);
   const updateAvailable = Boolean(
     installation &&
       pack.installerVersion &&
@@ -44,7 +50,7 @@ function renderGameInstallation(pack, unlocked) {
         : `Mettez à jour le pack ${pack.name} pour installer la dernière version du mod et de sa passerelle ShenPulse.`
     : installation
       ? "Tous les éléments nécessaires sont installés. Vous pouvez continuer la configuration."
-      : "ShenPulse recherche le jeu puis installe automatiquement tout ce qui est nécessaire. S’il ne le trouve pas, il vous demandera simplement de choisir son dossier.";
+      : "ShenPulse recherche le jeu puis installe les interactions. Si plusieurs installations sont détectées, vous choisissez celle à utiliser.";
   if (pack.id === "fallout-4") {
     statusText = "Module pour Steam 1.11.240 uniquement : les six DLC et F4SE 0.7.9 doivent être installés au préalable. Xbox / Game Pass est incompatible. Après installation, activez le module d’interactions installé par ShenPulse dans CREATIONS puis chargez une sauvegarde après la sortie de l’Abri 111.";
   }
@@ -61,7 +67,7 @@ function renderGameInstallation(pack, unlocked) {
       ? "Le serveur local est mémorisé et peut être relancé depuis ShenPulse."
       : "Acceptez le CLUF Minecraft puis laissez ShenPulse télécharger, préparer et démarrer le serveur."
     : installation || integrated
-      ? "ShenPulse a mémorisé cette installation."
+      ? (platformLabel ? `Interactions installées pour ${platformLabel}. Le bouton Lancer utilisera cette édition.` : "ShenPulse a mémorisé cette installation.")
       : "Fermez le jeu avant de commencer. ShenPulse s’occupe du reste et conserve une copie de sécurité si nécessaire.";
   return `<div class="game-simple-step">
     <section class="game-primary-panel game-install-simple">
@@ -71,7 +77,8 @@ function renderGameInstallation(pack, unlocked) {
         <span>${installation || integrated ? "✓" : "↓"}</span>
         <div>
           <strong>${installation || integrated ? "Prêt à continuer" : `Installer ${escapeHtml(pack.name)}`}</strong>
-          <p>${installationStateText}</p>
+          <p>${escapeHtml(installationStateText)}</p>
+          ${platformLabel ? `<small class="game-install-platform-path">${escapeHtml(installation.path)}</small>` : ""}
         </div>
       </div>
       <footer class="game-panel-actions">
@@ -271,9 +278,12 @@ function renderGameLaunch(pack, unlocked) {
     : managedMinecraft
     ? "Démarrez le serveur depuis ShenPulse, ouvrez Minecraft puis rejoignez 127.0.0.1. Les interactions du mode choisi seront déjà chargées."
     : "Lancez le jeu depuis ShenPulse. Une fois votre partie chargée, les interactions configurées seront prêtes à fonctionner.";
+  const platformLabel = gameInstallationPlatformLabel(installation);
   const launchButtonLabel = managedMinecraft
     ? "▶ Démarrer le serveur et activer"
-    : `▶ Lancer ${pack.name} et activer`;
+    : platformLabel
+      ? `▶ Lancer ${pack.name} (${platformLabel}) et activer`
+      : `▶ Lancer ${pack.name} et activer`;
   return `<div class="game-simple-step game-start-layout">
     <section class="game-primary-panel game-start-panel">
       <header><div><span>▶ DÉMARRAGE</span><h3>Tout est prêt pour jouer</h3><p>${escapeHtml(launchDescription)}</p></div></header>
@@ -482,7 +492,7 @@ function gameInteractionOverlayEntries(pack) {
       return {
         effectId: effect.id,
         isWinEffect: effect.actionType === "overlay.win-counter",
-        title: row.rule.gameInteraction?.title || effect.name,
+        title: ShenPulseGameInteractionTitles.title(row.rule, effect),
         trigger: triggerLabel(row.rule),
         triggerType,
         triggerKey:

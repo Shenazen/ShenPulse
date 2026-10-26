@@ -1,0 +1,347 @@
+{
+  "tool": "built-in image_gen",
+  "style": "stylized-concept",
+  "entries": [
+    {
+      "id": "supermarket-simulator-spawn-customers",
+      "code": "SpawnCustomers",
+      "name": "Invasion de clients",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: Three distinct friendly shoppers carrying red grocery baskets, stepping through the glass entrance of a neighborhood supermarket.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-spawn-customers.png",
+      "sha256": "c755fe87bd3455a093d52307a190a76b8ece1df24cfc1c747a8771d7fa97dadc"
+    },
+    {
+      "id": "supermarket-simulator-customer-rush",
+      "code": "CustomerRush",
+      "name": "Rush de clients",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A large energetic crowd rushing toward supermarket aisles with shopping carts, joyful shopping frenzy and flowing motion trails; visibly different from a small group entering.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-customer-rush.png",
+      "sha256": "debe855efe3862c58d405debaaec0fee1037bfb28f3dc7b2ef744de54ed8514c"
+    },
+    {
+      "id": "supermarket-simulator-give-money",
+      "code": "GiveMoney",
+      "name": "Donner de l'argent",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A generous hand placing bundles of green cash and gleaming coins into an open checkout till, grocery shelving behind.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-give-money.png",
+      "sha256": "99b82e4307fde8ff5e855b6d6d13e49b6d9715ca05bcb75b115e9216104fd4fa"
+    },
+    {
+      "id": "supermarket-simulator-take-money",
+      "code": "TakeMoney",
+      "name": "Voler de l'argent",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A gloved hand pulling banknotes away from an open supermarket cash drawer, with falling coins and an ominous violet glow.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-take-money.png",
+      "sha256": "4ed19cdf9e6709f91d5aff3c5c2f185cd4f4fb7762f01b896ff09ca4ffa1a78b"
+    },
+    {
+      "id": "supermarket-simulator-jackpot",
+      "code": "Jackpot",
+      "name": "JACKPOT !",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A supermarket checkout overflowing with gold coins and bundles of money, joyful confetti and a glowing jackpot treasure effect.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-jackpot.png",
+      "sha256": "016558b258624c1a8c55a66c57c167da3559a8bcde36734cffcb0292106a2085"
+    },
+    {
+      "id": "supermarket-simulator-bankrupt",
+      "code": "Bankrupt",
+      "name": "Faillite",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A completely empty supermarket cash register beside a cracked piggy bank, a last lonely coin and a worried store owner in an apron.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-bankrupt.png",
+      "sha256": "831a0f7b84ba7b9e63a0f0f6669a6076aba0062c20bc9d3caeaa6f539e1fbb9d"
+    },
+    {
+      "id": "supermarket-simulator-spawn-shoplifter",
+      "code": "SpawnShoplifter",
+      "name": "Voleur à l'étalage",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A sneaky shopper in a blue jacket concealing a food packet under their coat in a grocery aisle, a small shopping basket nearby; playful game depiction.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-spawn-shoplifter.png",
+      "sha256": "0b2ca6deebd85661a56646ac104a339fa866534cd4a51adc3149703448d31d6d"
+    },
+    {
+      "id": "supermarket-simulator-fill-shelves",
+      "code": "FillShelves",
+      "name": "Remplir les rayons",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A pristine fully stocked grocery shelf, colorful neatly aligned cans, cereal cartons and milk bottles; fresh green sparkle effect.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-fill-shelves.png",
+      "sha256": "90db231e4d178a435fd80a53d72bd3b1d6c0295492af0d53d2ef0e21721d6f62"
+    },
+    {
+      "id": "supermarket-simulator-speed-up-time",
+      "code": "SpeedUpTime",
+      "name": "Avancer de deux heures",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A large clock with blank dial and two luminous hands sweeping forward above a supermarket counter, clear passing-time motion arc, warm orange light.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-speed-up-time.png",
+      "sha256": "99d0547a00adf5fb571545cc88afff4bbd96b9c5488923da606e1074b824c9c8"
+    },
+    {
+      "id": "supermarket-simulator-max-level",
+      "code": "MaxLevel",
+      "name": "Niveau MAX",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A proud supermarket employee wearing an apron holding a large gold star trophy, radiant level-up glow and grocery store background.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-max-level.png",
+      "sha256": "69739d6a909b1b5d5504ae2aabbab0a5875aca07f6808e8f72d5d4770faaa4bf"
+    },
+    {
+      "id": "supermarket-simulator-spawn-trash",
+      "code": "SpawnTrash",
+      "name": "Poubelle party",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A comical heap of discarded grocery cartons, banana peels, crumpled packets and a toppled waste bin on the supermarket floor.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-spawn-trash.png",
+      "sha256": "5201e2c3cc49e7b730f6d540efc27dc586dd1800444d1f71a0b0643ad696d729"
+    },
+    {
+      "id": "supermarket-simulator-throw-item",
+      "code": "ThrowItem",
+      "name": "Lancer l'objet",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A single milk carton flying in a high arc across a supermarket aisle, a hand releasing it, a clear curved motion trail.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-throw-item.png",
+      "sha256": "59e237269b948a9e1292fb82780095edc16aaa0e8b06e421ca0f76076d9d3131"
+    },
+    {
+      "id": "supermarket-simulator-drop-all-items",
+      "code": "DropAllItems",
+      "name": "Tout lâcher",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A surprised store clerk letting go of multiple grocery boxes and shopping bags at once, products tumbling to the floor.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-drop-all-items.png",
+      "sha256": "ab7b70720275261851f923bd7d8c901d981c11757722da21f403265584b04b4c"
+    },
+    {
+      "id": "supermarket-simulator-empty-shelf",
+      "code": "EmptyShelf",
+      "name": "Vider un rayon",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A completely empty supermarket display shelf with vacant compartments and one fallen tin can on the floor, dramatic lonely lighting.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-empty-shelf.png",
+      "sha256": "df4b4b365ae1d7a2b4fee46eb5b1f94c55dec952f8c28c4f617d24f1984e6811"
+    },
+    {
+      "id": "supermarket-simulator-cart-chaos",
+      "code": "CartChaos",
+      "name": "Chaos total",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: Chaotic supermarket scene with overturned shopping trolley, crooked display racks and scattered cartons, dynamic spiraling motion.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-cart-chaos.png",
+      "sha256": "dfd91ef20f6831500062671d8894ddd3cd9beee0e72d8028ad6a805b70bc09a8"
+    },
+    {
+      "id": "supermarket-simulator-anti-chaos",
+      "code": "AntiChaos",
+      "name": "Grand rangement",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A broom and dustpan beside perfectly organized supermarket shelves, all cartons tidied into aligned stacks, clean blue sparkle effect.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-anti-chaos.png",
+      "sha256": "e81d15ffdf6ee87f4cb5ce0fd99e01d534e455eedb29fc3f2aaf8235ae1b76c7"
+    },
+    {
+      "id": "supermarket-simulator-randomize-prices",
+      "code": "RandomizePrices",
+      "name": "Prix fous",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: Colorful blank price tags swirling chaotically around grocery products and a price scanner, visually confusing retail pricing without any digits or words.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-randomize-prices.png",
+      "sha256": "c84c2488f96d125fcaf84df42d726ddb510cc288453af18e6242cd8fded9bb93"
+    },
+    {
+      "id": "supermarket-simulator-teleport",
+      "code": "Teleport",
+      "name": "Téléportation",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A glowing violet teleportation portal opening in the middle of a supermarket aisle, a grocery basket halfway through the portal.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-teleport.png",
+      "sha256": "54580de7e0a8043d9164a51dc315892562de43508b378fe474e9352d00bae744"
+    },
+    {
+      "id": "supermarket-simulator-invert-controls",
+      "code": "InvertControls",
+      "name": "Inverser les contrôles",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A game controller with opposing directional arrow symbols crossing over a supermarket floor, twisting reversed-control motion ribbons, no letters.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-invert-controls.png",
+      "sha256": "ba1eb5cfd860697d2899d622d96ba4de2d2f6fa2b45e5ab75d01cec0b7f97b65"
+    },
+    {
+      "id": "supermarket-simulator-speed-boost",
+      "code": "SpeedBoost",
+      "name": "Speed boost",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A supermarket employee in a teal apron sprinting with a grocery basket, vivid green speed streaks and fast running pose.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-speed-boost.png",
+      "sha256": "f2e791b7d22c363d397b93da7cb5b797274b63152042bdf7920018d2fc93f481"
+    },
+    {
+      "id": "supermarket-simulator-slow-motion",
+      "code": "SlowMotion",
+      "name": "Slow motion",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A single shopper and their grocery bag suspended in syrupy slow motion inside an amber hourglass-shaped time bubble in a supermarket.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-slow-motion.png",
+      "sha256": "b0a218d33ab2f29d25a26f23f3bfc6f0bb6d63bda56615699f5cf5079b4ab4f4"
+    },
+    {
+      "id": "supermarket-simulator-force-math",
+      "code": "ForceMath",
+      "name": "Calcul mental",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A supermarket cashier concentrating on a colorful abacus and counting coins at the till, floating wooden counting cubes, no numbers or text.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-force-math.png",
+      "sha256": "c121621a83f26db1380ad951a5e911a461c896cc27aae5f902dcdd56912edb88"
+    },
+    {
+      "id": "supermarket-simulator-teleport-outside",
+      "code": "TeleportOutside",
+      "name": "Éjecté dehors",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A surprised employee being gently propelled through the supermarket exit toward the sidewalk, groceries trailing behind in a comic arc, no injury.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-teleport-outside.png",
+      "sha256": "6b372441f09ae17d242a532d5b00943cb1e9952fb595b73a5b176065868097c4"
+    },
+    {
+      "id": "supermarket-simulator-open-store",
+      "code": "OpenStore",
+      "name": "Ouvrir le magasin",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A welcoming supermarket entrance with wide open glass doors, glowing green unlocked padlock and warm lit shelves inside; no written signage.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-open-store.png",
+      "sha256": "96089c83ac3223ba1703858dd0143f1f3f8c70fb10baae5e039ac159e4a0889d"
+    },
+    {
+      "id": "supermarket-simulator-close-store",
+      "code": "CloseStore",
+      "name": "Fermer le magasin",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A supermarket storefront with shutter fully closed, a large red locked padlock and cool evening light; no written signage.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-close-store.png",
+      "sha256": "d8e6f1dcbcc2527596d617f2204d16d5b60859f42b696072a8aca8b97712587c"
+    },
+    {
+      "id": "supermarket-simulator-lights-off",
+      "code": "LightsOff",
+      "name": "Coupure de courant",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A dark supermarket aisle during a power outage, unlit hanging bulb and a small flashlight beam illuminating shelves.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-lights-off.png",
+      "sha256": "aaf3257505f9f879f7378d493e2bc44dac4156e9101be7b886a71af0d0e595f4"
+    },
+    {
+      "id": "supermarket-simulator-deliver-products",
+      "code": "DeliverProducts",
+      "name": "Livraison surprise",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A small delivery van parked by a supermarket loading entrance with stacked food cartons, vegetables and milk crates.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-deliver-products.png",
+      "sha256": "580eb1f4fe8a69f1cc9894933494406781f34815889c149a1171583025fab3f4"
+    },
+    {
+      "id": "supermarket-simulator-change-f-o-v",
+      "code": "ChangeFOV",
+      "name": "FOV délirant",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: An exaggerated fisheye view down a supermarket aisle, curved shelves seen through a large camera lens, playful wide-angle distortion.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-change-f-o-v.png",
+      "sha256": "59f074ecb539737aa41fb45d43312fd35a026056b2f2697f5faeceda458bb0e7"
+    },
+    {
+      "id": "supermarket-simulator-flip-camera",
+      "code": "FlipCamera",
+      "name": "Caméra retournée",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: An upside-down supermarket interior with the checkout and shelves inverted, a grocery basket rotating in the foreground, unmistakable flipped camera view.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-flip-camera.png",
+      "sha256": "98bb406237489d1f4e6e6b23bf553c8bbd51cfb46e779864d4b355c776ba14c5"
+    },
+    {
+      "id": "supermarket-simulator-game-speed-up",
+      "code": "GameSpeedUp",
+      "name": "Accélérer le jeu",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A small shopping trolley racing past a large golden fast-spinning clock in a supermarket, bright orange accelerating time trails, no clock numerals.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-game-speed-up.png",
+      "sha256": "f75b378660e04a750c5fc22b01dca7d30286e0bd57fc090f459beacc1fe0994e"
+    },
+    {
+      "id": "supermarket-simulator-game-slow-down",
+      "code": "GameSlowDown",
+      "name": "Ralentir le jeu",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A frosty blue stopwatch freezing a supermarket checkout in time, suspended ice-blue grocery cartons and cold slow-time glow, no digits.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-game-slow-down.png",
+      "sha256": "d42889a002ca1165d64cbf410a0d25ab64923aef900d2ac0474080c79c10ecd3"
+    },
+    {
+      "id": "supermarket-simulator-change-language",
+      "code": "ChangeLanguage",
+      "name": "Changement de langue",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A supermarket cashier beside a small globe and several differently colored empty speech bubbles, language-switching concept, no letters or flags.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-change-language.png",
+      "sha256": "2112e4d2ed26715aeefe41ef5d61be2c4c37349a5359ee96987d1ac217123a2a"
+    },
+    {
+      "id": "supermarket-simulator-hire-employees",
+      "code": "HireEmployees",
+      "name": "Embaucher des employés",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: Two cheerful supermarket employees in contrasting aprons shaking hands beside a spare uniform, welcoming a new colleague.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-hire-employees.png",
+      "sha256": "5f68e573a1bbb20baf760b1131a747c53fc44db2df9c2c37469c2b8080e92b7f"
+    },
+    {
+      "id": "supermarket-simulator-fire-all-employees",
+      "code": "FireAllEmployees",
+      "name": "Renvoyer les employés",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A line of former supermarket employees leaving through the exit carrying their folded aprons, empty uniform hooks left behind, bittersweet comic scene.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-fire-all-employees.png",
+      "sha256": "6a0519bedc8509d47b67fbf0a877bc3df7c77c5d213cd64b463983ac04430a28"
+    },
+    {
+      "id": "supermarket-simulator-unlock-all-licenses",
+      "code": "UnlockAllLicenses",
+      "name": "Débloquer les licences",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A fan of retail permit documents with blank writing areas and embossed gold approval seals above a supermarket counter, unlocked license theme.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-unlock-all-licenses.png",
+      "sha256": "c55a4a5a8924088615172c8b1aa18d270d71674c0e7c1677af53352ffcf538df"
+    },
+    {
+      "id": "supermarket-simulator-upgrade-store",
+      "code": "UpgradeStore",
+      "name": "Agrandir le magasin",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A miniature supermarket building expanding into a larger store on a glowing blueprint grid, new shelves unfolding to the side, store upgrade theme.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-upgrade-store.png",
+      "sha256": "7deff4fa9c45f9664e514ff0ab8a99930cf1c9ef9c7acfdf8f18d05539d7f289"
+    },
+    {
+      "id": "supermarket-simulator-clear-inventory",
+      "code": "ClearInventory",
+      "name": "Supprimer le stock",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A stack of inventory boxes disappearing into sparkling dust on an otherwise empty stockroom pallet, stock removal theme.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-clear-inventory.png",
+      "sha256": "c61d9d20b36c55ae066aae4f940735a419fcdab915af29f6c8c704ac83ec1120"
+    },
+    {
+      "id": "supermarket-simulator-auto-discount",
+      "code": "AutoDiscount",
+      "name": "Soldes générales",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A colorful supermarket display of shopping bags and groceries covered with bright red blank discount tags and ribbons, festive discount sale theme.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-auto-discount.png",
+      "sha256": "0bcc2c81c68ca073aafe7de8200de89a231c52a4375fb86f23eb0b1ddb6c60d0"
+    },
+    {
+      "id": "supermarket-simulator-finish-day",
+      "code": "FinishDay",
+      "name": "Terminer la journée",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A quiet supermarket at sunset, cashier closing the till and lowering a shutter, warm end-of-day light and neatly parked trolleys.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-finish-day.png",
+      "sha256": "d88081cc7db05a71d3c2e4056932c84bce521753a98139114d304682900bd8e3"
+    },
+    {
+      "id": "supermarket-simulator-deliver-furniture",
+      "code": "DeliverFurniture",
+      "name": "Livraison de meubles",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A delivery truck unloading a checkout counter, flat-packed shelving, a shop refrigerator and furniture boxes by a supermarket loading bay.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-deliver-furniture.png",
+      "sha256": "ecab0a92e9864a92ff97ae7bcd38095c10681ac34e0a043c5e3eaeb25c043752"
+    },
+    {
+      "id": "supermarket-simulator-reset-game",
+      "code": "ResetGame",
+      "name": "Recharger la partie",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A miniature supermarket storefront inside a luminous blue circular rewind arrow, a glowing saved-game storage cube, reload-the-save concept.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-reset-game.png",
+      "sha256": "b7407f12a86a640d4619e6df5e59c53dcbf6329dfd3ba870c97bba590e803ac0"
+    },
+    {
+      "id": "supermarket-simulator-reset-effects",
+      "code": "ResetEffects",
+      "name": "Rétablir les effets temporaires",
+      "prompt": "Use case: stylized-concept. Asset: one square interaction illustration for the Supermarket Simulator game page. Polished stylized 3D retail-simulation game art, crisp readable silhouettes and tactile materials, soft studio lighting, colorful generic grocery products and subtle dark plum supermarket surroundings. One clear central visual idea, generous safe margins, suitable as a small app-card image. The image must be visually distinct from other interactions. No written text, no letters, no digits, no logos, no watermarks. Not a UI screenshot. Square composition. Subject: A magic reset wand clearing red distortion rings away from a game controller and restoring a neat supermarket aisle, calming cyan restorative glow.",
+      "file": "resources/overlays/media/game-interactions/supermarket-simulator/supermarket-simulator-reset-effects.png",
+      "sha256": "09c1ac25b9e2f0d6be76303cd35c055d44fb1d46e53bd388c91c7fd92ff8856d"
+    }
+  ],
+  "thumbnail": {
+    "width": 384,
+    "height": 384,
+    "originalsRetained": true
+  }
+}

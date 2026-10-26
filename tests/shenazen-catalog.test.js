@@ -44,11 +44,11 @@ const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 53);
-  assert.equal(new Set(games.map((game) => game.id)).size, 53);
+  assert.equal(games.length, 56);
+  assert.equal(new Set(games.map((game) => game.id)).size, 56);
   assert.equal(
     games.filter((game) => !["fortnite", "thiercelieux"].includes(game.id)).length,
-    51
+    54
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(
@@ -415,9 +415,11 @@ test("restaure les 32 interactions Cult of the Lamb et leurs visuels", () => {
   );
 });
 
-test("limite la galerie aux 17 overlays activés et conserve leurs réglages", () => {
+test("conserve les 17 configurations d’overlays et isole les présentations des packs de jeux", () => {
   const configs = createDefaultOverlayConfigs();
-  assert.equal(Object.keys(configs).length, 17);
+  const { gameInteractionOverlays, ...overlayConfigs } = configs;
+  assert.equal(Object.keys(overlayConfigs).length, 17);
+  assert.deepEqual(gameInteractionOverlays, {});
   assert.deepEqual(
     Object.keys(configs).filter((id) => id.startsWith("match")),
     [

@@ -1,0 +1,7 @@
+-- ShenPulse: Hogwarts Legacy Game Pass. All matches resolve to the same native singleton.
+function Register()
+    return '48 8B 0D ?? ?? ?? ?? 33 DB 48 85 C9 75 2F 33 D2 B9 F8 00 00 00 E8 ?? ?? ?? ?? 48 85 C0 74 0B 48 8B C8 E8 ?? ?? ?? ?? 48 8B D8 48 89 1D ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B 0D'
+end
+function OnMatchFound(address)
+    return address + 7 + DerefToInt32(address + 3)
+end

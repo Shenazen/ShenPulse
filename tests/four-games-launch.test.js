@@ -29,7 +29,7 @@ test("le lancement DBD réutilise le processus GDK ouvert et attend sa vraie fen
     gameId: "dead-by-daylight", manifest: installerForGame("dead-by-daylight"), installation: { path: target },
     shell: { openPath: async file => { calls.push(["open", file]); return ""; } }, assertAccess() {},
     waitForWindowsProcessWindow: async (...args) => calls.push(["wait", ...args]),
-    findRunning: async names => { assert.ok(names.includes("DeadByDaylight-WinGDK-Shipping")); return { ProcessId: 42 }; }
+    findRunning: async names => { assert.ok(names.includes("DeadByDaylight-WinGDK-Shipping")); return { ProcessId: 42, ExecutablePath: executable }; }
   };
   const result = await launchExternalGame(options);
   assert.equal(result.alreadyRunning, true);

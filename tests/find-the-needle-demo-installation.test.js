@@ -68,6 +68,7 @@ function discoveryFixture({ installedAppId = "5165210", executable = "FindTheNee
     module,
     process: { platform: "win32", env: { ProgramFiles: programFiles } },
     require(id) {
+      if (id === "./installation-platform") return require("../src/main/game-runtime/installation-platform");
       if (id === "node:fs") return fakeFs;
       if (id === "node:path") return path;
       if (id === "./processes") return { runProcess: async () => "" };
