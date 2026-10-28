@@ -22,7 +22,10 @@ Voir les [notes 2.1.0](releases/2.1.0.fr.md) et le
 - Mise à jour **2.0.5 → 2.1.0** : réussie avec conservation des données de test.
 - Windows App Certification Kit **10.0.26100.7705** : **PASS**, version
   **2.1.0.0**, type Centennial, `PARTIAL_RUN=FALSE`, rapport du
-  28 octobre 2026 à 18:50:54. L’élévation Windows a été acceptée par le propriétaire.
+  28 octobre 2026 à 18:50:54. Tous les contrôles obligatoires réussissent. Le contrôle
+  facultatif « Fichiers exécutables bloqués » signale les références de lancement
+  de processus de l’application de bureau ; il ne change pas le résultat global PASS.
+  L’élévation Windows a été acceptée par le propriétaire.
 - Identité `ShenPulse.ShenPulse`, éditeur
   `CN=F6F04997-3A7F-4EC3-8492-5BB9FCC0FE46`, architecture x64.
   Le contenu AppX embarqué dans l’appxupload correspond exactement au fichier contrôlé.
@@ -73,10 +76,37 @@ ne réalisent aucun achat. Le déploiement statique ne nécessite pas de relance
 
 ## Publication
 
-Qualification terminée. La soumission publique Store 12 est en préparation avec
-les nouvelles captures et les textes 2.1.0 ; aucun vol privé n’est créé.
-Le résultat des déploiements, de la soumission et des téléchargements publics
-sera ajouté après leur réalisation effective.
+- Commit de release **d06da10be427a246f22c47fb2655bceb5a67ca47** poussé sur
+  `origin/main` ; tag annoté **v2.1.0** poussé sur le même commit qualifié.
+- Site et installateur publiés sur **https://www.shenpulse.leuridan.fr**.
+  Les 31 fichiers statiques et l’EXE ont été vérifiés sur le serveur. Depuis
+  Internet : accueil, documentation et pages légales en HTTP 200 ; modules
+  principaux et deux captures identiques aux fichiers locaux.
+- Téléchargement public complet de l’EXE : **738 895 573 octets** et SHA-256
+  **425905b7e9fe5b91da84445e8a7c2f8eb77ec03002350b4f2c0065b69af7ea7f**.
+  L’EXE 2.0.5 reste téléchargeable (HTTP 200, 637 655 578 octets).
+- Sauvegarde de la vitrine conservée sur le VPS avant déploiement ; backend,
+  secrets, jeux privés, anciens installateurs et processus PM2 préservés.
+- Firebase : règles Realtime Database et hébergement des overlays déployés
+  sur `shenazenoverlay` / `shenpulse-overlays`. Relais testé après déploiement.
+  Index, game-pack et game-wins publics en HTTP 200 et identiques aux fichiers
+  locaux ; lecture anonyme de `/users.json` refusée (HTTP 401).
+- **Store : soumission publique 12 (1152921505702258218) envoyée le 28 octobre
+  2026**, paquet 2.1.0.0 validé. Le portail confirme « en cours de certification »,
+  prétraitement démarré. Publication automatique après validation Microsoft,
+  sur les 240 marchés proposés, application gratuite, publique et détectable.
+  **Aucun vol privé**. La version Store 2.1.0 n’est pas encore déclarée disponible.
+- Quatre captures 1920 × 1080 et leurs légendes ont été sauvegardées et relues.
+  Description, tarifs publics/agence, nouveautés et notes techniques à jour.
+  Classification IARC/PEGI 3 et déclaration d’achats externes héritées conservées.
+  Les textes publiés ne mentionnent aucun fournisseur d’interactions concurrent.
+- ShenPulse 2.1.0 qualifié relancé sur le PC ; compte, profil et associations
+  visibles conservés.
+- Annonce publiée dans le salon Discord demandé :
+  [annonce 2.1.0](https://discord.com/channels/1561730092995051671/1561731045949313327/1565065087490719744).
+  Elle distingue le téléchargement EXE disponible et la certification Store en cours.
+- Captures de preuve locales : confirmation Google, état Store et annonce Discord
+  conservés dans le dossier temporaire du poste. Aucun secret ni journal ajouté à Git.
 
 Les journaux de travail et rapports détaillés restent ignorés sous
 `.artifacts/release-2.1.0/`, `.artifacts/google-auth/` et `.artifacts/wack-2.1.0.xml`.
