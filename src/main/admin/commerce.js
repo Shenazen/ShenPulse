@@ -110,14 +110,18 @@ function normalizeTrialRequest(value, ownerId) {
     value.email || value.beneficiaryEmail || value.recipientEmail
   );
   const games = Boolean(value.games);
-  const subscription = Boolean(value.subscription);
+  const subscription = value.subscription === true || value.subscription === "true";
+  const subscriptionTier = subscription ? String(value.subscriptionTier || "pro") : "";
+  if (subscription && !["pro", "premium"].includes(subscriptionTier)) {
+    throw new Error("Choisissez un accès Pro ou Premium.");
+  }
   if (!email) {
     throw new Error(
       "Renseignez l’adresse e-mail du compte ShenPulse bénéficiaire."
     );
   }
   if (!games && !subscription) {
-    throw new Error("Choisissez au moins l’abonnement Pro ou des jeux.");
+    throw new Error("Choisissez un accès Pro, Premium ou des jeux.");
   }
   const gameIds = Array.from(
     new Set(
@@ -131,6 +135,7 @@ function normalizeTrialRequest(value, ownerId) {
     games,
     ownerId,
     subscription,
+    subscriptionTier,
     email,
     beneficiaryEmail: email
   };

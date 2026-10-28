@@ -292,7 +292,7 @@ content.addEventListener("submit", async (event) => {
         await api.admin.grantTrial({
           email: data.get("email"),
           days: Number(data.get("days") || 7),
-          subscription: data.has("subscription"),
+          ...adminTrialSubscriptionFromForm(data),
           games,
           gameIds: games ? adminTrialGameIdsFromForm(data) : []
         });

@@ -103,8 +103,29 @@ class MatchesService {
           openObserved: runtime.openObserved === true, ownerTeams: teamContext(runtime) } : null;
     }, timer: (key, ms, callback) => this.timer(`bonus:${key}`, ms, callback), clearTimer: (key) => {
       const timerKey = `bonus:${key}`; if (this.timers.has(timerKey)) this.clearTimeoutImpl(this.timers.get(timerKey)); this.timers.delete(timerKey);
-    }, onChange: (multiplier) => this.mutate((next) => { next.matchSession.multiplier = multiplier; }),
+    }, onChange: (multiplier) => this.mutate((next) => {
+      next.matchSession.multiplier = multiplier; next.matchSession.multiplierObservation = null;
+    }),
+    onObservation: (observation) => this.observeMultiplier(observation),
     onStart: (multiplier, bonusKey) => this.fireMoment(`multiplierX${multiplier}`, undefined, { bonusKey }), publish: () => this.publish() });
+  }
+  /** A short display freshness window, not a guessed TikTok bonus duration. */
+  observeMultiplier(observation) {
+    const state = this.state(), runtime = state.matchSession, previous = runtime?.multiplierObservation;
+    if (previous?.observedAtMs >= observation.observedAtMs) return;
+    const identity = this.identity, battleId = runtime.battleId;
+    const expiresAtMs = Math.min(this.now() + 6000, observation.observedAtMs + 6000, runtime.endsAtMs);
+    if (expiresAtMs <= this.now()) return;
+    const evidence = { ...observation, expiresAtMs };
+    this.mutate((next) => { next.matchSession.multiplierObservation = evidence; });
+    this.timer("gift-display", expiresAtMs - this.now(), () => {
+      const current = this.state(), saved = current.matchSession?.multiplierObservation;
+      if (this.identity !== identity || signature(scope(current)) !== identity ||
+        signature(current.matchSession?.scope) !== identity || current.matchSession?.battleId !== battleId ||
+        saved?.observedAtMs !== evidence.observedAtMs || saved?.expiresAtMs !== expiresAtMs) return;
+      this.mutate((next) => { next.matchSession.multiplierObservation = null; }); this.publish();
+    });
+    this.publish();
   }
   state() { return readState(this.store, PATHS); }
   status() {
@@ -121,7 +142,7 @@ class MatchesService {
   disconnect() {
     this.reset();
     try { assertProFeatureAccess(this.store, "matches"); } catch { return; }
-    this.mutate((next) => { if (next.matchSession?.status === "running") next.matchSession.status = "disconnected"; if (next.matchSession) next.matchSession.multiplier = 1; }); this.publish();
+    this.mutate((next) => { if (next.matchSession?.status === "running") next.matchSession.status = "disconnected"; if (next.matchSession) { next.matchSession.multiplier = 1; next.matchSession.multiplierObservation = null; } }); this.publish();
   }
   mutate(callback, durable = false) {
     const operation = durable || typeof this.store.mutateRuntime !== "function" ? "mutate" : "mutateRuntime";
@@ -354,10 +375,10 @@ class MatchesService {
       }
       if (after?.difference === 0 && runtime.status === "running") moments.push("tieEnd");
       runtime.lastEventAtMs = input.receivedAtMs || this.now();
-      if (input.phase === "cancel") { runtime.status = "cancelled"; runtime.multiplier = 1; }
+      if (input.phase === "cancel") { runtime.status = "cancelled"; runtime.multiplier = 1; runtime.multiplierObservation = null; }
       if (input.phase === "end") {
         runtime.status = "finished";
-        runtime.multiplier = 1;
+        runtime.multiplier = 1; runtime.multiplierObservation = null;
         runtime.endedAtMs = this.now();
         // Une fin muette ne transforme jamais les scores précédents en
         // résultat final. Seul le paquet END courant constitue une preuve.

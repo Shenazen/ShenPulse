@@ -3,6 +3,7 @@
 /** Profils, connexions et entités de l’espace utilisateur.
  * Les canaux sont toujours enregistrés par le garde d’accès central injecté.
  */
+const { songRequestCommandKey } = require("../spotify/music-command-links");
 const { assertCreatorCapacity } = require("../creator-access");
 const { id, safeString } = require("../utils");
 const { sanitizeEntity, cleanTikTokUsername } = require("./sanitizers");
@@ -65,7 +66,7 @@ function registerWorkspaceIpc({ handle, core, store, accountService = null }) {
       if (entity.enabled !== false) {
         const executor = core.liveEventActions?.commandExecutor;
         if (!executor) throw new Error("Le moteur des commandes n’est pas disponible.");
-        executor.validateTargets(entity);
+        if (!songRequestCommandKey(entity)) executor.validateTargets(entity);
       }
     }
     assertCreatorCapacity(store.getState(), collection, entity);

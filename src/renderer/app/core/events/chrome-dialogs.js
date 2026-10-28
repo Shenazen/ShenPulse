@@ -99,6 +99,7 @@ gameSessionStop.addEventListener("click", async () => {
 tiktokUsernameInput.addEventListener("input", () => {
   creatorTikTokDraftDirty = true;
   clearCreatorTikTokError();
+  if(typeof scheduleAgencyIdentitySync==="function")scheduleAgencyIdentitySync();
 });
 tiktokUsernameInput.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;

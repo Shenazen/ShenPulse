@@ -22,7 +22,7 @@ function canAccessFeature(id) {
   // Le stockage partagé ne dépend ni d'un abonnement ni d'un ancien flag admin.
   // Il reste fermé aux visiteurs sans compte, comme les canaux d'import IPC.
   if (visibilityTools.isSharedMediaFeature(id)) return isAccountAuthenticated();
-  if (id === "irl.shelly" && (!isAccountAuthenticated() || !hasProAccess() ||
+  if (id === "irl.shelly" && (!isAccountAuthenticated() || !ShenPulseProAccess.hasPremiumAccess(snapshot?.state) ||
       !canAccessCatalogItem("navigation", "irl"))) return false;
   return canAccessCatalogItem("features", id);
 }
@@ -117,7 +117,7 @@ function canDisplayPage(page) {
 
 function canAccessPage(page) {
   return canDisplayPage(page) && (!ShenPulseProAccess.requiresProSection(page.id) ||
-    isAccountAuthenticated() && hasProAccess());
+    isAccountAuthenticated() && ShenPulseProAccess.hasSectionAccess(snapshot?.state, page.id));
 }
 
 /** Un lien Pro verrouillé ouvre seulement les offres ; aucun paiement ni
@@ -127,8 +127,9 @@ function showProNavigationOffers(pageId) {
   const canonicalId = { live: "dashboard", rules: "actions", sounds: "voice", studio: "games" }[pageId] || pageId;
   const page = pages.find((entry) => entry.id === canonicalId);
   if (!page || !canDisplayPage(page) || !ShenPulseProAccess.requiresProSection(canonicalId) ||
-      isAccountAuthenticated() && hasProAccess()) return false;
+      isAccountAuthenticated() && ShenPulseProAccess.hasSectionAccess(snapshot?.state, canonicalId)) return false;
   if (canNavigateTo("membership")) openMembershipPopup();
+  else if (ShenPulseProAccess.requiredSectionTier(canonicalId) === "premium") toast("Abonnement Premium requis", "Machines IRL nécessite un abonnement Premium actif.", true);
   else toast("Abonnement Pro requis", "Cette rubrique nécessite un abonnement Pro ou Premium actif.", true);
   return true;
 }
@@ -200,6 +201,14 @@ function canNavigateTo(pageId) {
   return canAccessPage(pages.find((page) => page.id === pageId));
 }
 
+function navigationSubscriptionBadge(pageId) {
+  const tier=ShenPulseProAccess.requiredSectionTier(pageId);
+  if(!tier)return "";
+  return tier==="premium"
+    ? '<span class="nav-pro-badge nav-premium-badge" title="Réservé à Premium">PREMIUM</span>'
+    : '<span class="nav-pro-badge" title="Disponible dès Pro · Premium inclus">PRO</span>';
+}
+
 function renderNavigation() {
   const entries = visibleNavigationEntries();
   const promotion = typeof renderCreatorSidebarPromotion === "function" ? renderCreatorSidebarPromotion() : "";
@@ -215,10 +224,10 @@ function renderNavigation() {
       .map((page) => {
         if (page.section) return `<div class="nav-section">${escapeHtml(page.section)}</div>`;
         return `
-          <button class="nav-item" data-navigate="${page.id}" ${ShenPulseProAccess.requiresProSection(page.id) ? 'data-pro-required="true"' : ""}>
+          <button class="nav-item" data-navigate="${page.id}" ${ShenPulseProAccess.requiresProSection(page.id) ? 'data-pro-required="true"' : ""} ${ShenPulseProAccess.requiredSectionTier(page.id) === "premium" ? 'data-premium-required="true"' : ""}>
             <span class="nav-icon">${navigationIcon(page.id)}</span>
             <span class="nav-label">${escapeHtml(page.label)}</span>
-            <span class="nav-meta">${ShenPulseProAccess.requiresProSection(page.id) ? '<span class="nav-pro-badge" title="Disponible dès Pro · Premium inclus">PRO</span>' : ""}</span>
+            <span class="nav-meta">${navigationSubscriptionBadge(page.id)}</span>
           </button>`;
       })
       .join("") + promotion;

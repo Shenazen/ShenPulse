@@ -117,7 +117,7 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     assert.equal(navigation.querySelectorAll(".nav-pro-badge").length, expectedProEntries.length);
     for (const id of expectedProEntries) {
       const metadata = navigation.querySelector(`[data-navigate="${id}"] .nav-meta`);
-      assert.equal(metadata.lastElementChild.className, "nav-pro-badge", `Le badge Pro de ${id} termine la ligne.`);
+      assert.equal(metadata.lastElementChild.classList.contains("nav-pro-badge"), true, `Le badge Pro de ${id} termine la ligne.`);
       const count = metadata.querySelector(".nav-count");
       if (count) assert.equal(metadata.firstElementChild, count, `Le compteur de ${id} précède le badge Pro.`);
     }

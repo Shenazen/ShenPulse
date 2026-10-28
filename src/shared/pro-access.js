@@ -32,5 +32,18 @@
 
   function requiresProSection(id) { return PRO_SECTIONS.includes(String(id || "")); }
 
-  return Object.freeze({ hasProAccess, commerceExpiryMs, PRO_SECTIONS, requiresProSection });
+  function hasPremiumAccess(state, nowMs = Date.now()) {
+    return state?.commerce?.subscription?.tier === "premium" && hasProAccess(state, nowMs);
+  }
+
+  function requiredSectionTier(id) {
+    return String(id || "") === "irl" ? "premium" : requiresProSection(id) ? "pro" : "";
+  }
+
+  function hasSectionAccess(state, id, nowMs = Date.now()) {
+    const tier = requiredSectionTier(id);
+    return tier === "premium" ? hasPremiumAccess(state, nowMs) : tier === "pro" ? hasProAccess(state, nowMs) : true;
+  }
+
+  return Object.freeze({ hasProAccess, hasPremiumAccess, hasSectionAccess, requiredSectionTier, commerceExpiryMs, PRO_SECTIONS, requiresProSection });
 });

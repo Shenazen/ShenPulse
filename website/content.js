@@ -137,7 +137,7 @@ export const APP_TABS = [
       ['Contrôles directs', 'Allumer, éteindre, basculer et impulsions temporisées agissent réellement sur les appareils.'],
       ['Gestion', 'Renomme ou retire un appareil après vérification de la cible.']
     ],
-    tips: ['Un accès Pro ou Premium actif est requis, y compris pour les tests.', 'Les prises restent associées au compte ; les règles d’interaction appartiennent au profil.', 'Utilise uniquement des appareils et charges électriques compatibles, sans dispositif dangereux.']
+    tips: ['Un accès Premium actif est requis, y compris pour les tests.', 'Les prises restent associées au compte ; les règles d’interaction appartiennent au profil.', 'Utilise uniquement des appareils et charges électriques compatibles, sans dispositif dangereux.']
   },
   {
     id: 'commandes',
@@ -179,7 +179,7 @@ export const APP_TABS = [
       ['Choisir une offre', 'Compare les prix et avantages affichés dans l’application. Le bouton de souscription ouvre PayPal et le retour validé synchronise l’accès.'],
       ['Accès Premium offert', 'Le plan Premium peut attribuer un accès Pro à un autre compte selon les conditions affichées.'],
       ['Jeux achetés', 'Les droits individuels se synchronisent avec le compte ShenPulse ; certains modules restent des achats distincts de l’abonnement.'],
-      ['Accès Pro', 'Jeux vidéo, Machines IRL, Commandes et Matchs nécessitent au moins Pro. Une restriction spécifique affichée dans l’application reste applicable.']
+      ['Accès Pro', 'Jeux vidéo, Commandes et Matchs nécessitent au moins Pro. Machines IRL est réservé à Premium. Une restriction spécifique affichée dans l’application reste applicable.']
     ],
     tips: ['Effectue l’achat uniquement depuis l’application.', 'Après paiement, laisse ShenPulse terminer la synchronisation.']
   },
@@ -229,7 +229,7 @@ export const ACTION_TYPES = [
   ['Requête HTTP', 'Appelle une URL avec méthode, délai, en-têtes et corps JSON.'],
   ['Message WebSocket', 'Envoie un objet JSON à la connexion choisie.'],
   ['Spotify', 'Recherche, met en file, lit, met en pause, passe au titre suivant ou règle le volume.'],
-  ['Prise PlugPlus', 'Commande l’appareil IRL choisi, avec l’opération et la durée autorisées. Pro ou Premium est requis.'],
+  ['Prise PlugPlus', 'Commande l’appareil IRL choisi, avec l’opération et la durée autorisées. Premium est requis.'],
   ['Raccourci clavier', 'Simule la combinaison choisie uniquement si l’autorisation locale de simulation de touches est déjà active.'],
   ['Ouvrir une URL', 'Ouvre une adresse explicite dans le navigateur par défaut.'],
   ['Délai', 'Attend le nombre de millisecondes indiqué avant l’action suivante.']
@@ -473,7 +473,7 @@ export const POPUP_GROUPS = [
     fields: [
       ['Offre et prix', 'Lis les accès, le tarif et les conditions effectivement affichés pour ton compte.'],
       ['Souscrire', 'Le choix d’une offre ouvre le parcours PayPal autorisé. Ne ferme pas ShenPulse avant la confirmation du retour.'],
-      ['État de l’accès', 'L’offre active apparaît sous le nom du compte. Jeux vidéo, Machines IRL, Commandes et Matchs exigent Pro ou Premium.'],
+      ['État de l’accès', 'L’offre active apparaît sous le nom du compte. Jeux vidéo, Commandes et Matchs exigent Pro ou Premium. Machines IRL est réservé à Premium.'],
       ['Renouvellement', 'Consulte les informations et les changements programmés disponibles dans Abonnement.']
     ]
   },

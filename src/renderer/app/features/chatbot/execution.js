@@ -6,6 +6,7 @@
  * Les cibles viennent exclusivement du compte et du profil actuellement visibles.
  */
 const CREATOR_COMMAND_MUSIC_LABELS = Object.freeze({
+  requests_add: "Demander un titre (Song Requests)", requests_skip: "Passer une demande (Song Requests)", requests_current: "Titre en cours (Song Requests)", requests_list: "Voir les demandes (Song Requests)",
   next: "Passer au titre suivant", previous: "Revenir au titre précédent", play: "Lancer / reprendre la musique", pause: "Mettre la musique en pause",
   queue: "Ajouter un titre à la file", play_track: "Choisir et jouer un titre", play_playlist: "Lancer une playlist", volume: "Régler le volume"
 });

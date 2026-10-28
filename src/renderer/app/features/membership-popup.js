@@ -98,7 +98,7 @@ function membershipPopupMarkup(model) {
         ${membershipPopupPlanButton(plan, model)}
       </article>`).join("")}
     </div>
-    <footer class="membership-popup-footer"><span aria-hidden="true">◇</span><p>Jeux vidéo, Interactions IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Les modules vendus séparément exigent aussi leur achat ou un essai produit actif.</p></footer>
+    <footer class="membership-popup-footer"><span aria-hidden="true">◇</span><p>Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Machines IRL est réservé à Premium. Les modules vendus séparément exigent aussi leur achat ou un essai produit actif.</p></footer>
   </div>`;
 }
 

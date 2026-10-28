@@ -156,3 +156,106 @@ test('RTDB à cache froid : une branche existante est chargée avant la transact
  await service.reviewAgency({},{agencyId:'a',status:'approved'});assert.equal(state.agencies.a.status,'approved');assert.equal(listeners,0);
  await assert.rejects(service.reviewAgency({},{agencyId:'missing',status:'approved'}),{statusCode:404});assert.equal(listeners,0);
 });
+
+test('fiche en attente : logo et bannière réservés au directeur et à l’administration',async()=>{
+ const f=await fixture();
+ await f.service.save({uid:'director'},{name:'Agence privée',description:'Présentation encore en attente.',logoUrl:'https://example.invalid/logo.png',bannerUrl:'https://example.invalid/banner.jpg'});
+ const own=(await f.service.dashboard({uid:'director'})).ownAgency;
+ assert.equal(own.status,'pending');assert.equal(own.bannerUrl,'https://example.invalid/banner.jpg');
+ const admin=await f.service.dashboard({uid:'admin'},true);
+ assert.equal(admin.allAgencies[0].logoUrl,'https://example.invalid/logo.png');
+ const other=await f.service.dashboard({uid:'intruder'});
+ assert.equal(other.ownAgency,null);assert.equal(other.allAgencies,undefined);
+ assert.deepEqual((await f.service.publicList()).agencies,[]);
+ await assert.rejects(f.service.invitation(own.code),{statusCode:404});
+});
+
+test('annuaire serveur : les effectifs abonnés les plus grands arrivent en premier',async()=>{
+ const f=await fixture();
+ const second='director-two';f.users[second]={uid:second,email:'two@example.invalid',emailVerified:true};
+ await f.service.save({uid:second},{name:'Deuxième agence',description:'Une autre agence pour les essais.'});
+ const other=Object.values(f.state().agencies).find(a=>a.ownerUid===second);
+ for(const a of [f.agency,other])await f.service.reviewAgency({uid:'admin'},{agencyId:a.id,status:'approved'});
+ for(const [a,owner,count] of [[f.agency,'director',3],[other,second,11]]){
+   for(let i=0;i<count;i++){
+     const uid=owner+'-paid-'+i;f.users[uid]={uid,email:uid+'@example.invalid',emailVerified:true};
+     f.subscriptions[uid]={status:'active',tier:'pro',paymentProvider:'paypal',paypalSubscriptionId:'I-'+uid,priceMonthly:9.99};
+     await f.service.join({uid},{agencyId:a.id});await f.service.reviewMember({uid:owner},{uid,status:'approved'});
+   }
+ }
+ assert.deepEqual((await f.service.publicList()).agencies.map(a=>a.payingCount),[11,3]);
+});
+
+test('la gestion normale des adhésions exige le fondateur, même pour le propriétaire ShenPulse',async()=>{
+ const f=await fixture();
+ await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+ await f.service.join({uid:'creator'},{agencyId:f.agency.id});
+ for(const uid of ['admin','intruder'])await assert.rejects(f.service.reviewMember({uid},{uid:'creator',status:'approved'}),{statusCode:403});
+ assert.equal((await f.service.dashboard({uid:'director'})).members[0].status,'pending');
+ await f.service.reviewMember({uid:'director'},{uid:'creator',status:'approved'});
+ await f.service.reviewMember({uid:'director'},{uid:'creator',status:'removed'});
+ assert.equal((await f.service.dashboard({uid:'director'})).members[0].status,'removed');
+});
+
+test('le @ transmis remplace la saisie libre à l’adhésion et reste modifiable sans nouvelle demande',async()=>{
+ const f=await fixture();await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+ await f.service.join({uid:'creator'},{code:f.agency.code,tiktokUsername:'@First.Name',displayName:'Faux pseudo',uid:'intruder'});
+ let member=(await f.service.dashboard({uid:'director'})).members[0];
+ assert.equal(member.uid,'creator');assert.equal(member.displayName,'@first.name');assert.equal(member.status,'pending');
+ const before=structuredClone(member);
+ await f.service.updateIdentity({uid:'creator'},{tiktokUsername:'second_name',uid:'intruder',agencyId:'other',status:'approved'});
+ member=(await f.service.dashboard({uid:'director'})).members[0];
+ assert.equal(member.displayName,'@second_name');assert.equal(member.agencyId,before.agencyId);assert.equal(member.status,'pending');assert.equal(member.requestedAt,before.requestedAt);
+ assert.equal(f.state().memberships.intruder,undefined);
+ await f.service.reviewMember({uid:'director'},{uid:'creator',status:'approved'});
+ await f.service.updateIdentity({uid:'creator'},{tiktokUsername:'third.name'});
+ member=(await f.service.dashboard({uid:'director'})).members[0];
+ assert.equal(member.status,'approved');assert.equal(member.displayName,'@third.name');
+});
+test('identité inchangée ou adhésion quittée : aucune nouvelle écriture de profil',async()=>{
+ const f=await fixture();assert.deepEqual(await f.service.updateIdentity({uid:'creator'},{tiktokUsername:'new_name'}),{ok:true,updated:false});
+ await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+ await f.service.join({uid:'creator'},{agencyId:f.agency.id,tiktokUsername:'name'});
+ const before=structuredClone(f.state());await f.service.updateIdentity({uid:'creator'},{tiktokUsername:'name'});assert.deepEqual(f.state(),before);
+ await f.service.leave({uid:'creator'});const left=structuredClone(f.state());await f.service.updateIdentity({uid:'creator'},{tiktokUsername:'another'});assert.deepEqual(f.state(),left);
+});
+test('la route identité exige le compte connecté et un @ valide',async()=>{
+ const f=await fixture(),{handleAgencyRoute}=await import('../backend/agencies/routes.mjs');
+ for(const tiktokUsername of ['', 'invalid name','https://example.invalid','x'.repeat(31)])await assert.rejects(f.service.updateIdentity({uid:'creator'},{tiktokUsername}),{statusCode:400});
+ await assert.rejects(f.service.updateIdentity({uid:'missing'},{tiktokUsername:'name'}),{statusCode:401});
+ const result=await handleAgencyRoute(f.service,{uid:'creator',method:'POST'},new URL('https://example.invalid/api/agencies/identity'),async()=>({tiktokUsername:'name'}));
+ assert.equal(result.ok,true);
+});
+
+test('régénérer invalide le code et son lien sans toucher aux membres ni aux abonnements',async()=>{
+ const f=await fixture();await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+ await f.service.join({uid:'creator'},{code:f.agency.code,tiktokUsername:'creator'});
+ await f.service.reviewMember({uid:'director'},{uid:'creator',status:'approved'});
+ await f.service.join({uid:'intruder'},{code:f.agency.code,tiktokUsername:'pending'});
+ f.subscriptions.creator={status:'active',tier:'pro',paymentProvider:'paypal',paypalSubscriptionId:'I-KEPT',priceMonthly:9.99};
+ const members=structuredClone(f.state().memberships),subscriptions=structuredClone(f.subscriptions),old=f.agency.code;
+ assert.equal((await f.service.rotateCode({uid:'director'},{expectedCode:old,agencyId:'another',code:'FORCED'})).ok,true);
+ const next=(await f.service.dashboard({uid:'director'})).ownAgency.code;
+ assert.match(next,/^[A-F0-9]{18}$/);assert.notEqual(next,old);assert.notEqual(next,'FORCED');
+ await assert.rejects(f.service.invitation(old),{statusCode:404});
+ await assert.rejects(f.service.join({uid:'admin'},{code:old}),{statusCode:404});
+ assert.equal((await f.service.invitation(next)).id,f.agency.id);
+ assert.deepEqual(f.state().memberships,members);assert.deepEqual(f.subscriptions,subscriptions);
+ assert.deepEqual((await f.service.quote('creator')).quoted,{pro:9.99,premium:13.99});
+ await assert.rejects(f.service.rotateCode({uid:'director'},{expectedCode:old}),{statusCode:409});
+ assert.equal((await f.service.dashboard({uid:'director'})).ownAgency.code,next);
+ await f.service.join({uid:'admin'},{code:next});assert.equal(f.state().memberships.admin.status,'pending');
+});
+
+test('le code se régénère uniquement pour le fondateur d’une agence validée, via une route privée',async()=>{
+ const f=await fixture(),{handleAgencyRoute}=await import('../backend/agencies/routes.mjs');
+ await assert.rejects(f.service.rotateCode({uid:'director'},{expectedCode:f.agency.code}),{statusCode:403});
+ await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+ for(const uid of ['intruder','admin'])await assert.rejects(f.service.rotateCode({uid},{expectedCode:f.agency.code,agencyId:f.agency.id}),{statusCode:403});
+ await assert.rejects(handleAgencyRoute(f.service,{method:'POST'},new URL('https://example.invalid/api/agencies/invitation/rotate'),async()=>({expectedCode:f.agency.code})),{statusCode:401});
+ await assert.rejects(f.service.rotateCode({uid:'director'},{}),{statusCode:409});
+ const previous=f.agency.code;
+ await handleAgencyRoute(f.service,{uid:'director',method:'POST'},new URL('https://example.invalid/api/agencies/invitation/rotate'),async()=>({expectedCode:previous}));
+ assert.notEqual(f.state().agencies[f.agency.id].code,previous);
+ assert.equal((await f.service.invitation(f.state().agencies[f.agency.id].code)).code,undefined);
+});

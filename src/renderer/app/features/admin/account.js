@@ -382,7 +382,7 @@ function openAdminTrialEditor(trial) {
     body: `<div class="form-grid">
       ${field("email", "Adresse e-mail du compte", trial.email || trial.beneficiaryEmail, "email", "full required maxlength=\"254\"")}
       ${field("days", "Nouvelle durée (jours)", trial.durationDays || 7, "number", 'min="1" max="365" required')}
-      <label class="field"><span>Accès Pro</span><select name="subscription"><option value="true" ${trial.subscriptionTrial ? "selected" : ""}>Oui</option><option value="false" ${!trial.subscriptionTrial ? "selected" : ""}>Non</option></select></label>
+      ${adminTrialSubscriptionField(trial.subscriptionTrial ? trial.subscriptionTier === "premium" ? "premium" : "pro" : "none")}
       <label class="field admin-trial-games-toggle"><span>Jeux</span><span class="switch"><input type="checkbox" name="games" data-admin-trial-games-toggle ${selectedGameIds.length ? "checked" : ""}><span></span></span><small>Activez cette option pour offrir un ou plusieurs jeux.</small></label>
       ${adminTrialGameChoices(selectedGameIds)}
     </div>`,
@@ -393,7 +393,7 @@ function openAdminTrialEditor(trial) {
           trialId: trial.id,
           email: data.get("email"),
           days: Number(data.get("days")),
-          subscription: data.get("subscription") === "true",
+          ...adminTrialSubscriptionFromForm(data),
           games: data.has("games"),
           gameIds: data.has("games") ? adminTrialGameIdsFromForm(data) : []
         });

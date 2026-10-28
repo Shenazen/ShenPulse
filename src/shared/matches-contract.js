@@ -144,7 +144,7 @@
       ownScore: entry.ownScore == null ? null : number(entry.ownScore, 0), rivalScore: entry.rivalScore == null ? null : number(entry.rivalScore, 0)
     }));
     return { schemaVersion: 1, scope: {}, status: disconnected ? "disconnected" : "idle", battleId: "", startObserved: false, startOrigin: "", startedAtMs: 0, endsAtMs: 0, bonusEndsAtMs: 0,
-      participants: [], teams: [], battleType: 0, liveContributors: [], lastGift: null, lastContribution: null, ownUserId: "", ownTeamId: "", result: null, multiplier: 1, lastMoment: "", lastEventAtMs: 0, endedAtMs: 0,
+      participants: [], teams: [], battleType: 0, liveContributors: [], lastGift: null, lastContribution: null, ownUserId: "", ownTeamId: "", result: null, multiplier: 1, multiplierObservation: null, lastMoment: "", lastEventAtMs: 0, endedAtMs: 0,
       rounds: { own: null, opponent: null }, manualWins: input.manualWins == null ? null : Math.round(number(input.manualWins, 0, 0, 100000)),
       pairRounds: (Array.isArray(input.pairRounds) ? input.pairRounds : []).slice(-20).map((entry) => ({ opponentId: text(entry.opponentId, 120), own: Math.round(number(entry.own, 0, 0, 100000)), opponent: Math.round(number(entry.opponent, 0, 0, 100000)) })).filter((entry) => entry.opponentId),
       session: { battles: Math.round(number(session.battles, 0)), wins: Math.round(number(session.wins, 0)),

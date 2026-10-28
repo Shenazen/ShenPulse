@@ -22,7 +22,7 @@ const HOME_FAQ = [
   ['Faut-il ouvrir une page de configuration ?', 'Non. La connexion, la configuration, les abonnements et les jeux se gèrent exclusivement depuis l’application.'],
   ['Puis-je tester sans être en live ?', 'Oui. Le simulateur du tableau de bord et les boutons de test permettent de vérifier tes règles. Attention : les actions associées peuvent réellement lancer un média, un effet ou une machine IRL. Prépare une configuration de test sans risque.'],
   ['Comment ajouter un overlay ?', 'Configure-le dans ShenPulse, copie la source proposée, puis ajoute une source navigateur dans OBS ou une source Lien dans TikTok LIVE Studio. Respecte les dimensions indiquées et garde ShenPulse ouvert.'],
-  ['Quelles fonctions nécessitent Pro ?', 'Jeux vidéo, Machines IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Certains modules de jeux demandent aussi un achat supplémentaire. Les prix et droits de ton compte sont présentés dans l’application.'],
+  ['Quelles fonctions nécessitent Pro ?', 'Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Machines IRL est réservé à Premium. Certains modules de jeux demandent aussi un achat supplémentaire. Les prix et droits de ton compte sont présentés dans l’application.'],
   ['Mes profils sont-ils conservés ?', 'Oui, les profils et leurs réglages sont rattachés à ton compte sur ce PC, avec sauvegarde et restauration à la reconnexion. Cela ne constitue pas une synchronisation entre ordinateurs : conserve aussi tes exports.'],
   ['Dois-je configurer Backblaze pour importer un son ?', 'Non. Le stockage média est géré par ShenPulse pour tous les comptes connectés, sans clé Backblaze personnelle. Tu peux importer les formats autorisés depuis l’application, dans la limite indiquée au moment de l’import.'],
   ['Les commandes répondent-elles dans le chat ?', 'L’onglet Commandes reçoit des messages commençant par ! et exécute l’effet configuré : musique, action ou overlay. Il n’envoie pas de réponse textuelle automatique au chat.'],
@@ -349,7 +349,7 @@ function docsPage() {
                 ['Bouton de connexion', 'Connecter, En attente du live ou Déconnecter selon l’état du compte surveillé.'],
                 ['État LIVE', 'Le badge est placé à côté du @ TikTok. Il ne remplace pas le contrôle des sources dans le logiciel de diffusion.'],
                 ['Menu de compte', 'En haut à droite, indique l’abonnement et regroupe notamment le mode léger et la langue.'],
-                ['Badges Pro', 'Jeux vidéo, Machines IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif.']
+                ['Badges Pro et Premium', 'Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Machines IRL est réservé à Premium.']
               ].map(fieldRow).join('')}
             </div>
             <div class="callout"><strong>À ne pas confondre</strong><p>Le compte ShenPulse possède tes réglages, le @ TikTok désigne le LIVE surveillé et la session de jeu ouvre une passerelle. Une connexion à ShenPulse seule ne garantit pas que les événements du LIVE sont reçus.</p></div>

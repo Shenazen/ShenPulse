@@ -102,3 +102,75 @@ Les 15 surveillances LIVE sont restaurées et la connexion LIVE contrôlée est 
 Cette intervention active le service pour la page Agences intégrée à ShenPulse 2.1.0. Elle ne soumet pas de nouvelle version au Microsoft Store et ne remplace pas l’installateur public : la distribution des interfaces nouvelles aux anciens clients relève de la release de l’application.
 
 Bilan final de publication : 135 tests ciblés réussis, lint valide, 14 contrôles HTTPS authentifiés réussis en production, huit fiches d’abonnement inchangées et aucun compte de test restant. La page Agences a été contrôlée dans l’application ouverte : l’annuaire se charge et le message d’indisponibilité a disparu.
+
+## Confirmation des demandes et revue des fiches
+
+Après une création confirmée par le serveur, une popup « Demande envoyée » explique la validation et le suivi dans l’espace privé. Une modification affiche « Fiche mise à jour ». Les erreurs conservent le brouillon ; un changement de compte invalide aussi la confirmation tardive. Le dialogue de réception utilise le composant modal commun, avec un bouton Compris.
+
+L’espace « Votre agence » est propre au directeur et porte une mention explicite de confidentialité. La règle serveur reste inchangée : seuls le directeur et l’administration accèdent à une fiche en attente ; l’annuaire public exige une agence validée et trois créateurs acceptés avec abonnement payant actif. Les coordonnées et codes privés restent exclus de l’annuaire.
+
+Les fiches de revue administrateur montrent la bannière entière, le logo, la présentation, la langue, les liens publics, le contact privé, les membres et les décisions existantes. Leur en-tête visuel est partagé avec l’espace directeur, avec un repli lisible en l’absence d’images. Aucun statut d’agence réel n’est modifié par les essais.
+
+Qualification : 144 tests ciblés réussis, dont neuf régressions supplémentaires sur la confirmation, les images et la confidentialité ; lint valide et 150 scripts embarqués identiques aux sources. Construction locale : .artifacts/shenpulse-dev-2.1.0-agency-confirmation/win-unpacked/. Aucun redémarrage du backend ni envoi au Store pour cette correction du renderer.
+
+## Affiche, cadres de paliers et classement
+
+La page utilise maintenant `renderStudioHero("agencies", ...)` avec son affiche dédiée sous `src/renderer/assets/studio/agencies.webp`. Cette ressource WebP locale fait 189 742 octets ; aucune requête d’image distante ni animation supplémentaire n’est nécessaire. Le prompt et la provenance de génération sont conservés dans [assets/agencies-art.md](assets/agencies-art.md).
+
+Les cartes Argent, Or et Diamant et les fiches de l’annuaire utilisent le même cadre `agency-tier-frame` et les mêmes variables de finition. Le contour métallique, le filet intérieur, les détails d’angle et la lueur suivent le palier. Les ornements ignorent les événements de pointeur ; les boutons restent utilisables et les cadres se replient avec la grille existante.
+
+Le classement est décroissant sur `payingCount`, soit le nombre de créateurs acceptés avec abonnement payant actif déjà vérifié côté serveur. Ce même nombre est maintenant affiché sur chaque fiche. Le renderer trie une copie du catalogue, puis départage les égalités par nom et identifiant ; le cache reçu n’est pas modifié. Le tri serveur existant est couvert par une régression et reste compatible. Aucun changement du backend ou de ses seuils de visibilité.
+
+Validation : 165 tests ciblés réussis, lint valide, 150 scripts embarqués comparés aux sources et présence de l’affiche confirmée dans l’ASAR. En-tête illustré et trois cadres vérifiés visuellement dans l’application native relancée : `.artifacts/shenpulse-dev-2.1.0-agency-tiers/win-unpacked/`. La fiche réelle Aphyra Agency reste en attente ; aucune agence de démonstration n’a été ajoutée à la production.
+
+## Gestion des membres confiée au fondateur
+
+La rubrique « Demandes et membres » est affichée uniquement dans **Agences → Mon agence**, après la validation de la fiche de l’agence. Le fondateur accepte ou refuse les demandes et peut retirer ses membres. Une agence en attente reçoit une explication à cet emplacement ; sa validation n’est jamais contournée.
+
+L’administration conserve la revue des fiches (logo, bannière, présentation, contact, décision) et le nombre d’abonnés. Elle n’affiche plus les personnes ni les commandes d’adhésion. Le chemin `adminReviewMember` est retiré du client natif et le canal administrateur y refuse toute gestion de membres avant accès réseau. Un ancien bouton ou une décision rendue périmée par un changement de compte ne peut pas déclencher ce parcours.
+
+Le serveur n’est pas redémarré et aucune donnée de production n’est modifiée pour cette correction d’interface. Le parcours normal des adhésions conserve son contrôle serveur du fondateur ; un test vérifie aussi qu’un compte ShenPulse administrateur ne peut pas l’utiliser sur l’agence d’un tiers. Les outils serveur internes d’administration ne font pas partie de l’interface livrée.
+
+Validation : 172 tests ciblés réussis, lint valide, 150 scripts natifs comparés aux sources. Construction locale : `.artifacts/shenpulse-dev-2.1.0-agency-members-final/win-unpacked/`.
+
+Contrôle natif : « Mon agence » est affiché avec l’explication de validation ; l’administration conserve les trois décisions sur la fiche et ne contient plus « Demandes et membres ». Le sous-titre de navigation est également corrigé en « Fiches partenaires » ; les 15 tests de visibilité/navigation et le lint passent après cette dernière correction de texte.
+
+## Adhésion avec le code et identité TikTok automatique
+
+Le code suffit : Rejoindre transmet directement la demande au directeur, avec le @ actuellement affiché en haut de ShenPulse. Aucun second formulaire de pseudo. L’envoi réussi affiche une popup ; un code refusé reste saisi. Sans @ valide, la demande est bloquée avec une explication vers la barre supérieure. Les informations de contact transmises au directeur sont indiquées près du bouton.
+
+Le @ des adhésions en attente et acceptées est synchronisé après 750 ms de stabilité. Les mises à jour sont sérialisées : une ancienne réponse ne remplace pas le dernier @ ni le compte suivant. Les rafraîchissements LIVE ne repoussent pas la file ; une panne est retentée après 15 secondes. L’identité est liée au compte ShenPulse authentifié et ne modifie ni agence destinataire, ni statut d’adhésion, ni abonnement. Le serveur accepte encore les demandes anciennes, tandis que le client neuf transmet aussi le libellé dérivé pour compatibilité.
+
+Sur une page Agences visible, le tableau du directeur et le statut du membre sont actualisés toutes les 15 secondes, hors édition, saisie et fenêtre modale. Les comptes sans adhésion ne transmettent aucune identité. Cette synchronisation ne déclenche ni enregistrement ni connexion TikTok : les commandes LIVE existantes restent inchangées.
+
+Validation locale : 189 tests ciblés réussis ; lint valide ; 151 scripts du paquet comparés aux sources. Construction : .artifacts/shenpulse-dev-2.1.0-agency-auto-identity/win-unpacked/. Le module et la route serveur sont préparés et qualifiés sous Node 20.19.2 en état isolé, sans modification des données de production. L’activation attend le choix de fenêtre de reconnexion, un LIVE étant connecté lors de la préparation.
+
+Activation autorisée et effectuée le 28 octobre 2026 : deux modules serveur remplacés après comparaison des empreintes et sauvegarde ; 15 surveillances restaurées et LIVE connecté. Les dix contrôles HTTPS authentifiés passent avec une agence et trois comptes temporaires supprimés en fin d’essai. Ils couvrent l’envoi par code, le @ initial, son changement en attente puis après acceptation, le refus d’une identité étrangère, la confidentialité et l’idempotence. Les huit abonnements existants sont identiques avant et après ; aucun paiement créé. Les fichiers principaux du serveur et des paiements sont inchangés.
+
+Sauvegardes et rapports privés : `.deployments/agencies-identity-20261028T112040729Z/` sur le serveur. SHA-256 du service activé : `0fc01ea98e583d8d4406fc6a2af5d008ac111ad2bcaa0e95f038072452108156`. L’activation est limitée au service Agences ; aucune release Store ni incrément de version.
+
+
+Dernier contrôle du renderer : l’actualisation périodique lit uniquement le tableau privé, sans spinner ni rechargement de l’annuaire. Une réponse inchangée ne redessine rien ; une mutation, une synchronisation du @, un changement de compte, une saisie ou une fenêtre modale invalide une réponse tardive. Les requêtes de fond sont sérialisées et les erreurs restent silencieuses jusqu’au prochain passage.
+
+Validation finale après ce contrôle : 195 tests ciblés réussis, lint valide, 151 scripts natifs identiques aux sources et syntaxe du paquet vérifiée. Construction native finale : `.artifacts/shenpulse-dev-2.1.0-agency-auto-identity-final/win-unpacked/`. Aucun second redémarrage du backend pour cette optimisation du renderer.
+
+Contrôle final dans le logiciel : la fenêtre du paquet final est ouverte sur Agences, avec le code et Rejoindre sur la même ligne et l’explication du @ automatique ; aucun second champ de pseudo. Le brouillon du code a été rétabli après vérification du compte actif, sans envoyer de demande réelle. Les contrôles d’envoi et de changement du @ sont couverts par les identités de test HTTPS ci-dessus.
+
+
+## Espace fondateur et renouvellement des invitations
+
+Le composant `agencies-director.js` regroupe l’espace privé du fondateur : identité visuelle, trois statistiques distinctes, invitation, progression et gestion des membres. Les membres en attente apparaissent avant les autres, sans modifier l’ordre ni les données enregistrées. La zone de code utilise un champ contrasté avec copie du code, du lien et régénération confirmée ; la grille se replie en une colonne sur les petites largeurs.
+
+Les trois cartes de paliers ne sont rendues que pour un compte connecté disposant de sa propre agence validée. Les visiteurs, les membres ordinaires et les fondateurs dont l’agence est en attente, refusée ou suspendue ne voient pas cette rubrique. Les badges de palier des fiches publiques restent visibles.
+
+La nouvelle route privée `POST /api/agencies/invitation/rotate` authentifie le fondateur, vérifie que son agence est validée et compare le code attendu avant transaction. Elle génère un nouveau code aléatoire côté serveur ; l’ancien code et les liens qui le contiennent sont immédiatement inutilisables pour rejoindre l’agence. Aucun tableau de membres, statut, demande ou abonnement n’est modifié. Un autre compte, un double clic ou un écran périmé ne peut pas renouveler son code. Le client ignore tout UID, identifiant d’agence ou code de remplacement fourni.
+
+Après succès, le tableau privé est relu. Si cette relecture échoue, l’ancien code n’est plus proposé à la copie ; Actualiser permet de récupérer le nouveau. L’annulation, l’échec serveur et les changements de compte sont couverts.
+
+Validation : 205 tests ciblés réussis et lint valide ; 152 scripts du paquet natif comparés aux sources. Construction locale : `.artifacts/shenpulse-dev-2.1.0-agency-director/win-unpacked/`. Le service est activé après contrôle des empreintes et sauvegarde des deux modules ; les 15 surveillances et le LIVE connecté ont été rétablis. Les fichiers principaux du serveur et des paiements sont inchangés.
+
+Dix contrôles HTTPS authentifiés réussis avec une agence temporaire et trois comptes de test, supprimés après essais : authentification, propriété, agence validée, régénération, préservation des membres acceptés et en attente, refus de l’ancien code, acceptation du nouveau, rejet des clics périmés, confidentialité et conservation des tarifs. Les huit abonnements existants sont identiques ; aucun paiement créé. Les essais HTTPS utilisent uniquement des invitations temporaires. Sauvegardes privées : `.deployments/agencies-director-invitation-20261028T115351473Z/`.
+
+Contrôle natif final : la fiche réelle affiche les trois cartes de statistiques, le code contrasté, ses trois commandes, la progression et les membres. Le dialogue de renouvellement explique clairement l’invalidation. Un nouveau code a été observé dans la fiche pendant ce contrôle ; c’est désormais l’invitation affichée dans Mon agence qui doit être partagée. La liste comporte toujours le même profil et le même statut. Les boutons sont revenus disponibles après fermeture du dialogue. Les trois paliers restent présents pour ce fondateur validé.
+
+Contrôle complémentaire des vraies pages d’invitation : ancienne URL HTTP refusée en 404, nouvelle URL en 200 et fiche attendue affichée. Le dernier lot comporte 12 contrôles HTTPS réussis ; ses trois comptes et sa fiche temporaires ont aussi été supprimés. Aucun paiement et aucun changement des huit abonnements existants.

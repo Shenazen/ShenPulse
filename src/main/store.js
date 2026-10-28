@@ -1,5 +1,7 @@
 "use strict";
 
+const { applyMusicCommandEdit } = require("./spotify/music-command-links");
+
 const fs = require("node:fs");
 const path = require("node:path");
 const { createDefaultState, createEmptyProfileWorkspace } = require("./defaults");
@@ -219,6 +221,7 @@ class StateStore {
           : clone(item);
       if (!copy.id) copy.id = id(collection.slice(0, -1));
       const index = entries.findIndex((entry) => entry.id === copy.id);
+      if (collection === "commands") applyMusicCommandEdit(state, copy, index >= 0 ? entries[index] : null);
       if (collection === "profiles") {
         if (index >= 0) {
           copy.workspace = entries[index].workspace;
@@ -286,6 +289,7 @@ class StateStore {
       return this.getState();
     }
     return this.mutate((state) => {
+      if (collection === "commands") applyMusicCommandEdit(state, null, state.commands.find((item) => item.id === itemId));
       state[collection] = state[collection].filter((item) => item.id !== itemId);
     });
   }

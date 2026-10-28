@@ -131,7 +131,7 @@ repli. Tous les UID explicites doivent désigner le diffuseur vérifié de la
 salle courante. Carte active, critical, catégorie de carte, destinataire
 inconnu/adverse, compte/profil différent et preuve ancienne sont refusés.
 
-Ce cadeau prouve un multiplicateur à l'instant de sa réception, pas une durée
+Sans annonce de période corrélable, ce cadeau prouve un multiplicateur à l'instant de sa réception, pas une durée
 de trente secondes. La preuve n'ajoute aucun état de durée/multiplicateur et
 reste valable cinq secondes pour l'exécution différée. Elle est dédupliquée
 pour cette manche, sans empêcher une période classique ultérieure de rejouer
@@ -470,3 +470,98 @@ période réelle après activation explicite par l'utilisateur.
 Les tests synthétiques ne valident pas l'affichage réel d'un bonus TikTok.
 Une vérification d'une première période effectivement visible demeure requise
 avant d'annoncer que le problème initial est résolu.
+
+## Réactivité et affichage des multiplicateurs — 28 octobre 2026
+
+L'indicateur revient à **×1 par défaut**. Le remplacement par « ×— » a été
+retiré après le retour utilisateur : il rendait les manches sans information
+de bonus peu lisibles.
+
+### Deux preuves complémentaires, sans lecture d'écran
+
+Le chemin prioritaire reste la période TikTok : START_BONUS explicite ou
+annonce de défi puis résultat réussi. Début, durée et fin utilisent les dates
+transmises. Une annonce peut aussi être confirmée immédiatement par un cadeau
+crédité ×2/×3 pendant son unique fenêtre correspondante. Les chevauchements
+ambigus, équipes différentes, dates futures et périodes terminées restent exclus.
+
+Sans période exploitable, un cadeau explicitement crédité ×2/×3 au diffuseur
+courant met immédiatement à jour l'indicateur. Cette observation est rafraîchie
+à chaque nouveau cadeau boosté propre et expire **six secondes après sa date**,
+ou à la fin du match si elle arrive avant. L'interface affiche alors ×1.
+Cette fraîcheur d'affichage est distincte de la durée du bonus TikTok et de la
+preuve de cinq secondes autorisant une sortie différée. Aucune période de
+trente secondes n'est inventée.
+
+Un ×2 puis un ×3 peuvent chacun déclencher leur automatisation une fois par
+valeur et par manche. Les cadeaux répétés rafraîchissent l'affichage sans rejouer
+l'animation. Les vraies périodes TikTok gardent leurs propres identités ; un
+nouveau cycle explicite peut donc rejouer le même multiplicateur. La mémoire de
+secours est bornée à 64 clés, effacée à la déconnexion/changement de contexte.
+Une carte de match, un critical non ordinaire, un rival ou un destinataire
+inconnu ne fournit pas une preuve de bonus ordinaire.
+
+Le timer d'observation ne peut modifier ni un autre compte/profil, ni une autre
+manche, ni couper un bonus à durée connue arrivé entre-temps. Il n'attend aucun
+nouveau paquet de scores pour revenir à ×1. Le secours n'ajoute ni OCR, ni
+sondage HTTP, ni cookie Studio, ni abonnement à un service externe.
+
+### Comparaison de fonctionnement
+
+L'application SyncLive 3.6.97 installée a été examinée en lecture seule pour
+l'interopérabilité. Ses gestionnaires Matchs étudiés utilisent les événements
+de tâches TikTok et la valeur `matchInfo.multiplierValue` des cadeaux. Le secours
+cadeau conserve la valeur six secondes après le dernier cadeau boosté, puis
+revient à ×1. Le déclenchement est dédupliqué par bataille et valeur.
+Ces gestionnaires ne lisent pas l'écran. Aucune garantie sur les autres parties
+de l'application n'est déduite de cette inspection.
+
+Empreinte SHA-256 du binaire examiné :
+`1ccf7a165bdd89e994316d4284e1b3412387ef4681c0df10a52e178dc531532c`.
+Aucun code extrait ni actif SyncLive n'est incorporé au produit ShenPulse.
+
+### Qualification et limite
+
+663 tests ciblés réussis dans 48 fichiers : vrais codecs SDK, progression
+×1 → ×2 → ×3 → ×1 dans le vrai renderer, expiration et rafraîchissement sans
+nouveau score, plusieurs manches, absence de doublons, droits et identité.
+Lint et contrôle des sources du paquet natif valides.
+
+La vérification globale du dépôt a échoué lors du contrôle précédent sur trois
+tests existants de catalogue/navigation des jeux, puis par épuisement mémoire
+du processus de tests partagé. Elle n'est pas considérée réussie et n'est pas
+relancée à l'identique ; les tests ciblés ci-dessus utilisent des processus isolés.
+
+L'écoute publique précédente de six minutes a reçu annonce, règlements et fin
+d'un bonus classique, mais aucun START_BONUS initial ni cadeau explicitement
+crédité ×2/×3. Elle ne valide donc pas les nouveaux cas positifs en LIVE.
+La valeur d'un bonus absent de tous les messages reçus ne peut pas être
+anticipée : la détection exhaustive reste dépendante des données TikTok.
+
+
+## Présentation du tableau de bord Matchs
+
+L’arène présente le compte du @ TikTok suivi à gauche et l’adversaire à droite,
+avec avatars circulaires, scores cyan/rose, repère VS et répartition des points.
+Le multiplicateur reste immédiatement à droite du chrono. Les équipes explicites
+conservent leurs membres et leurs totaux ; un total absent n’est pas inventé.
+Les photos proviennent des participants TikTok ou du profil TikTok correspondant
+au même @ et au même identifiant. Une photo indisponible laisse des initiales.
+
+Les composants de présentation sont regroupés dans
+`src/renderer/app/features/matches/dashboard.js` : arène, donateurs, bilan et
+historique. Les autres onglets reprennent les contours et fonds de l’arène.
+La grille se replie selon la largeur réelle du contenu, indépendamment de la barre
+latérale. Les scores, le chrono, le podium et ses avatars se mettent à jour en
+place ; aucune nouvelle minuterie, requête de profil ni automatisation n’est
+créée par cette présentation. Les règles et réglages du profil restent inchangés.
+
+Les tests renderer couvrent l’ordre du @, les photos et leur repli, les équipes,
+les scores absents, la barre proportionnelle et le changement de podium sans
+recréation des cartes ni de leurs contrôles.
+
+Validation de cette présentation : 668 tests ciblés Matchs/TikTok dans 48 fichiers,
+lint du projet valide, 153 scripts renderer du paquet natif comparés aux sources.
+Le contrôle natif sur un vrai match a confirmé les deux photos, l’ordre du compte
+suivi, les mises à jour de scores et du podium ; les onglets Widgets et
+Automatisations restent accessibles et leurs réglages inchangés.

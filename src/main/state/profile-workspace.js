@@ -1,4 +1,5 @@
 "use strict";
+const { songCommands } = require("../spotify/music-command-links");
 
 const { clone } = require("../utils");
 const { createEmptyProfileWorkspace } = require("../defaults");
@@ -60,15 +61,17 @@ function normalizeProfileWorkspace(workspace, { ttsFallback, songRequestSettings
     }
   }
 
+  const songSettings = normalizeSongRequestSettings({ ...inheritedSongs, ...savedSongs,
+    commands: { ...(inheritedSongs.commands || {}), ...(savedSongs.commands || {}) },
+    commandEnabled: { ...(inheritedSongs.commandEnabled || {}), ...(savedSongs.commandEnabled || {}) } });
   return {
     schemaVersion: 2,
     rules: globalRules,
     goals: Array.isArray(saved.goals) ? clone(saved.goals) : [],
-    commands: Array.isArray(saved.commands) ? clone(saved.commands) : [],
+    commands: songCommands(songSettings, Array.isArray(saved.commands) ? clone(saved.commands) : []),
     timers: Array.isArray(saved.timers) ? clone(saved.timers) : [],
     tts: normalizeTtsSettings(saved.tts, ttsFallback),
-    songRequestSettings: normalizeSongRequestSettings({ ...inheritedSongs, ...savedSongs,
-      commands: { ...(inheritedSongs.commands || {}), ...(savedSongs.commands || {}) } }),
+    songRequestSettings: songSettings,
     matches: normalizeMatchesConfig(saved.matches),
     matchSession: createMatchSession(saved.matchSession, { disconnected: true }),
     overlayConfigs: normalizeProfileOverlayConfigs(saved.overlayConfigs),

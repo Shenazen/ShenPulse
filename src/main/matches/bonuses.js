@@ -18,14 +18,14 @@ const samePendingContext = (expected, actual) => Boolean(actual &&
   (!expected.ownerUserId || expected.ownerUserId === actual.ownerUserId));
 
 class MatchBonuses {
-  constructor({ now, current, captureContext, timer, clearTimer, onChange, onStart, publish }) {
-    Object.assign(this, { now, current, captureContext, timer, clearTimer, onChange, onStart, publish });
-    this.periods = new Map(); this.activeKey = ""; this.sequence = 0; this.giftProof = null;
+  constructor({ now, current, captureContext, timer, clearTimer, onChange, onStart, onObservation, publish }) {
+    Object.assign(this, { now, current, captureContext, timer, clearTimer, onChange, onStart, onObservation, publish });
+    this.periods = new Map(); this.activeKey = ""; this.sequence = 0; this.giftProof = null; this.giftValues = new Set();
     this.pendingStarts = new Map(); this.blockedStarts = new Set();
   }
   reset() {
     this.clearTimer("start"); this.clearTimer("end"); this.clearTimer("pending-start");
-    this.periods.clear(); this.activeKey = ""; this.sequence = 0; this.giftProof = null;
+    this.periods.clear(); this.activeKey = ""; this.sequence = 0; this.giftProof = null; this.giftValues.clear();
     this.pendingStarts.clear(); this.blockedStarts.clear();
   }
   isActive(key) {
@@ -120,20 +120,39 @@ class MatchBonuses {
       !bonus.recipientIds.every((id) => exactId(id) && id === current.ownerUserId)) return false;
     // A real gift proves only the multiplier applied to that gift, not a new
     // thirty-second period. It covers the first unannounced boost once per
-    // battle; known task periods keep their independent timers and identity.
-    if (this.giftProof?.identity === identity && this.giftProof.battleId === current.battleId) return false;
+    // value in the battle; known task periods keep their independent identity.
     this.reconcile();
+    // The credited gift proves activation only inside one already-announced
+    // window bound to this broadcaster. Its end still comes from TikTok.
+    const candidates = [...this.periods.values()].filter((row) => row.identity === identity && row.battleId === current.battleId &&
+      ["pending", "success"].includes(row.result) && row.multiplier === bonus.multiplier && row.durationMs > 0 &&
+      row.ownerUserId === current.ownerUserId && row.ownerRoomId === current.roomId &&
+      row.ownerTeams === current.ownerTeams && row.matchStartedAtMs === current.startedAtMs &&
+      row.startsAtMs >= current.startedAtMs && row.startsAtMs <= input.createdAtMs && row.startsAtMs <= at &&
+      row.startsAtMs + row.durationMs > at && row.startsAtMs + row.durationMs <= current.endsAtMs);
+    if (candidates.length === 1 && candidates[0].result === "pending" &&
+      this.periods.get(this.activeKey)?.multiplier !== bonus.multiplier) {
+      Object.assign(candidates[0], { result: "success", awaitingSettlement: true, requiresVerifiedOwner: true, mergeScope: ownerScope(current) });
+      this.reconcile(); return true;
+    }
+    // Unknown duration: keep a labelled observation separate from active state.
+    // It never creates a reward period, nor keeps an automation alive.
+    if (!this.activeKey) this.onObservation?.({ value: bonus.multiplier, observedAtMs: input.createdAtMs });
+    const valueKey = JSON.stringify([identity, current.battleId, bonus.multiplier]);
+    if (this.giftValues.has(valueKey)) return false;
     if ([...this.periods.values()].some((row) => row.identity === identity && row.battleId === current.battleId &&
-      (row.fired || row.result === "success" && [2, 3].includes(row.multiplier) && row.startsAtMs > 0 && row.startsAtMs <= at &&
+      (row.fired && row.multiplier === bonus.multiplier || row.result === "success" && [2, 3].includes(row.multiplier) && row.startsAtMs > 0 && row.startsAtMs <= at &&
         (!row.durationMs || row.startsAtMs + row.durationMs > at) &&
         (!row.ownerUserId || row.ownerUserId === current.ownerUserId) &&
         (!row.ownerRoomId || row.ownerRoomId === current.roomId) &&
         (!row.ownerTeams || row.ownerTeams === current.ownerTeams)))) return false;
     const expiresAtMs = Math.min(input.receivedAtMs + 5000, input.createdAtMs + 5000, current.endsAtMs);
     if (expiresAtMs <= at) return false;
-    this.giftProof = { key: `${current.battleId}:first-observed`, identity, battleId: current.battleId,
+    this.giftProof = { key: `${current.battleId}:gift-observed:${bonus.multiplier}`, identity, battleId: current.battleId,
       ownerUserId: current.ownerUserId, ownerRoomId: current.roomId, ownerTeams: current.ownerTeams,
       startedAtMs: current.startedAtMs, expiresAtMs };
+    this.giftValues.add(valueKey);
+    while (this.giftValues.size > 64) this.giftValues.delete(this.giftValues.values().next().value);
     this.onStart(bonus.multiplier, this.giftProof.key);
     return true;
   }
@@ -253,6 +272,12 @@ class MatchBonuses {
           multiplier: null, startsAtMs: 0, durationMs: 0, result: "pending", fired: false };
         this.periods.set(period.key, period);
       }
+      const owner = this.current();
+      if (owner?.identity === identity && owner.battleId === battleId && owner.ownerVerified === true &&
+        input.roomId === owner.roomId && !period.ownerUserId) {
+        Object.assign(period, { ownerUserId: owner.ownerUserId, ownerRoomId: owner.roomId, ownerTeams: owner.ownerTeams,
+          matchStartedAtMs: owner.startedAtMs });
+      }
       if (token) period.aliases.add(token);
       if ([2, 3].includes(bonus.multiplier)) period.multiplier = bonus.multiplier;
       if (Number.isFinite(bonus.startsAtMs) && bonus.startsAtMs > 0 && period.result === "pending") period.startsAtMs = bonus.startsAtMs;
@@ -268,16 +293,17 @@ class MatchBonuses {
         if (period && (bonus.createdAtMs > 0 && bonus.createdAtMs < period.startsAtMs ||
           !bonus.createdAtMs && candidates.filter((row) => row.fired).length > 1)) return;
       }
-      if (!period && bonus.stage !== "ended") period = candidates.filter((row) => row.result === "pending" &&
+      if (!period && bonus.stage !== "ended") period = candidates.filter((row) => (row.result === "pending" || row.awaitingSettlement) &&
         (!bonus.startsAtMs || bonus.startsAtMs >= row.announcedAtMs - 10000)).sort((a, b) => b.sequence - a.sequence)[0];
       if (!period) return; // Jamais inventer ×2 si START n'a pas été reçu.
       if (token) period.aliases.add(token);
-      if (bonus.stage === "ended") period.result = "ended";
+      if (bonus.stage === "ended") { period.result = "ended"; period.awaitingSettlement = false; }
       else if (["success", "both", "failed"].includes(bonus.result)) {
         // Une fin/échec est terminal pour ce cycle, même si un SETTLE ancien
         // arrive ensuite sous un autre msgId.
         if (!["ended", "failed"].includes(period.result)) {
           period.result = bonus.result === "failed" ? "failed" : "success";
+          period.awaitingSettlement = false;
           const current = this.current();
           if (current?.identity === identity && current.battleId === battleId && !period.ownerUserId) {
             period.ownerUserId = current.ownerUserId; period.ownerTeams = current.ownerTeams;

@@ -55,7 +55,7 @@ function renderMembership() {
         ? `${subscription.tier} · offert`
         : activePlan?.name || activeSubscriptionTier;
   const accountDescription = activeSubscriptionTier === "free"
-    ? "Jeux vidéo, Interactions IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif."
+    ? "Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Machines IRL est réservé à Premium."
     : subscription.source === "trial"
       ? "Vous profitez d’un essai actif. Vos droits restent synchronisés avec votre compte."
       : subscription.source === "agencyReward"
@@ -155,7 +155,7 @@ function renderMembership() {
       ` : ""}
       <section class="membership-games-access" aria-labelledby="membership-games-title">
         <span class="membership-access-icon" aria-hidden="true">${membershipIcon("games")}</span>
-        <div><h3 id="membership-games-title">Vos accès, sans confusion.</h3><p>Jeux vidéo, Interactions IRL, Commandes et Matchs sont accessibles avec Pro ou Premium, y compris pendant un essai Pro actif ou avec un accès Pro offert. Pour les jeux compatibles, le jeu original et le pack adapté restent nécessaires. Les modules vendus séparément exigent aussi leur achat ou un essai produit actif.</p></div>
+        <div><h3 id="membership-games-title">Vos accès, sans confusion.</h3><p>Jeux vidéo, Commandes et Matchs sont accessibles avec Pro ou Premium, y compris pendant un essai Pro actif ou avec un accès Pro offert. Machines IRL est réservé à Premium. Pour les jeux compatibles, le jeu original et le pack adapté restent nécessaires. Les modules vendus séparément exigent aussi leur achat ou un essai produit actif.</p></div>
       </section>
       <details class="commerce-games">
         <summary><span class="membership-module-copy"><strong>Modules vendus séparément</strong><span>Un accès Pro ou Premium actif est requis en plus de l’achat unique ou de l’essai produit actif.</span></span><span class="membership-module-count">${paidGames.length} ${paidGames.length === 1 ? "jeu" : "jeux"}</span><span class="membership-module-arrow" aria-hidden="true">${membershipIcon("chevron")}</span></summary>

@@ -33,6 +33,7 @@ function normalizeSongRequestSettings(value = {}, strict = false) {
     cooldownSeconds: boundedNumber(source.cooldownSeconds, 10, 0, 3600),
     allowViewerSkip: source.allowViewerSkip === true,
     blockedArtists: Array.isArray(source.blockedArtists) ? [...new Set(source.blockedArtists.map((artist) => safeString(artist, 120).trim()).filter(Boolean))].slice(0, 100) : [],
+    commandEnabled: Object.fromEntries(Object.keys(DEFAULT_COMMANDS).map((key) => [key, source.commandEnabled?.[key] !== false])),
     commands
   };
 }

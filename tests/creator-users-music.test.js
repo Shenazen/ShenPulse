@@ -82,10 +82,11 @@ function musicContext(t, { connected = false, track, requests = {}, responses = 
   context.canAccessFeature = () => true;
   context.canAccessActionType = () => true;
   context.flattenActions = () => [];
-  context.api = { controlSpotify: async (config) => {
+  context.acceptSnapshot = (updated) => { context.snapshot = updated; };
+  context.api = { getSnapshot: async () => context.snapshot, controlSpotify: async (config) => {
     calls.push(config);
     if (config.operation === "requests_status") return status;
-    if (config.operation === "requests_settings") { status.settings = config.settings; return status; }
+    if (config.operation === "requests_settings") { status.settings = { ...status.settings, ...config.settings, commands: { ...status.settings.commands, ...config.settings.commands }, commandEnabled: { ...status.settings.commandEnabled, ...config.settings.commandEnabled } }; context.snapshot.state.settings.spotify.songRequests = status.settings; return status; }
     return responses[config.operation] || { ok: true };
   } };
   context.perform = async (work) => work();
@@ -715,6 +716,7 @@ test("une réponse Spotify tardive et une sauvegarde musicale ne remplacent pas 
   let resolve;
   context.api.controlSpotify = () => new Promise((done) => { resolve = done; });
   const pending = context.handleCreatorMusicAction({ action: "music-settings-save", target: { dataset: {} } });
+  await new Promise((done) => setImmediate(done));
   context.snapshot.state.settings.account.uid = "account_b";
   context.resetCreatorMusicAccount(true);
   resolve({ settings: { enabled: true }, queue: [{ id: "private_a" }] });
@@ -814,4 +816,104 @@ test("les commandes Spotify historiques rejettent OAuth, confirmation et contrô
     assert.equal(refreshed, 0, action);
     assert.equal(disconnects, 0, action);
   }
+});
+
+test("Musique reprend les commandes Spotify et les actions musicales du profil, avec les derniers réglages partagés", (t) => {
+  const { context } = musicContext(t);
+  context.canAccessPage = () => true;
+  context.ShenPulseCommandExecution = require("../src/shared/command-execution");
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src/renderer/app/features/chatbot/execution.js"), "utf8"), context);
+  context.snapshot.state.commands = [
+    { id:"pause", command:"!pause", enabled:true, execution:{type:"music",operation:"pause"} },
+    { id:"action-music", command:"!ambiance", enabled:false, execution:{type:"action",actionId:"spotify-action"} },
+    { id:"sound", command:"!son", execution:{type:"action",actionId:"sound-action"} }
+  ];
+  context.snapshot.state.rules = [{id:"rule",enabled:true,actions:[
+    {id:"spotify-action",type:"spotify.queue",config:{operation:"next"}},
+    {id:"sound-action",type:"audio.play",config:{url:"fake.mp3"}}
+  ]}];
+  context.snapshot.state.settings.spotify.songRequests={enabled:true,commands:{request:"!chanson"},commandEnabled:{queue:false}};
+  vm.runInContext('creatorMusicData.requests = { settings: { commands: {request: "!ancien"} } };',context);
+  context.content.innerHTML = context.renderCreatorMusicSettings();
+  assert.equal(context.content.querySelector('[name="request"]').value,"!chanson");
+  assert.equal(context.content.querySelector('[name="queueEnabled"]').checked,false);
+  assert.equal(context.content.querySelectorAll(".music-linked-command-list article").length,2);
+  assert.match(context.content.textContent,/!pause/);assert.match(context.content.textContent,/!ambiance/);
+  assert.doesNotMatch(context.content.textContent,/!son/);
+  assert.equal(context.content.querySelectorAll('[data-action="chatbot-edit"]').length,2);
+  context.canAccessPage = () => false;
+  context.content.innerHTML = context.renderCreatorMusicSettings();
+  assert.equal(context.content.querySelectorAll('[data-action="chatbot-edit"]').length,0);
+});
+
+test("désactiver une commande dans Musique est enregistré sans bouton Enregistrer et met à jour le vrai store", async (t) => {
+  const { context, calls } = musicContext(t);
+  const { StateStore } = require("../src/main/store");
+  const { SongRequestsService } = require("../src/main/spotify/song-requests");
+  const store = new StateStore("unused-autosave-test", { isEncryptionAvailable: () => false });
+  store.touch = () => {};
+  store.state.activeAccountUid = "owner";
+  store.state.settings.account.uid = "owner";
+  const service = new SongRequestsService({ store, spotify: {} });
+  service.configure({ enabled: true });
+  context.snapshot = { state: store.getState(), packs: [] };
+  context.api.getSnapshot = async () => ({ state: store.getState(), packs: [] });
+  context.api.controlSpotify = async (config) => {
+    calls.push(config);
+    return config.operation === "requests_settings" ? service.configure(config.settings) : service.status();
+  };
+  context.content.innerHTML = context.renderCreatorMusic();
+  await context.handleCreatorMusicAction({ action: "music-tab", target: { dataset: { value: "settings" } } });
+  // Un autre champ en brouillon ne doit pas empêcher ni être enregistré par l’interrupteur.
+  context.content.querySelector('[name="request"]').value = "brouillon invalide";
+  const skip = context.content.querySelector('[name="skipEnabled"]');
+  skip.checked = false;
+  assert.equal(context.handleCreatorMusicChange(skip), true);
+  assert.equal(skip.disabled, true);
+  const queue = context.content.querySelector('[name="queueEnabled"]');
+  queue.checked = false;
+  assert.equal(context.handleCreatorMusicChange(queue), true);
+  await vm.runInContext("creatorMusicSettingsWrite", context);
+  await new Promise((done) => setImmediate(done));
+  assert.equal(store.state.commands.find((row) => row.execution.operation === "requests_skip").enabled, false);
+  assert.equal(store.state.commands.find((row) => row.execution.operation === "requests_list").enabled, false);
+  assert.equal(context.snapshot.state.commands.find((row) => row.execution.operation === "requests_skip").enabled, false);
+  assert.equal(context.content.querySelector('[name="request"]').value, "brouillon invalide");
+  assert.equal(store.state.settings.spotify.songRequests.commands.request, "!sr");
+  assert.equal(skip.disabled, false);
+  assert.equal(queue.disabled, false);
+  const saved = calls.filter((call) => call.operation === "requests_settings");
+  assert.equal(saved.length, 2);
+  assert.deepEqual(Object.keys(saved[0].settings), ["commandEnabled"]);
+});
+
+test("l’interrupteur musical revient à son état initial si l’enregistrement échoue", async (t) => {
+  const { context } = musicContext(t);
+  context.content.innerHTML = context.renderCreatorMusic();
+  await context.handleCreatorMusicAction({ action: "music-tab", target: { dataset: { value: "settings" } } });
+  context.api.controlSpotify = async () => { throw new Error("Stockage indisponible"); };
+  const input = context.content.querySelector('[name="skipEnabled"]');
+  input.checked = false;
+  context.handleCreatorMusicChange(input);
+  await vm.runInContext("creatorMusicSettingsWrite", context);
+  await new Promise((done) => setImmediate(done));
+  assert.equal(input.checked, true);
+  assert.equal(input.disabled, false);
+});
+
+test("une désactivation est aussi rafraîchie si Commandes est ouvert avant la fin de l’enregistrement", async (t) => {
+  const { context } = musicContext(t);
+  context.content.innerHTML = context.renderCreatorMusic();
+  await context.handleCreatorMusicAction({ action: "music-tab", target: { dataset: { value: "settings" } } });
+  let release, refreshed = 0;
+  context.api.controlSpotify = () => new Promise((done) => { release = done; });
+  context.syncCreatorChatbotRuntime = () => { refreshed += 1; return true; };
+  const input = context.content.querySelector('[name="skipEnabled"]');
+  input.checked = false;
+  context.handleCreatorMusicChange(input);
+  await new Promise((done) => setImmediate(done));
+  context.currentPage = "commands";
+  release({ settings: { enabled: true, commandEnabled: { skip: false } }, queue: [] });
+  await vm.runInContext("creatorMusicSettingsWrite", context);
+  assert.equal(refreshed, 1);
 });

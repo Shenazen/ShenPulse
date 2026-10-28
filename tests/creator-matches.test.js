@@ -56,7 +56,7 @@ function context(t) {
   window.api.matches.status = async () => { calls.push({ method: "status" }); return { config: state.settings.matches, runtime: state.matchSession }; };
   const run = (code) => vm.runInContext(code, dom.getInternalVMContext());
   run(fs.readFileSync(path.join(sourceRoot, "../resources/overlays/catalog/matches.js"), "utf8"));
-  for (const file of ["shared/pro-access.js", "shared/matches-contract.js", "renderer/app/core/components.js", "renderer/app/core/account-operation-guard.js", "renderer/app/features/creator-matches.js", "renderer/app/features/matches/reactions.js", "renderer/app/features/matches/editor.js", "renderer/app/features/matches/widgets.js", "renderer/app/actions/handlers/creator-matches.js"]) run(fs.readFileSync(path.join(sourceRoot, file), "utf8"));
+  for (const file of ["shared/pro-access.js", "shared/matches-contract.js", "renderer/app/core/components.js", "renderer/app/core/account-operation-guard.js", "renderer/app/features/creator-matches.js", "renderer/app/features/matches/dashboard.js", "renderer/app/features/matches/reactions.js", "renderer/app/features/matches/editor.js", "renderer/app/features/matches/widgets.js", "renderer/app/actions/handlers/creator-matches.js"]) run(fs.readFileSync(path.join(sourceRoot, file), "utf8"));
   state.settings.matches = window.ShenPulseMatches.normalizeMatchesConfig({});
   state.matchSession = window.ShenPulseMatches.createMatchSession();
   const click = async (action, target = {}) => window.matchesHandler({ action, id: target.id, target: { dataset: { ...target }, disabled: false, ...target } });
@@ -192,9 +192,11 @@ test("un snapshot inchangé laisse le chronomètre avancer sans recréer le matc
   const correction = window.content.querySelector('[data-action="matches-correct-wins"]');
   correction.focus();
   assert.equal(timer.textContent, "1:05");
+  assert.equal(timer.classList.contains("is-label"), false);
   now += 1000;
   window.syncCreatorMatchesRuntime();
   assert.equal(timer.textContent, "1:04");
+  assert.equal(timer.classList.contains("is-label"), false);
   assert.equal(window.content.querySelector("[data-matches-time]"), timer);
   assert.equal(window.content.querySelector("[data-matches-person]"), participant);
   assert.equal(window.document.activeElement, correction);
@@ -918,4 +920,118 @@ test("un ancien cache de statut ne ressuscite pas les compteurs après reset ni 
   await window.editor.onSubmit(new window.FormData(window.dialogForm));
   assert.equal(calls[0].args[0].reaction.actionId, "removed-action");
   assert.equal(calls[0].args[0].enabled, false);
+});
+
+test("l'affichage distingue un bonus actif d'un multiplicateur de cadeau sans durée connue", (t) => {
+  const { window, state } = context(t);
+  Object.assign(state.matchSession, { status: "running", battleId: "fixture", startedAtMs: Date.now() - 30000,
+    participants: [{ id: "own", username: "creator", own: true, score: 0 }] });
+  window.render(); window.syncCreatorMatchesRuntime();
+  const node = window.content.querySelector(".matches-multiplier");
+  assert.equal(node.textContent, "×1");
+  state.matchSession.multiplierObservation = { value: 2, observedAtMs: Date.now(), expiresAtMs: Date.now()+6000 };
+  window.syncCreatorMatchesRuntime();
+  assert.equal(window.content.querySelector(".matches-multiplier"), node, "Le score ne recrée pas l'élément");
+  assert.equal(node.textContent, "×2");
+  assert.match(node.title, /Dernier cadeau crédité ×2.*six secondes/);
+  assert.equal(node.getAttribute("aria-label"), node.title);
+  state.matchSession.multiplier = 3;
+  window.syncCreatorMatchesRuntime();
+  assert.equal(node.textContent, "×3");
+  assert.match(node.title, /Bonus ×3 confirmé/);
+  assert.equal(node.classList.contains("is-observed"), false);
+  state.matchSession.multiplier = 1; state.matchSession.multiplierObservation = null;
+  window.syncCreatorMatchesRuntime(); assert.equal(node.textContent, "×1");
+  assert.doesNotMatch(node.title, /Dernier cadeau/);
+  state.matchSession.multiplierObservation = { value: 2, observedAtMs: Date.now() - 3600000 };
+  window.syncCreatorMatchesRuntime(); assert.equal(node.textContent, "×1", "Une observation d'une ancienne manche n'est pas affichée");
+});
+
+test("le duel place le @ suivi à gauche avec sa photo TikTok et le bonus juste à droite du chrono", (t) => {
+ const {window,state}=context(t);
+ state.settings.tiktok={username:"Creator",roomId:"8080",broadcaster:{userId:"own",username:"creator",nickname:"Créatrice",avatarUrl:"https://example.test/tiktok-profile.jpg"}};
+ Object.assign(state.matchSession,{status:"running",ownUserId:"own",endsAtMs:Date.now()+190000,multiplier:2,
+  participants:[{id:"rival",username:"rival",displayName:"Adversaire",score:200},{id:"own",username:"creator",score:100}]});
+ window.render();
+ const sides=[...window.content.querySelectorAll(".matches-duel-side")];
+ assert.equal(sides.length,2);
+ assert.equal(sides[0].querySelector("[data-matches-person]").dataset.matchesPerson,"own");
+ assert.equal(sides[0].querySelector("img").getAttribute("src"),"https://example.test/tiktok-profile.jpg");
+ assert.match(sides[0].textContent,/Créatrice/);
+ assert.equal(sides[1].querySelector("[data-matches-person]").dataset.matchesPerson,"rival");
+ const clock=window.content.querySelector("[data-matches-time]");
+ assert.equal(clock.parentElement.querySelector(".matches-multiplier").textContent,"×2");
+ assert.equal(window.content.querySelector(".matches-versus").textContent,"VS");
+ assert.equal(window.content.querySelector(".matches-balance").getAttribute("aria-valuenow"),"33");
+});
+
+test("l'enrichissement de profil met la photo à jour sans changer le compte ni emprunter celle d'un autre créateur", (t) => {
+ const {window,state}=context(t);
+ state.settings.tiktok={username:"creator",roomId:"8080",broadcaster:{userId:"own",username:"creator"}};
+ Object.assign(state.matchSession,{status:"running",ownUserId:"own",participants:[
+  {id:"rival",username:"rival",own:false,score:4},{id:"own",username:"creator",own:true,score:2}]});
+ window.render();window.syncCreatorMatchesRuntime();
+ state.settings.tiktok.broadcaster.avatarUrl="https://example.test/current.jpg";
+ window.syncCreatorMatchesRuntime();
+ assert.equal(window.content.querySelector('[data-matches-person="own"] img').getAttribute("src"),"https://example.test/current.jpg");
+ state.settings.tiktok.broadcaster={userId:"rival",username:"rival",avatarUrl:"https://example.test/wrong.jpg"};
+ window.syncCreatorMatchesRuntime();
+ assert.equal(window.content.querySelector('[data-matches-person="own"] img'),null);
+ assert.equal(state.settings.tiktok.username,"creator");
+});
+
+test("les photos défaillantes laissent des initiales propres et les lignes du podium restent stables", (t) => {
+ const {window,state}=context(t);
+ Object.assign(state.matchSession,{status:"running",participants:[{id:"own",own:true,username:"creator",avatarUrl:"https://example.test/missing.jpg",score:null}],
+ liveContributors:[{id:"fan",displayName:"Fan",avatarUrl:"https://example.test/fan.jpg",diamonds:100,likes:5,gifts:1}]});
+ window.render();window.syncCreatorMatchesRuntime();
+ const image=window.content.querySelector('[data-matches-person="own"] img');
+ image.dispatchEvent(new window.Event("error"));
+ assert.equal(image.hidden,true);
+ assert.match(image.parentElement.textContent,/CR/);
+ const row=window.content.querySelector("[data-matches-donor]");
+ assert.equal(row.classList.contains("is-first"),true);
+ assert.equal(window.content.querySelector(".matches-balance").hasAttribute("aria-valuenow"),false);
+ state.matchSession.liveContributors[0].likes=8;window.syncCreatorMatchesRuntime();
+ assert.equal(window.content.querySelector("[data-matches-donor]"),row);
+ assert.equal(window.content.querySelector('[data-matches-person="own"] img'),image);
+ assert.equal(image.hidden,true);
+});
+
+test("le duel en équipes garde les membres du côté propre et les totaux explicites sans confondre un donateur", (t) => {
+ const {window,state}=context(t);state.settings.tiktok.username="creator";
+ Object.assign(state.matchSession,{status:"running",ownUserId:"own",ownTeamId:"one",
+ participants:[{id:"rival",username:"rival",teamId:"two",score:100},{id:"ally",username:"ally",teamId:"one",score:10},{id:"own",username:"creator",own:true,teamId:"one",score:90}],
+ teams:[{id:"one",own:true,participantIds:["own","ally"],score:100},{id:"two",own:false,participantIds:["rival"],score:100}]});
+ window.render();
+ const sides=window.content.querySelectorAll(".matches-duel-side");
+ assert.equal(sides[0].querySelectorAll("[data-matches-person]").length,2);
+ assert.equal(sides[1].querySelectorAll("[data-matches-person]").length,1);
+ assert.equal(window.content.querySelector(".matches-balance").getAttribute("aria-valuenow"),"50");
+});
+
+
+test("la barre du duel et le podium se mettent à jour sans remplacer les cartes ni les photos", (t) => {
+ const {window,state}=context(t);
+ Object.assign(state.matchSession,{status:"running",participants:[
+  {id:"own",username:"creator",own:true,score:0},{id:"rival",username:"rival",score:0}],
+  liveContributors:[{id:"a",displayName:"Alice",diamonds:100,likes:2},{id:"b",displayName:"Bob",diamonds:50,likes:3}]});
+ window.render();window.syncCreatorMatchesRuntime();
+ const balance=window.content.querySelector(".matches-balance"),first=window.content.querySelector('[data-matches-donor="a"]');
+ const second=window.content.querySelector('[data-matches-donor="b"]'),own=window.content.querySelector('[data-matches-person="own"]');
+ assert.equal(balance.getAttribute("aria-valuenow"),"50");
+ state.matchSession.participants[0].score=75;state.matchSession.participants[1].score=25;
+ state.matchSession.liveContributors[1].diamonds=200;
+ window.syncCreatorMatchesRuntime();
+ assert.equal(window.content.querySelector(".matches-balance"),balance);
+ assert.equal(balance.getAttribute("aria-valuenow"),"75");
+ assert.equal(balance.style.getPropertyValue("--matches-own-share"),"75%");
+ assert.equal(window.content.querySelector('[data-matches-person="own"]'),own);
+ assert.equal(window.content.querySelector(".matches-donors ol").firstElementChild,second);
+ assert.equal(second.classList.contains("is-first"),true);
+ assert.equal(first.classList.contains("is-first"),false);
+ state.matchSession.participants[1].score=null;window.syncCreatorMatchesRuntime();
+ assert.equal(balance.hasAttribute("aria-valuenow"),false);
+ assert.equal(balance.classList.contains("is-pending"),true);
+ assert.equal(window.content.querySelector('[data-matches-person="rival"] .matches-score').textContent,"—");
 });

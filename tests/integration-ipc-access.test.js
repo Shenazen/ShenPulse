@@ -58,7 +58,7 @@ test("tous les IPC IRL refusent Free et les sous-frames avant d’appeler un ser
   for (const channel of channels) {
     assert.throws(() => f.handlers.get(channel)({ sender: f.contents, senderFrame: { url: MAIN_RENDERER_URL } }, {}),
       { code: "IPC_SENDER_FORBIDDEN" }, channel);
-    assert.throws(() => f.handlers.get(channel)(f.event, {}), { code: "PRO_FEATURE_REQUIRED" }, channel);
+    assert.throws(() => f.handlers.get(channel)(f.event, {}), { code: "PREMIUM_FEATURE_REQUIRED" }, channel);
   }
   assert.equal(f.calls.length, 0);
 });
@@ -122,7 +122,7 @@ test("les aperçus directs IRL et jeu ne contournent pas l’abonnement via acti
   for (const action of [
     { type: "irl.shelly", config: { deviceId: "fixture" } }, { type: "game.effect", config: { packId: "fixture" } },
     { type: "overlay.win-counter", config: { packId: "fixture" } }
-  ]) assert.throws(() => f.handlers.get("action:test")(f.event, action), { code: "PRO_FEATURE_REQUIRED" });
+  ]) assert.throws(() => f.handlers.get("action:test")(f.event, action), { code: action.type==="irl.shelly"?"PREMIUM_FEATURE_REQUIRED":"PRO_FEATURE_REQUIRED" });
   assert.equal(previews, 0);
 });
 

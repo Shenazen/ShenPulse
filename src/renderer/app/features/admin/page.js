@@ -135,7 +135,7 @@ function renderAdmin() {
     ["game-cheats", "Triche de jeux", "Accès par e-mail"],
     ["trials", "Offres d’essai", "Utilisateurs"],
     ["commerce", "Tarifs & promotions", "PRO / Premium / jeux"],
-    ["agencies", "Agences", "Fiches et membres"]
+    ["agencies", "Agences", "Fiches partenaires"]
   ];
   const contentByWorkspace = {
     overview: renderAdminOverview,
@@ -371,6 +371,19 @@ function renderAdminGameCheats() {
   </div>`;
 }
 
+function adminTrialSubscriptionField(tier = "pro") {
+  return `<label class="field"><span>Accès à offrir</span><select name="subscriptionTier">
+    <option value="none" ${tier === "none" ? "selected" : ""}>Aucun abonnement</option>
+    <option value="pro" ${tier === "pro" ? "selected" : ""}>Pro</option>
+    <option value="premium" ${tier === "premium" ? "selected" : ""}>Premium</option>
+  </select><small>Premium inclut toutes les fonctions Pro et les Machines IRL.</small></label>`;
+}
+
+function adminTrialSubscriptionFromForm(data) {
+  const subscriptionTier = String(data.get("subscriptionTier") || "none");
+  return { subscription: subscriptionTier !== "none", subscriptionTier: subscriptionTier === "none" ? "" : subscriptionTier };
+}
+
 function renderAdminTrials() {
   const trials = adminTrialRows();
   const trialsBlocked = Boolean(adminModuleError("trials"));
@@ -386,7 +399,7 @@ function renderAdminTrials() {
         <div class="field"><span>Jeux éligibles</span><strong>${eligibleGames.length} disponibles</strong><small>Laisser la sélection vide accorde tous les jeux éligibles.</small></div>
       </div>
       <div class="admin-trial-options">
-        <label><input type="checkbox" name="subscription" checked><span><strong>Accès Pro</strong><small>Toutes les fonctions réservées au plan Pro</small></span></label>
+        ${adminTrialSubscriptionField()}
         <label><input type="checkbox" name="games" data-admin-trial-games-toggle><span><strong>Jeux payants</strong><small>Tout le catalogue éligible ou une sélection</small></span></label>
       </div>
       ${adminTrialGameChoices()}
@@ -399,7 +412,7 @@ function renderAdminTrials() {
           <span class="admin-trial-avatar">@</span>
           <div><strong>${escapeHtml(trial.email || trial.beneficiaryEmail || "Compte inconnu")}</strong><small>${trial.pending ? "En attente de création du compte" : "Compte ShenPulse associé"}</small></div>
           <div class="admin-trial-entitlements">
-            ${trial.subscriptionTrial ? `<b>PRO</b>` : ""}
+            ${trial.subscriptionTrial ? `<b>${trial.subscriptionTier === "premium" ? "PREMIUM" : "PRO"}</b>` : ""}
             ${(trial.gameTrialIds || []).length ? `<b>${trial.gameTrialIds.length} jeu${trial.gameTrialIds.length > 1 ? "x" : ""}</b>` : ""}
           </div>
           <time>${formatAdminDate(trial.expiresAt, false)}</time>

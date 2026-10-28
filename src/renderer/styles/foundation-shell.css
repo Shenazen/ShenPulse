@@ -234,6 +234,15 @@ nav {
   text-align: center;
 }
 
+.nav-premium-badge {
+  flex-basis: 52px;
+  width: 52px;
+  padding-inline: 4px;
+  color: #ffe4a4;
+  border-color: #caa15c66;
+  background: #8d5d142e;
+}
+
 .nav-item.is-pro-locked .nav-pro-badge {
   border-color: rgba(240, 193, 99, .4);
   background: rgba(181, 131, 37, .12);

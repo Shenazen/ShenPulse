@@ -38,11 +38,37 @@ async function submitAgencyForm(form) {
   if(form.id!=="agency-profile-form" || !view.editor)return;
   view.editor={...view.editor,...Object.fromEntries(new FormData(form))};
   view.formError="";
-  try {await agencyCommand("save",view.editor);if(agencyState()===view){view.editor=null;render();}}
+  const updating=!!view.editor.id;
+  try {
+    await agencyCommand("save",view.editor);
+    if(agencyState()!==view)return;
+    view.editor=null;render();
+    void confirmAction(updating
+      ? "Les modifications ont bien été enregistrées sur votre fiche d’agence."
+      : "Votre demande d’agence partenaire a bien été reçue. Elle est en attente de validation par ShenPulse. Vous pouvez suivre son statut dans votre espace privé « Mon agence ».",
+      {title:updating?"Fiche mise à jour":"Demande envoyée",confirmLabel:"Compris",danger:false,acknowledge:true});
+  }
   catch(error){if(agencyState()===view){view.formError=agencyErrorMessage(error);render();}}
 }
-function joinAgency(id="",code="") {
-  return openEditor({title:"Rejoindre une agence",kicker:"DEMANDE D’ADHÉSION",submitLabel:"Envoyer ma demande",body:'<div class="form-grid">'+(!id?'<label class="field full"><span>Code agence</span><input name="code" required maxlength="30" autocomplete="off" value="'+escapeHtml(code || "")+'"></label>':"")+'<label class="field full"><span>Votre pseudo TikTok</span><input name="displayName" required maxlength="80"></label></div><p>Le directeur vérifiera votre appartenance à l’agence. Votre adresse e-mail lui sera communiquée pour gérer la demande. Aucun abonnement n’est souscrit par cette demande.</p>',onSubmit:async data=>agencyCommand("join",{...Object.fromEntries(data),agencyId:id})});
+async function joinAgency(id="",code="") {
+  if(!isAccountAuthenticated())return openAccountLogin();
+  const view=agencyState();
+  if(view.busy || view.uploading)return;
+  const username=agencyTikTokUsername();
+  if(!username){
+    void confirmAction("Renseignez votre @ TikTok dans la barre en haut de ShenPulse, puis envoyez votre demande avec le code de l’agence.",{title:"Compte TikTok nécessaire",confirmLabel:"Compris",danger:false,acknowledge:true});
+    return;
+  }
+  view.joinError="";
+  if(!id)view.joinCode=String(code || "");
+  try {
+    await agencyCommand("join",{agencyId:id,code:String(code || "").trim(),tiktokUsername:username});
+    if(agencyState()!==view)return;
+    view.joinCode="";view.identityUsername=username;render();
+    void confirmAction("Votre demande sous @"+username+" a bien été transmise au directeur de l’agence. Elle est en attente de sa validation. Votre adresse e-mail lui est communiquée pour gérer votre adhésion. Aucun abonnement n’est souscrit par cette demande.",{title:"Demande envoyée",confirmLabel:"Compris",danger:false,acknowledge:true});
+  } catch(error) {
+    if(agencyState()===view){view.joinError=agencyErrorMessage(error);render();}
+  }
 }
 async function uploadAgencyImage(field) {
   if(!["logoUrl","bannerUrl"].includes(field))return;

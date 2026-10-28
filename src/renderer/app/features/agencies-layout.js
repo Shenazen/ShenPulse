@@ -2,6 +2,10 @@
 /** Présentation du programme : fragments communs à l'annuaire et à l'accueil. */
 function agencyIcon(name) {
   const paths={
+    copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',
+    link:'<path d="m10 13 4-4m-7 2-3 3a4 4 0 0 0 6 6l3-3m-2-10 3-3a4 4 0 0 1 6 6l-3 3"/>',
+    edit:'<path d="m4 16-1 5 5-1L21 7l-5-5zM13 5l6 6"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     team:'<path d="m11 17-2 2a2 2 0 0 1-3-3l-2-2 5-6 4-2 3 2 4 6-2 3a2 2 0 0 1-3 1l-4-4"/><path d="m9 8 3 3a2 2 0 0 0 3-3l-2-2M2 12l3-5M22 12l-3-5M8 18l2 2a2 2 0 0 0 3-1"/>',
     shield:'<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6z"/><path d="m8 12 3 3 5-6"/>',
     bolt:'<path d="m13 2-9 12h7l-1 8 10-12h-7z"/>',
@@ -16,16 +20,42 @@ function agencyIcon(name) {
   };
   return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name] || paths.team)+'</svg>';
 }
+function agencyLevelClass(level) {
+  return ["silver","gold","diamond"].includes(level)?"agency-level-"+level:"";
+}
+function agencySubscriberCount(a) {
+  const count=Number(a.payingCount);
+  return Number.isFinite(count)?Math.max(0,Math.trunc(count)):0;
+}
 function agencyTierBadge(a) {
   const labels={silver:"Argent",gold:"Or",diamond:"Diamant"};
-  return a.level?'<span class="agency-tier-badge agency-level-'+escapeHtml(a.level)+'">'+agencyIcon(a.level==="diamond"?"diamond":a.level==="gold"?"crown":"team")+escapeHtml(labels[a.level] || "")+'</span>':"";
+  return agencyLevelClass(a.level)?'<span class="agency-tier-badge '+agencyLevelClass(a.level)+'">'+agencyIcon(a.level==="diamond"?"diamond":a.level==="gold"?"crown":"team")+escapeHtml(labels[a.level] || "")+'</span>':"";
 }
 function renderAgencyCard(a,active=false) {
-  return '<article class="agency-panel agency-card">'+(a.bannerUrl?'<img class="agency-card-banner" src="'+escapeHtml(a.bannerUrl)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':"")+
+  return '<article class="agency-panel agency-card agency-tier-frame '+agencyLevelClass(a.level)+'">'+(a.bannerUrl?'<img class="agency-card-banner" src="'+escapeHtml(a.bannerUrl)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':"")+
     '<div class="agency-card-body"><div class="agency-card-title">'+(a.logoUrl?'<img src="'+escapeHtml(a.logoUrl)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span class="agency-monogram">'+escapeHtml(a.name.slice(0,2).toUpperCase())+'</span>')+
-    '<div><h3>'+escapeHtml(a.name)+'</h3>'+agencyTierBadge(a)+'</div></div><p>'+escapeHtml(a.description)+'</p><div class="agency-tools">'+
+    '<div><h3>'+escapeHtml(a.name)+'</h3>'+agencyTierBadge(a)+'</div></div><p class="agency-card-members">'+agencyIcon("member")+'<strong>'+agencySubscriberCount(a).toLocaleString("fr-FR")+' créateurs abonnés</strong></p><p>'+escapeHtml(a.description)+'</p><div class="agency-tools">'+
     [["website","Site"],["discord","Discord"],["tiktok","TikTok"],["instagram","Instagram"]].filter(([k])=>a[k]).map(([k,label])=>'<button type="button" class="button small" data-action="agency-link" data-value="'+escapeHtml(a[k])+'">'+label+'</button>').join("")+
     '</div><button type="button" class="button primary" data-action="agency-join" data-id="'+escapeHtml(a.id)+'" '+(active?"disabled":"")+'>Rejoindre</button></div></article>';
+}
+/** Identité visuelle commune à l’espace directeur et à la revue privée des fiches. */
+function renderAgencyProfileHeader(a,kicker) {
+  const name=escapeHtml(a.name || "Agence"),logo=a.logoUrl
+    ? '<img src="'+escapeHtml(a.logoUrl)+'" alt="Logo de '+name+'" loading="lazy" referrerpolicy="no-referrer">'
+    : escapeHtml((a.name || "Agence").slice(0,2).toUpperCase());
+  return '<header class="agency-profile-header"><div class="agency-profile-cover">'+(a.bannerUrl
+    ? '<img src="'+escapeHtml(a.bannerUrl)+'" alt="Bannière de '+name+'" loading="lazy" referrerpolicy="no-referrer">'
+    : '<span>'+agencyIcon("building")+' Bannière non renseignée</span>')+'</div><div class="agency-profile-identity"><span class="agency-profile-logo">'+logo+'</span><div class="agency-profile-name"><p class="eyebrow">'+escapeHtml(kicker)+'</p><h3>'+name+'</h3></div>'+agencyBadge(a.status)+'</div></header>';
+}
+function renderAgencyReviewCard(a,members) {
+  const languages={fr:"Français",en:"English",es:"Español",de:"Deutsch",it:"Italiano",pt:"Português"};
+  const paid=members.filter(m=>m.status==="approved" && m.paying).length;
+  const links=[["website","Site internet"],["discord","Discord"],["tiktok","TikTok"],["instagram","Instagram"]].filter(([key])=>a[key]);
+  return '<section class="agency-panel agency-profile agency-review-card" aria-label="Fiche de '+escapeHtml(a.name)+'">'+renderAgencyProfileHeader(a,"FICHE PARTENAIRE")+
+    '<div class="agency-profile-body"><p class="agency-profile-description">'+escapeHtml(a.description)+'</p><dl class="agency-profile-meta"><div><dt>Contact du directeur</dt><dd>'+escapeHtml(a.contactEmail || "Non renseigné")+'</dd></div><div><dt>Langue</dt><dd>'+escapeHtml(languages[a.language] || a.language || "Non renseignée")+'</dd></div><div><dt>Créateurs abonnés</dt><dd>'+paid+' abonnement'+(paid>1?"s":"")+' actif'+(paid>1?"s":"")+'</dd></div></dl>'+
+    (links.length?'<nav class="agency-tools agency-profile-links" aria-label="Liens de l’agence">'+links.map(([key,label])=>'<button type="button" class="button small" data-action="agency-link" data-value="'+escapeHtml(a[key])+'">'+label+' ↗</button>').join("")+'</nav>':"")+
+    (a.reason?'<p class="agency-notice"><strong>Message au directeur</strong><br>'+escapeHtml(a.reason)+'</p>':"")+
+    '<div class="agency-tools agency-review-actions">'+["approved","rejected","suspended"].filter(status=>status!==a.status).map(status=>'<button type="button" class="button '+(status==="approved"?"primary":"")+'" data-action="agency-review" data-id="'+escapeHtml(a.id)+'" data-status="'+status+'">'+({approved:"Valider l’agence",rejected:"Refuser",suspended:"Suspendre"}[status])+'</button>').join("")+'</div></div></section>';
 }
 function renderAgencyJoin(view) {
   const member=view.dashboard?.membership,active=member && ["pending","approved"].includes(member.status);
@@ -33,7 +63,7 @@ function renderAgencyJoin(view) {
     (member.status==="pending"?"Votre demande attend la validation du directeur.":view.dashboard.pricing?.eligible?"Votre tarif agence est disponible dans les abonnements.":"Cette agence n’est plus active. Contactez son directeur.")+
     '</p><div class="agency-tools">'+(view.dashboard.pricing?.eligible?'<button type="button" class="button primary small" data-navigate="membership">Voir mon tarif agence</button>':"")+
     '<button type="button" class="button small" data-action="agency-leave">'+(member.status==="pending"?"Annuler la demande":"Quitter l’agence")+'</button></div></div>';
-  return '<form id="agency-join-form" class="agency-code-form"><label for="agency-code">'+agencyIcon("key")+' Votre agence vous a donné un code ?</label><input id="agency-code" name="code" required maxlength="30" placeholder="Code de votre agence" autocomplete="off" value="'+escapeHtml(view.joinCode || "")+'"><button class="button primary" type="submit" '+(view.busy?"disabled":"")+'>'+agencyIcon("member")+' Rejoindre</button></form>';
+  return '<form id="agency-join-form" class="agency-code-form"><label for="agency-code">'+agencyIcon("key")+' Votre agence vous a donné un code ?</label><input id="agency-code" name="code" required maxlength="30" placeholder="Code de votre agence" autocomplete="off" value="'+escapeHtml(view.joinCode || "")+'" aria-describedby="agency-join-help"><button class="button primary" type="submit" '+(view.busy?"disabled":"")+'>'+agencyIcon("member")+' Rejoindre</button><p id="agency-join-help" class="agency-join-help">Votre @ TikTok affiché en haut de ShenPulse est transmis au directeur, avec votre e-mail, pour valider votre demande.</p>'+(view.joinError?'<p class="agency-notice" role="alert">'+escapeHtml(view.joinError)+'</p>':"")+'</form>';
 }
 function renderAgencyPrices(p) {
   return '<aside class="agency-price-box" aria-label="Tarifs mensuels agence"><span class="agency-discount">−'+Math.round((1-p.agency.pro/p.public.pro)*100)+' %</span><p class="eyebrow">PRIX AGENCE</p>'+
@@ -46,26 +76,27 @@ function renderAgencySteps() {
     ["tag","Le tarif agence est disponible","Choisissez Pro ou Premium au tarif agence. Le paiement reste à confirmer dans PayPal."]
   ].map(([icon,title,detail],i)=>'<article class="agency-step"><span class="agency-step-number" aria-hidden="true">'+(i+1)+'</span><span class="agency-step-icon">'+agencyIcon(icon)+'</span><h3>'+title+'</h3><p>'+detail+'</p></article>').join("")+'</section>';
 }
-function renderAgencyTiers() {
+function renderAgencyTiers(view=agencyState()) {
+  if(!agencyIsDirector(view,true))return "";
   return '<section class="agency-tiers-section" aria-labelledby="agency-tiers-title"><h3 id="agency-tiers-title">Paliers des agences</h3><div class="agency-tiers">'+[
     ["silver","team","Argent","3","Fiche visible dans l’annuaire et badge partenaire."],
     ["gold","crown","Or","10","Priorité dans l’annuaire et rotation « Agence du jour »."],
     ["diamond","diamond","Diamant","25","Pro offert au directeur et bannière sur l’accueil de ShenPulse."]
-  ].map(([level,icon,title,count,detail])=>'<article class="agency-tier agency-level-'+level+'">'+agencyIcon(icon)+'<h4>'+title+'</h4><small>'+count+'+ créateurs abonnés</small><p>'+detail+'</p></article>').join("")+'</div></section>';
+  ].map(([level,icon,title,count,detail])=>'<article class="agency-tier agency-tier-frame '+agencyLevelClass(level)+'"><span class="agency-tier-emblem">'+agencyIcon(icon)+'</span><h4>'+title+'</h4><small>'+count+'+ créateurs abonnés</small><p>'+detail+'</p></article>').join("")+'</div></section>';
 }
 function renderAgencyPageContent(view) {
-  const agencies=view.directory?.agencies || [],active=["pending","approved"].includes(view.dashboard?.membership?.status);
+  const agencies=[...(view.directory?.agencies || [])].sort((a,b)=>agencySubscriberCount(b)-agencySubscriberCount(a) || String(a.name).localeCompare(String(b.name),"fr") || String(a.id).localeCompare(String(b.id))),active=["pending","approved"].includes(view.dashboard?.membership?.status);
   const p=view.directory?.prices || {public:{pro:14.99,premium:20.99},agency:{pro:9.99,premium:13.99}};
   const featured=agencies.find(a=>a.id===view.directory?.featuredAgencyId);
   const directoryBody=agencies.length?'<div class="agency-directory">'+agencies.map(a=>renderAgencyCard(a,active)).join("")+'</div>':
     view.error?'<div class="agency-empty agency-unavailable"><p>L’annuaire ne peut pas être chargé pour le moment.</p></div>':view.busy?'<div class="agency-empty" role="status"><span class="pulse-loader"></span><p>Chargement de l’annuaire…</p></div>':
     '<div class="agency-empty">'+agencyIcon("team")+'<h3>Les premières agences partenaires arrivent</h3><p>Une agence apparaît ici dès 3 créateurs Pro ou Premium abonnés. Vous avez un code ? Saisissez-le en haut de la page.</p></div>';
-  return '<div class="agency-page"><header class="agency-page-heading"><h2>'+agencyIcon("team")+' Agences</h2><p>Les agences partenaires de ShenPulse : leurs créateurs profitent de Pro et Premium à prix réduit.</p></header>'+
+  return '<div class="agency-page">'+renderStudioHero("agencies","Agences","Les agences partenaires de ShenPulse : leurs créateurs profitent de Pro et Premium à prix réduit.")+
     '<section class="agency-hero"><div class="agency-hero-copy"><p class="eyebrow">PROGRAMME AGENCES</p><h2>ShenPulse au prix agence</h2><p>Votre agence est partenaire ? Rejoignez-la ici : dès qu’elle valide votre demande, le tarif agence devient disponible pour votre abonnement.</p>'+
     '<ul class="agency-benefits"><li>'+agencyIcon("bolt")+'Les avantages de votre formule, au tarif agence</li><li>'+agencyIcon("shield")+'Agences vérifiées par ShenPulse</li><li>'+agencyIcon("refresh")+'Sans engagement, résiliable à tout moment</li></ul>'+renderAgencyJoin(view)+'</div>'+renderAgencyPrices(p)+'</section>'+
-    agencyNotice(view)+'<section class="agency-list-section" aria-labelledby="agency-directory-title"><header class="agency-heading"><h3 id="agency-directory-title">Agences partenaires <span class="badge">'+agencies.length+'</span></h3><button type="button" class="button small" data-action="agency-refresh" '+(view.busy?"disabled":"")+'>'+agencyIcon("refresh")+' Actualiser</button></header>'+
+    agencyNotice(view)+'<section class="agency-list-section" aria-labelledby="agency-directory-title"><header class="agency-heading"><h3 id="agency-directory-title">Agences partenaires <span class="badge">'+agencies.length+'</span></h3><button type="button" class="button small" data-action="agency-refresh" '+(view.busy?"disabled":"")+'>'+agencyIcon("refresh")+' Actualiser</button></header><p class="agency-directory-order">Les agences avec le plus de créateurs abonnés apparaissent en premier.</p>'+
     (featured?'<div class="agency-day"><span>'+agencyIcon("crown")+' Agence du jour</span><strong>'+escapeHtml(featured.name)+'</strong><button type="button" class="button small" data-action="agency-join" data-id="'+escapeHtml(featured.id)+'" '+(active?"disabled":"")+'>Rejoindre</button></div>':"")+directoryBody+'</section>'+
-    renderAgencySteps()+renderAgencyDirector(view)+renderAgencyEditorSection(view)+renderAgencyTiers()+'<p class="agency-contract-note">Les abonnements existants conservent leur tarif convenu. Toute modification d’un abonnement nécessite votre confirmation dans PayPal.</p></div>';
+    renderAgencySteps()+renderAgencyDirector(view)+renderAgencyEditorSection(view)+renderAgencyTiers(view)+'<p class="agency-contract-note">Les abonnements existants conservent leur tarif convenu. Toute modification d’un abonnement nécessite votre confirmation dans PayPal.</p></div>';
 }
 function renderAgencyHomeSpotlight() {
   const view=ensureAgencyData(),a=view.directory?.agencies?.find(a=>a.id===view.directory?.homeAgencyId);
@@ -75,9 +106,11 @@ function renderAgencyHomeSpotlight() {
 
 function renderAgencyDirectorProgress(paid) {
   const tier=paid>=25?"Diamant":paid>=10?"Or":paid>=3?"Argent":"En préparation";
-  return '<div class="agency-director-progress"><strong>Palier '+tier+'</strong><p>'+(paid>=25?
+  const target=paid>=25?25:paid>=10?25:paid>=3?10:3,level=paid>=25?"diamond":paid>=10?"gold":paid>=3?"silver":"";
+  const detail=paid>=25?
     'Pro est offert au directeur tant que votre agence compte au moins 25 créateurs abonnés actifs. Si vous avez déjà un abonnement, ses prélèvements restent inchangés : vous pouvez gérer son arrêt depuis Abonnement.':
     paid>=10?'Votre agence peut apparaître comme Agence du jour. Encore '+(25-paid)+' créateurs abonnés pour le palier Diamant et Pro offert au directeur.':
     paid>=3?'Votre fiche est visible dans l’annuaire. Encore '+(10-paid)+' créateurs abonnés pour le palier Or.':
-    'Votre code fonctionne déjà. Encore '+(3-paid)+' créateurs abonnés pour afficher votre fiche dans l’annuaire.')+'</p></div>';
+    'Votre code fonctionne déjà. Encore '+(3-paid)+' créateurs abonnés pour afficher votre fiche dans l’annuaire.';
+  return '<section class="agency-director-progress '+agencyLevelClass(level)+'" aria-label="Progression de votre agence"><div class="agency-director-section-title"><span>'+agencyIcon(level==="diamond"?"diamond":"crown")+'</span><div><small>VOTRE PROGRESSION</small><h4>Palier '+tier+'</h4></div></div><div class="agency-progress-count"><strong>'+paid+'</strong><span>/ '+target+' créateurs abonnés</span></div><progress value="'+Math.min(paid,target)+'" max="'+target+'" aria-label="Créateurs abonnés vers le prochain palier"></progress><p>'+detail+'</p><small>Seuls les abonnements payants actifs de vos membres validés comptent pour les paliers.</small></section>';
 }

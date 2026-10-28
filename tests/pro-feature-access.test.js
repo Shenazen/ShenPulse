@@ -41,7 +41,7 @@ test("Free n’accède à aucune section Pro, même administrateur ou propriéta
   f.state.settings.account.email = "alexandre.leuridan@gmail.com"; f.state.settings.account.emailVerified = true;
   for (const section of ["games", "irl", "commands", "matches"]) {
     assert.equal(proFeatureAllowed(f.state, section), false);
-    assert.throws(() => assertProFeatureAccess(f.store, section), { code: "PRO_FEATURE_REQUIRED" });
+    assert.throws(() => assertProFeatureAccess(f.store, section), { code: section==="irl"?"PREMIUM_FEATURE_REQUIRED":"PRO_FEATURE_REQUIRED" });
   }
   for (const packId of ["included", "paid"]) {
     assert.throws(() => f.hub.assertAccess(packId), { code: "PRO_FEATURE_REQUIRED" });
@@ -49,17 +49,16 @@ test("Free n’accède à aucune section Pro, même administrateur ou propriéta
   }
   let requests = 0;
   const service = new ShellyService({ store: f.store, fetchImpl: async () => { requests += 1; throw new Error("interdit"); } });
-  assert.throws(() => service.status(), { code: "PRO_FEATURE_REQUIRED" });
-  await assert.rejects(service.control({ deviceId: "shellyplusplugs-fixture", operation: "on" }), { code: "PRO_FEATURE_REQUIRED" });
-  await assert.rejects(service.scan(), { code: "PRO_FEATURE_REQUIRED" });
+  assert.throws(() => service.status(), { code: "PREMIUM_FEATURE_REQUIRED" });
+  await assert.rejects(service.control({ deviceId: "shellyplusplugs-fixture", operation: "on" }), { code: "PREMIUM_FEATURE_REQUIRED" });
+  await assert.rejects(service.scan(), { code: "PREMIUM_FEATURE_REQUIRED" });
   assert.equal(requests, 0);
 });
 
-test("Pro, Premium, essai non expiré et accès Pro offert donnent IRL aux comptes non propriétaires", async () => {
+test("Premium actif ou en essai valide donne IRL aux comptes non propriétaires", async () => {
   for (const subscription of [
-    { tier: "pro", source: "own", status: "active" }, { tier: "premium", source: "own", status: "paid" },
-    { tier: "pro", source: "trial", status: "active", expiresAtMs: Date.now() + 60000 },
-    { tier: "pro", source: "premiumSeat", status: "active" }
+    { tier: "premium", source: "own", status: "paid" },
+    { tier: "premium", source: "trial", status: "trial", expiresAtMs: Date.now() + 60000 }
   ]) {
     const f = fixture(subscription);
     f.state.settings.siteVisibility = { schemaVersion: 8, navigation: { irl: "admin" },
@@ -83,38 +82,38 @@ test("Pro ne contourne jamais hidden, les restrictions administrateur récentes 
     { schemaVersion: 9, features: { "irl:shelly": "admin" } }, { actionTypes: { "irl:shelly": false } },
     { actionTypeOverrides: { "irl:shelly": false } }
   ]) {
-    const f = fixture(); f.state.settings.siteVisibility = siteVisibility;
+    const f = fixture({ tier: "premium", source: "own", status: "active" }); f.state.settings.siteVisibility = siteVisibility;
     assert.throws(() => assertProFeatureAccess(f.store, "irl"), { code: "FEATURE_ACCESS_FORBIDDEN" });
   }
-  const f = fixture(); f.state.settings.siteVisibility.games = { included: "hidden" };
+  const f = fixture({ tier: "premium", source: "own", status: "active" }); f.state.settings.siteVisibility.games = { included: "hidden" };
   assert.throws(() => f.hub.assertAccess("included"), { code: "FEATURE_ACCESS_FORBIDDEN" });
 });
 
 test("un état Pro ne suffit pas pour un invité et les effets différés restent dans leur compte/profil", () => {
-  const guest = fixture(); guest.state.settings.account.refreshTokenSecretId = "";
+  const guest = fixture({ tier: "premium", source: "own", status: "active" }); guest.state.settings.account.refreshTokenSecretId = "";
   assert.throws(() => guest.hub.assertAccess("included"), { code: "ACCOUNT_REQUIRED" });
   for (const mutate of [
     (state) => { state.settings.account.uid = "autre"; }, (state) => { state.session.profileId = "autre"; },
     (state) => { state.commerce.subscription = { tier: "pro", source: "trial", status: "active", expiresAtMs: Date.now() - 1 }; }
   ]) {
-    const f = fixture(); const guard = createProFeatureGuard(f.store, "irl"); mutate(f.state);
-    assert.throws(guard, (error) => ["FEATURE_CONTEXT_CHANGED", "PRO_FEATURE_REQUIRED"].includes(error.code));
+    const f = fixture({ tier: "premium", source: "own", status: "active" }); const guard = createProFeatureGuard(f.store, "irl"); mutate(f.state);
+    assert.throws(guard, (error) => ["FEATURE_CONTEXT_CHANGED", "PREMIUM_FEATURE_REQUIRED"].includes(error.code));
   }
 });
 
 test("Shelly revalide l’abonnement après découverte, avant tout pilotage", async () => {
-  const f = fixture(); let controls = 0;
+  const f = fixture({ tier: "premium", source: "own", status: "active" }); let controls = 0;
   const service = new ShellyService({ store: f.store, fetchImpl: async (url) => {
     if (url.endsWith("/rpc/Shelly.GetStatus")) f.state.commerce.subscription = { tier: "free", status: "free" };
     if (url.includes("/rpc/Switch.")) controls += 1;
     return shellyResponse(url);
   } });
-  await assert.rejects(service.control({ deviceId: "shellyplusplugs-fixture", operation: "on" }), { code: "PRO_FEATURE_REQUIRED" });
+  await assert.rejects(service.control({ deviceId: "shellyplusplugs-fixture", operation: "on" }), { code: "PREMIUM_FEATURE_REQUIRED" });
   assert.equal(controls, 0);
 });
 
 test("une impulsion IRL déjà armée s’éteint même après expiration, sans nouvelle action", async () => {
-  const f = fixture(); const controls = [];
+  const f = fixture({ tier: "premium", source: "own", status: "active" }); const controls = [];
   const service = new ShellyService({ store: f.store, delayImpl: async () => {
     f.state.commerce.subscription = { tier: "free", status: "free" };
   }, fetchImpl: async (url, options) => {
@@ -123,7 +122,7 @@ test("une impulsion IRL déjà armée s’éteint même après expiration, sans 
   } });
   assert.equal((await service.control({ deviceId: "shellyplusplugs-fixture", operation: "pulse" })).restored, true);
   assert.deepEqual(controls, [true, false]);
-  await assert.rejects(service.control({ deviceId: "shellyplusplugs-fixture", operation: "on" }), { code: "PRO_FEATURE_REQUIRED" });
+  await assert.rejects(service.control({ deviceId: "shellyplusplugs-fixture", operation: "on" }), { code: "PREMIUM_FEATURE_REQUIRED" });
 });
 
 test("les effets jeu relisent Pro après connexion socket, sans écrire dans le transport", async () => {
@@ -186,7 +185,7 @@ test("settings:save refuse une modification IRL Free et ne laisse jamais falsifi
     core: { liveEventActions: { chatbot: { syncTimers() {} } }, synchronizeOverlayCompletionSettings: async () => {},
       overlayServer: { publish() {} }, snapshot: () => ({ state: f.state }), notifyRenderer() {} },
     localServerSettingsSignature: () => "same" });
-  await assert.rejects(handlers.get("settings:save")({}, { irl: { enabled: false } }), { code: "PRO_FEATURE_REQUIRED" });
+  await assert.rejects(handlers.get("settings:save")({}, { irl: { enabled: false } }), { code: "PREMIUM_FEATURE_REQUIRED" });
   assert.equal(writes, 0);
   await handlers.get("settings:save")({}, { account: { uid: "fake" }, siteVisibility: { navigation: { irl: "public" } } });
   assert.equal(f.state.settings.account.uid, "creator"); assert.deepEqual(f.state.settings.siteVisibility, {});
@@ -243,4 +242,20 @@ test("un téléchargement terminé après expiration n’installe rien et ne val
     installAsset: async () => { assets += 1; } });
   await assert.rejects(installGame(runtime, "terraria"), { code: "PRO_FEATURE_REQUIRED" });
   assert.equal(assets, 0); assert.equal(writes, 0); assert.equal(runtime.activeInstalls.size, 0);
+});
+
+test("Pro, essais Pro et sièges offerts refusent IRL avant toute requête appareil",async()=>{
+ for(const subscription of [
+  {tier:'pro',status:'active',source:'own'},
+  {tier:'pro',status:'active',source:'premiumSeat'},
+  {tier:'pro',status:'active',source:'agencyReward',expiresAtMs:Date.now()+60000},
+  {tier:'pro',status:'trial',source:'trial',expiresAtMs:Date.now()+60000}
+ ]){
+  const f=fixture(subscription);let requests=0;const service=new ShellyService({store:f.store,fetchImpl:async()=>{requests++;throw Error('Aucune requête autorisée');}});
+  assert.equal(proFeatureAllowed(f.state,'irl'),false);
+  assert.throws(()=>service.status(),{code:'PREMIUM_FEATURE_REQUIRED'});
+  await assert.rejects(service.control({deviceId:'shellyplusplugs-fixture',operation:'on'}),{code:'PREMIUM_FEATURE_REQUIRED'});
+  await assert.rejects(service.scan(),{code:'PREMIUM_FEATURE_REQUIRED'});assert.equal(requests,0);
+  assert.equal(f.hub.assertAccess('included').id,'included');
+ }
 });

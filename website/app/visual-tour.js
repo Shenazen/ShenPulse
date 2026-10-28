@@ -17,14 +17,14 @@ export function screenshot(src, alt, priority = false) {
 export function productTour() {
   return `<section class="section product-tour" id="decouvrir" aria-labelledby="product-tour-title">
     <div class="section-heading"><div><span class="eyebrow">ShenPulse, aujourd’hui</span><h2 id="product-tour-title">Découvre ton prochain espace de création.</h2></div><p>Des captures de la version ${CLIENT_RELEASE.version}, sans données personnelles. Choisis un espace pour voir comment il fonctionne.</p></div>
-    <div class="tour-tabs" role="tablist" aria-label="Espaces de ShenPulse">${PRODUCT_TOUR.map((item, index) => `<button type="button" role="tab" id="tour-${item.id}" data-tour-tab="${item.id}" aria-controls="product-tour-panel" aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}">${escapeHtml(item.title)}${item.pro ? '<span class="badge-pro">PRO</span>' : ''}</button>`).join('')}</div>
+    <div class="tour-tabs" role="tablist" aria-label="Espaces de ShenPulse">${PRODUCT_TOUR.map((item, index) => `<button type="button" role="tab" id="tour-${item.id}" data-tour-tab="${item.id}" aria-controls="product-tour-panel" aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}">${escapeHtml(item.title)}${item.premium ? '<span class="badge-pro">PREMIUM</span>' : item.pro ? '<span class="badge-pro">PRO</span>' : ''}</button>`).join('')}</div>
     <div class="tour-panel" id="product-tour-panel" role="tabpanel" tabindex="0" aria-labelledby="tour-${PRODUCT_TOUR[0].id}">${tourPanel(PRODUCT_TOUR[0])}</div>
-    <p class="tour-footnote">PRO : accès Pro ou Premium actif requis. Certains jeux nécessitent aussi un achat. Prix et droits disponibles dans l’application.</p>
+    <p class="tour-footnote">PRO : accès Pro ou Premium actif requis. PREMIUM : accès Premium actif requis. Certains jeux nécessitent aussi un achat. Prix et droits disponibles dans l’application.</p>
   </section>`
 }
 
 function tourPanel(item) {
-  return `<div class="tour-copy"><span class="eyebrow">${escapeHtml(item.title)}${item.pro ? ' · Accès Pro' : ''}</span><h3>${escapeHtml(item.heading)}</h3><p>${escapeHtml(item.description)}</p><ul class="check-list">${item.points.map((point) => `<li>${escapeHtml(point)}</li>`).join('')}</ul><a class="text-link" href="/docs#${item.guide}">Lire le guide ${escapeHtml(item.title)} →</a></div>${screenshot(`/screenshots/${item.image}`, item.title)}`
+  return `<div class="tour-copy"><span class="eyebrow">${escapeHtml(item.title)}${item.premium ? ' · Accès Premium' : item.pro ? ' · Accès Pro' : ''}</span><h3>${escapeHtml(item.heading)}</h3><p>${escapeHtml(item.description)}</p><ul class="check-list">${item.points.map((point) => `<li>${escapeHtml(point)}</li>`).join('')}</ul><a class="text-link" href="/docs#${item.guide}">Lire le guide ${escapeHtml(item.title)} →</a></div>${screenshot(`/screenshots/${item.image}`, item.title)}`
 }
 
 export function screenshotDialog() {

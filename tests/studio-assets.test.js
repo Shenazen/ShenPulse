@@ -55,3 +55,9 @@ test("les deux ornements de catégorie sont des WebP locaux transparents et born
   }
   assert.ok(total<200000,`Les deux ressources doivent rester sous 200 ko : ${total} octets.`);
 });
+
+test("l’affiche Agences reste une vraie ressource WebP locale sous 220 ko",()=>{
+ const bytes=fs.readFileSync(path.resolve(__dirname,'../src/renderer/assets/studio/agencies.webp'));
+ assert.equal(bytes.subarray(0,4).toString(),'RIFF');assert.equal(bytes.subarray(8,12).toString(),'WEBP');
+ assert.ok(bytes.length<220000);
+});

@@ -189,6 +189,7 @@ function syncCreatorTopbar() {
   sessionButton.hidden = true;
   sessionButton.tabIndex = -1;
   syncCreatorTikTokControl();
+  if(typeof scheduleAgencyIdentitySync==="function")scheduleAgencyIdentitySync();
   const authenticated = isAccountAuthenticated();
   const tiktok = tiktokMeta();
   const liveStatus = document.getElementById("topbar-live-status");

@@ -12,7 +12,8 @@
    * Les références sont résolues à nouveau dans le profil actif à l'exécution.
    */
   const MUSIC_OPERATIONS = Object.freeze([
-    "next", "previous", "play", "pause", "queue", "play_track", "play_playlist", "volume"
+    "next", "previous", "play", "pause", "queue", "play_track", "play_playlist", "volume",
+    "requests_add", "requests_skip", "requests_current", "requests_list"
   ]);
   const OVERLAY_OPERATIONS = Object.freeze({
     timer: Object.freeze(["add", "remove", "set", "pause", "resume", "reset"]),
@@ -150,7 +151,7 @@
       return `Déclencher l'action : ${action?.name || execution.actionId}`;
     }
     if (execution.type === "music") {
-      const labels = { next: "Passer au morceau suivant", previous: "Revenir au morceau précédent", play: "Lancer la musique", pause: "Mettre la musique en pause", queue: "Ajouter un titre à la file", play_track: "Lire un titre", play_playlist: "Lancer une playlist", volume: "Régler le volume" };
+      const labels = { requests_add: "Demander un titre", requests_skip: "Passer une demande", requests_current: "Titre en cours", requests_list: "Voir les demandes", next: "Passer au morceau suivant", previous: "Revenir au morceau précédent", play: "Lancer la musique", pause: "Mettre la musique en pause", queue: "Ajouter un titre à la file", play_track: "Lire un titre", play_playlist: "Lancer une playlist", volume: "Régler le volume" };
       const detail = execution.useArgs ? "titre fourni après la commande" : execution.query || execution.uri;
       return `${labels[execution.operation]}${execution.operation === "volume" ? ` : ${execution.volume} %` : detail ? ` : ${detail}` : ""}`;
     }

@@ -24,7 +24,7 @@ export const PRODUCT_TOUR = [
     heading: 'Une bande-son qui suit ton live.',
     description: 'Relie Spotify, prépare la lecture et configure les demandes de titres du chat avec leurs propres limites.',
     points: ['Lecture et file musicale', 'Commandes de demande et de passage', 'Durée, contenu explicite et artistes bloqués'], guide: 'musique' },
-  { id: 'irl', title: 'Machines IRL', image: 'irl-public.png', pro: true,
+  { id: 'irl', title: 'Machines IRL', image: 'irl-public.png', premium: true,
     heading: 'Les interactions sortent de l’écran.',
     description: 'Associe tes prises PlugPlus et retrouve tes appareils et interactions dans des listes compactes. Chaque commande de test agit réellement sur la prise.',
     points: ['Détection et association des appareils', 'Actions temporisées et déclencheurs', 'À utiliser avec une installation sans risque'], guide: 'machines-irl' },

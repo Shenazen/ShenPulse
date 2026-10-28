@@ -75,14 +75,15 @@ test("le serveur Python est décompressé pour pouvoir être exécuté depuis l'
   assert.ok(manifest.build.asarUnpack.includes("resources/irl-python/**"));
 });
 
-test("le démarrage Python différé revalide Pro, compte et profil avant control/provision, sans requête Shelly", async () => {
+test("le démarrage Python différé revalide Premium, compte et profil avant control/provision, sans requête Shelly", async () => {
   for (const operation of ["control", "provision"]) {
     for (const mutate of [
       (state) => { state.commerce.subscription = { tier: "free", status: "free" }; },
+      (state) => { state.commerce.subscription = { tier: "pro", status: "active" }; },
       (state) => { state.settings.account.uid = "autre-compte"; },
       (state) => { state.session.profileId = "autre-profil"; }
     ]) {
-      const state = { commerce: { subscription: { tier: "pro", status: "active" } }, session: { profileId: "profil" },
+      const state = { commerce: { subscription: { tier: "premium", status: "active" } }, session: { profileId: "profil" },
         settings: { account: { uid: "fixture", email: "fixture@example.test", refreshTokenSecretId: "account" }, siteVisibility: {} } };
       const store = { getState: () => state, getAccountSession: () => state.settings.account, getSecret: () => "fixture-only-token" };
       const child = new EventEmitter(); const writes = [];
@@ -98,7 +99,7 @@ test("le démarrage Python différé revalide Pro, compte et profil avant contro
       const pending = operation === "control" ? bridge.control({ host: "192.168.1.42" }, "on", 1000, options) :
         bridge.provision({ host: "192.168.1.42", generation: 2, ssid: "fixture", password: "fixture" }, options);
       mutate(state); child.stdout.write(`${JSON.stringify({ type: "ready", protocol: 1 })}\n`);
-      await assert.rejects(pending, (error) => ["PRO_FEATURE_REQUIRED", "FEATURE_CONTEXT_CHANGED"].includes(error.code));
+      await assert.rejects(pending, (error) => ["PREMIUM_FEATURE_REQUIRED", "FEATURE_CONTEXT_CHANGED"].includes(error.code));
       assert.deepEqual(writes, [], "aucune demande Shelly ne part après le démarrage différé");
       assert.equal(bridge.pending.size, 0);
       await bridge.stop();

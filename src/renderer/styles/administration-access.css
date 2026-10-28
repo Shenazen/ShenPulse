@@ -602,3 +602,11 @@
 dialog[data-variant="account-auth"] {
   width: min(540px, calc(100vw - 34px));
 }
+
+.admin-trial-options > .field {
+  grid-template-columns: minmax(0, 1fr);
+}
+.admin-trial-options > .field select {
+  width: 100%;
+  min-width: 0;
+}

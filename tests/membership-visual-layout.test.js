@@ -41,6 +41,8 @@ test("Abonnement retrouve sa bannière illustrée et présente les trois tarifs 
   assert.equal(page.querySelector("[data-studio-hero]").dataset.studioHero, "membership");
   assert.match(page.querySelector(".studio-hero-art").getAttribute("src"), /^assets\/studio\/[a-z-]+\.webp$/);
   assert.equal(page.querySelectorAll(".subscription-card").length, 3);
+  assert.doesNotMatch(page.querySelector(".subscription-card.tier-pro").textContent,/Machines IRL|interactions IRL/);
+  assert.match(page.querySelector(".subscription-card.tier-premium").textContent,/Machines IRL et interactions PlugPlus/);
   const plans = window.eval("SUBSCRIPTION_PLANS");
   for (const plan of plans) {
     const card = page.querySelector(`.tier-${plan.tier}`);
@@ -55,7 +57,7 @@ test("Abonnement retrouve sa bannière illustrée et présente les trois tarifs 
   assert.ok(children.indexOf(page.querySelector(".membership-account")) < children.indexOf(page.querySelector(".membership-offers")));
   assert.doesNotMatch(page.textContent, /SyncLive|annuel|agence/iu);
   assert.equal(page.querySelectorAll("[data-action='subscription-stop']").length, 0);
-  assert.match(page.querySelector(".membership-account-copy p").textContent, /Jeux vidéo, Interactions IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif/);
+  assert.match(page.querySelector(".membership-account-copy p").textContent, /Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif\. Machines IRL est réservé à Premium/);
   assert.doesNotMatch(page.querySelector(".tier-free").textContent, /jeux.*gratuit|interactions.*sans abonnement/iu);
   assert.match(page.querySelector(".tier-pro").textContent, /commandes/iu);
   assert.doesNotMatch(page.textContent, /interactions.*gratuit|achats uniques fonctionnent sans abonnement|achat unique.*suffit/iu);

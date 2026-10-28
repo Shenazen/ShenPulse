@@ -1,5 +1,7 @@
 "use strict";
 
+const { hasProAccess } = require("../shared/pro-access");
+
 function normalizeTrialEmail(value) {
   const email = String(value || "").trim().toLowerCase();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -49,6 +51,7 @@ function normalizeTrialGrant(trial) {
       source?.grantedToEmail
     ),
     subscriptionTrial: Boolean(source?.subscriptionTrial),
+    subscriptionTier: source?.subscriptionTier === "premium" || source?.tier === "premium" ? "premium" : "pro",
     gameTrialIds,
     startsAt: String(source?.startsAt || ""),
     startsAtMs: Number(source?.startsAtMs || 0),
@@ -78,8 +81,12 @@ function reconcileTrialAccess(state, incomingTrials, nowMs = Date.now()) {
     .map(normalizeTrialGrant);
   const gameExpires = new Map();
   let subscriptionExpiresAtMs = 0;
+  let premiumExpiresAtMs = 0;
   for (const trial of trials) {
     if (trial.subscriptionTrial) {
+      if (trial.subscriptionTier === "premium") {
+        premiumExpiresAtMs = Math.max(premiumExpiresAtMs, trial.expiresAtMs);
+      }
       subscriptionExpiresAtMs = Math.max(
         subscriptionExpiresAtMs,
         trial.expiresAtMs
@@ -117,32 +124,32 @@ function reconcileTrialAccess(state, incomingTrials, nowMs = Date.now()) {
   ];
 
   const currentSubscription = state.commerce.subscription || {};
-  const currentTier = String(currentSubscription.tier || "free");
-  const hasPermanentPaidSubscription =
-    ["pro", "premium"].includes(currentTier) &&
-    currentSubscription.source !== "trial";
-  if (!hasPermanentPaidSubscription) {
-    state.commerce.subscription = subscriptionExpiresAtMs > nowMs
-      ? {
-          tier: "pro",
-          source: "trial",
-          status: "active",
-          priceMonthly: 0,
-          renewalDate: new Date(subscriptionExpiresAtMs).toISOString(),
-          expiresAt: new Date(subscriptionExpiresAtMs).toISOString(),
-          expiresAtMs: subscriptionExpiresAtMs
-        }
-      : {
-          tier: "free",
-          source: "free",
-          status: "free",
-          priceMonthly: 0,
-          renewalDate: ""
-        };
+  const prior = state.commerce.trial || {};
+  const baseline = currentSubscription.source !== "trial"
+    ? currentSubscription
+    : prior.email === email ? prior.baseSubscription : null;
+  const baselineActive = baseline && baseline.source !== "trial"
+    && hasProAccess({ commerce: { subscription: baseline } }, nowMs);
+  const trialTier = premiumExpiresAtMs > nowMs ? "premium" : "pro";
+  const trialExpiry = trialTier === "premium" ? premiumExpiresAtMs : subscriptionExpiresAtMs;
+  const useTrial = trialExpiry > nowMs
+    && (!baselineActive || baseline.tier === "pro" && trialTier === "premium");
+  if (useTrial) {
+    state.commerce.subscription = {
+      tier: trialTier, source: "trial", status: "active", priceMonthly: 0,
+      renewalDate: new Date(trialExpiry).toISOString(),
+      expiresAt: new Date(trialExpiry).toISOString(), expiresAtMs: trialExpiry
+    };
+  } else if (baselineActive) {
+    state.commerce.subscription = { ...baseline };
+  } else {
+    state.commerce.subscription = { tier: "free", source: "free", status: "free", priceMonthly: 0, renewalDate: "" };
   }
 
   state.commerce.trial = {
     email,
+    baseSubscription: useTrial && baselineActive ? { ...baseline } : null,
+    subscriptionTier: useTrial ? trialTier : "",
     active: trials.length > 0,
     subscription: subscriptionExpiresAtMs > nowMs,
     subscriptionExpiresAtMs,

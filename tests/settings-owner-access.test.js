@@ -95,17 +95,18 @@ test("le propriétaire vérifié peut toujours enregistrer ses paramètres priv�
   assert.equal(f.effects.includes("restart"), true);
 });
 
-test("un invité ne sauvegarde rien et IRL conserve son contrôle Pro indépendant", async () => {
+test("un invité ne sauvegarde rien et IRL conserve son contrôle Premium indépendant", async () => {
   const guest = fixture({ guest: true });
   await assert.rejects(guest.save({ locale: "en-US" }), { code: "ACCOUNT_REQUIRED" });
   assert.deepEqual(guest.counts(), { writes: 0, secrets: 0 });
-  for (const pro of [false, true]) {
-    const f = fixture({ pro });
-    if (pro) {
+  for (const tier of ["free", "pro", "premium"]) {
+    const f = fixture({ pro: tier!=="free" });
+    f.store.state.commerce.subscription.tier=tier;
+    if (tier==="premium") {
       await f.save({ irl: { ...f.store.state.settings.irl, enabled: true } });
       assert.equal(f.store.state.settings.irl.enabled, true);
     } else {
-      await assert.rejects(f.save({ irl: { enabled: true } }), { code: "PRO_FEATURE_REQUIRED" });
+      await assert.rejects(f.save({ irl: { enabled: true } }), { code: "PREMIUM_FEATURE_REQUIRED" });
       assert.deepEqual(f.counts(), { writes: 0, secrets: 0 });
       assert.deepEqual(f.effects, []);
     }

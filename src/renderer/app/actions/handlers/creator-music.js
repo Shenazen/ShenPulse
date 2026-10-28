@@ -7,6 +7,54 @@ const CREATOR_MUSIC_ACTIONS = new Set([
   "music-request-remove", "music-request-clear", "music-request-next", "music-settings-save"
 ]);
 
+let creatorMusicSettingsWrite = Promise.resolve();
+
+/** Les interrupteurs et le bouton Enregistrer partagent la même file ordonnée. */
+function saveCreatorMusicSettings(settings, owner, { redraw = false } = {}) {
+  const profileId = String(snapshot?.state?.session?.profileId || "");
+  const assertOwner = () => {
+    assertCreatorPrivateOperation(owner);
+    if (String(snapshot?.state?.session?.profileId || "") !== profileId) throw new Error("Le profil a changé pendant l’enregistrement des commandes musicales.");
+  };
+  const pending = creatorMusicSettingsWrite.then(() => perform(async () => {
+    assertOwner();
+    const result = await api.controlSpotify({ operation: "requests_settings", settings, expectedUid: owner.uid, expectedProfileId: profileId });
+    assertOwner();
+    creatorMusicData.requests = result;
+    const updated = await api.getSnapshot();
+    assertOwner();
+    acceptSnapshot(updated);
+    if (redraw) {
+      await refreshSpotifyStatus({ redraw: false });
+      assertOwner();
+      await refreshCreatorMusicData();
+      assertOwner();
+    }
+    if (!syncCreatorMusicRuntime({ preserveSettings: !redraw }) && typeof syncCreatorChatbotRuntime === "function") syncCreatorChatbotRuntime();
+    return result;
+  }, redraw ? "Paramètres Song Requests enregistrés" : "État de la commande musicale enregistré"));
+  creatorMusicSettingsWrite = pending.catch(() => {});
+  return pending;
+}
+
+function saveCreatorMusicCommandToggle(target) {
+  const name = target.name;
+  const keys = ["request", "skip", "nowPlaying", "queue"];
+  const key = keys.find((value) => name === value + "Enabled");
+  if (name !== "enabled" && name !== "allowViewerSkip" && !key) return false;
+  const owner = captureCreatorPrivateOperation();
+  const previous = !target.checked;
+  const settings = key ? { commandEnabled: { [key]: target.checked } } : { [name]: target.checked };
+  target.disabled = true;
+  void saveCreatorMusicSettings(settings, owner).catch(() => {
+    try {
+      assertCreatorPrivateOperation(owner);
+      if (target.isConnected) target.checked = previous;
+    } catch {}
+  }).finally(() => { if (target.isConnected) target.disabled = false; });
+  return true;
+}
+
 async function creatorMusicOperation(config, feedback = "Musique mise à jour", owner = captureCreatorPrivateOperation()) {
   return perform(async () => {
     assertCreatorPrivateOperation(owner);
@@ -72,18 +120,7 @@ async function handleCreatorMusicAction({ action, target, id }) {
     return creatorMusicOperation({ operation: "requests_clear" }, "Demandes ShenPulse vidées", owner);
   }
   if (action === "music-settings-save") {
-    const settings = creatorMusicSettingsFromControls();
-    return perform(async () => {
-      assertCreatorPrivateOperation(owner);
-      const result = await api.controlSpotify({ operation: "requests_settings", settings });
-      assertCreatorPrivateOperation(owner);
-      creatorMusicData.requests = result;
-      await refreshSpotifyStatus({ redraw: false });
-      assertCreatorPrivateOperation(owner);
-      await refreshCreatorMusicData();
-      assertCreatorPrivateOperation(owner);
-      syncCreatorMusicRuntime({ preserveSettings: false });
-    }, "Paramètres Song Requests enregistrés");
+    return saveCreatorMusicSettings(creatorMusicSettingsFromControls(), owner, { redraw: true });
   }
 }
 
@@ -100,7 +137,8 @@ function creatorMusicSettingsFromControls() {
     maxQueue: Number(field("maxQueue").value), maxPerViewer: Number(field("maxPerViewer").value),
     cooldownSeconds: Number(field("cooldownSeconds").value), maxDurationMinutes: Number(field("maxDurationMinutes").value),
     blockedArtists: field("blockedArtists").value.split(/[,\n\r]+/).map((value) => value.trim()).filter(Boolean),
-    commands: Object.fromEntries(["request", "skip", "nowPlaying", "queue"].map((name) => [name, field(name).value.trim()]))
+    commands: Object.fromEntries(["request", "skip", "nowPlaying", "queue"].map((name) => [name, field(name).value.trim()])),
+    commandEnabled: Object.fromEntries(["request", "skip", "nowPlaying", "queue"].map((name) => [name, field(name + "Enabled").checked]))
   };
 }
 

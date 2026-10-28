@@ -143,3 +143,5 @@
   .music-track-row { gap:8px; padding:10px; }
   .music-track-row .button-row { flex-direction:column; }
 }
+
+.music-command-enabled{display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--muted);font-size:11px}.music-command-enabled input[type="checkbox"]{width:16px;height:16px}.music-linked-command-list{display:grid;gap:10px}.music-linked-command-list article{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px}.music-linked-command-list article>span{flex:1;min-width:180px}.music-linked-command-list strong{font-size:11px;color:var(--muted)}

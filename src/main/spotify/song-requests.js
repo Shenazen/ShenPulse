@@ -4,6 +4,9 @@ const crypto = require("node:crypto");
 const { readState } = require("../state-projection");
 const { safeString, clone } = require("../utils");
 
+const { applyMusicSettings, musicSettingsCommandKey } = require("./music-command-links");
+const { findChatbotCommand, previewChatbotResponse, chatbotPlatformForConnection } = require("../../shared/chatbot-command");
+
 const HISTORY_LIMIT = 30;
 const COOLDOWN_LIMIT = 1000;
 const TEST_SOURCES = new Set(["simulator", "test", "rule-test", "manual-preview", "demo", "source_demo"]);
@@ -63,8 +66,9 @@ class SongRequestsService {
   configure(incoming = {}) {
     const current = this.#state().settings;
     const settings = normalizeSongRequestSettings({ ...current, ...incoming,
-      commands: { ...current.commands, ...(incoming.commands || {}) } }, true);
-    this.store.set("settings.spotify.songRequests", settings);
+      commands: { ...current.commands, ...(incoming.commands || {}) },
+      commandEnabled: { ...current.commandEnabled, ...(incoming.commandEnabled || {}) } }, true);
+    this.store.mutate((state) => applyMusicSettings(state, settings), true);
     this.#notify();
     return this.status();
   }
@@ -83,8 +87,10 @@ class SongRequestsService {
     this.notifyRenderer("song-requests-changed", this.status());
   }
 
+  executionScope() { return JSON.stringify([this.owner(), readState(this.store, ["session.profileId"]).session?.profileId || ""]); }
+
   #assertOwner(owner) {
-    if (this.owner() !== owner) throw new Error("Le compte ShenPulse a changé pendant la demande musicale. Réessayez depuis votre compte.");
+    if (this.executionScope() !== owner) throw new Error("Le compte ou le profil ShenPulse a changé pendant la demande musicale. Réessayez depuis votre compte.");
   }
 
   #serial(operation) {
@@ -96,7 +102,7 @@ class SongRequestsService {
   }
 
   add({ query, uri, user = {}, creator = true } = {}) {
-    const owner = this.owner();
+    const owner = this.executionScope();
     return this.#serial(async () => {
       this.#assertOwner(owner);
       const { settings, queue } = this.#state();
@@ -137,7 +143,7 @@ class SongRequestsService {
   }
 
   playNext() {
-    const owner = this.owner();
+    const owner = this.executionScope();
     return this.#serial(async () => {
       this.#assertOwner(owner);
       const { queue, settings } = this.#state();
@@ -163,22 +169,40 @@ class SongRequestsService {
     if (event?.type !== "chat" || TEST_SOURCES.has(event.source) || event.moderationBlocked) return { handled: false };
     const { settings } = this.#state();
     if (!settings.enabled) return { handled: false };
-    const match = commandMatch(event.data?.message, settings.commands);
-    if (!match) return { handled: false };
-    const owner = this.owner();
+    const state = readState(this.store, ["commands", "connections"]);
+    const keyFor = (entry) => musicSettingsCommandKey(entry, settings.commands);
+    const rows = (state.commands || []).filter(keyFor);
+    const platform = chatbotPlatformForConnection((state.connections || []).find((entry) => entry.id === event.source));
+    const entry = findChatbotCommand(rows, { ...event, platform });
+    const match = entry ? { kind: keyFor(entry), argument: previewChatbotResponse(entry, { ...event, platform }).args }
+      : commandMatch(event.data?.message, Object.fromEntries(Object.entries(settings.commands).filter(([key]) => settings.commandEnabled[key] && !rows.some((row) => keyFor(row) === key))));
+    if (!match || !settings.commandEnabled[match.kind]) return { handled: false };
+    const owner = this.owner(), scope = this.executionScope();
     try {
+      if (entry && !previewChatbotResponse(entry, { ...event, platform }).allowed) throw new Error("Vous n’avez pas le rôle requis pour cette commande musicale.");
       const spamKey = `${owner}:${event.user?.id}:${match.kind}`;
-      if (this.now() - (this.commandCooldowns.get(spamKey) ?? -Infinity) < 2000) throw new Error("Cette commande musicale vient déjà d’être traitée.");
+      if (this.now() - (this.commandCooldowns.get(spamKey) ?? -Infinity) < Math.max(2000, Number(entry?.cooldownMs) || 0)) throw new Error("Cette commande musicale vient déjà d’être traitée.");
+      const globalKey = `${owner}:global:${match.kind}`;
+      const globalCooldown = Number(entry?.globalCooldownMs) || 0;
+      if (globalCooldown && this.now() - (this.commandCooldowns.get(globalKey) ?? -Infinity) < globalCooldown) throw new Error("Le délai global de cette commande musicale n’est pas terminé.");
       this.commandCooldowns.set(spamKey, this.now());
+      if (globalCooldown) this.commandCooldowns.set(globalKey, this.now());
       if (this.commandCooldowns.size > COOLDOWN_LIMIT) this.commandCooldowns.delete(this.commandCooldowns.keys().next().value);
       let response;
       if (match.kind === "request") {
         if (!match.argument) throw new Error(`Ajoutez un titre ou un lien Spotify après ${settings.commands.request}.`);
-        const result = await this.add({ query: match.argument, user: event.user, creator: false });
-        response = `Demande ajoutée : ${result.entry.track.name} · ${result.entry.track.artists.join(", ")}.`;
+        if (entry?.execution.operation === "queue") {
+          await this.spotify.control({ operation: "queue", query: match.argument });
+          response = "Titre ajouté à la file Spotify.";
+        } else {
+          const result = await this.add({ query: match.argument, user: event.user, creator: false });
+          response = `Demande ajoutée : ${result.entry.track.name} · ${result.entry.track.artists.join(", ")}.`;
+        }
       } else if (match.kind === "skip") {
         if (!settings.allowViewerSkip && event.user?.moderator !== true) throw new Error("Seuls les modérateurs peuvent passer le titre avec cette commande.");
-        await this.skip(); response = "Titre suivant demandé à Spotify.";
+        if (entry?.execution.operation === "next") await this.spotify.control({ operation: "next" });
+        else await this.skip();
+        response = "Titre suivant demandé à Spotify.";
       } else if (match.kind === "nowPlaying") {
         const result = await this.spotify.control({ operation: "now_playing" });
         response = result.playback?.item ? `En lecture : ${result.playback.item.name} · ${result.playback.item.artists.join(", ")}.` : "Aucun titre en lecture transmis par Spotify.";
@@ -186,12 +210,12 @@ class SongRequestsService {
         const queue = this.#state().queue;
         response = queue.length ? `${queue.length} demande(s) ShenPulse : ${queue.slice(0, 3).map((entry) => entry.track.name).join(" · ")}.` : "Aucune demande ShenPulse en attente.";
       }
-      this.#assertOwner(owner);
+      this.#assertOwner(scope);
       this.lastResponse = { ok: true, command: match.kind, message: response, timestamp: new Date(this.now()).toISOString(), transport: "local-ui" };
       this.responseOwner = owner; this.#notify();
       return { handled: true, ...this.lastResponse };
     } catch (error) {
-      if (this.owner() === owner) {
+      if (this.executionScope() === scope) {
         this.lastResponse = { ok: false, command: match.kind, message: String(error.message || error), timestamp: new Date(this.now()).toISOString(), transport: "local-ui" };
         this.responseOwner = owner; this.#notify();
       }

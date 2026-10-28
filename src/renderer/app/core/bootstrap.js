@@ -253,14 +253,14 @@ const SUBSCRIPTION_PLANS = [
     name: "Pro",
     price: 14.99,
     description: "Votre studio avancé, avec plus de liberté de création.",
-    features: ["Actions et profils illimités", "Jeux vidéo, interactions IRL, commandes et matchs", "Scènes et widgets Pro", "Modules communautaires inclus dans Pro"]
+    features: ["Actions et profils illimités", "Jeux vidéo, commandes et matchs", "Scènes et widgets Pro", "Modules communautaires inclus dans Pro"]
   },
   {
     tier: "premium",
     name: "Premium",
     price: 20.99,
     description: "Inclut automatiquement Pro et ajoute les avantages Premium.",
-    features: ["Tout Pro inclus", "Avantages Premium", "1 accès Pro offert à un utilisateur"]
+    features: ["Tout Pro inclus", "Machines IRL et interactions PlugPlus", "1 accès Pro offert à un utilisateur"]
   }
 ];
 

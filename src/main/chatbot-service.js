@@ -11,6 +11,8 @@ const { proFeatureAllowed } = require("./pro-feature-access");
 const { findChatbotCommand, previewChatbotResponse, renderChatbotResponse,
   chatbotPlatformForConnection, chatbotMatchesPlatform, chatbotTimerMessages, MIN_INTERVAL_MS, MAX_COOLDOWN_MS } = require("../shared/chatbot-command");
 
+const { songRequestCommandKey } = require("./spotify/music-command-links");
+
 const MAX_COOLDOWN_ENTRIES = 2000;
 const TIMER_TICK_MS = 5000;
 const MAX_PENDING_DELIVERIES = 50;
@@ -42,7 +44,7 @@ function assertCommandsAccess(store) {
   }
 }
 
-const functionalCommand = (item) => (item?.kind || "command") === "command" && Boolean(item?.execution);
+const functionalCommand = (item) => (item?.kind || "command") === "command" && Boolean(item?.execution) && !songRequestCommandKey(item);
 const commandSignature = (item) => JSON.stringify([item?.id, item?.enabled, item?.kind || "command", item?.command,
   item?.aliases, item?.platform || "all", item?.audience, item?.subscriberOnly, item?.execution, item?.cooldownMs, item?.globalCooldownMs]);
 const sourceSignature = (connection, state) => JSON.stringify([connection?.id, connection?.type, connection?.config,

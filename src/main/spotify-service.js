@@ -195,7 +195,14 @@ class SpotifyService {
     }
     if (operation.startsWith("requests_")) {
       if (operation === "requests_status") return this.songRequests.status();
-      if (operation === "requests_settings") return this.songRequests.configure(config.settings || {});
+      if (operation === "requests_settings") {
+        const state = readState(this.store, ["settings.account.uid", "session.profileId"]);
+        if (config.expectedUid != null && String(config.expectedUid) !== String(state.settings?.account?.uid || "") ||
+            config.expectedProfileId != null && String(config.expectedProfileId) !== String(state.session?.profileId || "")) {
+          throw new Error("Le compte ou le profil a changé avant l’enregistrement des commandes musicales.");
+        }
+        return this.songRequests.configure(config.settings || {});
+      }
       if (operation === "requests_add") return this.songRequests.add({ query: config.query, uri: config.uri, user: config.user, creator: true });
       if (operation === "requests_remove") return this.songRequests.remove(config.id);
       if (operation === "requests_clear") return this.songRequests.clear();

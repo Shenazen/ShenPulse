@@ -162,6 +162,14 @@ function applyEntitlements(service, payload = {}) {
       ? [beneficiaryEmail]
       : [];
   service.store.mutate((state) => {
+    const trial = state.commerce.trial || {};
+    const email = normalizeEmail(state.settings?.account?.email);
+    const current = state.commerce.subscription || {};
+    // Conserver le plan payé sous un essai Premium, seulement pour ce compte.
+    const baseSubscription = source === "trial"
+      ? current.source === "own" ? { ...current } : trial.email === email ? trial.baseSubscription : null
+      : null;
+    state.commerce.trial = { ...trial, email, baseSubscription };
     state.commerce.subscription = {
       tier,
       source,
@@ -227,6 +235,7 @@ function ensureGameEntitlement(service, productId) {
 /** Retire les droits locaux après une déconnexion explicite ou une nouvelle inscription. */
 function clearCommercialRights(service) {
   service.store.mutate((state) => {
+    if (state.commerce.trial) state.commerce.trial.baseSubscription = null;
     state.commerce.subscription = {
       tier: "free",
       source: "free",

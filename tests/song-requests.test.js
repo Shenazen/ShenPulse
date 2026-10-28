@@ -12,7 +12,7 @@ function fixture() {
   const spotify = { resolveTrack: async (config) => { calls.push(["resolve", config]); return { ...track }; },
     control: async (config) => { calls.push(["control", config]); return { ok: true, operation: config.operation, playback: { item: track } }; } };
   const store = { getState: () => state, getActiveAccountUid: () => owner,
-    mutateRuntime: (mutator) => mutator(state), set: (key, value) => { assert.equal(key, "settings.spotify.songRequests"); state.settings.spotify.songRequests = value; } };
+    mutate: (mutator) => mutator(state), mutateRuntime: (mutator) => mutator(state), set: (key, value) => { assert.equal(key, "settings.spotify.songRequests"); state.settings.spotify.songRequests = value; } };
   const service = new SongRequestsService({ store, spotify, notifyRenderer: (channel, payload) => notices.push({ channel, payload }), now: () => now });
   return { state, service, spotify, calls, notices, track, tick: (seconds = 11) => { now += seconds * 1000; }, changeOwner: () => { owner = "owner-b"; state.settings.account.uid = owner; state.settings.spotify = { songRequests: { enabled: true } }; } };
 }

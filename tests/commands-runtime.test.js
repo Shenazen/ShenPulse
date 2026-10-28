@@ -610,7 +610,7 @@ test("groupe de commandes : les actions du jeu actif sont résolues comme au pr�
 });
 
 test("IRL : une annulation pendant découverte n'actionne aucune prise et ne mémorise aucun appareil", async () => {
-  const f = fixture(); let allowed = true; const writes = [];
+  const f = fixture(); f.state.commerce.subscription.tier = "premium"; let allowed = true; const writes = [];
   f.state.settings.account.email = "alexandre.leuridan@gmail.com"; f.state.settings.account.emailVerified = true;
   f.state.settings.irl = { enabled: true, devices: [{ id: "shellyplusplugs-aabbcc", host: "192.168.1.42", generation: 2, model: "Shelly Plus Plug S", channel: 0 }] };
   f.store.mutate = () => { throw new Error("Aucune mutation après annulation."); };
@@ -624,7 +624,7 @@ test("IRL : une annulation pendant découverte n'actionne aucune prise et ne mé
 });
 
 test("IRL : une impulsion déjà commencée est toujours éteinte sur la prise capturée après annulation", async () => {
-  const f = fixture(); let allowed = true; const writes = [];
+  const f = fixture(); f.state.commerce.subscription.tier = "premium"; let allowed = true; const writes = [];
   f.state.settings.account.email = "alexandre.leuridan@gmail.com"; f.state.settings.account.emailVerified = true;
   f.state.settings.irl = { enabled: true, devices: [{ id: "shellyplusplugs-aabbcc", host: "192.168.1.42", generation: 2, model: "Shelly Plus Plug S", channel: 0 }] };
   f.store.mutate = () => { throw new Error("Aucune mémorisation dans un autre profil."); };

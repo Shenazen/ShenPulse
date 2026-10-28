@@ -63,3 +63,18 @@ test("les échéances historiques utilisent renewalDate sans fabriquer de date v
   assert.equal(pro.commerceExpiryMs({ expiresAt: "invalide" }), 0);
   assert.equal(pro.commerceExpiryMs(), 0);
 });
+
+test("Machines IRL exige Premium et les autres rubriques restent accessibles en Pro",()=>{
+ assert.equal(pro.requiredSectionTier('irl'),'premium');
+ for(const id of ['games','commands','matches'])assert.equal(pro.requiredSectionTier(id),'pro');
+ for(const source of ['own','premiumSeat','agencyReward','trial']){
+  const snapshot=state({tier:'pro',status:'active',source,expiresAtMs:now+1000});
+  assert.equal(pro.hasSectionAccess(snapshot,'irl',now),false,source);
+  assert.equal(pro.hasPremiumAccess(snapshot,now),false,source);
+  assert.equal(pro.hasSectionAccess(snapshot,'games',now),true,source);
+ }
+ for(const status of ['active','paid'])assert.equal(pro.hasSectionAccess(state({tier:'premium',status}),'irl',now),true);
+ for(const status of ['free','cancelled','approval_pending','expired'])assert.equal(pro.hasPremiumAccess(state({tier:'premium',status}),now),false);
+ assert.equal(pro.hasPremiumAccess(state({tier:'premium',status:'trial',expiresAtMs:now+1}),now),true);
+ assert.equal(pro.hasPremiumAccess(state({tier:'premium',status:'trial',expiresAtMs:now}),now),false);
+});

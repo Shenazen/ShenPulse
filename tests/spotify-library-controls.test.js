@@ -24,7 +24,7 @@ function fixture(t, responder = () => ({})) {
       assert.ok(["settings.spotify", "settings.spotify.songRequests"].includes(key));
       if (key === "settings.spotify") state.settings.spotify = value;
       else state.settings.spotify.songRequests = value;
-    }, mutateRuntime: (mutator) => mutator(state) };
+    }, mutate: (mutator) => mutator(state), mutateRuntime: (mutator) => mutator(state) };
   return { calls, settings, state, service: new SpotifyService({ store, notifyRenderer: () => {} }) };
 }
 
@@ -164,4 +164,14 @@ test("les IDs Spotify sont validés, aucune URL arbitraire et aucune route priv�
   assert.throws(() => spotifyId("https://evil.test/playlist/" + PLAYLIST_ID));
   const result = await runLibraryControl({ operation: "unknown", config: {}, normalizeTrack });
   assert.equal(result, undefined);
+});
+
+test("une sauvegarde musicale d’un ancien profil est refusée avant toute mutation", async (t) => {
+  const f = fixture(t);
+  f.state.session = { profileId: "current-profile" };
+  const before = JSON.stringify(f.state);
+  await assert.rejects(f.service.control({ operation: "requests_settings", settings: { enabled: true }, expectedUid: "owner", expectedProfileId: "old-profile" }), /profil a changé/);
+  await assert.rejects(f.service.control({ operation: "requests_settings", settings: { enabled: true }, expectedUid: "other", expectedProfileId: "current-profile" }), /compte ou le profil a changé/);
+  assert.equal(JSON.stringify(f.state), before);
+  assert.equal(f.calls.length, 0);
 });

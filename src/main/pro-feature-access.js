@@ -5,7 +5,7 @@
  * Les gardes asynchrones relisent les droits avant chaque nouvel effet et
  * annulent une opération si le compte ou le profil a changé entre-temps.
  */
-const { hasProAccess, requiresProSection } = require("../shared/pro-access");
+const { hasSectionAccess, requiredSectionTier, requiresProSection } = require("../shared/pro-access");
 const visibility = require("../shared/visibility-catalog");
 const { assertAuthenticatedAccount, ADMIN_OWNER_EMAIL } = require("./account-access");
 const { readState } = require("./state-projection");
@@ -28,7 +28,7 @@ function scopeAllowed(state, section, id) {
 }
 
 function proFeatureAllowed(state, section, nowMs = Date.now()) {
-  if (requiresProSection(section) && !hasProAccess(state, nowMs)) return false;
+  if (requiresProSection(section) && !hasSectionAccess(state, section, nowMs)) return false;
   if (!scopeAllowed(state, "navigation", section)) return false;
   if (section !== "irl") return true;
   const overrides = state.settings?.siteVisibility?.actionTypeOverrides || {};
@@ -37,8 +37,9 @@ function proFeatureAllowed(state, section, nowMs = Date.now()) {
 }
 
 function assertProFeatureState(state, section, nowMs = Date.now()) {
-  if (requiresProSection(section) && !hasProAccess(state, nowMs)) {
-    throw accessError("Cette fonctionnalité nécessite au moins un abonnement ShenPulse Pro actif.");
+  if (requiresProSection(section) && !hasSectionAccess(state, section, nowMs)) {
+    const premium = requiredSectionTier(section) === "premium";
+    throw accessError(premium ? "Machines IRL nécessite un abonnement ShenPulse Premium actif." : "Cette fonctionnalité nécessite au moins un abonnement ShenPulse Pro actif.", premium ? "PREMIUM_FEATURE_REQUIRED" : "PRO_FEATURE_REQUIRED");
   }
   if (!proFeatureAllowed(state, section, nowMs)) {
     throw accessError("Cette fonctionnalité est désactivée ou réservée par l’administrateur.", "FEATURE_ACCESS_FORBIDDEN");

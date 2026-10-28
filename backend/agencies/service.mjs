@@ -18,6 +18,11 @@ function profile(b) {
   if (name.length < 2 || description.length < 10) fail('Renseignez un nom et une présentation de 10 caractères minimum.');
   return {name,description,logoUrl:agencyUrl(b.logoUrl),bannerUrl:agencyUrl(b.bannerUrl),instagram:agencyUrl(b.instagram),website:agencyUrl(b.website),discord:agencyUrl(b.discord),tiktok:agencyUrl(b.tiktok),language:clean(b.language || 'fr',10)};
 }
+function memberUsername(body) {
+  const username=clean(body.tiktokUsername,80).replace(/^@+/,'').toLowerCase();
+  if(username && !/^[a-z0-9._]{1,30}$/.test(username))fail('Pseudo TikTok invalide.');
+  return username;
+}
 const publicAgency = a => Object.fromEntries(['id','name','description','logoUrl','bannerUrl','instagram','website','discord','tiktok','language'].map(k=>[k,a[k] || '']));
 export function quoteAgencyPrices(raw, uid, sub = {}) {
   const s=empty(raw), m=s.memberships[uid], a=m?.status==='approved' && s.agencies[m.agencyId];
@@ -105,13 +110,39 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,n
       });
     },
     async join(request,body){
-      const u=await authenticate(request);
+      const u=await authenticate(request),username=memberUsername(body);
       return mutate(u,'membership.request',u.uid,s=>{
         const code=clean(body.code,30).toUpperCase(),a=Object.values(s.agencies).find(a=>a.status==='approved' && (code?a.code===code:a.id===clean(body.agencyId)));
         if(!a)fail('Agence ou code introuvable. Vérifiez que l’agence est validée.',404);
         if(['pending','approved'].includes(s.memberships[u.uid]?.status))fail('Vous avez déjà une demande ou une adhésion. Quittez-la avant de changer d’agence.',409);
-        s.memberships[u.uid]={agencyId:a.id,agencyName:a.name,status:'pending',displayName:clean(body.displayName || u.email.split('@')[0],80),email:u.email,requestedAt:stamp(),updatedAt:stamp()};
+        s.memberships[u.uid]={agencyId:a.id,agencyName:a.name,status:'pending',displayName:username?'@'+username:clean(body.displayName || u.email.split('@')[0],80),...(username?{tiktokUsername:username}:{}),email:u.email,requestedAt:stamp(),updatedAt:stamp()};
       });
+    },
+    async rotateCode(request,body){
+      const u=await authenticate(request);
+      return mutate(u,'agency.invitation.rotate',u.uid,s=>{
+        const a=Object.values(s.agencies).find(a=>a.ownerUid===u.uid);
+        if(!a || a.status!=='approved')fail('Seul le fondateur d’une agence validée peut régénérer son code.',403);
+        if(!body.expectedCode || clean(body.expectedCode,30).toUpperCase()!==a.code)fail('Le code a déjà changé. Actualisez votre agence avant de réessayer.',409);
+        let code;
+        do {code=randomBytes(9).toString('hex').toUpperCase();} while(Object.values(s.agencies).some(other=>other.code===code));
+        s.agencies[a.id]={...a,code,updatedAt:stamp()};
+      });
+    },
+    async updateIdentity(request,body){
+      const u=await authenticate(request),username=memberUsername(body);
+      if(!username)fail('Renseignez votre @ TikTok.');
+      const prior=(await read()).memberships[u.uid];
+      if(!prior || !['pending','approved'].includes(prior.status) || prior.tiktokUsername===username)return {ok:true,updated:false};
+      let updated=false;
+      const result=await mutate(u,'membership.identity',u.uid,s=>{
+        updated=false;
+        const member=s.memberships[u.uid];
+        if(!member || !['pending','approved'].includes(member.status))return;
+        s.memberships[u.uid]={...member,tiktokUsername:username,displayName:'@'+username,updatedAt:stamp()};
+        updated=true;
+      });
+      return {...result,updated};
     },
     async leave(request){const u=await authenticate(request);return mutate(u,'membership.leave',u.uid,s=>{if(s.memberships[u.uid])s.memberships[u.uid]={...s.memberships[u.uid],status:'left',updatedAt:stamp()};});},
     async reviewMember(request,body,admin=false){

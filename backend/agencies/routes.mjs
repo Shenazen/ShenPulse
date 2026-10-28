@@ -9,6 +9,8 @@ export async function handleAgencyRoute(service,request,url,readBody){
   if(p==='/api/agencies/join')return service.join(request,b);
   if(p==='/api/agencies/leave')return service.leave(request);
   if(p==='/api/agencies/members/review')return service.reviewMember(request,b);
+  if(p==='/api/agencies/invitation/rotate')return service.rotateCode(request,b);
+  if(p==='/api/agencies/identity')return service.updateIdentity(request,b);
   if(p==='/api/admin/agencies/review')return service.reviewAgency(request,b);
   if(p==='/api/admin/agencies/members/review')return service.reviewMember(request,b,true);
   throw Object.assign(new Error('Commande agence introuvable.'),{statusCode:404});

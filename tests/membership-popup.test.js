@@ -92,7 +92,7 @@ test("la popup est créée à la demande avec les trois offres réelles, sans d�
   }
   assert.match(dialog.textContent, /Abonnements mensuels/);
   assert.doesNotMatch(dialog.textContent, /annuel|agence|SyncLive/i);
-  assert.match(dialog.querySelector(".membership-popup-footer").textContent, /Jeux vidéo, Interactions IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif/);
+  assert.match(dialog.querySelector(".membership-popup-footer").textContent, /Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif\. Machines IRL est réservé à Premium/);
   assert.doesNotMatch(dialog.textContent, /interactions.*sans abonnement|jeux vidéo compatibles gratuits|sans abonnement supplémentaire/iu);
   assert.deepEqual(calls.checkout, []);
   assert.deepEqual(calls.cancel, []);

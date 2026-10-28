@@ -33,7 +33,7 @@ function ownerStore(overrides = {}) {
     refreshTokenSecretId: "secret-owner"
   };
   state.activeAccountUid = "owner-uid";
-  state.commerce.subscription = { tier: "pro", source: "own", status: "active" };
+  state.commerce.subscription = { tier: "premium", source: "own", status: "active" };
   state.settings.irl = {
     enabled: true,
     devices: [],
@@ -566,7 +566,7 @@ test("résout les hôtes Shelly annoncés dans une réponse mDNS", () => {
   ]);
 });
 
-test("raccorde l’onglet, l’action et les IPC IRL à l’accès Pro public", () => {
+test("raccorde l’onglet, l’action et les IPC IRL à l’accès Premium", () => {
   const root = path.join(__dirname, "..");
   const renderer = readRendererSource();
   const preload = fs.readFileSync(

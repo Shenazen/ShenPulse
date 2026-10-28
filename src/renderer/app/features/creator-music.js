@@ -27,9 +27,10 @@ function resetCreatorMusicAccount(force = false) {
 }
 
 function creatorSongRequestSettings() {
-  const value = creatorMusicData.requests?.settings || spotifyStatus.songRequests?.settings || snapshot?.state?.settings?.spotify?.songRequests || {};
+  const value = snapshot?.state?.settings?.spotify?.songRequests || creatorMusicData.requests?.settings || spotifyStatus.songRequests?.settings || {};
   return { enabled: false, allowExplicit: false, maxDurationMinutes: 10, maxQueue: 20, maxPerViewer: 3, cooldownSeconds: 10, allowViewerSkip: false, blockedArtists: [], ...value,
-    commands: { request: "!sr", skip: "!skip", nowPlaying: "!np", queue: "!queue", ...value.commands } };
+    commands: { request: "!sr", skip: "!skip", nowPlaying: "!np", queue: "!queue", ...value.commands },
+    commandEnabled: { request: true, skip: true, nowPlaying: true, queue: true, ...value.commandEnabled } };
 }
 
 function creatorMusicIcon(kind = "headphones") {
@@ -129,11 +130,20 @@ function creatorMusicSwitch(name, label, detail, checked) {
   return `<label class="music-setting-switch"><div><strong>${label}</strong><small>${detail}</small></div><span class="switch"><input type="checkbox" name="${name}" ${checked ? "checked" : ""}><span></span></span></label>`;
 }
 
+function creatorMusicLinkedCommandsMarkup() {
+  const state = snapshot?.state || {};
+  const actions = (state.rules || []).flatMap((rule) => rule.actions || []);
+  const rows = (state.commands || []).filter((entry) => entry.execution?.type === "music" && !entry.execution.operation?.startsWith("requests_") ||
+    entry.execution?.type === "action" && actions.some((action) => action.id === entry.execution.actionId && action.type === "spotify.queue"));
+  if (!rows.length) return "";
+  return `<section class="music-section music-linked-commands"><div class="music-section-heading"><div><h3>Commandes Spotify liées</h3><p>Les modifications de Commandes sont reprises ici pour ce profil.</p></div></div><div class="music-linked-command-list">${rows.map((entry) => `<article><code data-studio-user-content>${escapeHtml(entry.command)}</code><span>${escapeHtml(creatorCommandEffectDescription(entry))}</span><strong>${entry.enabled === false ? "Inactif" : "Actif"}</strong>${canAccessPage("commands") ? `<button class="button small" data-action="chatbot-edit" data-id="${escapeHtml(entry.id)}">Modifier</button>` : ""}</article>`).join("")}</div></section>`;
+}
+
 function renderCreatorMusicSettings() {
   const settings = creatorSongRequestSettings();
   const number = (name, label, value, max) => `<label><span>${label}</span><input type="number" name="${name}" min="${name === "cooldownSeconds" ? 0 : 1}" max="${max}" value="${Number(value) || 0}" required></label>`;
-  const command = (name, label) => `<label><span>${label}</span><input name="${name}" value="${escapeHtml(settings.commands[name])}" maxlength="22" pattern="![A-Za-z][A-Za-z0-9_-]{0,20}" required></label>`;
-  return `<div class="music-settings" data-music-settings><div class="music-settings-switches">${creatorMusicSwitch("enabled", "Song Requests", "Activer les demandes de titres via le chat de votre LIVE.", settings.enabled)}${creatorMusicSwitch("allowExplicit", "Contenu explicite", "Autoriser les titres marqués explicites par Spotify.", settings.allowExplicit)}</div><section class="music-section"><div class="music-section-heading"><div><h3>Limites</h3><p>Gardez la main sur la file et évitez les demandes répétées.</p></div></div><div class="music-limits">${number("maxQueue", "File d’attente maximum", settings.maxQueue, 50)}${number("maxPerViewer", "Demandes par viewer", settings.maxPerViewer, 10)}${number("cooldownSeconds", "Cooldown (secondes)", settings.cooldownSeconds, 3600)}${number("maxDurationMinutes", "Durée maximum (minutes)", settings.maxDurationMinutes, 120)}</div></section><section class="music-section"><div class="music-section-heading"><div><h3>Artistes bloqués</h3><p>Les demandes correspondant à ces artistes sont refusées.</p></div></div><label class="music-artists-field"><span>Un nom d’artiste par ligne ou séparé par une virgule</span><textarea name="blockedArtists" rows="3" placeholder="Artiste 1, Artiste 2">${escapeHtml((settings.blockedArtists || []).join("\n"))}</textarea></label></section><section class="music-section"><div class="music-section-heading"><div><h3>Commandes du chat</h3><p>Les réponses de commande sont consultables dans ShenPulse ; aucun envoi automatique au chat n’est promis.</p></div></div><div class="music-command-fields">${command("request", "Demander un titre")}${command("skip", "Passer un titre")}${command("nowPlaying", "Titre en cours")}${command("queue", "File d’attente")}</div>${creatorMusicSwitch("allowViewerSkip", "Tout le monde peut passer un titre", "Sinon, seuls le streamer et les modérateurs peuvent utiliser la commande de passage.", settings.allowViewerSkip)}</section><div class="music-settings-footer"><p>Les demandes locales sont validées puis lues avec « Lire la suivante ». Les règles Spotify existantes restent disponibles ci-dessous.</p><button class="button primary" data-action="music-settings-save">Enregistrer les paramètres</button></div></div>`;
+  const command = (name, label) => `<div class="music-command-setting"><label><span>${label}</span><input name="${name}" value="${escapeHtml(settings.commands[name])}" maxlength="22" pattern="![A-Za-z][A-Za-z0-9_-]{0,20}" required></label><label class="music-command-enabled"><input type="checkbox" name="${name}Enabled" ${settings.commandEnabled[name] ? "checked" : ""}> Activer cette commande</label></div>`;
+  return `<div class="music-settings" data-music-settings><div class="music-settings-switches">${creatorMusicSwitch("enabled", "Song Requests", "Activer les demandes de titres via le chat de votre LIVE.", settings.enabled)}${creatorMusicSwitch("allowExplicit", "Contenu explicite", "Autoriser les titres marqués explicites par Spotify.", settings.allowExplicit)}</div><section class="music-section"><div class="music-section-heading"><div><h3>Limites</h3><p>Gardez la main sur la file et évitez les demandes répétées.</p></div></div><div class="music-limits">${number("maxQueue", "File d’attente maximum", settings.maxQueue, 50)}${number("maxPerViewer", "Demandes par viewer", settings.maxPerViewer, 10)}${number("cooldownSeconds", "Cooldown (secondes)", settings.cooldownSeconds, 3600)}${number("maxDurationMinutes", "Durée maximum (minutes)", settings.maxDurationMinutes, 120)}</div></section><section class="music-section"><div class="music-section-heading"><div><h3>Artistes bloqués</h3><p>Les demandes correspondant à ces artistes sont refusées.</p></div></div><label class="music-artists-field"><span>Un nom d’artiste par ligne ou séparé par une virgule</span><textarea name="blockedArtists" rows="3" placeholder="Artiste 1, Artiste 2">${escapeHtml((settings.blockedArtists || []).join("\n"))}</textarea></label></section><section class="music-section"><div class="music-section-heading"><div><h3>Commandes du chat</h3><p>Les réponses de commande sont consultables dans ShenPulse ; aucun envoi automatique au chat n’est promis.</p></div></div><div class="music-command-fields">${command("request", "Demander un titre")}${command("skip", "Passer un titre")}${command("nowPlaying", "Titre en cours")}${command("queue", "File d’attente")}</div>${creatorMusicSwitch("allowViewerSkip", "Tout le monde peut passer un titre", "Sinon, seuls le streamer et les modérateurs peuvent utiliser la commande de passage.", settings.allowViewerSkip)}</section>${creatorMusicLinkedCommandsMarkup()}<div class="music-settings-footer"><p>Les demandes locales sont validées puis lues avec « Lire la suivante ». Les règles Spotify existantes restent disponibles ci-dessous.</p><button class="button primary" data-action="music-settings-save">Enregistrer les paramètres</button></div></div>`;
 }
 
 function creatorMusicPanelMarkup() {
@@ -234,6 +244,7 @@ function syncCreatorMusicRuntime({ preserveSettings = true } = {}) {
 }
 
 function handleCreatorMusicChange(target) {
+  if (target.matches('[data-music-settings] input[type="checkbox"]') && saveCreatorMusicCommandToggle(target)) return true;
   if (!target.matches("[data-music-volume], [data-music-seek]")) return false;
   const config = target.matches("[data-music-volume]") ? { operation: "volume", volume: Number(target.value) } : { operation: "seek", positionMs: Number(target.value) };
   const owner = captureCreatorPrivateOperation();
