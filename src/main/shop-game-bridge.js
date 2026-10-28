@@ -14,11 +14,13 @@ const SHOP_GAMES = Object.freeze({
   "shift-at-midnight": { port: 58446 }
 });
 
-/** Protocoles locaux des quatre modules ; un résultat est toujours corrélé à sa demande. */
+const LOCAL_MOD_GAMES = Object.freeze({...SHOP_GAMES, palworld:{directory:"ue4ss/Mods/ShenPulse",transport:"file"}});
+
+/** Protocoles locaux des modules ; un résultat est toujours corrélé à sa demande. */
 class ShopGameBridge extends EventEmitter {
   constructor({ gameId, installationPath, timeoutMs = 12000, label = "Le jeu" }) {
     super();
-    if (!Object.hasOwn(SHOP_GAMES, gameId)) throw new Error("Module de jeu inconnu.");
+    if (!Object.hasOwn(LOCAL_MOD_GAMES, gameId)) throw new Error("Module de jeu inconnu.");
     this.gameId = gameId;
     this.installationPath = installationPath || "";
     this.timeoutMs = Math.min(30000, Math.max(1000, Number(timeoutMs) || 12000));
@@ -30,7 +32,7 @@ class ShopGameBridge extends EventEmitter {
 
   async config() {
     if (!this.installationPath) throw new Error(`Installez d’abord les interactions de ${this.label}.`);
-    const definition = SHOP_GAMES[this.gameId];
+    const definition = LOCAL_MOD_GAMES[this.gameId];
     const relative = definition.transport === "file" ? `${definition.directory}/bridge.json` : `BepInEx/config/ShenPulse.${this.gameId}.json`;
     const config = JSON.parse(await fs.readFile(safeChildPath(this.installationPath, relative), "utf8"));
     if (!/^[a-f0-9]{64}$/.test(config.token || "") || config.gameId !== this.gameId || (definition.port && config.port !== definition.port)) {
@@ -78,7 +80,7 @@ class ShopGameBridge extends EventEmitter {
       duration: Math.min(600, Math.max(0, Number(options.duration) || 0)),
       parameters: options.parameters || {}, expiresAt: Date.now() + timeoutMs - 100
     };
-    const response = SHOP_GAMES[this.gameId].transport === "file"
+    const response = LOCAL_MOD_GAMES[this.gameId].transport === "file"
       ? await this.fileRequest(request, timeoutMs, assertAccess, generation)
       : await this.tcpRequest(request, config.port, timeoutMs, () => {
         assertAccess();
@@ -120,11 +122,17 @@ class ShopGameBridge extends EventEmitter {
   }
 
   async fileRequest(request, timeoutMs, assertAccess, generation) {
-    const directory = safeChildPath(this.installationPath, SHOP_GAMES[this.gameId].directory);
+    const directory = safeChildPath(this.installationPath, LOCAL_MOD_GAMES[this.gameId].directory);
     if (request.code === "__status") {
-      const state = JSON.parse(await fs.readFile(path.join(directory, "ready.json"), "utf8"));
-      if (state.token !== request.token || !Number.isFinite(state.at) || Math.abs(Date.now() - state.at * 1000) > 5000) throw new Error("Le module Hogwarts n’est pas actif.");
-      return { ...state, id: request.id, gameId: this.gameId, status: 0 };
+      const deadline = Date.now() + timeoutMs;
+      do {
+        assertAccess();
+        if (generation !== this.generation) throw new Error("La session de jeu a été arrêtée.");
+        const state = await fs.readFile(path.join(directory, "ready.json"), "utf8").then(JSON.parse).catch(() => null);
+        if (state?.token === request.token && Number.isFinite(state.at) && Math.abs(Date.now() - state.at * 1000) <= 5000) return { ...state, id: request.id, gameId: this.gameId, status: 0 };
+        await new Promise(resolve => setTimeout(resolve, 40));
+      } while (Date.now() < deadline);
+      throw new Error(`Le module ${this.label} n’est pas actif.`);
     }
     // Encodage de données Lua uniquement : aucune expression fournie par l’appelant.
     const string = value => '"' + String(value).replace(/[\\"\x00-\x1f\x7f]/g, c => `\\${c.charCodeAt(0).toString().padStart(3, "0")}`) + '"';
@@ -145,7 +153,7 @@ class ShopGameBridge extends EventEmitter {
         if (result?.id === request.id) return result;
         await new Promise(resolve => setTimeout(resolve, 80));
       }
-      throw new Error("Hogwarts n’a pas confirmé l’interaction. Reprenez la partie hors menus.");
+      throw new Error(`${this.label} n’a pas confirmé l’interaction. Reprenez la partie hors menus.`);
     } finally {
       await fs.rm(temporary, { force: true });
       const remaining = await fs.readFile(destination, "utf8").catch(() => "");

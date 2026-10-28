@@ -5,6 +5,13 @@ if (globalThis.ShenPulseGameWorkspace?.createGuidedTour) {
   globalThis.ShenPulseGameWorkspace.createGuidedTour(document);
 }
 
+if (globalThis.ShenPulseGameWorkspace?.createInteractionSorter) {
+  globalThis.ShenPulseGameWorkspace.createInteractionSorter(document, {
+    onMove: moveGameWorkspaceInteraction,
+    onError: error => toast('Déplacement impossible', error.message || 'Rouvrez la fiche et réessayez.', true)
+  });
+}
+
 async function updateToggle(collection, id, enabled) {
   const item = snapshot.state[collection].find((entry) => entry.id === id);
   if (!item) return;

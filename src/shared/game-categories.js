@@ -20,22 +20,22 @@
   const groups = {
     horror: ["the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge", "shift-at-midnight"],
     action: ["escape-from-duckov", "fortnite", "deep-rock-galactic", "deep-rock-galactic-survivor", "fallout-4", "hades", "hades-ii", "vampire-survivors"],
-    gta: ["gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas"],
+    gta: ["gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas"],
     racing: ["super-mario-kart", "rocket-league", "euro-truck-simulator-2"],
     simulation: ["find-the-needle-demo", "supermarket-simulator", "tcg-card-shop-simulator", "stardew-valley", "cities-skylines", "cult-of-the-lamb", "balatro"],
     adventure: ["crash-bandicoot-n-sane-trilogy", "unturned", "pokemon-red-blue", "blue-prince", "hollow-knight-silksong", "hollow-knight", "egging-on", "celeste", "no-mans-sky", "palworld", "ark-survival-ascended", "kingdom-come-deliverance-2", "hogwarts-legacy"],
     sandbox: ["minecraft", "minecraft-java", "minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-survival-plugin", "terraria", "wobbly-life"],
-    shenpulse: ["thiercelieux", "coin-pusher", "connect-four", "deal-or-no-deal", "diamond-bridge", "diamond-drop", "color-strike", "tiklive-climb", "tiklive-cube-wars", "tiklive-stack-tower", "clash-of-live", "generic-sandbox"]
+    shenpulse: ["shenfarm","shenpaint","shenkite","splash-bombes","thiercelieux", "coin-pusher", "connect-four", "deal-or-no-deal", "diamond-bridge", "diamond-drop", "color-strike", "tiklive-climb", "tiklive-cube-wars", "tiklive-stack-tower", "clash-of-live", "generic-sandbox"]
   };
   const byId = Object.freeze(Object.fromEntries(Object.entries(groups).flatMap(([category, ids]) => ids.map((id) => [id, category]))));
   const ids = new Set(categories.slice(1).map((category) => category.id));
   // La catégorie principale reste compatible avec les consommateurs existants.
   // Les familles supplémentaires décrivent le jeu, pas ses boutiques ou son moteur d’interactions.
   const additionalGroups = {
-    action: ["hogwarts-legacy", "crash-bandicoot-n-sane-trilogy", "unturned", "rocket-league", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "demonologist", "hollow-knight", "hollow-knight-silksong", "egging-on", "celeste", "palworld", "ark-survival-ascended", "kingdom-come-deliverance-2", "terraria", "no-mans-sky", "wobbly-life", "cult-of-the-lamb", "color-strike", "tiklive-climb", "tiklive-cube-wars", "clash-of-live", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "minecraft-survival-plugin"],
-    racing: ["gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas"],
+    action: ["hogwarts-legacy", "crash-bandicoot-n-sane-trilogy", "unturned", "rocket-league", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "demonologist", "hollow-knight", "hollow-knight-silksong", "egging-on", "celeste", "palworld", "ark-survival-ascended", "kingdom-come-deliverance-2", "terraria", "no-mans-sky", "wobbly-life", "cult-of-the-lamb", "color-strike", "tiklive-climb", "tiklive-cube-wars", "clash-of-live", "gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "minecraft-survival-plugin"],
+    racing: ["gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas"],
     simulation: ["euro-truck-simulator-2", "dredge", "the-mortuary-assistant", "no-mans-sky", "palworld", "wobbly-life", "coin-pusher", "tiklive-stack-tower", "shift-at-midnight"],
-    adventure: ["the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge", "escape-from-duckov", "fortnite", "deep-rock-galactic", "deep-rock-galactic-survivor", "fallout-4", "hades", "hades-ii", "vampire-survivors", "cult-of-the-lamb", "stardew-valley", "terraria", "wobbly-life", "minecraft", "minecraft-java", "minecraft-survival-plugin", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "tiklive-climb", "diamond-bridge"],
+    adventure: ["the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge", "escape-from-duckov", "fortnite", "deep-rock-galactic", "deep-rock-galactic-survivor", "fallout-4", "hades", "hades-ii", "vampire-survivors", "cult-of-the-lamb", "stardew-valley", "terraria", "wobbly-life", "minecraft", "minecraft-java", "minecraft-survival-plugin", "gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "tiklive-climb", "diamond-bridge"],
     sandbox: ["unturned", "ark-survival-ascended", "palworld", "no-mans-sky", "fallout-4", "stardew-valley", "fortnite", "generic-sandbox"]
   };
   const additionalById = new Map();

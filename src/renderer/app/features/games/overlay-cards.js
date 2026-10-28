@@ -46,7 +46,7 @@ function renderGameInstallation(pack, unlocked) {
     ? "Ce jeu est déjà inclus dans ShenPulse. Vous pouvez passer directement aux interactions."
     : updateAvailable
       ? pack.id === "gtav-montchiliad"
-        ? "Mettez à jour le pack pour installer le tonneau complet corrigé de l’interaction Retourner le véhicule."
+        ? "Mettez à jour le module GTA Enhanced pour conserver les effets Mont Chiliad et permettre le choix distinct du mode KOTH."
         : `Mettez à jour le pack ${pack.name} pour installer la dernière version du mod et de sa passerelle ShenPulse.`
     : installation
       ? "Tous les éléments nécessaires sont installés. Vous pouvez continuer la configuration."
@@ -328,7 +328,7 @@ function renderGameLaunch(pack, unlocked) {
             </label>
             <div class="minecraft-round-runtime ${sessionActive ? "running" : ""}">
               <span>${sessionActive ? "TEMPS RESTANT" : "PROCHAINE PARTIE"}</span>
-              <strong data-minecraft-round-countdown>${formatCountdown(roundRemaining)}</strong>
+              <strong data-minecraft-round-countdown="${escapeHtml(pack.id)}">${formatCountdown(roundRemaining)}</strong>
               <small>${sessionActive ? (roundSettings.autoRestart ? "Relance automatique active" : "Le chrono s’arrêtera après le TIME OUT") : `${roundSettings.durationMinutes} minute${roundSettings.durationMinutes > 1 ? "s" : ""} configurée${roundSettings.durationMinutes > 1 ? "s" : ""}`}</small>
             </div>
             <button type="button" class="button primary" data-action="save-game-round-settings" data-id="${escapeHtml(pack.id)}">Enregistrer les réglages</button>
@@ -419,8 +419,10 @@ function renderGameOverlaysLegacy(pack, unlocked) {
 }
 
 function gameOverlayItemsFor(pack) {
-  const preferredKeys = pack.id === "gtav-montchiliad"
+  const preferredKeys = pack.id==="gtav-montchiliad"
     ? ["winCounter", "multiplierTimer"]
+    : ShenPulseGameWorkspacePolicy.hasRoundTimer(pack)
+      ? ["winCounter", "multiplierTimer", "timer"]
     : MINECRAFT_MODE_IDS.includes(pack.id)
       ? ["timer", "multiplierTimer", "winCounter"]
       : pack.id === "cult-of-the-lamb"

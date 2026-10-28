@@ -20,6 +20,7 @@ class ActionRunner {
     store,
     overlayServer,
     gameHub,
+    gameMuteService,
     obsClient,
     sourceHub,
     spotifyService,
@@ -33,6 +34,7 @@ class ActionRunner {
     this.store = store;
     this.overlayServer = overlayServer;
     this.gameHub = gameHub;
+    this.gameMuteService = gameMuteService;
     this.obsClient = obsClient;
     this.sourceHub = sourceHub;
     this.spotifyService = spotifyService;
@@ -294,7 +296,11 @@ class ActionRunner {
         return payload;
       }
       case "overlay.win-counter": {
-        const operation = ["adjust", "set", "reset", "multiplier", "random"].includes(
+        if (["mute","unmute"].includes(config.operation)) {
+          if (!this.gameMuteService) throw Error("Le contrôle du microphone n’est pas disponible.");
+          return this.gameMuteService.run(config);
+        }
+        const operation = ["adjust", "set", "reset", "invert", "multiplier", "random"].includes(
           String(config.operation || "adjust")
         )
           ? String(config.operation || "adjust")
@@ -304,11 +310,19 @@ class ActionRunner {
           amount: clamp(config.amount || 0, -100000, 100000),
           durationSeconds: clamp(config.duration || 60, 1, 3600),
           effectId: safeString(config.effectId, 120),
+          ...(context.source==="gtav-native"&&["gtav-koth-enhanced","gtav-hiking-enhanced"].includes(config.packId)&&Number(config.amount)<0?{ignoreMultiplier:true}:{}),
           viewer: safeString(
             context.user?.displayName || context.user?.name || "Viewer",
             120
           )
         };
+        if (operation === "multiplier" && config.stackMode === "increment") {
+          const previous = readState(this.store, ["overlaySession"]).overlaySession || {};
+          const remaining = Math.max(0, Math.ceil((Number(previous.winCounterMultiplierUntil || 0) - Date.now()) / 1000));
+          const cap = clamp(config.maxMultiplier || 10, 2, 100);
+          payload.amount = Math.min(cap, remaining > 0 ? Number(previous.winCounterMultiplier || 1) + 1 : Math.max(1, Math.abs(payload.amount) || 2));
+          if (config.addDuration === true && remaining > 0) payload.durationSeconds = Math.min(3600, remaining + payload.durationSeconds);
+        }
         const runtime = this.#applyOverlayOperation(
           "win-counter",
           payload

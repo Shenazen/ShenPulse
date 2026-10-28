@@ -120,6 +120,7 @@ async function stageShopGameInstallation({ gameId, targetPath, deploymentRoot, a
 }
 
 async function shopInstallationPath(gameId, targetPath) {
+  if (gameId === "palworld") return require("./palworld-installation").palworldInstallationPath(targetPath);
   if (gameId !== "hogwarts-legacy") return targetPath;
   const platform = await require("./installation-platform").installationPlatform(targetPath, require("../game-installers/shop-games")[gameId]);
   return safeChildPath(targetPath, await hogwartsBinaryDirectory(targetPath, platform));

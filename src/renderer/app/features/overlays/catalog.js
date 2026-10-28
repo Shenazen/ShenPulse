@@ -344,7 +344,8 @@ function overlayRuntimeFrameAllowed(frame) {
   if (!overlayPreviewsVisible()) return false;
   const editor = frame.closest("dialog");
   if (editor) return editor.open;
-  return typeof currentPage === "undefined" || currentPage === "overlays";
+  return typeof currentPage === "undefined" || currentPage === "overlays" ||
+    currentPage === "games" && Boolean(frame.closest(".game-pack-workspace"));
 }
 
 function overlayPreviewAttributes(iframe) {

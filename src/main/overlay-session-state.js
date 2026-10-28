@@ -18,6 +18,7 @@ function createDefaultOverlaySession() {
     likeGoalManual: false,
     coinJarCurrent: 0,
     winCounterCurrent: 0,
+    gameMute: {packId:"",endsAt:0},
     winCounterMultiplier: 1,
     winCounterMultiplierUntil: 0,
     timerSeconds: 0,
@@ -70,6 +71,7 @@ function normalizeOverlaySession(value = {}) {
     likeGoalManual: source.likeGoalManual === true,
     coinJarCurrent: Math.max(0, finiteNumber(source.coinJarCurrent)),
     winCounterCurrent: finiteNumber(source.winCounterCurrent),
+    gameMute: {packId:String(source.gameMute?.packId||"").slice(0,160),endsAt:Math.max(0,Math.min(Date.now()+3600000,finiteNumber(source.gameMute?.endsAt)))},
     winCounterMultiplier: multiplierActive
       ? Math.max(1, finiteNumber(source.winCounterMultiplier, 1))
       : 1,
@@ -243,7 +245,7 @@ function applyOverlayOperation(
           ? -Math.abs(amount)
           : amount;
       const activeMultiplier =
-        runtime.winCounterMultiplierUntil > nowMs
+        runtime.winCounterMultiplierUntil > nowMs && payload.ignoreMultiplier !== true
           ? Math.max(1, finiteNumber(runtime.winCounterMultiplier, 1))
           : 1;
       const multipliedAmount =
@@ -252,8 +254,8 @@ function applyOverlayOperation(
           : resolvedAmount;
       runtime.winCounterCurrent = applyNumberOperation(
         runtime.winCounterCurrent,
-        operation === "random" ? "adjust" : operation,
-        multipliedAmount,
+        operation === "invert" ? "set" : operation === "random" ? "adjust" : operation,
+        operation === "invert" ? -runtime.winCounterCurrent : multipliedAmount,
         true
       );
     }

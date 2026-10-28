@@ -1,5 +1,6 @@
 "use strict";
 
+const {migrateStarterDefaults,starterGiftAlreadyUsed,migrateDefaultWinAmounts,migrateKothWinGifts}=require("./starter-defaults");
 const { migrateSupermarketDefaults } = require("./supermarket-defaults");
 const { defaultGameInteractionRule, repairDefaultGiftInteraction, repairDefaultWinCounterInteraction } = require("./interaction-defaults");
 
@@ -120,6 +121,11 @@ function initializeDefaultInteractions(hub, packId) {
       ? migrateSupermarketDefaults(pack, interactionRules, currentVersion)
       : { removed: 0, preserve: false };
     removed += supermarketMigration.removed;
+    if(canAddDefaults){
+      repaired+=migrateKothWinGifts(hub,pack,interactionRules,currentVersion).repaired;
+      repaired+=migrateDefaultWinAmounts(hub,pack,interactionRules,currentVersion).repaired;
+      removed+=migrateStarterDefaults(hub,pack,interactionRules,currentVersion).removed;
+    }
     const deprecatedPresetIds = new Set(
       Array.isArray(pack.deprecatedDefaultMappingIds)
         ? pack.deprecatedDefaultMappingIds
@@ -181,6 +187,8 @@ function initializeDefaultInteractions(hub, packId) {
         continue;
       }
       if (!canAddDefaults || supermarketMigration.preserve) continue;
+      if(pack.starterDefaultsVersion&&mapping.marketColumn&&starterGiftAlreadyUsed(rule,interactionRules))continue;
+      if(mapping.fillMissingWinLevel&&interactionRules.some(existing=>existing.actions?.some(action=>action.type==='overlay.win-counter'&&action.config?.packId===pack.id&&(action.config.operation||'adjust')==='adjust'&&Number(action.config.amount)===mapping.amount)))continue;
       interactionRules.push(rule);
       existingRulesById.set(rule.id, rule);
       added += 1;

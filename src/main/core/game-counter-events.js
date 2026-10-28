@@ -5,8 +5,8 @@ const { safeString } = require("../utils");
 
 function readMontChiliadCounterEvent(pack, message, cursors = new Map()) {
   if (
-    pack?.id !== "gtav-montchiliad" ||
-    message?.type !== "montchiliad:victory"
+    !["gtav-montchiliad","gtav-koth-enhanced","gtav-hiking-enhanced"].includes(pack?.id) ||
+    message?.type !== (pack.id==="gtav-hiking-enhanced"?"hiking:state":pack.id==="gtav-koth-enhanced"?"koth:state":"montchiliad:victory")
   ) {
     return null;
   }
@@ -30,14 +30,14 @@ function readMontChiliadCounterEvent(pack, message, cursors = new Map()) {
   if (
     eventId <= 0 ||
     amount === 0 ||
-    !["win", "death"].includes(eventName)
+    !(["gtav-koth-enhanced","gtav-hiking-enhanced"].includes(pack.id)?["win","death","fall","timeout"]:["win","death"]).includes(eventName)
   ) {
     return null;
   }
   return {
     sessionId,
     eventId,
-    amount: Math.max(-1000, Math.min(1000, amount)),
+    amount: ["gtav-koth-enhanced","gtav-hiking-enhanced"].includes(pack.id)?(eventName==="win"?1:-1):Math.max(-1000, Math.min(1000, amount)),
     eventName
   };
 }

@@ -31,6 +31,8 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       "euro-truck-simulator-2",
       "fallout-4",
       "find-the-needle-demo",
+      "gtav-hiking-enhanced",
+      "gtav-koth-enhanced",
       "gtav-montchiliad",
       "hogwarts-legacy",
       "minecraft-bedrock-box",
@@ -38,7 +40,11 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       "minecraft-survival-plugin",
       "pokemon-red-blue",
       "resident-evil-3",
+      "shenfarm",
+      "shenkite",
+      "shenpaint",
       "shift-at-midnight",
+      "splash-bombes",
       "stardew-valley",
       "super-mario-kart",
       "supermarket-simulator",
@@ -112,7 +118,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
 
 test("GTA est détecté et installé automatiquement avec une progression novice", () => {
   const gta = GAME_INSTALLERS["gtav-montchiliad"];
-  assert.equal(gta.version, "1.0.4");
+  assert.equal(gta.version, "1.0.14");
   const runtime = readMainSource("game-runtime.js");
   const renderer = readRendererSource();
 
@@ -158,16 +164,16 @@ test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’éd
     assert.ok(asset.size > 0);
     assert.match(
       safeInstallerAssetUrl(asset.url),
-      /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/gtav-montchiliad\/1\.0\.[0-4]\//
+      /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\/gtav-montchiliad\/1\.0\.(?:0|[1-9]\d*)\//
     );
   }
   const enhancedPlugin = enhanced.find(
     (asset) => asset.id === "enhancedplugin"
   );
-  assert.match(enhancedPlugin.url, /\/1\.0\.4\//);
+  assert.match(enhancedPlugin.url, /\/1\.0\.14\//);
   assert.equal(
     enhancedPlugin.sha256,
-    "e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1"
+    "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48"
   );
   assert.throws(
     () => safeInstallerAssetUrl("https://example.com/asset.zip"),
@@ -297,13 +303,13 @@ test("Stardew Valley et Terraria utilisent leurs packs versionnés Backblaze", (
   const expected = {
     "stardew-valley": {
       effects: 28,
-      assets: 3,
+      assets: 2,
       appIds: ["413150"]
     },
     terraria: {
       effects: 25,
-      assets: 1,
-      appIds: ["1281930"]
+      assets: 3,
+      appIds: ["105600"]
     }
   };
   for (const [gameId, contract] of Object.entries(expected)) {
@@ -315,13 +321,13 @@ test("Stardew Valley et Terraria utilisent leurs packs versionnés Backblaze", (
           "resources",
           "installer-assets",
           gameId,
-          "1.0.0",
+          installer.version,
           "manifest.json"
         ),
         "utf8"
       )
     );
-    assert.equal(installer.version, "1.0.0");
+    assert.equal(installer.version, "1.1.0");
     assert.equal(installer.autoDetect, true);
     assert.equal(installer.unattended, true);
     assert.deepEqual(installer.steamAppIds, contract.appIds);
@@ -336,7 +342,7 @@ test("Stardew Valley et Terraria utilisent leurs packs versionnés Backblaze", (
       assert.match(
         safeInstallerAssetUrl(asset.url),
         new RegExp(
-          `^https://f003\\.backblazeb2\\.com/file/shenpulse-media/installer-assets/${gameId}/1\\.0\\.0/`
+          `^https://f003\\.backblazeb2\\.com/file/shenpulse-media/installer-assets/${gameId}/[0-9.]+/`
         )
       );
     }
@@ -354,43 +360,6 @@ test("Stardew Valley et Terraria utilisent leurs packs versionnés Backblaze", (
       catalog.TERRARIA_EFFECTS ||
       catalog.STARDEW_VALLEY_EFFECTS;
     assert.equal(effects.length, contract.effects);
-  }
-});
-
-test("déploie le mod Terraria dans le dossier tModLoader des documents", async () => {
-  const temporaryRoot = fs.mkdtempSync(
-    path.join(os.tmpdir(), "shenpulse-terraria-target-")
-  );
-  try {
-    const gameRoot = path.join(temporaryRoot, "game");
-    const documentsRoot = path.join(temporaryRoot, "documents");
-    const backupRoot = path.join(temporaryRoot, "backups");
-    const source = path.join(
-      gameRoot,
-      "Mods",
-      "CrowdControlMod.tmod"
-    );
-    fs.mkdirSync(path.dirname(source), { recursive: true });
-    fs.writeFileSync(source, "mod-terraria");
-    const result = await deployAdditionalInstallTargets({
-      manifest: GAME_INSTALLERS.terraria,
-      targetPath: gameRoot,
-      backupRoot,
-      documentsPath: documentsRoot
-    });
-    const destination = path.join(
-      documentsRoot,
-      "My Games",
-      "Terraria",
-      "tModLoader",
-      "Mods",
-      "CrowdControlMod.tmod"
-    );
-    assert.equal(result.length, 1);
-    assert.equal(result[0].path, destination);
-    assert.equal(fs.readFileSync(destination, "utf8"), "mod-terraria");
-  } finally {
-    fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
 });
 

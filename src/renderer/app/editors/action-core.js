@@ -63,7 +63,7 @@ function openActionEditor(row) {
   const timerSeconds = ["remove", "random"].includes(timerOperation)
     ? Math.abs(configuredTimerSeconds)
     : configuredTimerSeconds;
-  const accessiblePacks = visibleGamePacks();
+  const accessiblePacks = visibleGamePacks().flatMap(pack => pack.modeSelector ? pack.modes : [pack]);
   const configuredPack =
     snapshot.packs.find(
       (pack) =>

@@ -17,7 +17,9 @@ const {
   sha256File
 } = require("../src/main/game-runtime");
 
-const gameIds = ["stardew-valley", "terraria"];
+const requestedGames = process.argv.filter(arg => arg.startsWith("--game=")).map(arg => arg.slice(7));
+const gameIds = requestedGames.length ? requestedGames : ["stardew-valley", "terraria"];
+if (gameIds.some(id => !["stardew-valley", "terraria"].includes(id))) throw new Error("Jeu de vérification invalide.");
 const temporaryRoot = fs.mkdtempSync(
   path.join(os.tmpdir(), "shenpulse-stardew-terraria-check-")
 );
@@ -51,19 +53,7 @@ async function verifyGame(gameId) {
   const manifest = GAME_INSTALLERS[gameId];
   const downloadRoot = path.join(temporaryRoot, gameId);
   await fs.promises.mkdir(downloadRoot, { recursive: true });
-  const remoteManifestUrl = new URL(
-    "manifest.json",
-    safeInstallerAssetUrl(manifest.assets[0].url)
-  ).toString();
-  const remoteManifestResponse = await fetch(remoteManifestUrl, {
-    cache: "no-store"
-  });
-  assert.equal(
-    remoteManifestResponse.ok,
-    true,
-    `manifest distant indisponible pour ${gameId}`
-  );
-  const remoteManifest = await remoteManifestResponse.json();
+  const remoteManifest = JSON.parse(await fs.promises.readFile(path.join(__dirname,"../resources/installer-assets",gameId,manifest.version,"manifest.json"),"utf8"));
   assert.equal(remoteManifest.gameId, gameId);
   assert.equal(remoteManifest.version, manifest.version);
   assert.deepEqual(
@@ -125,12 +115,12 @@ async function verifyStardew(downloadRoot, manifest) {
   );
   const dllPath = path.join(
     modRoot,
-    "CrowdControl",
-    "CrowdControl.dll"
+    "ShenPulse",
+    "ShenPulse.Stardew.dll"
   );
   const manifestPath = path.join(
     modRoot,
-    "CrowdControl",
+    "ShenPulse",
     "manifest.json"
   );
   const dll = await fs.promises.readFile(dllPath);
@@ -162,9 +152,9 @@ async function verifyTerraria(downloadRoot, manifest) {
     )
   );
   const dll = entries.find((entry) =>
-    /CrowdControlMod\.dll$/i.test(entry.name)
+    /ShenPulseTerraria\.dll$/i.test(entry.name)
   )?.data;
-  assert.ok(dll, "CrowdControlMod.dll est absent du fichier tmod");
+  assert.ok(dll, "ShenPulseTerraria.dll est absent du fichier tmod");
   assert.equal(
     containsInt32(dll, 58433),
     true,

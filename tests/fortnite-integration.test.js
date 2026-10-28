@@ -229,7 +229,7 @@ test("le connecteur Fortnite reste réservé au propriétaire et ne route aucun 
     fortnite.connector.processName,
     "FortniteClient-Win64-Shipping.exe"
   );
-  assert.equal(hub.initializeDefaultInteractions("fortnite").added, 22);
+  assert.equal(hub.initializeDefaultInteractions("fortnite").added, 12);
   assert.equal(
     state.game.interactionRulesByPack.fortnite.filter(
       (rule) => /^fortnite-weapon-slot-[1-5]$/.test(

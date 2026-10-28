@@ -22,7 +22,7 @@ function sameLocalDocumentUrl(value, expectedUrl, platform = process.platform) {
 }
 
 function assertIntegrationIpcSender(channel, event, mainWindow) {
-  if (!["sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset"].includes(channel) && !["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:"].some((prefix) => channel.startsWith(prefix))) return;
+  if (!["sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level"].includes(channel) && !["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:"].some((prefix) => channel.startsWith(prefix))) return;
   let trusted = false;
   try {
     const contents = mainWindow?.webContents;

@@ -44,11 +44,11 @@ const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
   const games = loadShenazenGameCatalog(path.join(root, "resources"));
-  assert.equal(games.length, 56);
-  assert.equal(new Set(games.map((game) => game.id)).size, 56);
+  assert.equal(games.length, 62);
+  assert.equal(new Set(games.map((game) => game.id)).size, 62);
   assert.equal(
     games.filter((game) => !["fortnite", "thiercelieux"].includes(game.id)).length,
-    54
+    60
   );
   assert.equal(games.find((game) => game.id === "fortnite")?.ownerOnly, true);
   assert.equal(
@@ -83,7 +83,7 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
   assert.ok(games.some((game) => game.id === "gtav-montchiliad"));
   assert.equal(
     games.find((game) => game.id === "gtav-montchiliad")?.installerVersion,
-    "1.0.4"
+    "1.0.14"
   );
   assert.deepEqual(
     games
@@ -115,7 +115,11 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
       "tiklive-cube-wars": 9.99,
       "tiklive-stack-tower": 9.99,
       "deal-or-no-deal": 4.99,
-      "diamond-drop": 4.99
+      "diamond-drop": 4.99,
+      shenfarm: 9.99,
+      shenpaint: 9.99,
+      shenkite: 9.99,
+      "splash-bombes": 9.99
     }
   );
   assert.ok(
@@ -303,7 +307,7 @@ test("charge les 669 visuels d'interactions copiés depuis ShenazenOverlay", () 
   const directory = path.join(root, "resources", "game-interactions");
   const files = fs
     .readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".webp"));
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".webp") && path.basename(entry.parentPath || entry.path) !== "gtav-koth-enhanced");
   assert.equal(files.length, 669);
 });
 
@@ -340,7 +344,7 @@ test("réunit les interactions Bedrock Box, SandBox et Survival dans Minecraft",
   assert.equal(MINECRAFT_BEDROCK_EFFECTS.length, 41);
   assert.equal(MINECRAFT_BEDROCK_DEFAULT_MAPPINGS.length, 28);
   assert.equal(MINECRAFT_SANDBOX_EFFECTS.length, 101);
-  assert.equal(MINECRAFT_SANDBOX_DEFAULT_MAPPINGS.length, 18);
+  assert.equal(MINECRAFT_SANDBOX_DEFAULT_MAPPINGS.length, 20);
   assert.equal(MINECRAFT_SURVIVAL_EFFECTS.length, 65);
   assert.equal(MINECRAFT_SURVIVAL_DEFAULT_MAPPINGS.length, 0);
 

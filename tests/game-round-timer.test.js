@@ -83,9 +83,9 @@ function harness({ autoRestart = false, currentWins = 5 } = {}) {
   };
 }
 
-test("les manches Minecraft durent dix minutes par défaut", () => {
+test("les manches Minecraft durent quinze minutes par défaut", () => {
   assert.deepEqual(normalizeMinecraftRoundSettings(), {
-    durationMinutes: 10,
+    durationMinutes: 15,
     autoRestart: false
   });
   assert.deepEqual(

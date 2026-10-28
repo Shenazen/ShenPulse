@@ -42,8 +42,10 @@ const MATCH_SOURCE_PATHS = [
 // Keep this projection aligned with createRelayState, not the complete local
 // workspace (catalogues, chat history, secrets and other accounts stay local).
 const RELAY_STATE_PATHS = [
+  "session.game", "game.roundSettingsByPack", "settings.overlayConfigs.timer",
   "goals", "session.running", "session.startedAt", "session.profileId", "overlaySession",
-  "game.interactionRulesByPack.supermarket-simulator", "settings.overlayConfigs.gameInteractionOverlays.supermarket-simulator",
+  "game.interactionRulesByPack", "settings.overlayConfigs.gameInteractionOverlays",
+  "settings.overlayConfigs.winCounter", "settings.overlayConfigs.multiplierTimer", "settings.overlayConfigs.gameWinsFeatures",
   "settings.overlayScene", "commerce.subscription",
   ...["sessionEvents", "sessionActions", "sessionLikes", "sessionUniqueViewers",
     "lifetimeEvents", "likes", "gifts", "follows", "subscribers"]

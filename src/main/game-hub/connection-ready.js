@@ -6,7 +6,7 @@ async function waitForGameConnection(hub, packId, { now = Date.now, sleep = dela
   const pack = hub.assertAccess(packId);
   const configured = Number(pack.connector?.launchConnectionTimeoutMs || 0);
   if (!Number.isFinite(configured) || configured <= 0) return;
-  const maximum = pack.connector?.type === "shop-mod" ? 600_000 : 90_000;
+  const maximum = pack.connector?.type === "shop-mod" || ["gtav-koth-enhanced","gtav-hiking-enhanced"].includes(packId) ? 600_000 : 90_000;
   const deadline = now() + Math.min(maximum, configured);
   do {
     // prepareConnection rechecks access each time. A listening socket alone

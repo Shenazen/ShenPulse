@@ -64,19 +64,17 @@ function minecraftLauncherPack(modePacks) {
   };
 }
 
+function gameModeLauncherPack(modePacks, launcherId) {
+  if (launcherId === MINECRAFT_LAUNCHER_ID) return minecraftLauncherPack(modePacks);
+  return {...minecraftLauncherPack(modePacks),id:GTA_LAUNCHER_ID,name:'GTA Enhanced/Amélioré',source:'GTA V Enhanced',artwork:'catalog/gta-enhanced.jpg',description:'Choisissez le mod Chiliad, KOTH ou Hiking pour GTA V Enhanced. Chaque mod garde ses interactions et réglages.',storefronts:['rockstar-games','steam','epic-games']};
+}
 function visibleGamePacks() {
-  const visible = (snapshot?.packs || []).filter(canAccessGame);
-  const minecraftModes = visible.filter((pack) =>
-    MINECRAFT_MODE_IDS.includes(pack.id)
-  );
-  if (!minecraftModes.length) return visible;
-  const firstMinecraftIndex = visible.findIndex((pack) =>
-    MINECRAFT_MODE_IDS.includes(pack.id)
-  );
-  return visible.flatMap((pack, index) => {
-    if (!MINECRAFT_MODE_IDS.includes(pack.id)) return [pack];
-    if (index !== firstMinecraftIndex) return [];
-    return [minecraftLauncherPack(minecraftModes)];
+  const visible=(snapshot?.packs||[]).filter(canAccessGame),emitted=new Set();
+  return visible.flatMap(pack=>{
+    const launcher=MINECRAFT_MODE_IDS.includes(pack.id)?MINECRAFT_LAUNCHER_ID:GTA_MODE_IDS.includes(pack.id)?GTA_LAUNCHER_ID:'';
+    if(!launcher)return [pack];if(emitted.has(launcher))return [];emitted.add(launcher);
+    const ids=launcher===MINECRAFT_LAUNCHER_ID?MINECRAFT_MODE_IDS:GTA_MODE_IDS;
+    return [gameModeLauncherPack(visible.filter(mode=>ids.includes(mode.id)),launcher)];
   });
 }
 
@@ -292,15 +290,7 @@ function activeGameSession() {
 }
 
 function minecraftRoundSettingsFor(packId) {
-  const saved =
-    snapshot?.state?.game?.roundSettingsByPack?.[packId] || {};
-  return {
-    durationMinutes: Math.max(
-      1,
-      Math.min(1440, Math.round(Number(saved.durationMinutes || 10)))
-    ),
-    autoRestart: saved.autoRestart === true
-  };
+  return ShenPulseMinecraftRoundSettings.normalizeMinecraftRoundSettings(snapshot?.state?.game?.roundSettingsByPack?.[packId]);
 }
 
 function minecraftRoundRemainingSeconds(gameSession = activeGameSession()) {
@@ -336,15 +326,14 @@ function formatCountdown(seconds) {
 
 function updateMinecraftRoundCountdowns() {
   const gameSession = activeGameSession();
-  const remaining = minecraftRoundRemainingSeconds(gameSession);
-  document
-    .querySelectorAll("[data-minecraft-round-countdown]")
-    .forEach((node) => {
-      node.textContent =
-        gameSession?.roundStatus === "timeout" && !gameSession.roundEndsAt
-          ? "TIME OUT"
-          : formatCountdown(remaining);
-    });
+  document.querySelectorAll("[data-minecraft-round-countdown]").forEach((node) => {
+    const packId = node.dataset.minecraftRoundCountdown || gameSession?.packId;
+    const active = gameSession?.packId === packId;
+    node.textContent = active && gameSession.roundStatus === "timeout" && !gameSession.roundEndsAt
+      ? "TIME OUT"
+      : formatCountdown(active ? minecraftRoundRemainingSeconds(gameSession)
+        : MINECRAFT_ROUND_MODE_IDS.includes(packId) ? minecraftRoundSettingsFor(packId).durationMinutes * 60 : 0);
+  });
 }
 
 function activeGameConflict(pack) {

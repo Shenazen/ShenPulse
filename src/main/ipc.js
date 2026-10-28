@@ -69,7 +69,7 @@ function registerIpc({
   const handle = (channel, listener) => {
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, (...args) => {
-      if (["sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset"].includes(channel) || ["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:"].some((prefix) => channel.startsWith(prefix))) {
+      if (["sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level"].includes(channel) || ["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:"].some((prefix) => channel.startsWith(prefix))) {
         assertIntegrationIpcSender(channel, args[0], getWindow());
       }
       if (["entity:upsert", "entity:remove"].includes(channel) && args[1] === "commands") {

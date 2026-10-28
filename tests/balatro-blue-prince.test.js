@@ -69,7 +69,7 @@ test("le hub garde les règles personnalisées et transmet Balatro Game Pass par
   const store = authenticatedFixtureStore({ getState: () => state, mutate: fn => fn(state) });
   const hub = new GameHub({ store, resourcesDirectory: path.join(root, "resources"), packsDirectory: path.join(root, "resources/packs") });
   hub.loadPacks(); t.after(() => hub.disconnectAll());
-  assert.equal(hub.initializeDefaultInteractions("balatro").added, 125);
+  assert.equal(hub.initializeDefaultInteractions("balatro").added, 12);
   const custom = state.game.interactionRulesByPack.balatro[0];
   custom.title = "Mon cadeau personnalisé";
   assert.equal(hub.initializeDefaultInteractions("balatro").added, 0);
@@ -113,8 +113,8 @@ test("Balatro et Blue Prince exposent leurs catalogues complets et le parcours i
     assert.equal(new Set(pack.effects.map(effect => effect.code)).size, count);
     assert.ok(pack.effects.every(effect => effect.service === "native" && effect.name && effect.description));
     assert.equal(pack.effects.filter(effect => effect.available).length, id === "balatro" ? 125 : 75);
-    assert.equal(pack.defaultMappings.length, count);
-    assert.ok(pack.defaultMappings.every(mapping => !mapping.triggerEnabled), "aucun cadeau non choisi ne doit déclencher un effet");
+    assert.equal(pack.defaultMappings.length, 12);
+    assert.ok(pack.defaultMappings.every(mapping => mapping.triggerEnabled), "les douze cadeaux du pack sont configurés");
     assert.deepEqual(pack.guide.journey, ["installation", "interactions", "overlays", "launch"]);
     assert.equal(pack.installerVersion, installerForGame(id).version);
   }
@@ -124,7 +124,7 @@ test("Balatro et Blue Prince exposent leurs catalogues complets et le parcours i
   assert.ok(blue.effects.some(effect => effect.code === "item_watering can"));
   assert.equal(blue.effects.find(effect => effect.code === "fastmove").duration, 30);
   assert.equal(blue.effects.find(effect => effect.code === "force_kick").available, false);
-  assert.equal(blue.defaultMappings.find(mapping => mapping.effectId === "blue-prince-native-26-force-kick").enabled, false);
+  assert.equal(blue.defaultMappings.some(mapping => mapping.effectId === "blue-prince-native-26-force-kick"), false);
   const balatro = catalog.find(pack => pack.id === "balatro");
   assert.notEqual(balatro.effects.find(effect => effect.code === "addMoney_5").id, balatro.effects.find(effect => effect.code === "addMoney_-5").id);
 });

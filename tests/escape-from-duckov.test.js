@@ -40,6 +40,10 @@ test("le correctif Duckov équipe les ennemis sans changer les commandes normale
 
 test("Duckov présente ses 83 effets natifs Steam et ses conditions de jeu", async () => {
   const game = pack();
+  const bootstrap = await fs.readFile(path.join(root, "src/renderer/app/core/bootstrap.js"), "utf8");
+  const start = bootstrap.indexOf("const AUTOMATED_GAME_INSTALLERS = new Set(["), end = bootstrap.indexOf("]);", start) + 3;
+  const installable = require("node:vm").runInNewContext(bootstrap.slice(start, end) + "; Array.from(AUTOMATED_GAME_INSTALLERS)");
+  assert.ok(installable.includes(gameId), "La nouvelle fiche Duckov doit permettre l’installation et la mise à jour automatiques");
   assert.equal(game.effects.length, 83);
   assert.equal(new Set(game.effects.map(e => e.id)).size, 83);
   assert.equal(new Set(game.effects.map(e => e.code)).size, 83);
@@ -53,7 +57,7 @@ test("Duckov présente ses 83 effets natifs Steam et ses conditions de jeu", asy
   assert.deepEqual(game.guide.journey, ["installation", "interactions", "overlays", "launch"]);
   assert.match(game.guide.notes.join(" "), /refuge/);
   assert.doesNotMatch(JSON.stringify({ steps: game.guide.steps, notes: game.guide.notes }), /Crowd Control/i);
-  assert.ok(game.defaultMappings.every(m => m.enabled && !m.triggerEnabled));
+  assert.ok(game.defaultMappings.every(m => m.enabled && m.triggerEnabled));
   for (const effect of game.effects) {
     assert.equal(effect.code, effect.sourceEffectId);
     assert.equal(effect.available, true);
@@ -145,4 +149,27 @@ test("Duckov refuse une réparation pendant la partie et ne lance jamais deux in
   await launchExternalGame({ ...args, findRunning: async () => null });
   assert.deepEqual(calls, ["steam://rungameid/3167020", "Duckov"]);
   await assert.rejects(launchSteamGame({ ...args, executable: path.join(dir, "Duckov.exe"), manifest: { ...manifest, steamLaunchAppId: "999" } }), /non autorisé/);
+});
+
+
+test("les apparitions Duckov reprennent les refus temporaires sans rejouer les autres effets", async () => {
+  const { GameTransports } = require("../src/main/game-hub/transports");
+  const transport = new GameTransports({});
+  const connector = { ...pack().connector, temporaryFailureRetryMs: 250, temporaryFailureRetryIntervalMs: 50 };
+  let attempts = 0;
+  const temporary = Object.assign(new Error("Creation in progress"), { status: 3 });
+  transport.getServerBridge = async () => ({ send: async () => { if (++attempts <= 2) throw temporary; return { status: 0 }; } });
+  const result = await transport.sendTcpServer(pack(), connector, { effect: { code: "spawn_306", duration: 0 } });
+  assert.equal(result.status, 0); assert.equal(attempts, 3);
+  attempts = 0;
+  await assert.rejects(transport.sendTcpServer(pack(), connector, { effect: { code: "heal" } }), /expédition/);
+  assert.equal(attempts, 1, "Un soin impossible ne doit pas être retardé ni rejoué");
+  attempts = 0;
+  transport.getServerBridge = async () => ({ send: async () => { attempts++; throw Object.assign(new Error("Disconnected"), { status: 1 }); } });
+  await assert.rejects(transport.sendTcpServer(pack(), connector, { effect: { code: "spawn_306" } }), /Disconnected/);
+  assert.equal(attempts, 1, "Une déconnexion ne doit pas provoquer de nouvelle apparition");
+  for (const effect of pack().effects.filter(effect => effect.code.startsWith("spawn_"))) {
+    assert.ok(connector.temporaryFailureRetryCodes.includes(effect.code));
+    assert.equal(effect.durationParameter, undefined, "L’apparition est ponctuelle et ne propose pas une durée fictive");
+  }
 });

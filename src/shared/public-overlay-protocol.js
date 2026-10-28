@@ -1,5 +1,5 @@
 "use strict";
-const { createGamePackOverlay } = require("./game-pack-overlay");
+const { createGamePackOverlays } = require("./game-pack-overlay");
 
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
 const sceneLayout = require("../../resources/overlays/scene-layout");
@@ -188,7 +188,7 @@ function createRelayState(state, options = {}) {
   const statistics = state?.statistics || {};
   return sanitizeRelayValue(
     {
-      gamePacks: createGamePackOverlay(state),
+      gamePacks: createGamePackOverlays(state),
       goals: (state?.goals || []).map((goal) => ({
         id: goal.id || "",
         name: goal.name || goal.title || "",

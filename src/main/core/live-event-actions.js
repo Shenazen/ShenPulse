@@ -27,12 +27,17 @@ class LiveEventActionService {
   }
 
   async handleGameBridgeMessage(pack, message) {
+    if(require('./gta-round-events').synchronizeGtaRoundState(this.store,pack,message))this.onChanged(true);
     const counterEvent = readMontChiliadCounterEvent(
       pack,
       message,
       this.gameCounterCursors
     );
     if (!counterEvent) return;
+    if(["gtav-koth-enhanced","gtav-hiking-enhanced"].includes(pack.id)){
+      const session=readState(this.store,["session.game"]).session?.game;
+      if(!session?.running||session.packId!==pack.id)return;
+    }
     const previous = Number(
       readState(this.store, ["overlaySession.winCounterCurrent"]).overlaySession?.winCounterCurrent
     );
@@ -52,7 +57,7 @@ class LiveEventActionService {
         user: {
           id: "gtav",
           name: "gtav",
-          displayName: "GTA V Mont Chiliad"
+          displayName: pack.name || "GTA V"
         }
       }
     );
@@ -65,8 +70,8 @@ class LiveEventActionService {
       "success",
       "game",
       counterEvent.eventName === "win"
-        ? "Victoire Mont Chiliad"
-        : "Mort dans GTA V",
+        ? (pack.id==="gtav-koth-enhanced"?"Victoire KOTH":pack.id==="gtav-hiking-enhanced"?"Victoire Hiking":"Victoire Mont Chiliad")
+        : counterEvent.eventName === "timeout" ? "Temps écoulé GTA" : counterEvent.eventName === "fall" ? "Chute hors de la rampe KOTH" : "Mort dans GTA V",
       `${applied > 0 ? "+" : ""}${applied} WIN${
         Math.abs(applied) === 1 ? "" : "S"
       }${Number.isFinite(current) ? ` · total ${current}` : ""}`

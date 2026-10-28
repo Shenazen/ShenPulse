@@ -7,6 +7,7 @@ const { EXTERNAL_GAMES } = require("./game-catalog/external-games");
 const { buildGameGuide } = require("./game-catalog/guides");
 const { interactionEffects } = require("./game-catalog/effects");
 const { interactionArtwork } = require("./game-catalog/interaction-art");
+const {prepareGamePresentation}=require("./game-catalog/presentation");
 const gameCategories = require("../shared/game-categories");
 
 function loadShenazenGameCatalog(resourcesDirectory) {
@@ -30,8 +31,9 @@ function loadShenazenGameCatalog(resourcesDirectory) {
       ...entry,
       guide: buildGameGuide(entry, entry.effects)
     })),
-    ...external
-  ].map(interactionArtwork(resourcesDirectory)).map((entry) => structuredClone({
+    ...external,
+    ...require("./game-catalog/shen-native-games").SHEN_NATIVE_GAMES.map(entry=>({...entry,guide:buildGameGuide(entry,entry.effects)}))
+  ].map(interactionArtwork(resourcesDirectory)).map(prepareGamePresentation).map((entry) => structuredClone({
     ...entry,
     catalogCategory: gameCategories.categoryFor(entry),
     catalogCategories: gameCategories.categoriesFor(entry)

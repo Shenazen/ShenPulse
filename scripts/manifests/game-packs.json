@@ -3,11 +3,11 @@
     {
       "gameId": "escape-from-duckov",
       "id": "mod",
-      "version": "1.1.1",
-      "key": "installer-assets/escape-from-duckov/1.1.1/duckov-shenpulse-1.1.1.zip",
-      "size": 11979534,
-      "sha256": "29142ce78b597beee17b694514da07848d7e8d96a9cedc2efea4875d8924ff75",
-      "buildPath": ".artifacts/game-pack-builds/escape-from-duckov/1.1.1/duckov-shenpulse-1.1.1.zip"
+      "version": "1.1.2",
+      "key": "installer-assets/escape-from-duckov/1.1.2/duckov-shenpulse-1.1.2.zip",
+      "size": 11979934,
+      "sha256": "d202d647f351a28cefa0b4405267e5102c724016612bda900823ea4d8d9730a2",
+      "buildPath": ".artifacts/game-pack-builds/escape-from-duckov/1.1.2/duckov-shenpulse-1.1.2.zip"
     },
     {
       "gameId": "dredge",
@@ -161,6 +161,130 @@
       "size": 8732404,
       "sha256": "ee851721082539c47af85046eb9a4a6fca4928fcb568ad31d6228b0ffb08f26a",
       "buildPath": ".artifacts/game-pack-builds/hogwarts-legacy/1.0.10/hogwarts-legacy-shenpulse-1.0.10.zip"
+    },
+    {
+      "gameId": "shenfarm",
+      "id": "game",
+      "version": "1.0.1-shenpulse1",
+      "key": "installer-assets/shenfarm/1.0.1-shenpulse1/ShenFarm-1.0.1-shenpulse1.zip",
+      "size": 342322362,
+      "sha256": "7424d75d2e58f622bb42fba3f5b324740bfd7b94d9a0c30b14483f6d5e2fffb0",
+      "buildPath": ".artifacts/game-pack-builds/shenfarm/1.0.1-shenpulse1/ShenFarm-1.0.1-shenpulse1.zip"
+    },
+    {
+      "gameId": "shenpaint",
+      "id": "game",
+      "version": "1.0.2-shenpulse1",
+      "key": "installer-assets/shenpaint/1.0.2-shenpulse1/ShenPaint-1.0.2-shenpulse1.zip",
+      "size": 244030884,
+      "sha256": "114f0f83d68fc6269441c884da3ab51dd62e17c24c83f9143ee099e9cc13d248",
+      "buildPath": ".artifacts/game-pack-builds/shenpaint/1.0.2-shenpulse1/ShenPaint-1.0.2-shenpulse1.zip"
+    },
+    {
+      "gameId": "shenkite",
+      "id": "game",
+      "version": "1.0.1-shenpulse1",
+      "key": "installer-assets/shenkite/1.0.1-shenpulse1/ShenKite-1.0.1-shenpulse1.zip",
+      "size": 110201719,
+      "sha256": "a58714bf57daaddb251a014e0c975d61a2edb3f26147800074a741461b278f9a",
+      "buildPath": ".artifacts/game-pack-builds/shenkite/1.0.1-shenpulse1/ShenKite-1.0.1-shenpulse1.zip"
+    },
+    {
+      "gameId": "splash-bombes",
+      "id": "game",
+      "version": "1.0.0-shenpulse1",
+      "key": "installer-assets/splash-bombes/1.0.0-shenpulse1/Splash-Bombes-1.0.0-shenpulse1.zip",
+      "size": 67854373,
+      "sha256": "6423b6fd5e7df0cf82af3408b1894d18f2b5e840683e49dc00c43452588e23b4",
+      "buildPath": ".artifacts/game-pack-builds/splash-bombes/1.0.0-shenpulse1/Splash-Bombes-1.0.0-shenpulse1.zip"
+    },
+    {
+      "gameId": "gtav-koth-enhanced",
+      "id": "scripthook-enhanced",
+      "version": "1.0.9",
+      "key": "installer-assets/gtav-montchiliad/1.0.0/script-hook-v-enhanced-3889.0-1158.13.zip",
+      "size": 1722210,
+      "sha256": "b64c97c3353906f14621e7e9511e4aec2a7d436ecc21ed124d3816585e2e6188"
+    },
+    {
+      "gameId": "gtav-koth-enhanced",
+      "id": "koth-module",
+      "version": "1.0.9",
+      "key": "installer-assets/gtav-koth-enhanced/1.0.9/shenpulse-gta-enhanced.asi",
+      "size": 698368,
+      "sha256": "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
+      "buildPath": ".artifacts/game-pack-builds/gtav-hiking-enhanced/1.0.3/ShenPulseMontChiliadEnhanced.asi"
+    },
+    {
+      "gameId": "gtav-montchiliad",
+      "id": "enhancedplugin",
+      "version": "1.0.14",
+      "key": "installer-assets/gtav-montchiliad/1.0.14/shenpulse-mont-chiliad-enhanced.asi",
+      "size": 698368,
+      "sha256": "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
+      "buildPath": ".artifacts/game-pack-builds/gtav-hiking-enhanced/1.0.3/ShenPulseMontChiliadEnhanced.asi"
+    },
+    {
+      "gameId": "gtav-hiking-enhanced",
+      "id": "scripthook-enhanced",
+      "version": "1.0.3",
+      "key": "installer-assets/gtav-montchiliad/1.0.0/script-hook-v-enhanced-3889.0-1158.13.zip",
+      "size": 1722210,
+      "sha256": "b64c97c3353906f14621e7e9511e4aec2a7d436ecc21ed124d3816585e2e6188"
+    },
+    {
+      "gameId": "gtav-hiking-enhanced",
+      "id": "hiking-module",
+      "version": "1.0.3",
+      "key": "installer-assets/gtav-hiking-enhanced/1.0.3/shenpulse-gta-enhanced.asi",
+      "size": 698368,
+      "sha256": "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
+      "buildPath": ".artifacts/game-pack-builds/gtav-hiking-enhanced/1.0.3/ShenPulseMontChiliadEnhanced.asi"
+    },
+    {
+      "gameId": "stardew-valley",
+      "id": "mod",
+      "version": "1.1.0",
+      "key": "installer-assets/stardew-valley/1.1.0/stardew-shenpulse-1.1.0.zip",
+      "size": 10230,
+      "sha256": "26be991567919e5f49e65d7875b986777c82c172bda0395f1d7aaa89301279c3",
+      "buildPath": ".artifacts/game-pack-builds/stardew-valley/1.1.0/stardew-shenpulse-1.1.0.zip"
+    },
+    {
+      "gameId": "terraria",
+      "id": "mod",
+      "version": "1.1.0",
+      "key": "installer-assets/terraria/1.1.0/ShenPulseTerraria.tmod",
+      "size": 20076,
+      "sha256": "a01800e150cc96dc9f4a1e8ede4a886e89aad128918f555f40a44ecaaac9f222",
+      "buildPath": ".artifacts/game-pack-builds/terraria/1.1.0/ShenPulseTerraria.tmod"
+    },
+    {
+      "gameId": "terraria",
+      "id": "tmodloader",
+      "version": "1.1.0",
+      "key": "installer-assets/terraria/1.1.0/tModLoader-v2026.08.3.0.zip",
+      "size": 61142677,
+      "sha256": "61e865f3702b12ce4a26c5a90b9de99a12c65ffc228455eb3390ce54af1eab15",
+      "buildPath": ".artifacts/game-pack-builds/terraria/1.1.0/tModLoader-v2026.08.3.0.zip"
+    },
+    {
+      "gameId": "terraria",
+      "id": "runtime",
+      "version": "1.1.0",
+      "key": "installer-assets/terraria/1.1.0/dotnet-runtime-8.0.0-win-x64.zip",
+      "size": 33177718,
+      "sha256": "5fa43823748af6448505bb7b18f44a709d3dd313d685cb7f7a83d030a702fa41",
+      "buildPath": ".artifacts/game-pack-builds/terraria/1.1.0/dotnet-runtime-8.0.0-win-x64.zip"
+    },
+    {
+      "gameId": "palworld",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/palworld/1.0.0/palworld-shenpulse-1.0.0.zip",
+      "size": 8733611,
+      "sha256": "dcd496afdcdc51da61ac794043c287ca26fd0f169e81a7d23b8bca78e247d407",
+      "buildPath": ".artifacts/game-pack-builds/palworld/1.0.0/palworld-shenpulse-1.0.0.zip"
     }
   ]
 }

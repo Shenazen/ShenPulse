@@ -126,10 +126,13 @@ test("le chronomètre LIVE ne peut plus être écrasé par le format des délais
 });
 
 test("la page GTA remplace la roue par le générateur lié aux interactions actives", () => {
-  assert.match(
-    renderer,
-    /pack\.id === "gtav-montchiliad"\s*\?\s*\["winCounter", "multiplierTimer"\]/
-  );
+  const policy = require("../src/shared/game-workspace-policy");
+  for (const id of ["gtav-koth-enhanced", "gtav-hiking-enhanced"]) {
+    assert.equal(policy.hasRoundTimer({ id }), true);
+    assert.equal(policy.hasIntegratedWinModels({ id }), true);
+  }
+  assert.equal(policy.hasRoundTimer({ id: "gtav-montchiliad" }), false);
+  assert.match(renderer, /["']winCounter["'], ["']multiplierTimer["'], ["']timer["']/);
   assert.match(renderer, /function gtaInteractionOverlayEntries\(pack\)/);
   assert.match(renderer, /function downloadGtaInteractionOverlay\(packId, model = 1\)/);
   assert.match(renderer, /canvas\.width = 1080/);

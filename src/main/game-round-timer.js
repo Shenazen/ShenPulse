@@ -7,26 +7,10 @@ const MINECRAFT_ROUND_GAME_IDS = Object.freeze([
   "minecraft-bedrock-box",
   "minecraft-sandbox-3"
 ]);
-const DEFAULT_MINECRAFT_ROUND_MINUTES = 10;
+const { DEFAULT_MINECRAFT_ROUND_MINUTES, normalizeMinecraftRoundSettings } = require('../shared/minecraft-round-settings');
 
 function isMinecraftRoundGame(packId) {
   return MINECRAFT_ROUND_GAME_IDS.includes(String(packId || ""));
-}
-
-function normalizeMinecraftRoundSettings(value = {}) {
-  const durationMinutes = Math.max(
-    1,
-    Math.min(
-      1440,
-      Math.round(
-        Number(value.durationMinutes || DEFAULT_MINECRAFT_ROUND_MINUTES)
-      )
-    )
-  );
-  return {
-    durationMinutes,
-    autoRestart: value.autoRestart === true
-  };
 }
 
 function minecraftRoundSettings(state, packId) {

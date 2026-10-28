@@ -1,8 +1,8 @@
 "use strict";
 const fs = require("node:fs"), path = require("node:path");
 const { stableId, layout, overlayUrl, OVERLAY_VIEWPORT, tiktokOverlayTransform, readJson, writeJson } = require("./layout");
-function ownsOverlay(source, plan) {
-  try { const url = new URL(source.payload?.url); return source.type === "browser" && url.hostname === new URL(plan.overlayUrl).hostname && url.searchParams.get("jeu") === plan.packId && url.searchParams.get("profile") === plan.profileId; } catch { return false; }
+function ownsOverlay(source, plan, kind="overlay") {
+  try { const url = new URL(source.payload?.url); return source.type === "browser" && url.hostname === new URL(plan.overlayUrl).hostname && url.pathname === new URL(kind==="wins"?plan.winsOverlayUrl:plan.overlayUrl).pathname && url.searchParams.get("jeu") === plan.packId && url.searchParams.get("profile") === plan.profileId; } catch { return false; }
 }
 function prepareTikTok(document, plan) {
   const doc = structuredClone(document), state = doc.SourceService?.state;
@@ -16,8 +16,8 @@ function prepareTikTok(document, plan) {
   const preview = prior.find(s => s.transform?.preview_cx)?.transform || { preview_cx: 675, preview_cy: 1200 };
   const areas = layout(preview.preview_cx, preview.preview_cy);
   const created = [];
-  for (const [kind, type, title] of [["game","game",plan.gameName],["camera","camera","Caméra"],["overlay","browser","ShenPulse · Interactions"]]) {
-    let source = prior.find(s => kind === "overlay" ? ownsOverlay(s, plan) : s.type === type);
+  for (const [kind, type, title] of [["game","game",plan.gameName],["camera","camera","Caméra"],["overlay","browser","ShenPulse · Interactions"],...(plan.winsOverlayUrl?[["wins","browser","ShenPulse · Wins"]]:[])].filter(([kind])=>!plan.overlayOnly||kind==="wins")) {
+    let source = prior.find(s => (kind === "overlay"||kind === "wins") ? ownsOverlay(s, plan,kind) : s.type === type);
     const fresh = !source;
     if (!source) {
       const template = kind === "camera" ? all.find(s => s.type === "camera" && s.payload?.deviceId) : null;
@@ -27,17 +27,18 @@ function prepareTikTok(document, plan) {
       Object.assign(source, { track: 0, lock: false, visible: true, clip: { x:0,y:0,z:0,w:0 }, effectiveClip:{x:0,y:0,z:0,w:0}, advancedFilters:[], alwaysTop:false, schemaVersion:1 });
       delete source.stateData;
     }
-    if (kind === "overlay") {
+    if (kind === "wins") source.payload = {...(source.payload||{}),url:plan.winsOverlayUrl,cx:1080,cy:1920,enableCustomResolution:true,enableAudio:false,zoom:1};
+    else if (kind === "overlay") {
       const placed = !fresh && source.transform?.size?.cx > 0 && source.transform?.size?.cy > 0;
       const url = new URL(placed ? plan.overlayUrl : overlayUrl(plan));
       if (placed) { const previous=new URL(source.payload.url);if(previous.searchParams.has("layout"))url.searchParams.set("layout",previous.searchParams.get("layout")); }
       source.payload = { ...(source.payload || {}), url:url.href, cx:placed ? source.payload.cx || 1080 : OVERLAY_VIEWPORT.width, cy:placed ? source.payload.cy || 1920 : OVERLAY_VIEWPORT.height, enableCustomResolution:true, enableAudio:false, zoom:source.payload?.zoom || 1 };
     }
-    else if (kind === "game") source.payload = { ...(source.payload || {}), captureMethod:"custom", captureType:"None", exe:plan.executable, windowClass:"UnityWndClass", handle:0, pid:0, cursor:false, fpsLimit:true, gamecaptureImplVersion:2 };
+    else if (kind === "game") source.payload = { ...(source.payload || {}), captureMethod:"custom", captureType:"None", exe:plan.executable, windowClass:plan.windowClass ?? "UnityWndClass", handle:0, pid:0, cursor:false, fpsLimit:true, gamecaptureImplVersion:2 };
     else source.payload ||= { deviceId:"", name:"Caméra", width:1920, height:1080, rate:30, audioDeviceID:"", audioDeviceName:"" };
     if (kind === "overlay" && (fresh || !source.transform?.size?.cx || !source.transform?.size?.cy)) source.transform = tiktokOverlayTransform(preview.preview_cx,preview.preview_cy);
     else if (fresh || !source.transform?.size?.cx || !source.transform?.size?.cy) {
-      const size = kind === "game" ? {cx:1920,cy:1080} : {cx:Number(source.payload.width)||1920,cy:Number(source.payload.height)||1080};
+      const size = kind === "wins" ? {cx:1080,cy:1920} : kind === "game" ? {cx:1920,cy:1080} : {cx:Number(source.payload.width)||1920,cy:Number(source.payload.height)||1080};
       const area = areas[kind], scale = Math.min(area.width / size.cx, area.height / size.cy);
       source.transform = { translateX:area.x+(area.width-size.cx*scale)/2,translateY:area.y+(area.height-size.cy*scale)/2,rotateAngle:0,scaleX:scale,scaleY:scale,flipH:false,flipV:false,size,preview_cx:preview.preview_cx,preview_cy:preview.preview_cy,fixed_edge:1 };
     }

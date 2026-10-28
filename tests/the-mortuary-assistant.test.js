@@ -43,8 +43,8 @@ test("Mortuary publie les 22 effets natifs en français sans référence tierce"
   assert.equal(pack.connector.durationMultiplier, 1000);
   assert.ok(pack.effects.every((entry) => entry.available && entry.service === "native"));
   assert.equal(pack.effects.filter((entry) => entry.duration === 30).length, 11);
-  assert.equal(pack.defaultMappings.length, 22);
-  assert.ok(pack.defaultMappings.every((entry) => entry.enabled && !entry.triggerEnabled));
+  assert.equal(pack.defaultMappings.length, 12);
+  assert.ok(pack.defaultMappings.every((entry) => entry.enabled && entry.triggerEnabled));
   assert.equal(pack.guide.mode, "native");
   assert.deepEqual(pack.guide.journey, ["installation", "interactions", "overlays", "launch"]);
   assert.doesNotMatch(JSON.stringify(pack), /crowd\s*control/i);
@@ -178,7 +178,7 @@ test("le hub prépare Mortuary, initialise ses cadeaux et transmet la durée au 
   t.after(() => hub.disconnectAll());
   hub.loadPacks();
   hub.packs.find((pack) => pack.id === id).connector.port = 0;
-  assert.equal(hub.initializeDefaultInteractions(id).added, 22);
+  assert.equal(hub.initializeDefaultInteractions(id).added, 12);
   assert.equal(hub.initializeDefaultInteractions(id).added, 0);
   const ready = await hub.prepareConnection(id);
   assert.equal(ready.listening, true);

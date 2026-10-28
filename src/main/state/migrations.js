@@ -137,6 +137,7 @@ function migrateState(store) {
     store.state.overlaySession
   );
   store.state.overlaySession.active = false;
+  store.state.overlaySession.gameMute = {packId:"",endsAt:0};
   synchronizeLikeGoalWithLive(store.state);
   if (store.state.overlaySession.hasData && !store.state.overlaySession.endedAt) {
     store.state.overlaySession.endedAt = new Date().toISOString();

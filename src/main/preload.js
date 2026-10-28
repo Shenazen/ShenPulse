@@ -148,6 +148,8 @@ contextBridge.exposeInMainWorld("shenPulse", {
     invoke("game:initialize-interactions", id),
   saveGameInteraction: (id, rule) =>
     invoke("game:interaction:save", id, rule),
+  saveGameWinsLevel: (id, options) => invoke("game:wins:level", id, options),
+  moveGameInteraction: (id, options) => invoke("game:interactions:move", id, options),
   removeGameInteraction: (id, ruleId) =>
     invoke("game:interaction:remove", id, ruleId),
   startGameSession: (id) => invoke("game:session:start", id),

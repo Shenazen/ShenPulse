@@ -32,18 +32,18 @@ test("traduit en français les 87 interactions Super Mario Kart", () => {
   ).find((entry) => entry.id === "super-mario-kart");
   const effects = new Map(pack.effects.map((effect) => [effect.id, effect]));
 
-  assert.equal(effects.get("lengthup")?.name, "Ajouter un tour à la course");
+  assert.equal(effects.get("lengthup")?.name, "Tour ajouté");
   assert.equal(
     effects.get("music_track")?.name,
-    "Changer la musique : thème du circuit"
+    "Musique circuit"
   );
   assert.equal(
     effects.get("item_mushroom")?.name,
-    "Donner au joueur 1 : Champignon"
+    "Champignon J1"
   );
   assert.equal(
     effects.get("useitem2_redshell")?.name,
-    "Utiliser pour le joueur 2 : Carapace rouge"
+    "Rouge J2"
   );
   assert.equal(effects.get("music_yoshi")?.category, "Changer la musique");
   assert.equal(effects.get("item_banana")?.category, "Donner des objets");

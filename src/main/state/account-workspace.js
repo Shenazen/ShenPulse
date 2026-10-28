@@ -296,6 +296,7 @@ function applyAccountWorkspace(state, workspace) {
     normalized.overlaySession
   );
   state.overlaySession.active = false;
+  state.overlaySession.gameMute = {packId:"",endsAt:0};
   if (
     state.overlaySession.hasData &&
     !state.overlaySession.endedAt

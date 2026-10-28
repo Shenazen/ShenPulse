@@ -184,7 +184,7 @@ class GameHub extends EventEmitter {
       }
       return this.gameRuntime.superMarioKartConnectionStatus(pack.id);
     }
-    if (["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod"].includes(connector.type)) {
+    if (["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod", "shen-native"].includes(connector.type)) {
       const bridge = await this.#getServerBridge(pack, connector);
       const status = bridge.status();
       if (!status.connected) {
@@ -202,7 +202,7 @@ class GameHub extends EventEmitter {
   async prepareConnection(packId) {
     const pack = this.assertAccess(packId);
     const connector = this.#connector(pack);
-    if (!["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod"].includes(connector.type)) {
+    if (!["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod", "shen-native"].includes(connector.type)) {
       return { ok: true, listening: false, type: connector.type };
     }
     const bridge = await this.#getServerBridge(pack, connector);
@@ -261,10 +261,11 @@ class GameHub extends EventEmitter {
     }
     assertAccess();
     const nativeHttpBridge = httpBridgeFor(this, connector.type);
+    if(connector.type==="shen-native")payload.effect.avatarUrl=String(context.user?.avatarUrl||"").slice(0,2048);
     let result;
     if (connector.type === "demo") {
       result = { status: "success", message: "Effet simulé." };
-    } else if (["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod"].includes(connector.type)) {
+    } else if (["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod", "shen-native"].includes(connector.type)) {
       result = await this.#sendTcpServer(pack, connector, payload, { assertAccess });
     } else if (connector.type === "tcp") {
       result = await this.#sendTcp(pack, connector, payload, { assertAccess });
@@ -358,10 +359,10 @@ class GameHub extends EventEmitter {
   }
 
   #connector(pack) {
-    if (pack.connector?.type === "shop-mod") return { ...pack.connector };
+    if (["shop-mod","shen-native"].includes(pack.connector?.type)) return { ...pack.connector };
     // Ce plugin natif est livré pour un endpoint local fixe. Les anciennes
     // valeurs sauvegardées (notamment 51337) ne doivent pas le détourner.
-    if (["euro-truck-simulator-2", "blue-prince", "resident-evil-3", "cult-of-the-lamb", "stardew-valley", "terraria", "escape-from-duckov", "dredge", "egging-on", "fallout-4", "gtav-montchiliad", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)) return { ...pack.connector };
+    if (["euro-truck-simulator-2", "blue-prince", "resident-evil-3", "cult-of-the-lamb", "stardew-valley", "terraria", "escape-from-duckov", "dredge", "egging-on", "fallout-4", "gtav-montchiliad", "gtav-koth-enhanced", "gtav-hiking-enhanced", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)) return { ...pack.connector };
     if (pack.id === "balatro" && readState(this.store, ["game.installations"]).game.installations?.balatro?.edition === "gamepass") {
       return { ...pack.connector, type: "balatro-gamepass", focusProcessOnManualTrigger: "love" };
     }

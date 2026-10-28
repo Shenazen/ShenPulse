@@ -14,7 +14,7 @@ const { safeString, timingSafeToken } = require("./utils");
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
 const sceneLayout = require("../../resources/overlays/scene-layout");
 
-const { STATE_PATHS: GAME_PACK_STATE_PATHS, createGamePackOverlay } = require("../shared/game-pack-overlay");
+const { STATE_PATHS: GAME_PACK_STATE_PATHS, createGamePackOverlays, publicGamePackAssets } = require("../shared/game-pack-overlay");
 
 const PRO_ACCESS_STATE_PATHS = ["commerce.subscription"];
 const OVERLAY_BOOTSTRAP_STATE_PATHS = [
@@ -370,6 +370,12 @@ class OverlayServer {
       }
       return this.#serveStatic(url.pathname, request, response);
     }
+    if (url.pathname.startsWith('/overlay/media/game-art/')) {
+      const file = publicGamePackAssets().get(url.pathname.slice('/overlay'.length));
+      if (!file || !fs.existsSync(file)) return this.#json(response, 404, { error: 'Image introuvable.' });
+      response.writeHead(200, { 'Content-Type': CONTENT_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400' });
+      fs.createReadStream(file).pipe(response); return;
+    }
     // Public catalog artwork; custom media and Match videos keep their access checks.
     if (/^\/overlay\/media\/game-interactions\/[a-z0-9_-]+\/[a-z0-9_-]+\.png$/i.test(url.pathname)) {
       return this.#serveStatic(url.pathname, request, response);
@@ -406,7 +412,7 @@ class OverlayServer {
       return this.#json(response, 401, { error: "Jeton local invalide." });
     }
     if (url.pathname === "/api/game-pack") {
-      return this.#json(response, 200, createGamePackOverlay(readState(this.store, GAME_PACK_STATE_PATHS)));
+      return this.#json(response, 200, createGamePackOverlays(readState(this.store, GAME_PACK_STATE_PATHS)));
     }
     if (url.pathname === "/api/state") {
       if (isMatchWidgetView(url.searchParams.get("view"))) {
@@ -441,7 +447,7 @@ class OverlayServer {
       response.write(": ShenPulse connected\n\n");
       const state = isMatchWidgetView(view) ? null : readState(this.store, OVERLAY_BOOTSTRAP_STATE_PATHS);
       const bootstrapPayload = view === "game-pack"
-        ? { gamePacks: createGamePackOverlay(readState(this.store, GAME_PACK_STATE_PATHS)) }
+        ? { gamePacks: createGamePackOverlays(readState(this.store, GAME_PACK_STATE_PATHS)) }
         : isMatchWidgetView(view)
         ? { matches: projectMatchesOverlayState(readState(this.store, MATCH_OVERLAY_STATE_PATHS)) }
         : { goals: state.goals, session: state.session, overlaySession: state.overlaySession,

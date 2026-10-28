@@ -22,7 +22,7 @@ class GameTransports {
     let bridge = this.serverBridges.get(cacheKey);
     if (!bridge) {
       const Bridge = connector.type === "shop-mod" ? ShopGameBridge : connector.type === "balatro-gamepass" ? BalatroGamePassBridge : connector.type === "websocket-server" ? SimpleWebSocketGameBridge : SimpleTcpServerBridge;
-      bridge = new Bridge({
+      bridge = connector.type==="shen-native" ? require("../shen-native-games/runtime").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : new Bridge({
         gameId: pack.id,
         installationPath: ["shop-mod", "balatro-gamepass"].includes(connector.type) ? readState(this.hub.store, ["game.installations"]).game.installations?.[pack.id]?.path : undefined,
         host: connector.host || "127.0.0.1",
@@ -37,6 +37,7 @@ class GameTransports {
         this.emit("bridge-error", { pack, error })
       );
       this.serverBridges.set(cacheKey, bridge);
+      if(connector.type==="shen-native")bridge.pack=pack;
     }
     if (connector.type === "shop-mod") {
       const installed = readState(this.hub.store, ["game.installations"]).game.installations?.[pack.id]?.path;
@@ -164,7 +165,8 @@ class GameTransports {
     };
     const retryWindowMs = Math.max(
       0,
-      Number(connector.temporaryFailureRetryMs || 0)
+      !Array.isArray(connector.temporaryFailureRetryCodes) || connector.temporaryFailureRetryCodes.includes(payload.effect.code)
+        ? Number(connector.temporaryFailureRetryMs || 0) : 0
     );
     const retryIntervalMs = Math.max(
       50,

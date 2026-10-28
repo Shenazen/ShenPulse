@@ -19,7 +19,7 @@ const EXTERNAL_GAMES = [
   external("hades", "Hades", "https://resources.crowdcontrol.live/images/Hades/box.jpg", "Crowd Control"),
   external("inscryption", "Inscryption", "https://resources.crowdcontrol.live/images/Inscryption/box.jpg", "Crowd Control"),
   external("no-mans-sky", "No Man's Sky", "https://resources.crowdcontrol.live/images/NoMansSky/box.jpg", "Crowd Control"),
-  external("palworld", "Palworld", "https://resources.crowdcontrol.live/images/Palworld/box.jpg", "Crowd Control"),
+  require("./palworld"),
   external("resident-evil-7-biohazard", "Resident Evil 7 Biohazard", "https://resources.crowdcontrol.live/images/ResidentEvil7/box.jpg", "Crowd Control"),
   external("vampire-survivors", "Vampire Survivors", "https://resources.crowdcontrol.live/images/VampireSurvivors/box.jpg", "Crowd Control"),
   require("./ark-survival-ascended").ARK_SURVIVAL_ASCENDED,

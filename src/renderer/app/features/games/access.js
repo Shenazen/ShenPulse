@@ -86,7 +86,15 @@ function gameArtwork(pack) {
   return "assets/brand/shenpulse-512.png";
 }
 
+// Library covers are independent from the artwork used for gameplay previews.
+function gameTileArtwork(pack) {
+  const cover = pack.coverArtwork ? `assets/games/${pack.coverArtwork}` : gameArtwork(pack);
+  const className = pack.coverArtwork ? "game-tile-art game-tile-cover" : "game-tile-art";
+  return `<div class="${className}" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(cover)}')"></div>`;
+}
+
 const SHENPULSE_PLATFORM_GAME_IDS = new Set([
+  "shenfarm","shenpaint","shenkite","splash-bombes",
   "thiercelieux",
   "coin-pusher",
   "connect-four",
@@ -104,6 +112,8 @@ const GAME_PLATFORM_OVERRIDES = Object.freeze({
   fortnite: ["epic-games"],
   "rocket-league": ["epic-games", "steam"],
   "gtav-montchiliad": ["rockstar-games", "steam", "epic-games"],
+  "gtav-koth-enhanced": ["rockstar-games", "steam", "epic-games"],
+  "gtav-hiking-enhanced": ["rockstar-games", "steam", "epic-games"],
   "pokemon-red-blue": ["nintendo"],
   "super-mario-kart": ["nintendo"]
 });
@@ -445,7 +455,7 @@ function renderGamesCatalogLegacy() {
       <section class="games-tile-grid">
         ${packs.map((pack) => `
           <article class="game-gallery-tile ${selected.id === pack.id ? "selected" : ""} ${isGameUnlocked(pack) ? "" : "locked"}" data-action="select-game" data-id="${escapeHtml(pack.id)}">
-            <div class="game-tile-art" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(gameArtwork(pack))}')"></div>
+            ${gameTileArtwork(pack)}
             <span class="tile-status ${isGameUnlocked(pack) ? "unlocked" : "locked"}">${isGameUnlocked(pack) ? "✓ " : "🔒 "}${escapeHtml(gameAccessLabel(pack))}</span>
             ${gameTileCaption(pack)}
             <button class="tile-action-button" data-action="select-game" data-id="${escapeHtml(pack.id)}">Ouvrir</button>
@@ -493,7 +503,7 @@ function renderGamesV2() {
   const packs = matchingPacks.flatMap((pack) => {
     if (pack.modeSelector && Array.isArray(pack.modes)) {
       const modes = pack.modes.filter((mode) => ShenPulseGameCategories.matchesCategory(mode, gameCategory));
-      return modes.length ? [minecraftLauncherPack(modes)] : [];
+      return modes.length ? [gameModeLauncherPack(modes,pack.id)] : [];
     }
     return ShenPulseGameCategories.matchesCategory(pack, gameCategory) ? [pack] : [];
   });
@@ -512,7 +522,7 @@ function renderGamesV2() {
       <section class="games-tile-grid">
         ${packs.map((pack) => `
           <article class="game-gallery-tile ${isGameUnlocked(pack) ? "" : "locked"}" data-action="open-game" data-id="${escapeHtml(pack.id)}" tabindex="0">
-            <div class="game-tile-art" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(gameArtwork(pack))}')"></div>
+            ${gameTileArtwork(pack)}
             <span class="tile-status ${isGameUnlocked(pack) ? "unlocked" : "locked"}">${isGameUnlocked(pack) ? "✓ " : "🔒 "}${escapeHtml(gameAccessLabel(pack))}</span>
             ${gameTileCaption(pack)}
             <button class="tile-action-button" type="button" data-action="open-game" data-id="${escapeHtml(pack.id)}">${escapeHtml(gameTileActionLabel(pack))}</button>
@@ -523,17 +533,18 @@ function renderGamesV2() {
 }
 
 function openMinecraftModeSelector(launcher) {
+  const gta=launcher.id===GTA_LAUNCHER_ID;
   const modes = launcher?.modes || [];
   if (!modes.length) {
     return toast(
-      "Minecraft indisponible",
-      "Aucun mode Minecraft n’est actuellement visible.",
+      gta ? "GTA indisponible" : "Minecraft indisponible",
+      gta ? "Aucun mod GTA n’est actuellement visible." : "Aucun mode Minecraft n’est actuellement visible.",
       true
     );
   }
   openEditor({
-    title: "Choisir un mode Minecraft",
-    kicker: "MINECRAFT · BEDROCK BOX, SANDBOX OU SURVIVAL",
+    title: gta ? "Choisir un mod GTA Enhanced/Amélioré" : "Choisir un mode Minecraft",
+    kicker: gta ? "GTA ENHANCED · CHILIAD, KOTH OU HIKING" : "MINECRAFT · BEDROCK BOX, SANDBOX OU SURVIVAL",
     variant: "minecraft-modes",
     body: `<div class="minecraft-mode-picker">
       <header>
@@ -543,18 +554,18 @@ function openMinecraftModeSelector(launcher) {
       </header>
       <div class="minecraft-mode-grid">
         ${modes.map((mode) => `
-          <button type="button" class="minecraft-mode-card" data-action="open-minecraft-mode" data-id="${escapeHtml(mode.id)}">
-            <img src="${escapeHtml(gameArtwork(mode))}" alt="" loading="eager">
+          <button type="button" class="minecraft-mode-card ${mode.coverArtwork ? "has-cover" : ""}" data-action="open-game-mode" data-id="${escapeHtml(mode.id)}">
+            <img src="${escapeHtml(mode.coverArtwork ? `assets/games/${mode.coverArtwork}` : gameArtwork(mode))}" alt="" loading="eager">
             <span>
               <small>${escapeHtml(
-                mode.id === "minecraft-bedrock-box"
+                gta ? (mode.id === "gtav-koth-enhanced" ? "RAMPE INTERACTIVE" : mode.id === "gtav-hiking-enhanced" ? "RANDONNÉE INTERACTIVE" : "ASCENSION INTERACTIVE") : mode.id === "minecraft-bedrock-box"
                   ? "SURVIE VERTICALE"
                   : mode.id === "minecraft-survival-plugin"
                     ? "SURVIE INTERACTIVE"
                     : "PLATEFORME DE SABLE"
               )}</small>
               <strong>${escapeHtml(mode.name)}</strong>
-              <b>${mode.effects.length} interactions récupérées</b>
+              <b>${mode.effects.length} interactions disponibles</b>
               <em>Ouvrir ce mode →</em>
             </span>
           </button>`).join("")}
@@ -577,7 +588,7 @@ function gameWorkspaceInteractionsReady(pack) {
 async function enterGameWorkspace(pack) {
   const entry = gameWorkspaceEntry = {
     packId: pack.id, scope: gameWorkspaceScope(),
-    initializing: pack.id === 'supermarket-simulator' &&
+    initializing: (pack.id === 'supermarket-simulator' || typeof usesSharedGameWorkspace === 'function' && usesSharedGameWorkspace(pack)) &&
       Number(snapshot.state.game.interactionCatalogVersions?.[pack.id] || 0) < Number(pack.interactionCatalogVersion || 0)
   };
   const current = () => gameWorkspaceEntry === entry && gameWorkspaceScope() === entry.scope &&
@@ -621,6 +632,7 @@ async function enterGameWorkspace(pack) {
 }
 
 function renderGameWorkspace(pack) {
+  if (typeof usesSharedGameWorkspace === "function" && usesSharedGameWorkspace(pack)) return renderSupermarketWorkspace(pack);
   if (pack.id === "supermarket-simulator") return renderSupermarketWorkspace(pack);
   if (pack.id === "super-mario-kart") {
     return renderSuperMarioKartWorkspace(pack);

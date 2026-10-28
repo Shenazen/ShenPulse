@@ -9,7 +9,7 @@ using MelonLoader;
 using UnityEngine;
 
 [assembly: MelonGame("TeamSoda", "Duckov")]
-[assembly: MelonInfo(typeof(ShenPulseDuckovCompatibility), "ShenPulse Duckov compatibility", "1.0.0", "ShenPulse")]
+[assembly: MelonInfo(typeof(ShenPulseDuckovCompatibility), "ShenPulse Duckov compatibility", "1.1.0", "ShenPulse")]
 [assembly: MelonPriority(1000)]
 
 // Keep the upstream module intact. Restrict this compatibility fix to the
@@ -23,6 +23,12 @@ public sealed class ShenPulseDuckovCompatibility : MelonMod
         try
         {
             Assembly module = AppDomain.CurrentDomain.GetAssemblies().First(a => a.GetName().Name == "CrowdControl");
+            HarmonyLib.Harmony connection = new HarmonyLib.Harmony("ShenPulse.Duckov.LocalBridge");
+            Type network = module.GetType("CrowdControl.NetworkClient", true);
+            if (!IsLocalEndpoint(network)) throw new InvalidOperationException("Install the ShenPulse pack with its dedicated local port.");
+            connection.Patch(AccessTools.Method(network, "IsCrowdControlProcessRunning"),
+                prefix: new HarmonyMethod(typeof(ShenPulseDuckovCompatibility), "UseLocalBridge"));
+            LoggerInstance.Msg("ShenPulse local connection ready.");
             Type spawn = module.GetType("CrowdControl.Delegates.Effects.Implementations.Spawn", true);
             MethodInfo method = AccessTools.Method(spawn, "doSpawn");
             AsyncStateMachineAttribute machine = (AsyncStateMachineAttribute)Attribute.GetCustomAttribute(method, typeof(AsyncStateMachineAttribute));
@@ -40,6 +46,16 @@ public sealed class ShenPulseDuckovCompatibility : MelonMod
             LoggerInstance.Error("Enemy weapon compatibility unavailable: " + error.Message);
         }
     }
+
+    // Only our port-adapted module may skip the unrelated client's process gate.
+    // The original TCP loop still handles refusal, disconnect and reconnect.
+    private static bool IsLocalEndpoint(Type network)
+    {
+        FieldInfo host = network.GetField("CV_HOST", BindingFlags.Public | BindingFlags.Static);
+        FieldInfo port = network.GetField("CV_PORT", BindingFlags.Public | BindingFlags.Static);
+        return host != null && port != null && (string)host.GetValue(null) == "127.0.0.1" && (int)port.GetValue(null) == 58440;
+    }
+    private static bool UseLocalBridge(ref bool __result) { __result = true; return false; }
 
     private static void EnterSpawn() { spawnDepth++; }
     private static Exception LeaveSpawn(Exception __exception) { spawnDepth = Math.Max(0, spawnDepth - 1); return __exception; }

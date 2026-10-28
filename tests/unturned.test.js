@@ -50,8 +50,8 @@ test("les paramètres Unturned transmettent les quantités sans les multiplier d
   assert.deepEqual(payload.effect.parameters, { amount: 7, radius: 8, assetId: 4 });
   const heal = game.effects.find(({ code }) => code === "heal");
   assert.equal(createEffectPayload(heal, {}, { parameters: { value: -30 } }).effect.parameters.value, -30);
-  assert.equal(game.defaultMappings.length, 27);
-  assert.ok(game.defaultMappings.every(({ enabled, triggerEnabled }) => enabled && !triggerEnabled));
+  assert.equal(game.defaultMappings.length, 12);
+  assert.ok(game.defaultMappings.every(({ enabled, triggerEnabled }) => enabled && triggerEnabled));
 });
 
 test("l’archive Unturned déploie le module autonome et sa bibliothèque libre avec sauvegarde", async (t) => {
@@ -110,7 +110,7 @@ test("le parcours Unturned prépare la connexion locale et attend la confirmatio
   t.after(() => hub.disconnectAll());
   hub.loadPacks();
   hub.packs.find(({ id }) => id === "unturned").connector.port = 0;
-  assert.equal(hub.initializeDefaultInteractions("unturned").added, 27);
+  assert.equal(hub.initializeDefaultInteractions("unturned").added, 12);
   assert.equal(hub.initializeDefaultInteractions("unturned").added, 0);
   const ready = await hub.prepareConnection("unturned");
   assert.equal(ready.listening, true);

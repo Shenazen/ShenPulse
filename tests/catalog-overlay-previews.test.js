@@ -100,10 +100,10 @@ test("les cartes montrent les aperçus Pro mais masquent leurs sources verrouill
   );
   assert.match(
     renderer,
-    /const url = accountReady && allowed \? overlayUrl\(item\) : ""/
+    /const url = accountReady && allowed \? presentation\?\.url \|\| overlayUrl\(item\) : ""/
   );
   assert.match(renderer, /\$\{allowed && accountReady[\s\S]*?overlay-card-footer/);
-  assert.match(renderer, /<div class="overlay-preview">\$\{overlayPreview\(item\)\}<\/div>/);
+  assert.match(renderer, /<div class="overlay-preview">\$\{presentation\?\.preview \|\| overlayPreview\(item\)\}<\/div>/);
   assert.match(renderer, /function overlayCatalogPreviewUrl\(item\)/);
   assert.match(
     renderer,

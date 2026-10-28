@@ -39,14 +39,14 @@ async function directory(t) {
   return p;
 }
 
-test("les quatre catalogues ont leurs interactions, images, durées et parcours, sans cadeau imposé", async () => {
+test("les quatre catalogues ont leurs interactions, images, durées et parcours, avec douze cadeaux de départ", async () => {
   for (const pack of packs) {
     assert.equal(pack.effects.length, { "dead-by-daylight": 20, dredge: 113, "egging-on": 37, "fallout-4": 298 }[pack.id]);
     assert.equal(new Set(pack.effects.map(e => e.id)).size, pack.effects.length);
     assert.equal(new Set(pack.effects.map(e => e.code)).size, pack.effects.length);
     assert.equal(pack.installerVersion, installerForGame(pack.id).version);
     assert.deepEqual(pack.guide.journey, ["installation", "interactions", "overlays", "launch"]);
-    assert.ok(pack.defaultMappings.every(m => !m.triggerEnabled));
+    assert.ok(pack.defaultMappings.every(m => m.triggerEnabled));
     for (const effect of pack.effects) {
       assert.ok(effect.name && effect.description && effect.category);
       assert.equal(effect.service, "native");

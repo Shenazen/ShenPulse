@@ -44,7 +44,7 @@ test("les quatre packs ont un catalogue exécutable, des guides ShenPulse et un 
     assert.equal(pack.guide.mode, "native");
     assert.ok(pack.guide.notes.length >= 5);
     assert.doesNotMatch(JSON.stringify(pack), /SyncLive|Crowd Control/i);
-    assert.ok(pack.defaultMappings.every(mapping => mapping.triggerEnabled === (pack.id === "supermarket-simulator")));
+    assert.ok(pack.defaultMappings.every(mapping => mapping.triggerEnabled === true));
     assert.ok(pack.effects.every(effect => effect.available && effect.description));
     assert.match(asset.url, /^https:\/\/f003\.backblazeb2\.com\/file\/shenpulse-media\/installer-assets\//);
     const recorded = registry.assets.find(a => a.gameId === id && a.id === "module");

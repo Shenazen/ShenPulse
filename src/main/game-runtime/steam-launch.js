@@ -14,7 +14,7 @@ async function launchSteamDemo({ gameId, manifest, executable, shell, assertAcce
 }
 
 async function launchSteamGame({ gameId, manifest, executable, shell, assertAccess }) {
-  const allowed = { "escape-from-duckov": "3167020" };
+  const allowed = { "escape-from-duckov": "3167020", terraria: "1281930" };
   const compiled = require("../game-installer-manifest").installerForGame(gameId);
   const dualPlatform = compiled && require("./installation-platform").supportsPlatformChoice(compiled);
   const appId = allowed[gameId] || (dualPlatform ? compiled.steamAppIds[0] : "");

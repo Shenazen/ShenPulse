@@ -7,7 +7,10 @@ const MARKET_COMMON_GIFTS = ['5655', '5269', '7934', '5487', '5658', '5879', '61
 function supermarketNewRow(type, column, effectId = '') {
   const pack = supermarketPack(), row = supermarketDraft(pack, { column, triggerType: type });
   const code = type !== 'gift' ? 'GiveMoney' : column === 'trap' ? 'FlipCamera' : column === 'neutral' ? 'ChangeFOV' : 'SpawnCustomers';
-  const effect = pack.effects.find(item => item.id === effectId && item.available !== false) || pack.effects.find(item => item.code === code) || pack.effects.find(item => item.available !== false);
+  const effect = pack.effects.find(item => item.id === effectId && item.available !== false) || pack.effects.find(item => item.code === code) || pack.effects.find(item => item.available !== false && supermarketColumn({rule:{},effect:item}) === column) || pack.effects.find(item => item.available !== false);
+  if (!effect || effect.available === false) throw new Error('Aucune interaction disponible pour ce jeu.');
+  row.action.type = effect.actionType || 'game.effect';
+  if (effect.winCounter) Object.assign(row.action.config, {amount:effect.winCounter.amount||0,operation:effect.winCounter.operation||'adjust'});
   row.action.config = { ...row.action.config, effectId: effect.id, duration: effect.duration || 0, parameters: Object.fromEntries((effect.parameters || []).map(parameter => [parameter.id, parameter.defaultValue ?? 0])) };
   row.rule.gameInteraction.title = type === 'follow' ? 'Follow' : type === 'like' ? 'Likes' : effect.name;
   row.rule.name = pack.name + ' · ' + row.rule.gameInteraction.title;
@@ -15,12 +18,13 @@ function supermarketNewRow(type, column, effectId = '') {
 }
 
 function saveSupermarketNewRow(row, profileId) {
+  const packId = row.action.config.packId, accountUid = snapshot.state.settings.account?.uid || '';
   const operation = marketWriteQueue.catch(() => {}).then(async () => {
-    if (snapshot.state.session.profileId !== profileId) throw new Error('Le profil a changé. Recommencez l’ajout.');
+    if (snapshot.state.session.profileId !== profileId || supermarketPack()?.id !== packId || (snapshot.state.settings.account?.uid || '') !== accountUid) throw new Error('Le profil a changé. Recommencez l’ajout.');
     const pack = supermarketPack();
     if (!requireGameAccess(pack)) throw new Error('Accès au jeu requis.');
     const next = await api.saveGameInteraction(pack.id, structuredClone(row.rule));
-    if (snapshot.state.session.profileId === profileId) acceptSnapshot(next || await api.getSnapshot());
+    if (snapshot.state.session.profileId === profileId && supermarketPack()?.id === packId && (snapshot.state.settings.account?.uid || '') === accountUid) acceptSnapshot(next || await api.getSnapshot());
     return row.rule;
   });
   marketWriteQueue = operation;
@@ -50,7 +54,7 @@ function supermarketGiftView(context) {
  return {...context,ranges:MARKET_GIFT_RANGES,commonIds:MARKET_COMMON_GIFTS,selectedId:String(ruleGiftCondition(context.row.rule)?.giftId || ''),usedIds:supermarketRows(supermarketPack()).map(row=>String(ruleGiftCondition(row.rule)?.giftId || ''))};
 }
 function supermarketGiftContextCurrent(context) {
-  return context && marketGiftContext === context && dialog.open && dialog.dataset.variant === 'market-gifts' && dialogSessionId === context.dialogSessionId && snapshot.state.session.profileId === context.profileId && (snapshot.state.settings.account?.uid || '') === context.accountUid && JSON.stringify(giftPickerCatalogContext()) === context.scope;
+  return context && context.packId === supermarketPack()?.id && marketGiftContext === context && dialog.open && dialog.dataset.variant === 'market-gifts' && dialogSessionId === context.dialogSessionId && snapshot.state.session.profileId === context.profileId && (snapshot.state.settings.account?.uid || '') === context.accountUid && JSON.stringify(giftPickerCatalogContext()) === context.scope;
 }
 
 function prepareSupermarketGiftCatalog(context, result) {
@@ -103,7 +107,7 @@ function refreshSupermarketGiftCatalog() {
 async function openSupermarketGifts(reference, draft = null) {
   const pack = supermarketPack(), row = draft || findGameInteractionRow(pack.id, reference.ruleId, reference.actionId, reference.index);
   if (!row) throw new Error('Interaction introuvable.');
-  const context = { reference, row, profileId: snapshot.state.session.profileId, accountUid: snapshot.state.settings.account?.uid || '', scope: JSON.stringify(giftPickerCatalogContext()), query: '', range: 'all', showAll: false, visibleLimit: 60, gifts: null, saving: false };
+  const context = { reference, row, packId: pack.id, profileId: snapshot.state.session.profileId, accountUid: snapshot.state.settings.account?.uid || '', scope: JSON.stringify(giftPickerCatalogContext()), query: '', range: 'all', showAll: false, visibleLimit: 60, gifts: null, saving: false };
   marketGiftContext = context;
   const title = ShenPulseGameInteractionTitles.title(row.rule, pack.effects.find(effect => effect.id === row.action.config.effectId)) || 'cette interaction';
   const ctx = supermarketContext(pack);

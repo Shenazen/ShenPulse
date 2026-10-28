@@ -306,12 +306,14 @@ class GameRuntimeService {
       assertAccess();
       return this.superMarioKart.launch({ assertAccess });
     }
-    return launchExternalGame({ gameId, manifest, installation, shell, assertAccess,
+    if(manifest.shenNative)return require("./shen-native-games/runtime").bridgeFor(this.store,gameId,assertAccess).launch({assertAccess});
+    return launchExternalGame({ gameId, manifest, installation, shell, assertAccess, userDataPath: this.app.getPath("userData"),
       waitForWindowsProcessWindow, scheduleGtaSaveDeployment: () => this.#scheduleGtaSaveDeployment(gameId, { assertAccess }) });
   }
 
   async uninstall(gameId, options = {}) {
     const assertAccess = this.createAccessGuard?.(gameId) || (() => this.assertAccess(gameId));
+    if(require('./shen-native-games/specs').SPECS[gameId])return require('./shen-native-games/uninstall').uninstallNativeGame(this,gameId,{...options,assertAccess});
     return require('./game-runtime/shop-game-uninstall').uninstallShopGame(this, gameId, {...options,assertAccess});
   }
 
@@ -644,6 +646,7 @@ class GameRuntimeService {
     asset,
     downloadPath,
     targetPath,
+    sourceGamePath,
     backupRoot,
     tempRoot
   }) {
@@ -652,6 +655,7 @@ class GameRuntimeService {
       asset,
       downloadPath,
       targetPath,
+      sourceGamePath,
       backupRoot,
       tempRoot
     });

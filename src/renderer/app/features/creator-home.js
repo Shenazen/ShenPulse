@@ -46,6 +46,11 @@ function renderCreatorHome() {
   return `<div class="creator-home-page" data-home-page>
     <section class="home-hero" aria-labelledby="home-heading">
       <img class="home-hero-art" src="assets/studio/home.webp" alt="" width="1672" height="941" decoding="async" fetchpriority="high">
+      <button type="button" class="home-discord" data-action="open-url" data-value="https://discord.gg/udfRRBDtdd">
+        <span class="home-discord-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.54 5.34A16.3 16.3 0 0 0 15.43 4l-.5 1.02a15.1 15.1 0 0 0-5.86 0L8.56 4a16.5 16.5 0 0 0-4.1 1.35C1.86 9.2 1.16 12.96 1.51 16.66a16.6 16.6 0 0 0 5.04 2.56l1.23-1.68a10.6 10.6 0 0 1-1.94-.94l.48-.37c3.75 1.73 7.82 1.73 11.52 0l.49.37c-.62.37-1.27.68-1.95.94l1.23 1.68a16.5 16.5 0 0 0 5.04-2.56c.42-4.29-.72-8.01-3.11-11.32ZM8.68 14.36c-1.13 0-2.05-1.03-2.05-2.29s.9-2.3 2.05-2.3c1.15 0 2.07 1.04 2.05 2.3 0 1.26-.9 2.29-2.05 2.29Zm6.65 0c-1.13 0-2.05-1.03-2.05-2.29s.9-2.3 2.05-2.3c1.15 0 2.07 1.04 2.05 2.3 0 1.26-.9 2.29-2.05 2.29Z"/></svg></span>
+        <span class="home-discord-copy"><strong>Rejoindre le Discord</strong><span>Échangez avec la communauté</span></span>
+        <span class="home-discord-arrow" aria-hidden="true">↗</span>
+      </button>
       <div class="home-hero-copy">
         <img class="home-wordmark" src="assets/brand/shenpulse-banner-transparent.png" alt="ShenPulse" width="520" height="150" decoding="async">
         <span class="home-eyebrow">VOTRE LIVE, VOTRE UNIVERS</span>

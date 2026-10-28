@@ -28,12 +28,19 @@ public class CharacterMainControl {
  public ItemStatsSystem.Items.Slot PrimWeaponSlot(){return Primary;}
  public ItemStatsSystem.Items.Slot MeleeWeaponSlot(){return Melee;}
 }
+public class DuckovLocalEndpoint { public static string CV_HOST="127.0.0.1";public static int CV_PORT=58440; }
+public class DuckovMissingEndpoint { }
 public class DuckovCompatibilityHarness {
  static BindingFlags Flags=BindingFlags.NonPublic|BindingFlags.Static;
  static object Call(string method,params object[] args){return typeof(ShenPulseDuckovCompatibility).GetMethod(method,Flags).Invoke(null,args);}
  static void Assert(bool result,string message){if(!result)throw new Exception(message);}
  static bool Plug(ItemStatsSystem.Items.Slot slot,out object[] args){args=new object[]{slot,new ItemStatsSystem.Item(),null,false};return (bool)Call("PlugSpawnWeapon",args);}
  public static void Main(){
+  Assert((bool)Call("IsLocalEndpoint",typeof(DuckovLocalEndpoint)),"ShenPulse loopback port must be accepted");
+  DuckovLocalEndpoint.CV_PORT=51337;Assert(!(bool)Call("IsLocalEndpoint",typeof(DuckovLocalEndpoint)),"The original external port must not be adapted");DuckovLocalEndpoint.CV_PORT=58440;
+  DuckovLocalEndpoint.CV_HOST="example.test";Assert(!(bool)Call("IsLocalEndpoint",typeof(DuckovLocalEndpoint)),"Non-local hosts must be refused");DuckovLocalEndpoint.CV_HOST="127.0.0.1";
+  Assert(!(bool)Call("IsLocalEndpoint",typeof(DuckovMissingEndpoint)),"Unknown module metadata must be refused");
+  object[] gate=new object[]{false};Assert(!(bool)Call("UseLocalBridge",gate)&&(bool)gate[0],"The local TCP loop must run without any third-party client process");
   CharacterMainControl npc=new CharacterMainControl();npc.Melee.Master=npc.CharacterItem;npc.Primary.Accepts=true;npc.Primary.Displaced=new ItemStatsSystem.Item();UnityEngine.Object.Actors=new[]{npc};object[] result;
   Assert(Plug(npc.Melee,out result)&&npc.Primary.Calls==0,"Normal inventory must be untouched");
   Call("EnterSpawn");Assert(!Plug(npc.Melee,out result)&&(bool)result[3]&&npc.Primary.Calls==1&&result[2]==npc.Primary.Displaced,"Spawn firearm must use primary slot and return displaced item");
@@ -43,6 +50,6 @@ public class DuckovCompatibilityHarness {
   npc.Primary.Accepts=false;Assert(Plug(npc.Melee,out result)&&npc.Primary.Calls==1,"Unsupported equipment must keep upstream validation");npc.Primary.Accepts=true;
   Call("EnterSpawn");Call("LeaveSpawn",new object[]{null});Assert(!Plug(npc.Melee,out result)&&npc.Primary.Calls==2,"Nested spawn tracking must remain active");
   Exception sentinel=new Exception("sentinel");Assert(Call("LeaveSpawn",sentinel)==sentinel,"Upstream exceptions must be preserved");Assert(Plug(npc.Melee,out result)&&npc.Primary.Calls==2,"Spawn scope must end after exception");
-  Console.WriteLine("Duckov enemy weapon compatibility: eight behavior checks passed.");
+  Console.WriteLine("Duckov enemy weapon compatibility: eight behavior checks passed; five local connection checks passed.");
  }
 }

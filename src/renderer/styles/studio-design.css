@@ -92,3 +92,10 @@
   .creator-summary-grid,.creator-guide-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
+
+/* Keep the portal panorama across the gallery header at every window width. */
+.studio-hero[data-studio-hero="games"] { flex-direction:row; }
+.studio-hero[data-studio-hero="games"] .studio-hero-art { inset:0; width:100%; height:100%; object-fit:cover; object-position:center 22%; }
+.studio-hero[data-studio-hero="games"]::before { background:linear-gradient(90deg,rgba(7,9,21,.82),rgba(7,9,21,.56) 38%,rgba(7,9,21,.08) 76%); }
+.studio-hero[data-studio-hero="games"] .studio-hero-copy { text-shadow:0 2px 8px rgba(0,0,0,.85); }
+

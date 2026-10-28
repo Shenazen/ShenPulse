@@ -33,7 +33,7 @@ test("traduit en français les 313 interactions Pokémon", () => {
   ).find((entry) => entry.id === "pokemon-red-blue");
   const effects = new Map(pack.effects.map((effect) => [effect.id, effect]));
 
-  assert.equal(effects.get("statusall_burn")?.name, "Brûler toute l'équipe");
+  assert.equal(effects.get("statusall_burn")?.name, "Brûler l'équipe");
   assert.equal(effects.get("givepokemon_aerodactyl")?.name, "Donner Ptéra");
   assert.equal(effects.get("givepokemon_charizard")?.name, "Donner Dracaufeu");
   assert.equal(effects.get("giveitem_ether")?.name, "Donner Huile");

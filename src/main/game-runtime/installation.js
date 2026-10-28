@@ -113,7 +113,7 @@ async function installGame(runtime, gameId) {
       };
     }
     const edition =
-      gameId === "gtav-montchiliad"
+      ["gtav-montchiliad","gtav-koth-enhanced","gtav-hiking-enhanced"].includes(gameId)
         ? await detectGtaEdition(targetPath)
         : gameId === "balatro" ? await detectBalatroEdition(targetPath)
         : gameId === "dredge" ? await detectDredgeEdition(targetPath) : "";
@@ -180,6 +180,7 @@ async function installGame(runtime, gameId) {
           runId
         );
     const deploymentRoot = path.join(tempRoot, "deployment");
+    let stardewBootstrap = null;
     try {
       if (manifest.minecraftServer) {
         await runtime.stopMinecraftServers();
@@ -230,6 +231,7 @@ async function installGame(runtime, gameId) {
           asset,
           downloadPath,
           targetPath: deploymentRoot,
+          sourceGamePath: targetPath,
           backupRoot: path.join(tempRoot, "staging-backups"),
           tempRoot,
           assertAccess
@@ -245,6 +247,7 @@ async function installGame(runtime, gameId) {
         ? await stageFourGamesInstallation({ gameId, targetPath, deploymentRoot, edition, assertAccess }) : null;
       await stageStandaloneModule({ gameId, deploymentRoot, assertAccess });
       const preparedShop = await stageShopGameInstallation({ gameId, targetPath, deploymentRoot, assertAccess });
+      const preparedPalworld = await require("./palworld-installation").stagePalworldInstallation({gameId,targetPath,deploymentRoot,assertAccess});
       runtime.progress(gameId, {
         phase: "install",
         current: total,
@@ -267,16 +270,19 @@ async function installGame(runtime, gameId) {
       }
       assertAccess();
       await assertModGameClosed(gameId, targetPath);
-      const uninstallReceiptPath = gameId === 'supermarket-simulator' ? await prepareShopUninstallReceipt({gameId,targetPath,deploymentRoot,backupRoot,userData:runtime.app.getPath('userData'),previousInstallation,assertAccess}) : ''; 
+      const uninstallReceiptPath = ['supermarket-simulator','tcg-card-shop-simulator','shift-at-midnight'].includes(gameId) ? await prepareShopUninstallReceipt({gameId,targetPath,deploymentRoot,backupRoot,userData:runtime.app.getPath('userData'),previousInstallation,assertAccess}) : '';
+      stardewBootstrap = await require("./stardew-terraria").prepareStardewGamePassBootstrap({gameId,targetPath,deploymentRoot,backupRoot,assertAccess});
       const deployment = await commitInstallationDeployment({
         deploymentRoot,
         targetPath,
         backupRoot,
         tempRoot,
-        retiredFiles: [...(manifest.retiredFiles || []), ...(preparedModule?.retiredFiles || []), ...(preparedShop?.retiredFiles || [])],
+        retiredFiles: [...(manifest.retiredFiles || []), ...(preparedModule?.retiredFiles || []), ...(preparedShop?.retiredFiles || []), ...(preparedPalworld?.retiredFiles || [])],
         assertAccess
       });
+      if (gameId === "terraria") await require("./stardew-terraria").configureTerrariaMod({gameId,targetPath,documentsPath:runtime.app.getPath("documents"),userDataPath:runtime.app.getPath("userData"),backupRoot,tempRoot,assertAccess});
       await assertShopModuleReady(gameId, targetPath);
+      await require("./palworld-installation").assertPalworldModuleReady(gameId,targetPath);
       assertAccess();
       const additionalDeployments =
         await deployAdditionalInstallTargets({
@@ -288,6 +294,7 @@ async function installGame(runtime, gameId) {
           edition,
           assertAccess
         });
+
       assertAccess();
       const emulatorSetup =
         gameId === "pokemon-red-blue"
@@ -377,6 +384,7 @@ async function installGame(runtime, gameId) {
         percent: 100,
         message: `${manifest.title} est installé`
       });
+      stardewBootstrap = null;
       return {
         ok: true,
         gameId,
@@ -386,6 +394,9 @@ async function installGame(runtime, gameId) {
         server,
         ...(emulatorSetup || {})
       };
+    } catch (error) {
+      if (stardewBootstrap) await stardewBootstrap.rollback();
+      throw error;
     } finally {
       await fs.promises.rm(tempRoot, {
         recursive: true,

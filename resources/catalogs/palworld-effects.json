@@ -1,0 +1,1610 @@
+[
+  {
+    "id": "palworld-native-01-freeze",
+    "code": "freeze",
+    "name": "Immobilisé",
+    "description": "Immobilisé. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-01-freeze.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-02-slow",
+    "code": "slow",
+    "name": "Déplacement ralenti",
+    "description": "Déplacement ralenti. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-02-slow.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-03-fast",
+    "code": "fast",
+    "name": "Déplacement accéléré",
+    "description": "Déplacement accéléré. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-03-fast.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-04-hyper",
+    "code": "hyper",
+    "name": "Vitesse extrême",
+    "description": "Vitesse extrême. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-04-hyper.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-05-tiny",
+    "code": "tiny",
+    "name": "Joueur minuscule",
+    "description": "Joueur minuscule. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-05-tiny.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-06-small",
+    "code": "small",
+    "name": "Joueur réduit",
+    "description": "Joueur réduit. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-06-small.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-07-large",
+    "code": "large",
+    "name": "Joueur agrandi",
+    "description": "Joueur agrandi. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-07-large.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-08-giant",
+    "code": "giant",
+    "name": "Joueur géant",
+    "description": "Joueur géant. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-08-giant.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-09-wide",
+    "code": "wide",
+    "name": "Silhouette large",
+    "description": "Silhouette large. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-09-wide.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-10-narrow",
+    "code": "narrow",
+    "name": "Silhouette fine",
+    "description": "Silhouette fine. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-10-narrow.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-11-short",
+    "code": "short",
+    "name": "Joueur aplati",
+    "description": "Joueur aplati. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-11-short.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-12-tall",
+    "code": "tall",
+    "name": "Joueur étiré",
+    "description": "Joueur étiré. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-12-tall.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-13-tinypals",
+    "code": "tinypals",
+    "name": "Pals minuscules",
+    "description": "Pals minuscules. Nécessite une partie solo chargée, hors menus. Approchez-vous de Pals présents dans le monde.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-13-tinypals.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-14-smallpals",
+    "code": "smallpals",
+    "name": "Pals réduits",
+    "description": "Pals réduits. Nécessite une partie solo chargée, hors menus. Approchez-vous de Pals présents dans le monde.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-14-smallpals.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-15-largepals",
+    "code": "largepals",
+    "name": "Pals agrandis",
+    "description": "Pals agrandis. Nécessite une partie solo chargée, hors menus. Approchez-vous de Pals présents dans le monde.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-15-largepals.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-16-giantpals",
+    "code": "giantpals",
+    "name": "Pals géants",
+    "description": "Pals géants. Nécessite une partie solo chargée, hors menus. Approchez-vous de Pals présents dans le monde.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-16-giantpals.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-17-midnight",
+    "code": "midnight",
+    "name": "Minuit",
+    "description": "Minuit. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-17-midnight.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-18-morning",
+    "code": "morning",
+    "name": "Matin",
+    "description": "Matin. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-18-morning.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral"
+  },
+  {
+    "id": "palworld-native-19-noon",
+    "code": "noon",
+    "name": "Midi",
+    "description": "Midi. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-19-noon.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral"
+  },
+  {
+    "id": "palworld-native-20-evening",
+    "code": "evening",
+    "name": "Soir",
+    "description": "Soir. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-20-evening.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral"
+  },
+  {
+    "id": "palworld-native-21-hours",
+    "code": "hours",
+    "name": "Heures ajoutées",
+    "description": "Heures ajoutées. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-21-hours.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Heures",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 24,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-22-kill",
+    "code": "kill",
+    "name": "K.-O.",
+    "description": "Met le personnage K.-O. dans une partie solo chargée, hors menus. Le jeu applique ses règles normales de mort.",
+    "category": "Sabotage",
+    "image": "../../resources/game-interactions/palworld/palworld-native-22-kill.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-23-heal",
+    "code": "heal",
+    "name": "Soin partiel",
+    "description": "Soin partiel. Nécessite une partie solo chargée, hors menus.",
+    "category": "Aide",
+    "image": "../../resources/game-interactions/palworld/palworld-native-23-heal.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Pourcentage",
+        "type": "number",
+        "defaultValue": 25,
+        "min": 1,
+        "max": 100,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-24-fullheal",
+    "code": "fullheal",
+    "name": "Soin complet",
+    "description": "Soin complet. Nécessite une partie solo chargée, hors menus.",
+    "category": "Aide",
+    "image": "../../resources/game-interactions/palworld/palworld-native-24-fullheal.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help"
+  },
+  {
+    "id": "palworld-native-25-damage",
+    "code": "damage",
+    "name": "Dégâts joueur",
+    "description": "Dégâts joueur. Nécessite une partie solo chargée, hors menus.",
+    "category": "Sabotage",
+    "image": "../../resources/game-interactions/palworld/palworld-native-25-damage.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Pourcentage",
+        "type": "number",
+        "defaultValue": 25,
+        "min": 1,
+        "max": 100,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-26-respawn",
+    "code": "respawn",
+    "name": "Réapparition",
+    "description": "Réapparition. Nécessite une partie solo chargée, hors menus. Le personnage doit être K.-O.",
+    "category": "Apparition",
+    "image": "../../resources/game-interactions/palworld/palworld-native-26-respawn.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help"
+  },
+  {
+    "id": "palworld-native-27-fillstam",
+    "code": "fillstam",
+    "name": "Endurance pleine",
+    "description": "Endurance pleine. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-27-fillstam.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help"
+  },
+  {
+    "id": "palworld-native-28-emptystam",
+    "code": "emptystam",
+    "name": "Endurance vidée",
+    "description": "Endurance vidée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-28-emptystam.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-29-givehunger",
+    "code": "givehunger",
+    "name": "Repas offert",
+    "description": "Repas offert. Nécessite une partie solo chargée, hors menus.",
+    "category": "Aide",
+    "image": "../../resources/game-interactions/palworld/palworld-native-29-givehunger.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Pourcentage",
+        "type": "number",
+        "defaultValue": 25,
+        "min": 1,
+        "max": 100,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-30-takehunger",
+    "code": "takehunger",
+    "name": "Faim accrue",
+    "description": "Faim accrue. Nécessite une partie solo chargée, hors menus.",
+    "category": "Sabotage",
+    "image": "../../resources/game-interactions/palworld/palworld-native-30-takehunger.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Pourcentage",
+        "type": "number",
+        "defaultValue": 25,
+        "min": 1,
+        "max": 100,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-31-poison",
+    "code": "poison",
+    "name": "Empoisonné",
+    "description": "Empoisonné. Nécessite une partie solo chargée, hors menus.",
+    "category": "Sabotage",
+    "image": "../../resources/game-interactions/palworld/palworld-native-31-poison.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-32-burn",
+    "code": "burn",
+    "name": "Enflammé",
+    "description": "Enflammé. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-32-burn.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-33-wet",
+    "code": "wet",
+    "name": "Trempé",
+    "description": "Trempé. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-33-wet.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-34-frozen",
+    "code": "frozen",
+    "name": "Gelé",
+    "description": "Gelé. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-34-frozen.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-35-electrified",
+    "code": "electrified",
+    "name": "Électrisé",
+    "description": "Électrisé. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-35-electrified.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-36-muddy",
+    "code": "muddy",
+    "name": "Embouement",
+    "description": "Embouement. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-36-muddy.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-37-ivy",
+    "code": "ivy",
+    "name": "Enchevêtré",
+    "description": "Enchevêtré. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-37-ivy.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-38-rollcam",
+    "code": "rollcam",
+    "name": "Caméra tournante",
+    "description": "Caméra tournante. Nécessite une partie solo chargée, hors menus.",
+    "category": "Caméra",
+    "image": "../../resources/game-interactions/palworld/palworld-native-38-rollcam.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-39-invert",
+    "code": "invert",
+    "name": "Visée inversée",
+    "description": "Visée inversée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Caméra",
+    "image": "../../resources/game-interactions/palworld/palworld-native-39-invert.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-40-widecam",
+    "code": "widecam",
+    "name": "Vue élargie",
+    "description": "Vue élargie. Nécessite une partie solo chargée, hors menus.",
+    "category": "Caméra",
+    "image": "../../resources/game-interactions/palworld/palworld-native-40-widecam.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-41-narrowcam",
+    "code": "narrowcam",
+    "name": "Vue resserrée",
+    "description": "Vue resserrée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Caméra",
+    "image": "../../resources/game-interactions/palworld/palworld-native-41-narrowcam.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-42-dark",
+    "code": "dark",
+    "name": "Écran noir",
+    "description": "Écran noir. Nécessite une partie solo chargée, hors menus.",
+    "category": "Caméra",
+    "image": "../../resources/game-interactions/palworld/palworld-native-42-dark.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-43-launch",
+    "code": "launch",
+    "name": "Joueur projeté",
+    "description": "Joueur projeté. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-43-launch.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-44-megalaunch",
+    "code": "megalaunch",
+    "name": "Projection extrême",
+    "description": "Projection extrême. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-44-megalaunch.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-45-jump",
+    "code": "jump",
+    "name": "Saut forcé",
+    "description": "Saut forcé. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-45-jump.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-46-nojump",
+    "code": "nojump",
+    "name": "Saut désactivé",
+    "description": "Saut désactivé. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-46-nojump.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-47-lowjump",
+    "code": "lowjump",
+    "name": "Saut réduit",
+    "description": "Saut réduit. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-47-lowjump.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-48-highjump",
+    "code": "highjump",
+    "name": "Super saut",
+    "description": "Super saut. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-48-highjump.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-49-ultrajump",
+    "code": "ultrajump",
+    "name": "Saut extrême",
+    "description": "Saut extrême. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-49-ultrajump.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-50-antigrav",
+    "code": "antigrav",
+    "name": "Antigravité",
+    "description": "Antigravité. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-50-antigrav.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-51-highgrav",
+    "code": "highgrav",
+    "name": "Gravité forte",
+    "description": "Gravité forte. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-51-highgrav.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-52-lowgrav",
+    "code": "lowgrav",
+    "name": "Gravité faible",
+    "description": "Gravité faible. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-52-lowgrav.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-53-autocatch",
+    "code": "autocatch",
+    "name": "Capture garantie",
+    "description": "Capture garantie. Nécessite une partie solo chargée, hors menus.",
+    "category": "Capture",
+    "image": "../../resources/game-interactions/palworld/palworld-native-53-autocatch.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-54-catchup",
+    "code": "catchup",
+    "name": "Capture facilitée",
+    "description": "Capture facilitée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Capture",
+    "image": "../../resources/game-interactions/palworld/palworld-native-54-catchup.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-55-catchdown",
+    "code": "catchdown",
+    "name": "Capture difficile",
+    "description": "Capture difficile. Nécessite une partie solo chargée, hors menus.",
+    "category": "Capture",
+    "image": "../../resources/game-interactions/palworld/palworld-native-55-catchdown.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-56-failcatch",
+    "code": "failcatch",
+    "name": "Capture impossible",
+    "description": "Capture impossible. Nécessite une partie solo chargée, hors menus.",
+    "category": "Capture",
+    "image": "../../resources/game-interactions/palworld/palworld-native-56-failcatch.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-57-attup",
+    "code": "attup",
+    "name": "Attaque renforcée",
+    "description": "Attaque renforcée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-57-attup.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-58-attdown",
+    "code": "attdown",
+    "name": "Attaque réduite",
+    "description": "Attaque réduite. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-58-attdown.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-59-defup",
+    "code": "defup",
+    "name": "Défense renforcée",
+    "description": "Défense renforcée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-59-defup.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-60-defdown",
+    "code": "defdown",
+    "name": "Défense réduite",
+    "description": "Défense réduite. Nécessite une partie solo chargée, hors menus.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-60-defdown.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "duration": 15,
+    "durationParameter": "durationSeconds",
+    "parameters": [
+      {
+        "id": "durationSeconds",
+        "label": "Durée (secondes)",
+        "type": "number",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 600,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-61-spawntowerboss",
+    "code": "spawntowerboss",
+    "name": "Boss tour",
+    "description": "Boss tour. Nécessite une partie solo chargée, hors menus. L’apparition doit être confirmée par le jeu.",
+    "category": "Apparitions",
+    "image": "../../resources/game-interactions/palworld/palworld-native-61-spawntowerboss.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Nombre",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-62-spawnbounty",
+    "code": "spawnbounty",
+    "name": "Chasseur hostile",
+    "description": "Chasseur hostile. Nécessite une partie solo chargée, hors menus. L’apparition doit être confirmée par le jeu.",
+    "category": "Apparitions",
+    "image": "../../resources/game-interactions/palworld/palworld-native-62-spawnbounty.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Nombre",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-63-spawnsquad",
+    "code": "spawnsquad",
+    "name": "Escouade hostile",
+    "description": "Escouade hostile. Nécessite une partie solo chargée, hors menus. L’apparition doit être confirmée par le jeu.",
+    "category": "Apparitions",
+    "image": "../../resources/game-interactions/palworld/palworld-native-63-spawnsquad.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Escouades",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-64-spawnlegendary",
+    "code": "spawnlegendary",
+    "name": "Pal légendaire",
+    "description": "Pal légendaire. Nécessite une partie solo chargée, hors menus. L’apparition doit être confirmée par le jeu.",
+    "category": "Apparitions",
+    "image": "../../resources/game-interactions/palworld/palworld-native-64-spawnlegendary.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Nombre",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-65-spawnrampage",
+    "code": "spawnrampage",
+    "name": "Pal prédateur",
+    "description": "Pal prédateur. Nécessite une partie solo chargée, hors menus. L’apparition doit être confirmée par le jeu.",
+    "category": "Apparitions",
+    "image": "../../resources/game-interactions/palworld/palworld-native-65-spawnrampage.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Nombre",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-66-spawnalpha",
+    "code": "spawnalpha",
+    "name": "Pal alpha",
+    "description": "Pal alpha. Nécessite une partie solo chargée, hors menus. L’apparition doit être confirmée par le jeu.",
+    "category": "Apparitions",
+    "image": "../../resources/game-interactions/palworld/palworld-native-66-spawnalpha.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Nombre",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-67-spawnpal",
+    "code": "spawnpal",
+    "name": "Pal aléatoire",
+    "description": "Pal aléatoire. Nécessite une partie solo chargée, hors menus. L’apparition doit être confirmée par le jeu.",
+    "category": "Apparitions",
+    "image": "../../resources/game-interactions/palworld/palworld-native-67-spawnpal.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "neutral",
+    "quantityParameter": "count",
+    "parameters": [
+      {
+        "id": "count",
+        "label": "Nombre",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-68-baseraid",
+    "code": "baseraid",
+    "name": "Raid base",
+    "description": "Lance une invasion sur votre base construite. Restez dans votre base, activez les invasions dans les règles du monde et attendez la fin de tout raid précédent. La préparation et les vagues suivent les règles du jeu.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-68-baseraid.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-69-wanted",
+    "code": "wanted",
+    "name": "Avis recherché",
+    "description": "Déclenche un avis de recherche et la poursuite policière. Le personnage ne doit pas déjà être recherché ou impliqué dans une infraction.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-69-wanted.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-70-meteor",
+    "code": "meteor",
+    "name": "Météorite",
+    "description": "Fait tomber une météorite devant le personnage et laisse son gisement au sol. Nécessite une zone extérieure dégagée avec un terrain praticable.",
+    "category": "Chaos",
+    "image": "../../resources/game-interactions/palworld/palworld-native-70-meteor.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-71-expup",
+    "code": "expup",
+    "name": "Expérience offerte",
+    "description": "Expérience offerte. Nécessite une partie solo chargée, hors menus.",
+    "category": "Progression",
+    "image": "../../resources/game-interactions/palworld/palworld-native-71-expup.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Pourcentage",
+        "type": "number",
+        "defaultValue": 10,
+        "min": 1,
+        "max": 100,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-72-expdown",
+    "code": "expdown",
+    "name": "Expérience retirée",
+    "description": "Expérience retirée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Progression",
+    "image": "../../resources/game-interactions/palworld/palworld-native-72-expdown.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap",
+    "parameters": [
+      {
+        "id": "amount",
+        "label": "Pourcentage",
+        "type": "number",
+        "defaultValue": 10,
+        "min": 1,
+        "max": 100,
+        "step": 1
+      }
+    ]
+  },
+  {
+    "id": "palworld-native-73-expzero",
+    "code": "expzero",
+    "name": "Expérience vidée",
+    "description": "Expérience vidée. Nécessite une partie solo chargée, hors menus.",
+    "category": "Progression",
+    "image": "../../resources/game-interactions/palworld/palworld-native-73-expzero.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "trap"
+  },
+  {
+    "id": "palworld-native-74-expfull",
+    "code": "expfull",
+    "name": "Niveau supérieur",
+    "description": "Niveau supérieur. Nécessite une partie solo chargée, hors menus.",
+    "category": "Progression",
+    "image": "../../resources/game-interactions/palworld/palworld-native-74-expfull.webp",
+    "icon": "◇",
+    "service": "native",
+    "available": true,
+    "column": "help"
+  }
+]

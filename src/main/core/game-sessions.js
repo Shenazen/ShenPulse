@@ -7,6 +7,8 @@ const { safeString } = require("../utils");
 const { readState } = require("../state-projection");
 const { isMinecraftRoundGame, normalizeMinecraftRoundSettings } = require("../game-round-timer");
 
+const {normalizeGameRoundSettings}=require('../../shared/minecraft-round-settings');
+const {writeGtaRoundSettings}=require('../game-runtime/gta-round-settings');
 class GameSessionService {
   constructor({ store, gameHub, minecraftRoundTimer, ruleEngine, actionRunner, notifyRenderer, onActivity, onChanged, getSnapshot }) {
     this.store = store;
@@ -66,6 +68,7 @@ class GameSessionService {
     if (isMinecraftRoundGame(targetId)) {
       await this.minecraftRoundTimer.start(targetId, "server-start");
     }
+    if(['gtav-koth-enhanced','gtav-hiking-enhanced'].includes(targetId))await writeGtaRoundSettings(targetId,readState(this.store,['game.roundSettingsByPack']).game?.roundSettingsByPack?.[targetId],{assertAccess:()=>this.gameHub.assertAccess(targetId)});
     this.ruleEngine.resetProfileState();
     this.onActivity(
       "success",
@@ -119,17 +122,18 @@ class GameSessionService {
   async saveGameRoundSettings(packId, incoming = {}) {
     const targetId = safeString(packId, 160);
     const pack = this.gameHub.assertAccess(targetId);
-    if (!isMinecraftRoundGame(targetId)) {
+    if (!isMinecraftRoundGame(targetId)&&!["gtav-koth-enhanced","gtav-hiking-enhanced"].includes(targetId)) {
       throw new Error(
-        "Les réglages de durée de partie sont réservés aux jeux Minecraft."
+        "Ce jeu ne possède pas de chrono de partie."
       );
     }
-    const settings = normalizeMinecraftRoundSettings(incoming);
+    const settings = normalizeGameRoundSettings(targetId,incoming);
+    if(['gtav-koth-enhanced','gtav-hiking-enhanced'].includes(targetId))await writeGtaRoundSettings(targetId,settings,{assertAccess:()=>this.gameHub.assertAccess(targetId)});
     this.store.mutate((state) => {
       state.game.roundSettingsByPack ||= {};
       state.game.roundSettingsByPack[targetId] = settings;
     });
-    const restarted = await this.minecraftRoundTimer.restartIfActive(
+    const restarted = ['gtav-koth-enhanced','gtav-hiking-enhanced'].includes(targetId)?true:await this.minecraftRoundTimer.restartIfActive(
       targetId,
       "settings-change"
     );

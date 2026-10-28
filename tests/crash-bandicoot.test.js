@@ -51,8 +51,8 @@ test("Crash transmet quantités et durées configurées sans conversion supplém
   assert.equal(createEffectPayload(camera, {}, { parameters: { durationSeconds: 42 } }).effect.duration, 42);
   assert.equal(createEffectPayload(camera).effect.duration, 15);
   assert.equal(game.connector.durationMultiplier, undefined);
-  assert.equal(game.defaultMappings.length, 26);
-  assert.ok(game.defaultMappings.every(({ enabled, triggerEnabled }) => enabled && !triggerEnabled));
+  assert.equal(game.defaultMappings.length, 12);
+  assert.ok(game.defaultMappings.every(({ enabled, triggerEnabled }) => enabled && triggerEnabled));
 });
 
 test("l’installateur Crash détecte Steam et déploie uniquement son pont, avec sauvegarde", async (t) => {
@@ -104,7 +104,7 @@ test("GameHub attend l’exécution Crash réelle et remonte les refus du niveau
   });
   t.after(() => hub.disconnectAll());
   hub.loadPacks(); hub.packs.find(({ id }) => id === gameId).connector.port = 0;
-  assert.equal(hub.initializeDefaultInteractions(gameId).added, 26);
+  assert.equal(hub.initializeDefaultInteractions(gameId).added, 12);
   assert.equal(hub.initializeDefaultInteractions(gameId).added, 0);
   const ready = await hub.prepareConnection(gameId);
   const client = net.createConnection({ host: "127.0.0.1", port: ready.port });

@@ -488,7 +488,7 @@ test("les configurations Pro restent éditables en aperçu sans exposer leur URL
   assert.match(card, /Configurer l’aperçu/);
   assert.match(
     card,
-    /const url = accountReady && allowed \? overlayUrl\(item\) : ""/
+    /const url = accountReady && allowed \? presentation\?\.url \|\| overlayUrl\(item\) : ""/
   );
   assert.doesNotMatch(handler, /overlayUnlocked/);
   assert.match(renderer, /URL OBS disponible avec Pro/);

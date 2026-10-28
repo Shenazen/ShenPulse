@@ -189,46 +189,12 @@ const SANDBOX_DEFAULT_MAPPINGS = [
     parameters: { count: 3 },
     cooldownSeconds: 5
   }),
-  mapping("sandbox-corgi-win-x2", "win-x2", "X2 WIN", {
-    giftName: "Corgi",
-    amount: 2,
-    operation: "multiplier",
-    duration: 60
-  }),
-  mapping("sandbox-money-gun-win-minus-1", "win-remove", "-1 WIN", {
-    giftName: "Money Gun",
-    amount: -1,
-    operation: "adjust"
-  }),
-  mapping("sandbox-youre-amazing-win-plus-1", "win-add", "+1 WIN", {
-    giftName: "You’re Amazing",
-    amount: 1,
-    operation: "adjust"
-  }),
-  mapping("sandbox-ellie-elephant-win-plus-20", "win-add", "+20 WINS", {
-    giftName: "Ellie the Elephant",
-    amount: 20,
-    operation: "adjust"
-  }),
-  mapping("sandbox-girafa-win-minus-3", "win-remove", "-3 WINS", {
-    giftName: "Girafa",
-    amount: -3,
-    operation: "adjust"
-  }),
-  mapping("sandbox-leon-kitten-win-minus-20", "win-remove", "-20 WINS", {
-    giftName: "Leon the Kitten",
-    amount: -20,
-    operation: "adjust"
-  }),
-  mapping("sandbox-voiture-course-win-minus-55", "win-remove", "-55 WINS", {
-    giftName: "Voiture de course",
-    amount: -55,
-    operation: "adjust"
-  }),
-  mapping("sandbox-lion-win-random-200", "win-random", "+/- 200 WINS", {
-    giftName: "Lion",
-    amount: 200,
-    operation: "random"
+  ...BEDROCK_DEFAULT_MAPPINGS.filter(entry=>entry.effectId.startsWith("win-")).map(entry=>{
+    const id=entry.id.replace(/^bedrock-/, "sandbox-");
+    // Retain the historical rule ID so existing actions and gifts keep their links.
+    return Object.freeze({...entry,...(['sandbox-galaxy-win-plus-3','sandbox-interstellar-win-plus-45'].includes(id)?{fillMissingWinLevel:true}:{}),...(id==="sandbox-voiture-course-win-minus-50"
+      ? {id:"sandbox-voiture-course-win-minus-55",previousAmount:-55,previousTitle:"-55 WINS"}
+      : {id})});
   })
 ];
 

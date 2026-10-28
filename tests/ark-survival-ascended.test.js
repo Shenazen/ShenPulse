@@ -28,7 +28,7 @@ function fixture() {
   return { state, store: authenticatedFixtureStore({ getState: () => state, mutate: fn => fn(state) }) };
 }
 
-test("ARK expose les 29 séquences officielles avec un libellé précis et sans cadeaux imposés", async () => {
+test("ARK expose les 29 séquences officielles avec un libellé court et douze cadeaux par défaut", async () => {
   const source = require("../resources/catalogs/ark-survival-ascended-effects.json");
   assert.equal(pack.effects.length, 29);
   assert.equal(new Set(pack.effects.map(effect => effect.id)).size, 29);
@@ -46,8 +46,8 @@ test("ARK expose les 29 séquences officielles avec un libellé précis et sans 
     }
     assert.equal(held.size, 0, `${effect.code} doit relâcher ses touches et boutons`);
   }
-  assert.equal(pack.defaultMappings.length, 29);
-  assert.ok(pack.defaultMappings.every(mapping => mapping.enabled && !mapping.triggerEnabled));
+  assert.equal(pack.defaultMappings.length, 12);
+  assert.ok(pack.defaultMappings.every(mapping => mapping.enabled && mapping.triggerEnabled));
   assert.equal(pack.effects.find(effect => effect.code === "ark_hotbar_roulette").keyboardInputMode, "scan-code");
   assert.deepEqual(pack.guide.journey, ["installation", "interactions", "overlays", "launch"]);
   assert.equal(pack.installerVersion, manifest.version);
@@ -60,7 +60,7 @@ test("le hub ARK conserve les associations et refuse la redirection du processus
   const input = new WindowsInputService({ execute: async (...args) => { calls.push(args); return { ok: true }; } });
   const hub = new GameHub({ store, resourcesDirectory: path.join(root, "resources"), packsDirectory: path.join(root, "resources/packs"), windowsInputService: input });
   hub.loadPacks();
-  assert.equal(hub.initializeDefaultInteractions(gameId).added, 29);
+  assert.equal(hub.initializeDefaultInteractions(gameId).added, 12);
   const custom = state.game.interactionRulesByPack[gameId][0];
   custom.title = "Mon cadeau ARK";
   assert.equal(hub.initializeDefaultInteractions(gameId).added, 0);

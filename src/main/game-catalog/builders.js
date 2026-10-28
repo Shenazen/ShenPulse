@@ -16,6 +16,8 @@ function game(id, name, options = {}) {
     id,
     name,
     publisher: "ShenPulse",
+    ...(options.workspaceLayout==="shared"?{workspaceLayout:"shared"}:{}),
+    ...(Array.isArray(options.storefronts)?{storefronts:[...options.storefronts]}:{}),
     version: options.version || "1.0.0",
     description: options.description || `Interactions TikTok LIVE configurables pour ${name}.`,
     platform: "Windows",
@@ -25,6 +27,8 @@ function game(id, name, options = {}) {
       "shenazenoverlay"
     ]).filter((tag) => requiresPro || !/abonnement requis/i.test(String(tag))),
     artwork: options.artwork || "",
+    ...(options.coverArtwork ? { coverArtwork: String(options.coverArtwork) } : {}),
+    ...(options.sceneArtwork?{sceneArtwork:String(options.sceneArtwork)}:{}),
     artworkUrl: options.artworkUrl || "",
     accessMode: included ? "included" : "purchase",
     included,

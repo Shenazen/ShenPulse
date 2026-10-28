@@ -152,8 +152,8 @@ test("initialise une seule fois les interactions GTA prévues pour le profil", (
   const first = hub.initializeDefaultInteractions("gtav-montchiliad");
   const interactions =
     state.game.interactionRulesByPack["gtav-montchiliad"];
-  assert.equal(first.added, 31);
-  assert.equal(interactions.length, 31);
+  assert.equal(first.added, 28);
+  assert.equal(interactions.length, 28);
   assert.equal(state.rules.length, 0);
   assert.equal(
     state.game.interactionCatalogVersions["gtav-montchiliad"],
@@ -164,7 +164,7 @@ test("initialise une seule fois les interactions GTA prévues pour le profil", (
       (rule) =>
         rule.trigger.type === "gift" &&
         rule.conditions.some(
-          (condition) => condition.value === "Relaxed Goose"
+          (condition) => condition.value === "Rose"
         )
     )
   );
@@ -186,7 +186,7 @@ test("initialise une seule fois les interactions GTA prévues pour le profil", (
   interactions.pop();
   const second = hub.initializeDefaultInteractions("gtav-montchiliad");
   assert.equal(second.added, 0);
-  assert.equal(interactions.length, 30);
+  assert.equal(interactions.length, 27);
 });
 
 test("initialise les six actions Coin Pusher en mode manuel sans doubler les cadeaux LIVE", () => {
@@ -281,7 +281,7 @@ test("initialise les associations TikTok Bedrock Box et SandBox", () => {
   );
   assert.equal(
     hub.initializeDefaultInteractions("minecraft-sandbox-3").added,
-    18
+    28
   );
 
   const bedrock =
@@ -289,7 +289,7 @@ test("initialise les associations TikTok Bedrock Box et SandBox", () => {
   const sandbox =
     state.game.interactionRulesByPack["minecraft-sandbox-3"];
   assert.equal(bedrock.length, 28);
-  assert.equal(sandbox.length, 18);
+  assert.equal(sandbox.length, 28);
   assert.ok(
     bedrock.some(
       (rule) =>
@@ -301,18 +301,18 @@ test("initialise les associations TikTok Bedrock Box et SandBox", () => {
     bedrock.some(
       (rule) =>
         rule.conditions.some(
-          (condition) => condition.value === "Forever Rosa"
+          (condition) => condition.value === "Rose"
         ) &&
-        rule.actions[0].config.parameters.count === 1000
+        rule.actions[0].config.effectId === "bedrock-tnt"
     )
   );
   assert.ok(
     sandbox.some(
       (rule) =>
         rule.conditions.some(
-          (condition) => condition.value === "Heart Me"
+          (condition) => condition.value === "Doughnut"
         ) &&
-        rule.actions[0].config.parameters.rows === 2
+        rule.actions[0].config.effectId === "sandbox-block-interaction-range"
     )
   );
 
@@ -404,18 +404,18 @@ test("initialise le catalogue Cult of the Lamb et parle au bridge BepInEx", asyn
   assert.equal(pack.effects.length, 32);
   assert.equal(
     hub.initializeDefaultInteractions("cult-of-the-lamb").added,
-    34
+    14
   );
   const mappings =
     state.game.interactionRulesByPack["cult-of-the-lamb"];
-  assert.equal(mappings.length, 34);
+  assert.equal(mappings.length, 14);
   assert.ok(
     mappings.some(
       (rule) =>
         rule.conditions.some(
-          (condition) => condition.value === "Galaxy"
+          (condition) => condition.value === "Rose"
         ) &&
-        rule.actions[0].config.effectId === "cult-spell-fireball"
+        rule.actions[0].config.effectId === "cult-add-hp"
     )
   );
 
@@ -524,11 +524,11 @@ test("initialise et exécute les catalogues Stardew Valley et Terraria", async (
   assert.equal(terraria.effects.length, 25);
   assert.equal(
     hub.initializeDefaultInteractions("stardew-valley").added,
-    28
+    14
   );
   assert.equal(
     hub.initializeDefaultInteractions("terraria").added,
-    25
+    14
   );
 
   for (const id of ["stardew-valley", "terraria"]) hub.packs.find(p => p.id === id).connector.port = 0;
@@ -655,7 +655,7 @@ test("initialise Resident Evil 3 et envoie ses effets au mod REFramework", async
   assert.equal(pack.effects.length, 67);
   assert.equal(
     hub.initializeDefaultInteractions("resident-evil-3").added,
-    67
+    12
   );
 
   hub.packs.find(p => p.id === "resident-evil-3").connector.port = 0;

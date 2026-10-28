@@ -334,6 +334,7 @@ dialog[data-variant="game-purchase"] .dialog-actions .primary {
 
 .minecraft-mode-card > span {
   display: grid;
+  align-content: start;
   gap: 6px;
   padding: 16px;
 }
@@ -998,3 +999,10 @@ dialog[data-variant="game-overlay-actions"] {
     min-height: 180px;
   }
 }
+
+/* Mode cards navigate directly; this dialog has no form to save. */
+dialog[data-variant="minecraft-modes"] #dialog-submit[hidden] { display: none; }
+
+/* Full game covers retain their title and composition in the mode selector. */
+.minecraft-mode-card.has-cover {grid-template-rows:auto 1fr;}
+.minecraft-mode-card.has-cover > img {height:auto;aspect-ratio:2/3;object-fit:contain;}

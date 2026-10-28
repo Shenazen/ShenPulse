@@ -86,10 +86,10 @@ function renderOverlayCategorySection(section) {
   </section>`;
 }
 
-function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
+function renderOverlayCard(item, { allowed = overlayUnlocked(item), presentation = null } = {}) {
   const accountReady = isAccountAuthenticated();
-  const url = accountReady && allowed ? overlayUrl(item) : "";
-  const size = overlaySourceSize(item);
+  const url = accountReady && allowed ? presentation?.url || overlayUrl(item) : "";
+  const size = overlaySourceSize(presentation?.sourceSize ? { ...item, sourceSize: presentation.sourceSize } : item);
   const isMatchOverlay = item.previewKind === "match";
   // Le générateur commun applique les droits et vérifie l'URL HTTPS Match.
   // Aucune carte ne prépare ni ne copie un fichier vidéo déchiffré.
@@ -114,7 +114,7 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-");
   return `<article class="overlay-catalog-card overlay-catalog-card--${escapeHtml(previewVariant)} ${allowed ? "" : "locked"}" data-overlay-card="${escapeHtml(item.key)}">
-    <div class="overlay-preview">${overlayPreview(item)}</div>
+    <div class="overlay-preview">${presentation?.preview || overlayPreview(item)}</div>
     <div class="overlay-card-copy">
       <div class="overlay-card-title">
         <span>${item.icon}</span>
@@ -132,7 +132,8 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
         </span>
         <span><small>Configuration liée</small><strong>${escapeHtml(overlayProfileName())}</strong></span>
       </div>
-      ${overlayDesignPicker(item, allowed && accountReady)}
+      ${presentation?.controls || ""}
+      ${presentation?.showDesign === false ? "" : overlayDesignPicker(item, allowed && accountReady)}
       ${overlayQuickActions(item, allowed && accountReady)}
       ${accountReady
         ? ""
@@ -150,9 +151,9 @@ function renderOverlayCard(item, { allowed = overlayUnlocked(item) } = {}) {
             ? `<div class="url-field"><code>${escapeHtml(matchStudioUrl || "Source HTTPS indisponible")}</code><button class="button small" data-action="copy" data-value="${escapeHtml(matchStudioUrl)}" ${matchStudioUrl ? "" : "disabled"}>Copier pour TikTok Studio</button></div>`
             : `<div class="url-field"><code>${escapeHtml(url)}</code><button class="button small" data-action="copy" data-value="${escapeHtml(url)}">Copier</button></div>`}
           <div class="entity-actions">
-            <button class="button small primary" data-action="preview-overlay" data-id="${escapeHtml(item.key)}">${isMatchOverlay ? "Relancer à 0" : "Tester en direct"}</button>
-            <button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer</button>
-            ${["likeGoal", "timer", "multiplierTimer", "winCounter", "coinJar"].includes(item.key)
+            <button class="button small primary" data-action="${escapeHtml(presentation?.previewAction || "preview-overlay")}" data-id="${escapeHtml(item.key)}">${escapeHtml(presentation?.previewLabel || (isMatchOverlay ? "Relancer à 0" : "Tester en direct"))}</button>
+            ${presentation?.hideConfigure ? "" : `<button class="button small" data-action="configure-overlay" data-id="${escapeHtml(item.key)}">Configurer</button>`}
+            ${presentation?.hideQuickActions ? "" : ["likeGoal", "timer", "multiplierTimer", "winCounter", "coinJar"].includes(item.key)
               ? `${["timer", "multiplierTimer"].includes(item.key) ? overlayTimerPauseButton(item) : ""}${item.key === "winCounter" ? overlayWinCounterButtons() : ""}<button type="button" class="button small ghost" data-action="overlay-quick" data-id="${escapeHtml(item.key)}" data-operation="reset" data-amount="0">Réinitialiser</button>`
               : ["topDonors", "topTappers", "wheel"].includes(item.key) ? "" : `<button class="button small" data-action="open-url" data-value="${escapeHtml(isMatchOverlay ? matchStudioUrl : url)}" ${isMatchOverlay && !matchStudioUrl ? "disabled" : ""}>Ouvrir</button>
                  ${isMatchOverlay ? "" : `<button class="button small ghost" data-action="copy" data-value="${escapeHtml(localOverlayUrl(item))}">OBS local</button>`}`}

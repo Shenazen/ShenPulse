@@ -1,5 +1,6 @@
 "use strict";
 
+const { prepareGtaMode } = require("./gta-mode");
 const { supportsPlatformChoice, installationPlatform, assertRunningInstallation } = require("./installation-platform");
 const { findLaunchTarget } = require("./paths");
 const { launchSteamDemo, launchSteamGame } = require("./steam-launch");
@@ -7,6 +8,7 @@ const { runProcess } = require("./processes");
 const { deadByDaylightProcess } = require("./four-games-installation");
 const { assertTruckSimulatorReady } = require("./truck-simulator-installation");
 const { assertStandaloneModuleReady } = require("./standalone-module-installation");
+const {findModdedGameProcess,assertModdedGameReady,isModdedFarmGame,terrariaManualLauncher}=require("./stardew-terraria");
 const { assertShopModuleReady } = require("./shop-games-installation");
 
 async function runningGameProcess(names, { platform = process.platform, execute = runProcess } = {}) {
@@ -26,13 +28,14 @@ async function runningGameProcess(names, { platform = process.platform, execute 
 }
 
 async function launchExternalGame({ gameId, manifest, installation, shell, assertAccess,
-  waitForWindowsProcessWindow, scheduleGtaSaveDeployment, findRunning = runningGameProcess }) {
+  waitForWindowsProcessWindow, scheduleGtaSaveDeployment, userDataPath, findRunning = runningGameProcess, selectGtaMode = prepareGtaMode, findModdedProcess = findModdedGameProcess }) {
   const detectedPlatform = await installationPlatform(installation.path, manifest);
   const platform = ["steam", "xbox"].includes(installation.platform) ? installation.platform : detectedPlatform;
   if (platform && detectedPlatform && platform !== detectedPlatform) throw new Error("Le dossier mémorisé ne correspond plus à la plateforme choisie. Réinstallez les interactions depuis l’étape Installation.");
   const names = manifest.launchExecutables || manifest.executables || [];
   const launchNames = platform === "xbox" ? ["gamelaunchhelper.exe"] : platform === "steam" ? names.filter(name => !/gamelaunchhelper|[\\/]WinGDK[\\/]/i.test(name)) : names;
-  const executable = await findLaunchTarget(installation.path, launchNames, !platform);
+  const manualTerrariaLauncher = await terrariaManualLauncher(gameId, installation.path, userDataPath);
+  const executable = manualTerrariaLauncher || await findLaunchTarget(installation.path, launchNames, !platform);
   assertAccess();
   if (gameId === "find-the-needle-demo") return launchSteamDemo({ gameId, manifest, executable, shell, assertAccess });
   if (!executable) {
@@ -40,21 +43,24 @@ async function launchExternalGame({ gameId, manifest, installation, shell, asser
     await shell.openPath(installation.path);
     return { ok: true, openedFolder: true, path: installation.path, message: "Le dossier installé est ouvert. Aucun exécutable sûr n’a été détecté automatiquement." };
   }
-  const existing = await findRunning(manifest.singleInstanceProcesses);
+  const existing = isModdedFarmGame(gameId) ? await findModdedProcess(gameId,installation.path,{userDataPath}) : await findRunning(manifest.singleInstanceProcesses);
   assertAccess();
   await assertRunningInstallation(existing, { ...installation, platform }, manifest);
   assertAccess();
+  await selectGtaMode({gameId,installation,existing,assertAccess});
   if (gameId === "euro-truck-simulator-2") await assertTruckSimulatorReady(installation.path);
   await assertStandaloneModuleReady(gameId, installation.path);
   await assertShopModuleReady(gameId, installation.path);
+  await require("./palworld-installation").assertPalworldModuleReady(gameId,installation.path);
+  await assertModdedGameReady(gameId, installation.path, userDataPath);
   if (!existing) {
-    if (gameId === "escape-from-duckov" || (platform === "steam" && supportsPlatformChoice(manifest))) await launchSteamGame({ gameId, manifest, executable, shell, assertAccess });
+    if ((gameId === "terraria" && !manualTerrariaLauncher) || gameId === "escape-from-duckov" || (platform === "steam" && !isModdedFarmGame(gameId) && supportsPlatformChoice(manifest))) await launchSteamGame({ gameId, manifest, executable, shell, assertAccess });
     else {
       const error = await shell.openPath(executable);
       if (error) throw new Error(error);
     }
   }
-  const processName = gameId === "dead-by-daylight" ? deadByDaylightProcess(installation).replace(/\.exe$/i, "") : manifest.waitForWindowProcess;
+  const processName = gameId === "palworld" ? (platform === "xbox" ? "Palworld-WinGDK-Shipping" : "Palworld-Win64-Shipping") : gameId === "dead-by-daylight" ? deadByDaylightProcess(installation).replace(/\.exe$/i, "") : manifest.waitForWindowProcess;
   if (processName) await waitForWindowsProcessWindow(processName, manifest.waitForWindowTimeoutMs);
   assertAccess();
   if (gameId === "gtav-montchiliad" && installation.edition === "enhanced") scheduleGtaSaveDeployment();

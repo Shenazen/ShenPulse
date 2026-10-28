@@ -15,7 +15,7 @@ function tiktokOverlayTransform(width=675,height=1200) {
 }
 function layout(width = 1080, height = 1920) {
   const scale = referenceScale(width,height), x = (width - REFERENCE_CANVAS.width * scale) / 2;
-  return { width, height, camera: { x, y:0, width:675*scale, height:379.6875*scale }, game: { x, y:384*scale, width:675*scale, height:379.6875*scale }, overlay: { x:x+OVERLAY_REFERENCE.x*scale, y:OVERLAY_REFERENCE.y*scale, width:OVERLAY_RENDER_SIZE.width*OVERLAY_REFERENCE.scaleX*scale, height:OVERLAY_RENDER_SIZE.height*OVERLAY_REFERENCE.scaleY*scale } };
+  return { width, height, wins:{x,y:0,width:675*scale,height:1200*scale}, camera: { x, y:0, width:675*scale, height:379.6875*scale }, game: { x, y:384*scale, width:675*scale, height:379.6875*scale }, overlay: { x:x+OVERLAY_REFERENCE.x*scale, y:OVERLAY_REFERENCE.y*scale, width:OVERLAY_RENDER_SIZE.width*OVERLAY_REFERENCE.scaleX*scale, height:OVERLAY_RENDER_SIZE.height*OVERLAY_REFERENCE.scaleY*scale } };
 }
 function readJson(file, fallback = null) { try { return JSON.parse(fs.readFileSync(file,"utf8")); } catch (error) { if (error.code === "ENOENT") return fallback; throw new Error("Configuration du studio illisible : " + path.basename(file)); } }
 function writeJson(file, value) {

@@ -490,6 +490,9 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  "palworld",
+  "escape-from-duckov",
+  "shenfarm", "shenpaint", "shenkite", "splash-bombes",
   "hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight",
   "dead-by-daylight", "dredge", "egging-on", "fallout-4",
   "ark-survival-ascended",
@@ -508,6 +511,8 @@ const AUTOMATED_GAME_INSTALLERS = new Set([
   "euro-truck-simulator-2",
   "resident-evil-3",
   "gtav-montchiliad",
+  "gtav-koth-enhanced",
+  "gtav-hiking-enhanced",
   "pokemon-red-blue",
   "super-mario-kart",
   "minecraft-bedrock-box",
@@ -538,6 +543,8 @@ const GAME_OVERLAY_GENERATOR_ONLY_IDS = new Set([
 ]);
 
 const MINECRAFT_LAUNCHER_ID = "minecraft";
+const GTA_LAUNCHER_ID = "gta-enhanced";
+const GTA_MODE_IDS = Object.freeze(["gtav-montchiliad", "gtav-koth-enhanced", "gtav-hiking-enhanced"]);
 const MINECRAFT_MODE_IDS = Object.freeze([
   "minecraft-bedrock-box",
   "minecraft-sandbox-3",

@@ -1,30 +1,38 @@
 "use strict";
 
+function gameWorkspaceEffectAction(pack, effect, previous = {}) {
+ const action={...previous,id:previous.id||'action_'+cryptoId(),type:effect.actionType||'game.effect',config:{...previous.config,packId:pack.id,effectId:effect.id,quantity:previous.config?.quantity||effect.quantity||1,duration:effect.duration||0,parameters:Object.fromEntries((effect.parameters||[]).map(p=>[p.id,p.defaultValue??p.min??0]))}};
+ if(effect.winCounter)Object.assign(action.config,{amount:effect.winCounter.amount||0,operation:effect.winCounter.operation||'adjust'});
+ return action;
+}
 let marketWriteQueue = Promise.resolve();
 let marketPresentationQueue = Promise.resolve();
 function saveSupermarketOverlayPresentation(patch) {
- const scope={profileId:snapshot.state.session.profileId,accountUid:snapshot.state.settings.account?.uid||''};
+ const scope={packId:supermarketPack().id,profileId:snapshot.state.session.profileId,accountUid:snapshot.state.settings.account?.uid||''};
  const operation=marketPresentationQueue.catch(()=>{}).then(async()=>{
-  if(snapshot.state.session.profileId!==scope.profileId||(snapshot.state.settings.account?.uid||'')!==scope.accountUid)throw new Error('Le compte ou le profil a changé. Rouvrez les modèles.');
+  if(supermarketPack()?.id!==scope.packId||snapshot.state.session.profileId!==scope.profileId||(snapshot.state.settings.account?.uid||'')!==scope.accountUid)throw new Error('Le compte ou le profil a changé. Rouvrez les modèles.');
   const next=await api.saveGamePackPresentation({...scope,...patch});
-  if(snapshot.state.session.profileId===scope.profileId&&(snapshot.state.settings.account?.uid||'')===scope.accountUid){const scroll=content.scrollTop;acceptSnapshot(next);render();content.scrollTop=scroll;}
+  if(supermarketPack()?.id===scope.packId&&snapshot.state.session.profileId===scope.profileId&&(snapshot.state.settings.account?.uid||'')===scope.accountUid){const scroll=content.scrollTop;acceptSnapshot(next);render();content.scrollTop=scroll;}
  });
  marketPresentationQueue=operation;return operation;
 }
 
 function supermarketPack() {
+  const selected = typeof selectedGameId !== 'undefined' && snapshot.packs.find(pack => pack.id === selectedGameId);
+  if (selected && typeof usesSharedGameWorkspace === 'function') return usesSharedGameWorkspace(selected) ? selected : null;
   return snapshot.packs.find(pack => pack.id === 'supermarket-simulator');
 }
 
 function supermarketReference(target) {
   const card = target.closest('[data-market-card]') || target;
-  return { ruleId: card.dataset.rule, actionId: card.dataset.rowAction, index: card.dataset.index };
+  return { packId: supermarketPack().id, profileId: snapshot.state.session.profileId, accountUid: snapshot.state.settings.account?.uid || '', ruleId: card.dataset.rule, actionId: card.dataset.rowAction, index: card.dataset.index };
 }
 
 function mutateSupermarketRule(reference, mutate) {
-  const profileId = snapshot.state.session.profileId;
+  if (reference?.packId && (reference.packId !== supermarketPack()?.id || reference.profileId !== snapshot.state.session.profileId || reference.accountUid !== (snapshot.state.settings.account?.uid || ''))) throw new Error('Le jeu, le compte ou le profil a changé. Rouvrez cette interaction.');
+  const profileId = snapshot.state.session.profileId, packId = supermarketPack().id, accountUid = snapshot.state.settings.account?.uid || '';
   const operation = marketWriteQueue.catch(() => {}).then(async () => {
-    if (snapshot.state.session.profileId !== profileId) throw new Error('Le profil a changé. Rouvrez cette interaction.');
+    if (snapshot.state.session.profileId !== profileId || supermarketPack()?.id !== packId || (snapshot.state.settings.account?.uid || '') !== accountUid) throw new Error('Le profil a changé. Rouvrez cette interaction.');
     const pack = supermarketPack();
     if (!requireGameAccess(pack)) throw new Error('Accès au jeu requis.');
     const row = findGameInteractionRow(pack.id, reference.ruleId, reference.actionId, reference.index);
@@ -33,7 +41,7 @@ function mutateSupermarketRule(reference, mutate) {
     const action = rule.actions[row.actionIndex];
     mutate(rule, action, row, pack);
     const next = await api.saveGameInteraction(pack.id, rule);
-    if (snapshot.state.session.profileId === profileId) acceptSnapshot(next || await api.getSnapshot());
+    if (snapshot.state.session.profileId === profileId && supermarketPack()?.id === packId && (snapshot.state.settings.account?.uid || '') === accountUid) acceptSnapshot(next || await api.getSnapshot());
     return rule;
   });
   marketWriteQueue = operation;
@@ -42,9 +50,9 @@ function mutateSupermarketRule(reference, mutate) {
 
 function mutateSupermarketFreeRule(type, mutate) {
   if (!['follow', 'like'].includes(type)) throw new Error('Événement gratuit inconnu.');
-  const profileId = snapshot.state.session.profileId;
+  const profileId = snapshot.state.session.profileId, packId = supermarketPack().id, accountUid = snapshot.state.settings.account?.uid || '';
   const operation = marketWriteQueue.catch(() => {}).then(async () => {
-    if (snapshot.state.session.profileId !== profileId) throw new Error('Le profil a changé. Recommencez la configuration.');
+    if (snapshot.state.session.profileId !== profileId || supermarketPack()?.id !== packId || (snapshot.state.settings.account?.uid || '') !== accountUid) throw new Error('Le profil a changé. Recommencez la configuration.');
     const pack = supermarketPack();
     if (!requireGameAccess(pack)) throw new Error('Accès au jeu requis.');
     const existing = supermarketRows(pack).find(row => type === 'follow' ? row.rule.trigger?.type === type : ['like', 'likes'].includes(row.rule.trigger?.type));
@@ -54,7 +62,7 @@ function mutateSupermarketFreeRule(type, mutate) {
     row.effect = pack.effects.find(effect => effect.id === row.action.config.effectId);
     mutate(row.rule, row.action, row, pack);
     const next = await api.saveGameInteraction(pack.id, row.rule);
-    if (snapshot.state.session.profileId === profileId) acceptSnapshot(next || await api.getSnapshot());
+    if (snapshot.state.session.profileId === profileId && supermarketPack()?.id === packId && (snapshot.state.settings.account?.uid || '') === accountUid) acceptSnapshot(next || await api.getSnapshot());
     return row.rule;
   });
   marketWriteQueue = operation;
@@ -66,17 +74,22 @@ async function saveSupermarketInline(target) {
   const kind = target.dataset.marketInline, value = target.value, checked = target.checked;
   const parameterId = target.dataset.parameter;
   const mutate = (rule, action, row, pack) => {
+    if (kind === 'win-mute-seconds') action.config.duration = Math.max(1,Math.min(3600,Math.round(Number(value)||60)));
+    if (kind === 'win-factor') action.config.amount = Math.max(1,Math.min(100,Number(value)||2));
+    if (kind === 'win-stack') action.config.stackMode = value === 'increment' ? 'increment' : 'replace';
+    if (kind === 'win-cap') action.config.maxMultiplier = Math.max(2,Math.min(100,Number(value)||10));
+    if (kind === 'win-add-time') action.config.addDuration = checked;
+    if (kind === 'win-duration') action.config.duration = Math.max(60,Math.min(3600,(Number(value)||1)*60));
     if (kind === 'threshold') rule.trigger.threshold = Math.max(1, Math.min(1000000, Number(value) || 1));
     if (['extra-effect', 'new-extra-effect'].includes(kind)) {
       const effect = pack.effects.find(item => item.id === value && item.available !== false);
       if (!effect) throw new Error('Choisissez une action disponible.');
-      const extra = kind === 'extra-effect' ? rule.actions.find(item => item.id === target.dataset.extraId && item.type === 'game.effect') : null;
+      const extra = kind === 'extra-effect' ? rule.actions.find(item => item.id === target.dataset.extraId && item.config?.effectId) : null;
       if (kind === 'extra-effect' && !extra) throw new Error('Cette action n’est plus disponible.');
-      const config = { packId: pack.id, effectId: effect.id, quantity: 1, duration: effect.duration || 0, parameters: Object.fromEntries((effect.parameters || []).map(parameter => [parameter.id, parameter.defaultValue ?? 0])) };
-      if (extra) extra.config = { ...extra.config, ...config };
-      else rule.actions.push({ id: 'action_' + cryptoId(), type: 'game.effect', config });
+      if (extra) Object.assign(extra, gameWorkspaceEffectAction(pack, effect, extra));
+      else rule.actions.push(gameWorkspaceEffectAction(pack, effect));
     }
-    if (kind === 'enabled') { rule.enabled = checked; if (checked && ['follow', 'like', 'likes'].includes(rule.trigger?.type)) rule.trigger.enabled = true; }
+    if (kind === 'enabled') { rule.enabled = checked; if (checked && rule.trigger) rule.trigger.enabled = true; }
     if (kind === 'title') {
       const title = String(value).trim().slice(0, 120) || row.effect?.name || pack.effects.find(effect => effect.id === action.config.effectId)?.name;
       rule.gameInteraction = { ...rule.gameInteraction, title };
@@ -86,11 +99,12 @@ async function saveSupermarketInline(target) {
     if (kind === 'effect') {
       const effect = pack.effects.find(item => item.id === value && item.available !== false);
       if (!effect) throw new Error('Effet indisponible.');
-      action.config = { ...action.config, effectId: effect.id, duration: effect.duration || 0, parameters: Object.fromEntries((effect.parameters || []).map(parameter => [parameter.id, parameter.defaultValue ?? parameter.min ?? 0])) };
+      Object.assign(action, gameWorkspaceEffectAction(pack, effect, action));
     }
     if (kind === 'parameter') {
       const effect = pack.effects.find(item => item.id === action.config.effectId);
       const parameter = effect.parameters?.find(item => item.id === parameterId);
+      if (parameter?.type === 'text') { action.config.parameters = { ...action.config.parameters, [parameter.id]: String(value).slice(0, parameter.maxLength || 500) }; return; }
       const parsed = Number(value);
       if (!Number.isFinite(parsed)) throw new Error('Entrez une valeur numérique valide.');
       const next = Math.min(parameter?.max ?? 120, Math.max(parameter?.min ?? 1, parsed));
@@ -120,18 +134,20 @@ function supermarketDraft(pack, { column = 'neutral', triggerType = 'gift' } = {
 }
 
 function openSupermarketSound(reference) {
-  const row = findGameInteractionRow('supermarket-simulator', reference.ruleId, reference.actionId, reference.index);
+  const soundPackId = supermarketPack().id;
+  const row = findGameInteractionRow(supermarketPack().id, reference.ruleId, reference.actionId, reference.index);
   if (!row) throw new Error('Interaction introuvable.');
   const sound = row.rule.actions.find(action => action.type === 'audio.play' && !action.config?.effectId);
   openEditor({ title: 'Son de l’interaction', kicker: supermarketPack().name.toUpperCase(),
     body: soundPickerField('marketSound', sound?.config?.url || '', { label: 'Son joué avec cet effet', selectedName: sound?.config?.soundName || '', optional: true }),
     onSubmit: async data => {
+      if (supermarketPack()?.id !== soundPackId) throw new Error('Le jeu a changé. Rouvrez cette interaction.');
       const url = String(data.get('marketSound') || '').trim();
       await mutateSupermarketRule(reference, rule => {
         const index = rule.actions.findIndex(action => action.type === 'audio.play' && !action.config?.effectId);
         if (!url) { if (index >= 0) rule.actions.splice(index, 1); return; }
         const previous = index >= 0 ? rule.actions[index] : {};
-        const action = { ...previous, id: previous.id || 'action_' + cryptoId(), type: 'audio.play', config: { ...previous.config, url, soundName: String(data.get('marketSoundName') || ''), packId: 'supermarket-simulator', volume: previous.config?.volume ?? 1, outputMode: previous.config?.outputMode || 'local' } };
+        const action = { ...previous, id: previous.id || 'action_' + cryptoId(), type: 'audio.play', config: { ...previous.config, url, soundName: String(data.get('marketSoundName') || ''), packId: soundPackId, volume: previous.config?.volume ?? 1, outputMode: previous.config?.outputMode || 'local' } };
         if (index >= 0) rule.actions[index] = action;
         else rule.actions.push(action);
       });
@@ -142,17 +158,18 @@ function openSupermarketSound(reference) {
 function openSupermarketExtraActions(reference) {
   const pack = supermarketPack(), row = findGameInteractionRow(pack.id, reference.ruleId, reference.actionId, reference.index);
   if (!row) throw new Error('Interaction introuvable.');
-  const selected = new Set(row.rule.actions.filter(action => action.type === 'game.effect' && action.id !== row.action.id).map(action => action.config.effectId));
+  const selected = new Set(row.rule.actions.filter(action => action.config?.effectId && action.id !== row.action.id).map(action => action.config.effectId));
   const ctx = supermarketContext(pack);
   openEditor({ title: 'Actions jouées avec le même événement', kicker: pack.name.toUpperCase(),
     body: supermarketMarkup(ctx,ShenPulseGameWorkspace.renderExtraOptions(ctx,{mainEffectId:row.action.config.effectId,selectedIds:[...selected],fieldName:'marketExtraEffects'})),
     onSubmit: async data => {
+      if (supermarketPack()?.id !== pack.id) throw new Error('Le jeu a changé. Rouvrez cette interaction.');
       const requested = new Set(data.getAll('marketExtraEffects'));
       await mutateSupermarketRule(reference, (rule, action) => {
-        rule.actions = rule.actions.filter(item => item.id === action.id || item.type !== 'game.effect' || requested.has(item.config.effectId));
+        rule.actions = rule.actions.filter(item => item.id === action.id || !item.config?.effectId || item.config.packId && item.config.packId !== pack.id || requested.has(item.config.effectId));
         for (const effect of pack.effects.filter(item => requested.has(item.id))) {
-          if (rule.actions.some(item => item.type === 'game.effect' && item.config.effectId === effect.id)) continue;
-          rule.actions.push({ id: 'action_' + cryptoId(), type: 'game.effect', config: { packId: pack.id, effectId: effect.id, quantity: 1, duration: effect.duration || 0, parameters: Object.fromEntries((effect.parameters || []).map(parameter => [parameter.id, parameter.defaultValue ?? 0])) } });
+          if (rule.actions.some(item => item.config?.effectId && item.config.effectId === effect.id)) continue;
+          rule.actions.push(gameWorkspaceEffectAction(pack, effect));
         }
       });
     }
@@ -198,7 +215,7 @@ registerActionHandler(SUPERMARKET_PAGE_ACTIONS, async ({ action, target }) => {
     return;
   }
   if (action === 'market-remove-extra') {
-    await mutateSupermarketRule(supermarketReference(target), (rule, main) => { rule.actions = rule.actions.filter(item => item.id === main.id || item.id !== target.dataset.extraId || item.type !== 'game.effect'); });
+    await mutateSupermarketRule(supermarketReference(target), (rule, main) => { rule.actions = rule.actions.filter(item => item.id === main.id || item.id !== target.dataset.extraId || !item.config?.effectId); });
     const scroll = content.scrollTop; render(); content.scrollTop = scroll;
     return;
   }
@@ -245,3 +262,25 @@ content.addEventListener('click', event => {
   content.querySelectorAll('.market-add-menu').forEach(menu => menu.remove());
   content.querySelectorAll('[data-action="market-add"]').forEach(button => button.setAttribute('aria-expanded', 'false'));
 });
+
+// Large catalogs populate a native select only when it is used, instead of N² options at page opening.
+function populateGameWorkspaceEffectOptions(event) {
+ const select=event.target.closest?.('select[data-game-effect-options]');if(!select)return;
+ const pack=snapshot.packs.find(pack=>pack.id===select.dataset.gameEffectOptions);if(!pack||pack.id!==supermarketPack()?.id)return;
+ const value=select.value,options=pack.effects.filter(effect=>effect.available!==false&&!effect.winCounter&&effect.actionType!=='overlay.win-counter');
+ select.innerHTML=(value?'':'<option value="">Choisir une action…</option>')+options.map(effect=>'<option value="'+escapeHtml(effect.id)+'"'+(effect.id===value?' selected':'')+'>'+escapeHtml(effect.name)+'</option>').join('');
+ delete select.dataset.gameEffectOptions;
+}
+content.addEventListener('focusin',populateGameWorkspaceEffectOptions);
+content.addEventListener('pointerdown',populateGameWorkspaceEffectOptions);
+
+function moveGameWorkspaceInteraction({packId,scope,...move}) {
+ const [accountUid,profileId,scopePackId]=JSON.parse(scope);
+ const current=()=>snapshot.state.session.profileId===profileId&&(snapshot.state.settings.account?.uid||'')===accountUid&&supermarketPack()?.id===packId&&scopePackId===packId;
+ const operation=marketWriteQueue.catch(()=>{}).then(async()=>{
+  if(!current())throw new Error('Le jeu, le compte ou le profil a changé. Rouvrez cette fiche.');
+  if(!requireGameAccess(supermarketPack()))throw new Error('Accès au jeu requis.');
+  const next=await api.moveGameInteraction(packId,{profileId,accountUid,...move});
+  if(current()){const scroll=content.scrollTop;acceptSnapshot(next);render();content.scrollTop=scroll;}
+ });marketWriteQueue=operation;return operation;
+}

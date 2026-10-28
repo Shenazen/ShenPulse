@@ -506,7 +506,8 @@ function confirmAction(
   {
     title = "Confirmer l’action",
     confirmLabel = "Confirmer",
-    danger = true
+    danger = true,
+    acknowledge = false
   } = {}
 ) {
   if (confirmationResolver) finishConfirmation(false);
@@ -514,11 +515,13 @@ function confirmAction(
   confirmationMessage.textContent = String(message || "");
   confirmationSubmitButton.textContent = confirmLabel;
   confirmationSubmitButton.classList.toggle("danger", danger);
+  confirmationCancelButton.hidden = acknowledge;
   return new Promise((resolve) => {
     confirmationResolver = resolve;
     if (!confirmationDialog.open) confirmationDialog.showModal();
     requestAnimationFrame(() => {
-      confirmationCancelButton.focus({ preventScroll: true });
+      if (acknowledge) confirmationSubmitButton.focus({ preventScroll: true });
+      else confirmationCancelButton.focus({ preventScroll: true });
     });
   });
 }
@@ -536,7 +539,10 @@ async function perform(work, successMessage) {
     }
     return result;
   } catch (error) {
-    toast("Action impossible", error.message || String(error), true);
+    const message = error.message || String(error);
+    if (/Activation impossible|Configuration incomplète/.test(message)) {
+      void confirmAction(message.replace(/^.*?(?:Activation impossible|Configuration incomplète)\s*:\s*/, ''), {title:'Configuration incomplète',confirmLabel:'Compris',danger:false,acknowledge:true});
+    } else toast("Action impossible", message, true);
     throw error;
   }
 }

@@ -87,6 +87,7 @@
     face.append(rays, foil, category, stars, art, title, detail); item.append(face); return item;
   }
   function render(state) {
+    state = state?.packs?.[packId] || state;
     const previousProfile = currentProfileId;
     current = valid(state) ? state : null;
     currentProfileId = current?.profileId || "";

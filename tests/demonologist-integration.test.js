@@ -145,7 +145,7 @@ test("branche Demonologist sur son processus Windows sans modifier le jeu", asyn
   assert.equal(pack.installerVersion, "1.0.0");
   assert.equal(pack.included, true);
   assert.equal(pack.requiresPro, false);
-  assert.equal(hub.initializeDefaultInteractions(pack.id).added, 31);
+  assert.equal(hub.initializeDefaultInteractions(pack.id).added, 12);
 
   await hub.testConnection(pack.id);
   await hub.trigger(

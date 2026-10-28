@@ -303,10 +303,10 @@ test("les modèles d’overlay exigent le renderer principal, le compte et Pro a
 
 
 test('désinstaller et rétablir les interactions exigent le document principal authentifié avant toute opération',()=>{
- const f=fixture();for(const channel of ['game:uninstall','game:interactions:reset']){
+ const f=fixture();for(const channel of ['game:uninstall','game:interactions:reset','game:interactions:move','game:wins:level']){
   const handler=f.handlers.get(channel);assert.equal(typeof handler,'function');
   assert.throws(()=>handler({sender:f.contents,senderFrame:{url:MAIN_RENDERER_URL}},'supermarket-simulator',{confirmed:true}),{code:'IPC_SENDER_FORBIDDEN'});
   assert.throws(()=>handler({sender:{},senderFrame:{url:'https://remote.example/'}},'supermarket-simulator',{confirmed:true}),{code:'IPC_SENDER_FORBIDDEN'});
  }
- f.state.settings.account={};for(const channel of ['game:uninstall','game:interactions:reset'])assert.throws(()=>f.handlers.get(channel)(f.event,'supermarket-simulator',{confirmed:true}),{code:'ACCOUNT_REQUIRED'});assert.equal(f.calls.length,0);
+ f.state.settings.account={};for(const channel of ['game:uninstall','game:interactions:reset','game:interactions:move','game:wins:level'])assert.throws(()=>f.handlers.get(channel)(f.event,'supermarket-simulator',{confirmed:true}),{code:'ACCOUNT_REQUIRED'});assert.equal(f.calls.length,0);
 });

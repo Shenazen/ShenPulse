@@ -179,5 +179,10 @@ test('les clics réels ouvrent immédiatement Supermarket et une autre fiche mê
   assert.equal(dom.window.eval('gameInstallProgress'), null, 'An old response must not open an installation modal over another game.');
   selects.get(dredge.id).resolve(structuredClone(data)); await new Promise(resolve => setTimeout(resolve, 30));
   assert.equal(snapshots, initialRequests, 'Opening pages must not request full snapshots again.');
+  // Exercise every real adapter with the actual script order and native fragments, not fixture substitutes.
+  const allPacks = loadShenazenGameCatalog(path.join(root, 'resources'));
+  dom.window.__allPacksForQa = allPacks;
+  const report = dom.window.eval('snapshot.packs=__allPacksForQa; __allPacksForQa.filter(pack=>ShenPulseGameWorkspacePolicy.eligible(pack)).map(pack=>{selectedGameId=pack.id;const template=document.createElement("template");template.innerHTML=renderGameWorkspace(pack);return {id:pack.id,shared:template.content.querySelector("[data-game-pack]")?.dataset.gamePack===pack.id,legacy:!!template.content.querySelector(".game-journey-tabs")};})');
+  assert.equal(report.length,51);for(const result of report){assert.equal(result.shared,true,result.id);assert.equal(result.legacy,false,result.id);}
   assert.equal(errors.length, 0, errors.map(error => error.stack || error.message).join('\n'));
 });

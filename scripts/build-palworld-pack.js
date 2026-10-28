@@ -1,0 +1,32 @@
+"use strict";
+// Candidate builds remain local until the two platform campaigns are complete.
+const fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto"),{execFileSync}=require("node:child_process");
+const root=path.resolve(__dirname,".."),version="1.0.0";
+const release="UE4SS_v3.0.1-1183-gcdbc0b66.zip";
+const loaderHash="e4a47e23e2eeb8379c4fc388d1b1686f01c6c5930d84a2ee4a6a9574b274e681";
+const hash=bytes=>crypto.createHash("sha256").update(bytes).digest("hex");
+const archive=path.join(root,".artifacts/palworld",release);
+if(hash(fs.readFileSync(archive))!==loaderHash)throw Error("UE4SS archive checksum mismatch");
+const output=path.join(root,".artifacts/game-pack-builds/palworld",version);
+fs.mkdirSync(output,{recursive:true});
+const temporary=fs.mkdtempSync(path.join(output,"candidate-")),extracted=path.join(temporary,"loader"),pack=path.join(temporary,"pack");
+fs.mkdirSync(extracted);fs.mkdirSync(path.join(pack,"ue4ss/Mods/ShenPulse/Scripts"),{recursive:true});
+execFileSync("tar.exe",["-xf",archive,"-C",extracted],{windowsHide:true});
+for(const file of ["dwmapi.dll","ue4ss/UE4SS.dll","ue4ss/LICENSE"])fs.copyFileSync(path.join(extracted,file),path.join(pack,file));
+let ini=fs.readFileSync(path.join(extracted,"ue4ss/UE4SS-settings.ini"),"utf8");
+for(const key of ["ConsoleEnabled","GuiConsoleEnabled","GuiConsoleVisible","EnableHotReloadSystem","EnableAutoReloadingLuaMods"])ini=ini.replace(new RegExp("^"+key+"\\s*=.*$","gm"),key+" = 0");
+ini=ini.replace(/^bUseUObjectArrayCache\s*=.*$/gm,"bUseUObjectArrayCache = false");
+fs.writeFileSync(path.join(pack,"ue4ss/UE4SS-settings.ini"),ini);
+fs.copyFileSync(path.join(root,"native/palworld/MemberVariableLayout.ini"),path.join(pack,"ue4ss/MemberVariableLayout.ini"));
+fs.writeFileSync(path.join(pack,"ue4ss/Mods/mods.txt"),"ShenPulse : 1\n");
+fs.writeFileSync(path.join(pack,"ue4ss/Mods/mods.json"),JSON.stringify([{mod_name:"ShenPulse",mod_enabled:true}]));
+for(const file of ["main.lua","core.lua","effects.lua"])fs.copyFileSync(path.join(root,"native/palworld",file),path.join(pack,"ue4ss/Mods/ShenPulse/Scripts",file));
+fs.writeFileSync(path.join(pack,"THIRD-PARTY-NOTICES.txt"),"ShenPulse Palworld module: ShenPulse.\nUE4SS: MIT license, reproduced in ue4ss/LICENSE.\nSource: https://github.com/UE4SS-RE/RE-UE4SS\nPinned release: "+release+"\n");
+function files(directory,relative=""){return fs.readdirSync(directory,{withFileTypes:true}).flatMap(entry=>entry.isDirectory()?files(path.join(directory,entry.name),relative+entry.name+"/"):[relative+entry.name]);}
+const manifest={gameId:"palworld",version,loader:{release,sha256:loaderHash},files:files(pack).map(file=>({file,sha256:hash(fs.readFileSync(path.join(pack,file)))}))};
+fs.writeFileSync(path.join(pack,"shenpulse-module.json"),JSON.stringify(manifest,null,2)+"\n");
+const fileName="palworld-shenpulse-"+version+".zip",destination=path.join(output,fileName);
+execFileSync("tar.exe",["-a","-cf",destination,"-C",pack,"."],{windowsHide:true});
+const bytes=fs.readFileSync(destination),asset={id:"module",fileName,action:"extract",size:bytes.length,sha256:hash(bytes),url:"https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/palworld/"+version+"/"+fileName};
+fs.writeFileSync(path.join(output,"candidate-asset.json"),JSON.stringify({gameId:"palworld",version,...asset,buildPath:path.relative(root,destination).replaceAll("\\","/")},null,2)+"\n");
+console.log(JSON.stringify({candidate:destination,size:asset.size,sha256:asset.sha256,published:false}));

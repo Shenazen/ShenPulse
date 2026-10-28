@@ -1,5 +1,4 @@
 "use strict";
-
 const { EventEmitter } = require("node:events");
 const { synchronizeSessionWithTikTok, liveKickConnection, synchronizeSessionWithKick, clearSessionState } = require("./core/session-state");
 const { resetSessionStatistics, recordEventStatistics, finishLiveStatistics, recordLiveAudience } = require("./core/event-statistics");
@@ -20,8 +19,7 @@ const { ViewerService } = require("./viewer-service");
 const { createCoreRuntimeSnapshot } = require("./core/runtime-snapshot");
 const path = require("node:path");
 const { shell } = require("electron");
-const { KickService } = require("./kick-service");
-const { ControllerService } = require("./controller-service");
+const { KickService } = require("./kick-service");const { ControllerService } = require("./controller-service");
 const { hasAuthenticatedAccount } = require("./account-access");
 const { ActionRunner } = require("./action-runner");
 const { ActionTimerScheduler } = require("./action-timer-scheduler");
@@ -63,8 +61,7 @@ const {
   resetOverlaySession
 } = require("./overlay-session-state");
 
-class ShenPulseCore extends EventEmitter {
-  constructor({ store, resourcesDirectory, notifyRenderer, appVersion = "", liveDirectoryIdentityProvider }) {
+class ShenPulseCore extends EventEmitter {  constructor({ store, resourcesDirectory, notifyRenderer, appVersion = "", liveDirectoryIdentityProvider }) {
     super();
     this.store = store;
     this.notifyRenderer = (channel, value) => {
@@ -118,10 +115,12 @@ class ShenPulseCore extends EventEmitter {
         this.gameHub.trigger(request.effectId, request, request),
       publicRelay: this.publicOverlayRelay
     });
+    this.gameMuteService = new (require("./game-mute-service").GameMuteService)({store,onChange:()=>{this.publicOverlayRelay.publishState();this.notifyRenderer("state-changed",this.snapshot());}});
     this.actionRunner = new ActionRunner({
       store,
       overlayServer: this.overlayServer,
       gameHub: this.gameHub,
+      gameMuteService: this.gameMuteService,
       obsClient: this.obsClient,
       sourceHub: this.sourceHub,
       spotifyService: this.spotifyService,
@@ -667,6 +666,7 @@ class ShenPulseCore extends EventEmitter {
   }
 
   async shutdown() {
+    await this.gameMuteService.dispose();
     this.matches.reset();
     this.liveEventActions.chatbot.reset();
     await this.liveDirectory?.stop();

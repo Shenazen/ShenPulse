@@ -135,11 +135,11 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
     const pack=snapshot.packs.find(item=>item.id===id);
     if(!pack || !requireGameAccess(pack) || showActiveGameConflict(pack))return;
     if(activeGameSession()?.packId===id)return toast('Session active','Arrêtez la session de ce jeu avant cette opération.',true);
-    const uninstall=action==='uninstall-game',scope={profileId:snapshot.state.session.profileId,accountUid:snapshot.state.settings.account?.uid || '',confirmed:true};
+    const native=pack.connector?.type==='shen-native',uninstall=action==='uninstall-game',scope={profileId:snapshot.state.session.profileId,accountUid:snapshot.state.settings.account?.uid || '',confirmed:true};
     const confirmed=await confirmAction(uninstall
-      ? 'Retirer le module ShenPulse de '+pack.name+' ? Fermez le jeu avant de continuer. Vos sauvegardes et vos cartes d’interactions seront conservées.'
+      ? native?'Désinstaller '+pack.name+' de l’espace ShenPulse ? Fermez le jeu avant de continuer. Une copie récupérable sera conservée ; vos parties et cartes resteront enregistrées.':'Retirer le module ShenPulse de '+pack.name+' ? Fermez le jeu avant de continuer. Vos sauvegardes et vos cartes d’interactions seront conservées.'
       : 'Rétablir toutes les interactions de '+pack.name+' ? Les cartes, cadeaux, sons, paramètres et conditions de ce jeu seront remplacés par les valeurs par défaut, uniquement dans ce profil. Une sauvegarde de vos réglages sera conservée.',
-      {title:uninstall?'Désinstaller le module':'Rétablir les interactions',confirmLabel:uninstall?'Désinstaller':'Rétablir les valeurs par défaut'});
+      {title:uninstall?native?'Désinstaller le jeu':'Désinstaller le module':'Rétablir les interactions',confirmLabel:uninstall?'Désinstaller':'Rétablir les valeurs par défaut'});
     if(!confirmed)return;
     const current=()=>snapshot.state.session.profileId===scope.profileId && (snapshot.state.settings.account?.uid || '')===scope.accountUid;
     if(!current())return toast('Profil modifié','Recommencez depuis la fiche du jeu.',true);
@@ -149,8 +149,8 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
         const result=await (uninstall?api.uninstallGame(id,scope):api.resetGameInteractions(id,scope));
         if(!current())return;
         acceptSnapshot(result.snapshot);
-        gamePageMessages.set(id,{scope:'installation',type:'success',title:uninstall?'Module désinstallé':'Interactions rétablies',detail:uninstall
-          ? result.alreadyRemoved?'Le dossier du jeu est déjà absent. Son ancienne installation mémorisée a été retirée.':result.sharedLoaderRetained?'Le module ShenPulse est retiré. Le chargeur partagé a été conservé pour protéger les autres mods et les anciennes installations.':'Les fichiers d’origine ont été restaurés. Vos sauvegardes et vos interactions sont conservées.'
+        gamePageMessages.set(id,{scope:'installation',type:'success',title:uninstall?native?'Jeu désinstallé':'Module désinstallé':'Interactions rétablies',detail:uninstall
+          ? result.managedGameRemoved?'Le jeu a été déplacé dans une sauvegarde récupérable. Vos parties et vos cartes sont conservées.':result.alreadyRemoved?'Le dossier du jeu est déjà absent. Son ancienne installation mémorisée a été retirée.':result.sharedLoaderRetained?'Le module ShenPulse est retiré. Le chargeur partagé a été conservé pour protéger les autres mods et les anciennes installations.':'Les fichiers d’origine ont été restaurés. Vos sauvegardes et vos interactions sont conservées.'
           :'Les cadeaux, paramètres et conditions par défaut sont rétablis pour ce jeu.'});
       });
     } finally {if(gameMaintenanceBusyId===id){gameMaintenanceBusyId='';gameMaintenanceBusyOperation='';}if(current())render();}

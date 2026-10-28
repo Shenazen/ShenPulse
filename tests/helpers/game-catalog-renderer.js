@@ -18,6 +18,7 @@ function gameCatalogRenderer(packs, { owner = false, hidden = [] } = {}) {
     snapshot: { packs, state: { session: {}, settings: {}, commerce: {} } },
     gameFilter: "all", gameCategory: "all", gameSearch: "", gamePageMode: "catalog", pages: [],
     MINECRAFT_MODE_IDS: ["minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-survival-plugin"], MINECRAFT_LAUNCHER_ID: "minecraft",
+    GTA_MODE_IDS: ["gtav-montchiliad", "gtav-koth-enhanced"], GTA_LAUNCHER_ID: "gta-enhanced",
     isVerifiedAdminSession: () => owner, registerActionHandler() {}, ACTION_NOT_HANDLED: Symbol("unhandled"),
     renderStudioHero: (_id, title) => `<header><h2>${title}</h2></header>`,
     emptyInline: text => `<p class="empty-inline">${text}</p>`

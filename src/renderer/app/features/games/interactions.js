@@ -62,7 +62,7 @@ function renderStandardGameInteractions(pack, unlocked, options = {}) {
   ].sort((left, right) => left.localeCompare(right, "fr"));
   const visibleRows = rows.filter((row) => {
     const effect = row.effect;
-    const title = row.rule.gameInteraction?.title || effect.name;
+    const title = ShenPulseGameInteractionTitles.title(row.rule, effect);
     const matchesCategory =
       gameEffectCategory === "all" || effect.category === gameEffectCategory;
     const matchesSearch =
@@ -93,7 +93,7 @@ function renderStandardGameInteractions(pack, unlocked, options = {}) {
       ${visibleRows.map((row) => {
         const effect = row.effect;
         const enabled = effect.available !== false && row.rule.enabled !== false;
-        const title = row.rule.gameInteraction?.title || effect.name;
+        const title = ShenPulseGameInteractionTitles.title(row.rule, effect);
         const editorData = `data-action="edit-game-interaction" data-pack="${escapeHtml(pack.id)}" data-effect="${escapeHtml(effect.id)}" data-rule="${escapeHtml(row.rule.id)}" data-row-action="${escapeHtml(row.action.id || "")}" data-index="${row.actionIndex}"`;
         return `<article class="game-interaction-card configured ${enabled ? "" : "disabled"} ${effect.available === false ? "unavailable" : ""}">
         <div class="game-effect-side">

@@ -3,7 +3,7 @@
 const STUDIO_HERO_ASSETS = Object.freeze({
   dashboard: "dashboard", actions: "actions", studio: "overlays", overlays: "overlays",
   users: "users", voice: "voice", music: "music", controllers: "actions",
-  connections: "users", games: "dashboard", commands: "chatbot", chatbot: "chatbot", irl: "actions", matches: "dashboard", membership: "actions"
+  connections: "users", games: "games", commands: "chatbot", chatbot: "chatbot", irl: "actions", matches: "dashboard", membership: "actions"
 });
 
 function renderStudioHero(id, title, description) {

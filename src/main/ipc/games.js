@@ -11,6 +11,8 @@ const { sanitizeEntity, sanitizeGameConfiguration, sanitizeDealOrNoDealHostState
 const { notify } = require("./notifications");
 
 function registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog, requireGameAccess, requireGameSessionAvailability }) {
+  require("./game-wins").registerGameWinsIpc({handle,core,store,requireGameAccess});
+  require("./game-interaction-order").registerGameInteractionOrderIpc({handle,core,store,requireGameAccess});
   handle("game:select", (_event, packId) => {
     const targetId = requireGameSessionAvailability(packId);
     requireGameAccess(targetId);
@@ -106,6 +108,7 @@ function registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog,
           "Cette interaction est verrouillée et ne peut pas être utilisée."
       );
     }
+    require('../../shared/game-interaction-validation').assertGameInteractionActivation(rule);
     store.upsertGameInteraction(targetId, rule);
     const nextSnapshot = core.snapshot();
     notify(core, "state-changed", nextSnapshot);
@@ -134,16 +137,16 @@ function registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog,
     core.gameHub.testConnection(safeString(packId, 160))
   );
   
-  handle("game:effect", (_event, effectId, options) =>
-    core.gameHub.trigger(
-      safeString(effectId, 160),
-      {
-        source: "manual",
-        user: { id: "streamer", name: "streamer", displayName: "Test manuel" }
-      },
-      sanitizeEntity(options || {})
-    )
-  );
+  handle("game:effect", (_event, effectId, options) => {
+    const incoming=sanitizeEntity(options||{}),packId=incoming.packId||readState(store,["session.activeGamePackId"]).session?.activeGamePackId;
+    const pack=requireGameAccess(packId)||core.gameHub.listPacks?.().find(pack=>pack.id===packId);
+    const effect=pack?.effects?.find(effect=>effect.id===safeString(effectId,160)),context={source:"manual",user:{id:"streamer",name:"streamer",displayName:"Test manuel"}};
+    if(effect?.actionType==="overlay.win-counter"){
+      if(effect.available===false)throw Error("Cette interaction n’est pas disponible.");
+      return core.actionRunner.run({type:"overlay.win-counter",config:{packId,effectId:effect.id,amount:Number(incoming.amount??effect.winCounter?.amount??0),operation:effect.winCounter?.operation||"adjust",duration:Number(incoming.duration??effect.duration??0),parameters:incoming.parameters||{}}},context);
+    }
+    return core.gameHub.trigger(safeString(effectId,160),context,incoming);
+  });
   
   const auditGameInteraction = async (
     packId,

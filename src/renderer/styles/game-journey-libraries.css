@@ -553,6 +553,11 @@
   transition: 220ms ease;
 }
 
+/* Keep the cover title visible when portrait posters fill a wider tile. */
+.game-gallery-tile .game-tile-cover {
+  background-position: center top;
+}
+
 .game-gallery-tile .game-tile-art::after {
   position: absolute;
   inset: 0;

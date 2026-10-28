@@ -16,7 +16,7 @@ async function detectInstalledGames(gameId, manifest, previousPath = "", sources
   const candidates = [previousPath].filter(Boolean);
   if (manifest.xboxDirectoryNames?.length) candidates.push(...await (sources.xbox || xboxGameInstallCandidates)(manifest));
   if (manifest.xboxIdentity) candidates.push(...await (sources.registeredXbox || registeredXboxInstallCandidates)(manifest));
-  if (gameId === "gtav-montchiliad") candidates.push(...await (sources.gta || gtaInstallCandidates)());
+  if (["gtav-montchiliad","gtav-koth-enhanced","gtav-hiking-enhanced"].includes(gameId)) candidates.push(...await (sources.gta || gtaInstallCandidates)());
   if (Array.isArray(manifest.steamAppIds) || Array.isArray(manifest.directoryNames)) candidates.push(...await (sources.steam || steamGameInstallCandidates)(manifest));
   const found = [], seen = new Set();
   for (const candidate of [...new Set(candidates.map(value => path.resolve(value)))]) {

@@ -6,7 +6,7 @@ const { cachedGamePack } = require("./lib/game-pack-cache");
 const { extractArchiveSafe } = require("../src/main/game-runtime/archives");
 
 async function main() {
-  const root = path.resolve(__dirname, ".."), version = "1.1.1";
+  const root = path.resolve(__dirname, ".."), version = "1.1.2";
   execFileSync(process.execPath, [path.join(__dirname, "build-duckov-compatibility.js"), ...process.argv.slice(2)], { stdio: "inherit", windowsHide: true });
   const upstream = await cachedGamePack({ gameId: "escape-from-duckov", id: "upstream", fileName: "CC-EscapeFromDuckov-1.1.0.zip",
     url: "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/escape-from-duckov/1.1.0/CC-EscapeFromDuckov-1.1.0.zip",

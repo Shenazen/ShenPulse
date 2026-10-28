@@ -1,38 +1,58 @@
 "use strict";
 
-/** Manifeste versionné du jeu « terraria ». Tailles, empreintes et chemins conservés. */
-const { TERRARIA_ASSET_BASE } = require("./constants");
-
 module.exports = {
-    version: "1.0.0",
-    title: "Terraria / tModLoader",
-    targetLabel: "dossier contenant tModLoader.exe",
-    autoDetect: true,
-    unattended: true,
-    directoryNames: ["tModLoader"],
-    steamAppIds: ["1281930"],
-    executables: ["tModLoader.exe"],
-    launchExecutables: ["tModLoader.exe"],
-    warning:
-      "tModLoader doit être fermé. ShenPulse sauvegarde le mod existant puis installe le pont local préconfiguré sur le port 58433.",
-    assets: [
-      {
-        id: "mod",
-        fileName: "CrowdControlMod.tmod",
-        action: "copy",
-        targetPath: "Mods",
-        size: 935576,
-        sha256:
-          "053e15396bd232e73655a00b782fbe43dae96f5669e6dea44c60e3b6800c4ab2",
-        url: `${TERRARIA_ASSET_BASE}/CrowdControlMod.tmod`
-      }
-    ],
-    additionalInstallTargets: [
-      {
-        sourcePath: "Mods/CrowdControlMod.tmod",
-        root: "documents",
-        targetPath: "My Games/Terraria/tModLoader/Mods/CrowdControlMod.tmod"
-      }
-    ]
-  };
-
+  "version": "1.1.0",
+  "title": "Terraria / tModLoader",
+  "targetLabel": "dossier Terraria contenant Terraria.exe",
+  "autoDetect": true,
+  "unattended": true,
+  "directoryNames": [
+    "Terraria"
+  ],
+  "steamAppIds": [
+    "105600"
+  ],
+  "executables": [
+    "tModLoader.dll"
+  ],
+  "launchExecutables": [
+    "start-tModLoader.bat",
+    "tModLoader.exe"
+  ],
+  "requireLaunchExecutable": true,
+  "steamLaunchAppId": "1281930",
+  "warning": "Fermez Terraria et tModLoader. ShenPulse télécharge tModLoader, son runtime et les interactions depuis Backblaze, puis les installe dans un sous-dossier séparé du jeu original. Les fichiers remplacés sont sauvegardés.",
+  "assets": [
+    {
+      "id": "tmodloader",
+      "fileName": "tModLoader-v2026.08.3.0.zip",
+      "action": "extract",
+      "targetPath": "",
+      "size": 61142677,
+      "sha256": "61e865f3702b12ce4a26c5a90b9de99a12c65ffc228455eb3390ce54af1eab15",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/terraria/1.1.0/tModLoader-v2026.08.3.0.zip"
+    },
+    {
+      "id": "runtime",
+      "fileName": "dotnet-runtime-8.0.0-win-x64.zip",
+      "action": "extract",
+      "targetPath": "dotnet",
+      "size": 33177718,
+      "sha256": "5fa43823748af6448505bb7b18f44a709d3dd313d685cb7f7a83d030a702fa41",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/terraria/1.1.0/dotnet-runtime-8.0.0-win-x64.zip"
+    },
+    {
+      "id": "mod",
+      "fileName": "ShenPulseTerraria.tmod",
+      "action": "copy",
+      "targetPath": "Mods",
+      "size": 20076,
+      "sha256": "a01800e150cc96dc9f4a1e8ede4a886e89aad128918f555f40a44ecaaac9f222",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/terraria/1.1.0/ShenPulseTerraria.tmod"
+    }
+  ],
+  "retiredFiles": [
+    "Mods/CrowdControlMod.tmod"
+  ],
+  "terrariaBundledLoader": true
+};

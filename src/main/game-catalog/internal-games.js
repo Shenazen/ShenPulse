@@ -136,6 +136,7 @@ const INTERNAL_GAMES = [
   }),
   game("color-strike", "Color Strike", {
     artwork: "catalog/shenpulse-color-strike.jpg",
+    coverArtwork: "covers/color-strike.webp",
     price: 19.99,
     requiresPro: true,
     source: "ShenPulse · Color Strike autonome",
@@ -160,6 +161,7 @@ const INTERNAL_GAMES = [
   }),
   game("tiklive-climb", "Climb", {
     artwork: "catalog/shenpulse-climb.jpg",
+    coverArtwork: "covers/tiklive-climb.webp",
     price: 9.99,
     requiresPro: true,
     source: "ShenPulse · Climb autonome",
@@ -184,6 +186,7 @@ const INTERNAL_GAMES = [
   }),
   game("tiklive-cube-wars", "ShenPulse Cube Wars", {
     artwork: "catalog/shenpulse-cube-wars.png",
+    coverArtwork: "covers/tiklive-cube-wars.webp",
     price: 9.99,
     requiresPro: true,
     source: "ShenPulse · Cube Wars autonome",
@@ -208,6 +211,7 @@ const INTERNAL_GAMES = [
   }),
   game("tiklive-stack-tower", "ShenPulse Stack Tower", {
     artwork: "catalog/shenpulse-stack-tower.png",
+    coverArtwork: "covers/tiklive-stack-tower.webp",
     price: 9.99,
     requiresPro: true,
     source: "ShenPulse · Stack Tower autonome",
@@ -232,6 +236,7 @@ const INTERNAL_GAMES = [
   }),
   game("clash-of-live", "Clash Of ShenPulse", {
     artwork: "catalog/clash-of-shenpulse.jpg",
+    coverArtwork: "covers/clash-of-live.webp",
     price: 12.99,
     requiresPro: true,
     source: "ShenPulse · Clash Of ShenPulse autonome",
@@ -396,11 +401,14 @@ const INTERNAL_GAMES = [
     interactionCatalogVersion:
       RESIDENT_EVIL_3_INTERACTION_CATALOG_VERSION
   }),
+  require("./gtav-koth").GTAV_KOTH,
+  require("./gtav-hiking").GTAV_HIKING,
   game("gtav-montchiliad", "GTA V Mont Chiliad", {
     artwork: "catalog/gtav-montchiliad.png",
+    coverArtwork: "covers/gtav-montchiliad.png",
     included: true,
     requiresPro: true,
-    installerVersion: "1.0.4",
+    installerVersion: "1.0.14",
     connector: GTA_LOCAL_BRIDGE,
     effects: GTAV_MONT_CHILIAD_EFFECTS,
     defaultMappings: GTAV_MONT_CHILIAD_DEFAULT_MAPPINGS,
@@ -408,6 +416,7 @@ const INTERNAL_GAMES = [
       GTAV_MONT_CHILIAD_INTERACTION_CATALOG_VERSION
   }),
   game("minecraft-bedrock-box", "Minecraft Bedrock Box", {
+    coverArtwork: "covers/minecraft-bedrock-box.png",
     artwork: "catalog/minecraft-bedrock-box.jpg",
     included: true,
     requiresPro: true,
@@ -419,6 +428,7 @@ const INTERNAL_GAMES = [
       MINECRAFT_BEDROCK_INTERACTION_CATALOG_VERSION
   }),
   game("minecraft-sandbox-3", "Minecraft SandBox 3", {
+    coverArtwork: "covers/minecraft-sandbox-3.png",
     artwork: "catalog/minecraft-sandbox-3.jpg",
     included: true,
     requiresPro: true,
@@ -430,6 +440,7 @@ const INTERNAL_GAMES = [
       MINECRAFT_SANDBOX_INTERACTION_CATALOG_VERSION
   }),
   game("minecraft-survival-plugin", "Minecraft Survival", {
+    coverArtwork: "covers/minecraft-survival-plugin.png",
     artwork: "catalog/minecraft-survival-plugin.svg",
     included: true,
     requiresPro: true,
@@ -457,7 +468,7 @@ const INTERNAL_GAMES = [
     artwork: "catalog/stardew-valley.png",
     included: true,
     requiresPro: true,
-    installerVersion: "1.0.0",
+    installerVersion: "1.1.0",
     connector: STARDEW_VALLEY_BRIDGE,
     effects: STARDEW_VALLEY_EFFECTS,
     defaultMappings: STARDEW_VALLEY_DEFAULT_MAPPINGS,
@@ -468,7 +479,7 @@ const INTERNAL_GAMES = [
     artwork: "catalog/terraria.png",
     included: true,
     requiresPro: true,
-    installerVersion: "1.0.0",
+    installerVersion: "1.1.0",
     connector: TERRARIA_BRIDGE,
     effects: TERRARIA_EFFECTS,
     defaultMappings: TERRARIA_DEFAULT_MAPPINGS,

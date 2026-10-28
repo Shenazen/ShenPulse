@@ -1,0 +1,49 @@
+html,body{margin:0;overflow:hidden;background:transparent;font-family:Arial,sans-serif;color:white}#wins-hud{position:absolute;top:0;left:0;width:1080px;height:1920px;transform-origin:top left;pointer-events:none}.hud-counter{position:absolute;right:2%;top:calc(31.64% - 76px);max-width:62%;font-family:Impact,Arial,sans-serif;font-size:58px;font-weight:900;white-space:nowrap;text-shadow:3px 3px #071222,-2px 0 #14d6ed,0 -2px #14d6ed}.hud-multiplier{position:absolute;left:1%;top:calc(31.64% - 74px);display:flex;align-items:center;gap:9px;padding:12px 18px;border:2px solid #e12eb6;border-radius:15px;background:#1a092cdd;font-size:40px;font-weight:900;box-shadow:0 0 24px #f322b04d}.hud-multiplier small{font-size:14px;color:#c9bbdc}.hud-multiplier time{font-size:31px;color:#2ee9ff}.hud-gift-column{position:absolute;top:33%;height:29.8%;width:12.5%;display:flex;flex-direction:column;gap:7px}.hud-gift-column.positive{left:.6%;--tone:#32ff84}.hud-gift-column.negative{right:.6%;--tone:#ff547a}.hud-gift{position:relative;display:flex;flex:1;min-height:0;align-items:center;justify-content:center;flex-direction:column;border:2px solid color-mix(in srgb,var(--tone),transparent 30%);border-radius:15px;background:linear-gradient(#070b17b8,#070b1777);overflow:hidden;box-sizing:border-box}.hud-gift img{display:block;width:76%;height:65%;max-height:100px;object-fit:contain}.hud-gift strong{font-size:30px;line-height:1.1;color:var(--tone);text-shadow:0 2px 3px #000}.hud-gift.is-reacting{box-shadow:0 0 30px var(--tone);background:#36234de6}.hud-reset{position:absolute;top:32.1%;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:48%;padding:8px 18px;border:2px solid #dfc148;border-radius:14px;background:#1d140ce8;color:#ffe76d;font-size:25px;font-weight:900;box-sizing:border-box}.hud-reset img{width:48px;height:48px;object-fit:contain}.hud-invert{position:absolute;top:59%;left:50%;transform:translateX(-50%);font-size:21px;font-weight:800;color:#f9d96a;background:#1b1027dd;border-radius:12px;padding:7px 14px}.hud-viewer{position:absolute;top:39%;left:20%;right:20%;text-align:center;font-size:32px;font-weight:900;text-shadow:0 3px 7px #000;background:#1b103ed9;border:1px solid #c981e8;border-radius:18px;padding:12px}.hud-viewer[hidden]{display:none}
+
+.hud-invert{display:flex;align-items:center;gap:8px}.hud-invert img{width:38px;height:38px;object-fit:contain}
+
+:root{color-scheme:dark}
+
+@font-face{font-family:GameWinsDisplay;src:url(../fonts/game-pack-pixel.ttf) format("truetype");font-display:swap}.hud-counter{font-family:GameWinsDisplay,Impact,Arial,sans-serif;font-size:60px;-webkit-text-stroke:1px #0b358d;text-shadow:3px 3px #183399,0 0 7px #72ecff}.hud-special-bar{position:absolute;top:31.9%;left:14%;width:72%;display:flex;align-items:start;justify-content:center;gap:7px}.hud-special{display:flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;border:2px solid #f0d86c;border-radius:13px;background:#21171be8;color:#ffe678;padding:7px 9px;font-family:GameWinsDisplay,Impact,sans-serif;font-size:23px;line-height:1.08;min-height:62px;max-width:100%;text-align:center;text-shadow:0 2px #000}.hud-special img{width:45px;height:45px;object-fit:contain;flex-shrink:0}.hud-special-bar .hud-reset{position:static;transform:none;max-width:42%;box-shadow:0 0 12px #ffe67850}.hud-special-bar .hud-mute{border-color:#ff438c;color:#ff98bb;max-width:29%}.hud-special-bar .hud-unmute{border-color:#30d5f2;color:#83f3ff;max-width:29%}.hud-superfan{position:absolute;top:35.8%;left:18%;right:18%;padding:8px 6px;text-align:center;border:2px solid #edbd3c;border-radius:16px;background:#2a180deb;font:21px GameWinsDisplay,Impact,sans-serif;color:#ffe45d;box-shadow:0 0 14px #f6bf3e44}.hud-column-title{color:var(--tone);font:20px GameWinsDisplay,Impact,sans-serif;text-align:center;line-height:1.1}.hud-gift-column{top:32.4%;height:30.5%;padding:5px 0}.hud-gift-column .hud-invert{position:static;transform:none;font-size:17px;min-height:53px;padding:4px;flex-shrink:0}.hud-invert img{width:31px;height:31px}.hud-mute-timer{position:absolute;top:16%;left:15%;right:15%;padding:15px 8px;text-align:center;font-size:54px;font-weight:900;text-shadow:0 3px 6px #000;background:#130b2cdb;border:2px solid currentColor;border-radius:20px}.hud-mute-timer[hidden]{display:none}.hud-special.is-reacting{filter:brightness(1.6);box-shadow:0 0 28px #fff4}
+
+@font-face{font-family:GameWinsOrbitron;src:url(../fonts/game-wins-orbitron.ttf) format("truetype");font-weight:400 900;font-display:swap}
+
+.hud-counter{font-family:"Arial Black",Impact,Arial,sans-serif;font-weight:900;letter-spacing:-2px;-webkit-text-stroke:1.5px #154aaa;text-shadow:2px 2px #1234a1,-1px -1px #6bcfff}.hud-special,.hud-column-title,.hud-superfan{font-family:"Arial Black",Arial,sans-serif;font-weight:900}.hud-special{font-size:23px}.hud-superfan{font-size:21px}
+
+/* The same HUD renders in the phone, the dedicated source and the preview card. */
+.hud-illustrated{position:absolute;overflow:hidden;background:transparent}
+.hud-illustrated-counter{right:1%;top:calc(31.64% - 260px);width:360px;height:260px}
+.hud-illustrated-multiplier{left:1%;top:calc(31.64% - 156px);width:390px;height:156px}
+.hud-illustrated iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;opacity:0}
+.hud-illustrated[data-ready=true] iframe{opacity:1}
+.hud-loading{position:absolute;inset:0;display:grid;place-items:center;font:22px Arial,sans-serif;color:#d3c5e3}
+.hud-illustrated[data-ready=true] .hud-loading{display:none}
+.hud-illustrated[hidden]{display:none}
+:root:is([data-wins-mode=counter],[data-wins-mode=multiplier]) #wins-hud{top:50%;left:50%;translate:-50% -50%;transform-origin:center}
+:root:is([data-wins-mode=counter],[data-wins-mode=multiplier]) .hud-illustrated{inset:0;width:100%;height:100%}
+:root[data-wins-mode=counter] .hud-counter{top:50%;left:50%;right:auto;max-width:96%;transform:translate(-50%,-50%);font-size:120px;text-align:center}
+:root[data-wins-mode=multiplier] .hud-multiplier{top:50%;left:50%;transform:translate(-50%,-50%);padding:25px 38px;font-size:104px;gap:20px}
+:root[data-wins-mode=multiplier] .hud-multiplier time{font-size:82px}
+:root[data-wins-mode=multiplier] .hud-multiplier small{font-size:24px}
+
+/* The round clock stays between wins and multiplier above Minecraft gameplay. */
+.hud-round-timer{position:absolute;top:calc(31.64% - 98px);left:50%;transform:translateX(-50%);min-width:230px;max-width:30%;box-sizing:border-box;padding:8px 15px;border:2px solid #20d9f1;border-radius:14px;background:#081b2be0;text-align:center;box-shadow:0 0 20px #21d7ef35}
+.hud-round-timer small,.hud-round-timer time,.hud-round-timer em{display:block;white-space:nowrap}
+.hud-round-timer small{font-size:20px;font-weight:900;color:#b5f7ff}
+.hud-round-timer time{font-size:46px;line-height:1.1;font-weight:900;color:#2ee9ff;font-variant-numeric:tabular-nums}
+.hud-round-timer em{font-size:13px;font-style:normal;color:#adc5db}
+.hud-round-timer.is-timeout{border-color:#ff5074}
+.hud-round-timer.is-timeout time{color:#ff6688}
+.hud-round-timer[hidden]{display:none}
+.hud-illustrated-roundTimer{left:50%;top:calc(31.64% - 120px);width:300px;height:120px;transform:translateX(-50%)}
+/* Anchor by the lower edge: the idle hint must never grow over reset/mute cards. */
+:root[data-wins-mode=full] :is(.hud-round-timer,.hud-illustrated-roundTimer){top:auto;bottom:calc(100% - 31.64% + 24px)}
+:root[data-wins-mode=full] #wins-hud[data-round-timer=true] .hud-illustrated-counter{width:300px;height:217px;top:calc(31.64% - 217px)}
+:root[data-wins-mode=full] #wins-hud[data-round-timer=true] .hud-illustrated-multiplier{width:300px;height:120px;top:calc(31.64% - 120px)}
+:root[data-wins-mode=full] #wins-hud[data-round-timer=true] .hud-counter{max-width:32%}
+:root[data-wins-mode=round-timer] #wins-hud{top:50%;left:50%;translate:-50% -50%;transform-origin:center}
+:root[data-wins-mode=round-timer] .hud-illustrated-roundTimer{inset:0;transform:none;width:100%;height:100%}
+:root[data-wins-mode=round-timer] .hud-round-timer{top:50%;left:50%;transform:translate(-50%,-50%);min-width:560px;max-width:96%;padding:22px 35px}
+:root[data-wins-mode=round-timer] .hud-round-timer small{font-size:35px}
+:root[data-wins-mode=round-timer] .hud-round-timer time{font-size:100px}
+:root[data-wins-mode=round-timer] .hud-round-timer em{font-size:23px}

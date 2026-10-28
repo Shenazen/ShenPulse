@@ -4,6 +4,14 @@
 .home-hero-art { position:absolute; inset:0; z-index:-2; width:100%; height:100%; object-fit:cover; object-position:right 55%; }
 .home-hero::before { position:absolute; inset:0; z-index:-1; content:""; background:linear-gradient(90deg,rgba(5,7,22,.96),rgba(5,7,22,.7) 35%,rgba(5,7,22,.1) 65%,transparent); }
 .home-hero-copy { width:54%; max-width:650px; }
+.home-discord { position:absolute; top:24px; right:24px; display:flex; align-items:center; gap:12px; max-width:calc(100% - 48px); min-height:76px; padding:14px 17px; border:1px solid rgba(161,163,255,.6); border-radius:15px; background:linear-gradient(120deg,rgba(88,101,242,.94),rgba(68,42,124,.96)); box-shadow:0 6px 24px rgba(15,10,42,.35); color:#fff; text-align:left; cursor:pointer; transition:background-color .15s,border-color .15s; }
+.home-discord:hover { border-color:#d8d9ff; background-color:#5865f2; }
+.home-discord-icon { display:grid; place-items:center; flex:none; width:36px; height:36px; }
+.home-discord-icon svg { display:block; width:100%; height:100%; }
+.home-discord-copy { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.home-discord-copy strong { font-size:14px; font-weight:800; line-height:1.3; }
+.home-discord-copy > span { color:#e1defc; font-size:10px; line-height:1.5; }
+.home-discord-arrow { margin-left:2px; font-size:19px; }
 .home-wordmark { display:block; width:min(220px,85%); height:auto; margin:0 0 12px; }
 .home-eyebrow { display:block; font-size:9px; font-weight:700; letter-spacing:.16em; line-height:1.6; color:#bca1f0; }
 .home-hero-copy > .home-eyebrow { color:#6ae5f1; }
@@ -86,6 +94,7 @@
 }
 @media (max-width:1000px) {
   .home-hero { min-height:460px; padding:26px; }
+  .home-discord { position:static; align-self:flex-end; max-width:100%; margin-bottom:20px; }
   .home-hero-copy { width:64%; }
   .home-hero h2 { font-size:34px; }
   .home-hero::before { background:linear-gradient(90deg,rgba(5,7,22,.98),rgba(5,7,22,.83) 40%,rgba(5,7,22,.2)); }
@@ -116,5 +125,5 @@
   .home-section-heading h3 { font-size:20px; }
 }
 @media (prefers-reduced-motion:reduce) {
-  .home-feature { transition:none; }
+  .home-feature,.home-discord { transition:none; }
 }

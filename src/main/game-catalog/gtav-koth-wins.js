@@ -1,0 +1,4 @@
+"use strict";
+const gifts={overlay_win_x2:['Hand Hearts',100],overlay_win_add_1:['You’re Amazing',500],overlay_win_remove_1:['Money Gun',500],overlay_win_add_3:['Galaxy',1000],overlay_win_remove_3:['Girafa',1000],overlay_win_add_20:['Ellie the Elephant',5000],overlay_win_remove_20:['Leon the Kitten',4888],overlay_win_add_45:['Interstellar',10000],overlay_win_remove_50:['Hub Race Car',12000,'10572'],overlay_win_random_200:['Lion',29999]};
+function kothWinMappings(effects){return effects.filter(e=>e.winCounter).map(e=>({id:'koth-'+e.id,effectId:e.id,title:e.name,triggerType:'gift',threshold:1,giftName:gifts[e.id][0],giftCost:gifts[e.id][1],...(gifts[e.id][2]?{giftId:gifts[e.id][2]}:{}),enabled:true,triggerEnabled:true,...(e.winCounter.operation==='multiplier'?{duration:600}:{}),preserveExisting:true}));}
+module.exports={kothWinMappings};

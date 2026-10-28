@@ -111,7 +111,7 @@ test("cible uniquement RocketLeague.exe avec le connecteur clavier et souris", a
   assert.equal(rocketLeague.connector.type, "windows-input");
   assert.equal(rocketLeague.connector.processName, "RocketLeague.exe");
   assert.equal(rocketLeague.effects.length, 21);
-  assert.equal(hub.initializeDefaultInteractions("rocket-league").added, 21);
+  assert.equal(hub.initializeDefaultInteractions("rocket-league").added, 12);
 
   await hub.testConnection("rocket-league");
   await hub.trigger(

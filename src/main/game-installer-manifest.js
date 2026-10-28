@@ -4,6 +4,8 @@
 const { INTEGRATED_GAME_IDS } = require("./game-installers/constants");
 
 const GAME_INSTALLERS = Object.freeze({
+  palworld: require("./game-installers/palworld"),
+  ...require("./game-installers/shen-native-games"),
   ...require("./game-installers/shop-games"),
   "escape-from-duckov": require("./game-installers/escape-from-duckov"),
   "dead-by-daylight": require("./game-installers/dead-by-daylight"),
@@ -25,6 +27,8 @@ const GAME_INSTALLERS = Object.freeze({
   "euro-truck-simulator-2": require("./game-installers/euro-truck-simulator-2"),
   "resident-evil-3": require("./game-installers/resident-evil-3"),
   "gtav-montchiliad": require("./game-installers/gtav-montchiliad"),
+  "gtav-koth-enhanced": require("./game-installers/gtav-koth-enhanced"),
+  "gtav-hiking-enhanced": require("./game-installers/gtav-hiking-enhanced"),
   "cult-of-the-lamb": require("./game-installers/cult-of-the-lamb"),
   "stardew-valley": require("./game-installers/stardew-valley"),
   terraria: require("./game-installers/terraria"),

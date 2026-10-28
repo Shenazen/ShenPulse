@@ -11,6 +11,11 @@ const { PLATFORM_LABELS, supportsPlatformChoice, canonicalPath } = require("./in
 const { validateFourGamesTarget } = require("./four-games-installation");
 
 async function pickTarget(runtime, gameId, manifest) {
+    if (manifest.terrariaBundledLoader) {
+      // Select the owned base game even when tModLoader has never been installed.
+      const base = await pickTarget(runtime, gameId, { ...manifest, terrariaBundledLoader: false, executables: ["Terraria.exe"], title: "Terraria", targetLabel: "dossier contenant Terraria.exe" });
+      return base ? path.join(base, "tModLoader") : "";
+    }
     const previous =
       readState(runtime.store, ["game.installations"]).game.installations?.[gameId]?.path;
     let detected = "";
@@ -149,6 +154,10 @@ async function validateTarget(runtime, targetPath, manifest) {
     const stat = await fs.promises.stat(absolute).catch(() => null);
     if (stat && !stat.isDirectory()) {
       throw new Error("La destination sélectionnée n’est pas un dossier.");
+    }
+    if (manifest.terrariaBundledLoader) {
+      if (path.basename(absolute).toLowerCase() !== "tmodloader" || !(await fs.promises.stat(path.join(path.dirname(absolute), "Terraria.exe")).catch(() => null))?.isFile()) throw new Error("Choisissez le dossier du Terraria original : tModLoader sera installé séparément dans son sous-dossier.");
+      return;
     }
     if (manifest.executables?.length) {
       const found = await findLaunchTarget(absolute, manifest.executables, false);

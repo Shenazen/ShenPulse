@@ -26,6 +26,7 @@ const STARDEW_VALLEY_BRIDGE = Object.freeze({
   port: 58432,
   timeoutMs: 12000,
   durationMultiplier: 1000,
+  launchConnectionTimeoutMs: 90000,
   expectResponse: true
 });
 
@@ -35,6 +36,7 @@ const TERRARIA_BRIDGE = Object.freeze({
   port: 58433,
   timeoutMs: 12000,
   durationMultiplier: 1000,
+  launchConnectionTimeoutMs: 90000,
   expectResponse: true
 });
 

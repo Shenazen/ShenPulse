@@ -6,6 +6,14 @@ const { installTikTok } = require("./tiktok");
 const { installObsOffline, installObsOnline } = require("./obs");
 const { installStreamlabs } = require("./streamlabs");
 const { readState } = require("../state-projection");
+function studioGameExecutable(packId,installation,pack) {
+ if(packId.startsWith('minecraft-'))return 'javaw.exe';
+ const pathValue=installation?.executablePath||installation?.launchExecutable;
+ if(typeof pathValue==='string'&&pathValue.toLowerCase().endsWith('.exe'))return path.basename(pathValue);
+ const manifest=require('../game-installer-manifest').installerForGame(packId);
+ const candidate=manifest?.executables?.[0]||manifest?.executable||manifest?.launchExecutables?.find(value=>!value.includes('gamelaunchhelper'))||pack?.connector?.processName||'';
+ return candidate ? path.basename(candidate).replace(/(?:[.]exe)?$/i,'.exe') : '';
+}
 const wait = ms => new Promise(resolve=>setTimeout(resolve,ms));
 function launch(target,args=[]){return new Promise((resolve,reject)=>{const process=spawn(target.executable,args,{cwd:path.dirname(target.executable),windowsHide:false,detached:true,stdio:"ignore"});process.once("error",()=>reject(new Error("Impossible d’ouvrir "+target.name)));process.once("spawn",()=>{process.unref();resolve();});});}
 class StudioInstallationService {
@@ -15,18 +23,22 @@ class StudioInstallationService {
     catch{return {opening:"manual",openingMessage:"La scène est installée. Vous pouvez maintenant ouvrir "+target.name+" pour l’utiliser."};}
   }
   async status(){return Promise.all((await this.discover()).map(async target=>({id:target.id,name:target.name,installed:target.installed,running:target.installed?await this.running(target.process):false})));}
-  scope(options){const s=readState(this.store,["settings.account.uid","session.profileId"]);if(options.accountUid!==undefined&&options.accountUid!==(s.settings?.account?.uid||""))throw new Error("Le compte a changé. Rouvrez l’installation sur le studio.");if(options.profileId!==s.session.profileId)throw new Error("Le profil a changé. Rouvrez l’installation sur le studio.");this.requireGameAccess("supermarket-simulator");return JSON.stringify([s.settings?.account?.uid||"",s.session.profileId]);}
+  scope(options){const s=readState(this.store,["settings.account.uid","session.profileId"]);if(options.accountUid!==undefined&&options.accountUid!==(s.settings?.account?.uid||""))throw new Error("Le compte a changé. Rouvrez l’installation sur le studio.");if(options.profileId!==s.session.profileId)throw new Error("Le profil a changé. Rouvrez l’installation sur le studio.");this.requireGameAccess(options.packId||"supermarket-simulator");return JSON.stringify([s.settings?.account?.uid||"",s.session.profileId]);}
   async install(options={}){
     if(!["tiktok","obs","streamlabs"].includes(options.studioId))throw new Error("Studio inconnu.");
-    const scope=this.scope(options),key=options.studioId;if(this.busy.has(key))throw new Error("Une installation est déjà en cours pour ce studio.");
+    const packId=String(options.packId||"supermarket-simulator"),scope=this.scope(options),key=options.studioId;if(this.busy.has(key))throw new Error("Une installation est déjà en cours pour ce studio.");
     this.busy.add(key);
     try{
       const target=(await this.discover()).find(s=>s.id===key);if(!target?.installed)throw new Error("Ce logiciel n’est pas installé sur ce PC.");
-      const snapshot=this.core.snapshot(),state=snapshot.state,pack=snapshot.packs.find(s=>s.id==="supermarket-simulator"),profile=state.profiles.find(p=>p.id===options.profileId);
+      const snapshot=this.core.snapshot(),state=snapshot.state,pack=snapshot.packs.find(s=>s.id===packId),profile=state.profiles.find(p=>p.id===options.profileId);
       const base=snapshot.overlayUrls?.gamePack||snapshot.localOverlayUrls?.gamePack;if(!base)throw new Error("La source d’interactions n’est pas encore disponible.");
-      const url=new URL(base);url.searchParams.set("jeu","supermarket-simulator");url.searchParams.set("profile",options.profileId);url.searchParams.set("lang","fr");url.searchParams.delete("motion");url.searchParams.delete("model");
-      const identity=scope+":supermarket-simulator";
-      const plan={identity,packId:"supermarket-simulator",profileId:options.profileId,gameName:pack?.name||"Supermarket Simulator",sceneName:"Supermarket Simulator · ShenPulse · "+String(profile?.name||stableId(identity).slice(0,8)).slice(0,35),executable:"Supermarket Simulator.exe",overlayUrl:url.href,assertScope:()=>{if(this.scope(options)!==scope)throw new Error("Le compte ou le profil a changé. Installation annulée.");}};
+      const url=new URL(base);url.searchParams.set("jeu",packId);url.searchParams.set("profile",options.profileId);url.searchParams.set("lang","fr");url.searchParams.delete("motion");url.searchParams.delete("model");
+      const identity=scope+":"+packId;
+      const plan={identity,packId,profileId:options.profileId,gameName:pack?.name||"Supermarket Simulator",sceneName:(pack?.name||packId)+" · ShenPulse · "+String(profile?.name||stableId(identity).slice(0,8)).slice(0,35),executable:studioGameExecutable(packId,state.game?.installations?.[packId],pack),windowClass:packId==='supermarket-simulator'||packId==='tcg-card-shop-simulator'||packId==='shift-at-midnight'||pack?.connector?.type==='shen-native'?'UnityWndClass':'',overlayUrl:url.href,assertScope:()=>{if(this.scope(options)!==scope)throw new Error("Le compte ou le profil a changé. Installation annulée.");}};
+      if(pack?.effects?.some(effect=>effect.winCounter)){
+        const winsUrl=new URL(url);winsUrl.pathname=winsUrl.pathname.replace(/game-pack[.]html$/, 'game-wins.html');winsUrl.searchParams.delete("preview");plan.winsOverlayUrl=winsUrl.href;
+      }
+      if(options.overlayOnly===true){if(!plan.winsOverlayUrl)throw Error("Ce jeu ne possède pas d’overlay de wins.");plan.overlayOnly=true;}
       let opened=await this.running(target.process);plan.assertScope();
       if(key==="tiktok"&&opened)return {status:"needs-close",studioId:key,studioName:target.name,message:"Fermez TikTok LIVE Studio, puis cliquez sur Réessayer. ShenPulse ajoutera la scène et rouvrira le studio. Aucun LIVE ne sera arrêté automatiquement."};
       if(key==="obs"&&opened&&!readJson(path.join(target.configRoot,"plugin_config","obs-websocket","config.json"),{}).server_enabled)return {status:"needs-close",studioId:key,studioName:target.name,message:"Fermez OBS, puis cliquez sur Réessayer. La scène sera installée dans sa propre collection, puis OBS sera rouvert. Vos collections existantes sont conservées."};

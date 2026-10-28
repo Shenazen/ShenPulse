@@ -100,3 +100,5 @@ test("l’IPC ne démarre aucune session si la connexion du pont échoue", async
   await rejected;
   assert.deepEqual(f.order, ["listen", "launch", "wait"]);
 });
+
+test('KOTH respects its declared ten-minute first loading window without launching twice',async()=>{const f=fixture([{connected:false}],600_000);f.pack.connector.type='tcp-server';let elapsed=0;f.hub.prepareConnection=async()=>({connected:elapsed>=180_000});const result=await waitForGameConnection(f.hub,'gtav-koth-enhanced',{now:()=>elapsed,sleep:async ms=>{elapsed+=ms},intervalMs:30_000});assert.equal(result.connected,true);assert.equal(elapsed,180_000);});

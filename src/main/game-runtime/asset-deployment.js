@@ -1,6 +1,7 @@
 "use strict";
 
 /** Préparation des assets dans une zone temporaire, sans modifier directement le jeu. Dépendances injectées via runtime. */
+const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { installDotNetDesktopRuntime } = require("../dotnet-desktop-runtime");
@@ -14,6 +15,7 @@ async function installAsset(runtime, {
     asset,
     downloadPath,
     targetPath,
+    sourceGamePath,
     backupRoot,
     tempRoot,
     assertAccess = () => {}
@@ -57,12 +59,17 @@ async function installAsset(runtime, {
       return { preparedSaveDirectory: stagingDirectory };
     }
     if (asset.action === "smapi") {
-      const installData = await findNamedFile(stage, "install.dat");
+      const windowsRoot = await findNamedFile(stage, "install on Windows.bat");
+      const installData = windowsRoot ? path.join(path.dirname(windowsRoot), "internal", "windows", "install.dat") : "";
+      if (installData && !(await fs.promises.stat(installData).catch(() => null))?.isFile()) throw new Error("Le payload Windows SMAPI est absent.");
       if (!installData) {
         throw new Error("Le payload Windows de SMAPI est introuvable.");
       }
       const payloadStage = `${stage}-payload`;
       await extractArchiveSafe(installData, payloadStage);
+      const sourceDeps = path.join(sourceGamePath || targetPath, "Stardew Valley.deps.json");
+      const deps = await fs.promises.readFile(sourceDeps, "utf8");
+      await fs.promises.writeFile(path.join(payloadStage, "StardewModdingAPI.deps.json"), deps);
       await copyTreeWithBackup(
         payloadStage,
         targetPath,

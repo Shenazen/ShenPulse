@@ -6,7 +6,8 @@ const { collectFiles, commitInstallationDeployment } = require('./deployments');
 const { readState } = require('../state-projection');
 const { assertModGameClosed } = require('./mod-installation-ready');
 const GAME = 'supermarket-simulator';
-const ownFile = file => /^BepInEx\/plugins\/ShenPulse\//i.test(file) || file === 'BepInEx/config/ShenPulse.supermarket-simulator.json' || ['shenpulse-module.json','SHENPULSE-MODULE.txt','THIRD-PARTY-NOTICES.txt'].includes(file);
+const SHOP_GAMES = new Set([GAME, 'tcg-card-shop-simulator', 'shift-at-midnight']);
+const ownFile = file => /^BepInEx\/plugins\/ShenPulse\//i.test(file) || /^BepInEx\/config\/ShenPulse[.](?:supermarket-simulator|tcg-card-shop-simulator|shift-at-midnight)[.]json$/i.test(file) || ['shenpulse-module.json','SHENPULSE-MODULE.txt','THIRD-PARTY-NOTICES.txt'].includes(file);
 const allowed = file => /^(?:BepInEx\/[^:]+|dotnet\/[^:]+|ShenPulse-Licenses\/[^:]+|winhttp\.dll|doorstop_config\.ini|\.doorstop_version|changelog\.txt|shenpulse-module\.json|SHENPULSE-MODULE\.txt|THIRD-PARTY-NOTICES\.txt)$/i.test(file);
 const key = file => process.platform === 'win32' ? path.resolve(file).toLowerCase() : path.resolve(file);
 function relativeFile(value) {
@@ -36,7 +37,7 @@ async function readReceipt(receiptPath, gameId, targetPath, backupsRoot) {
   return receipt;
 }
 async function prepareShopUninstallReceipt({ gameId, targetPath, deploymentRoot, backupRoot, userData, previousInstallation, assertAccess = () => {} }) {
-  if (gameId !== GAME) return '';
+  if (!SHOP_GAMES.has(gameId)) return '';
   const backupsRoot = path.join(userData, 'game-backups', gameId), files = await collectFiles(deploymentRoot);
   let previous = null;
   if (previousInstallation?.uninstallReceiptPath && key(previousInstallation.path) === key(targetPath)) previous = await readReceipt(previousInstallation.uninstallReceiptPath, gameId, targetPath, backupsRoot);
@@ -64,16 +65,16 @@ async function prepareShopUninstallReceipt({ gameId, targetPath, deploymentRoot,
   await fs.writeFile(receiptPath,JSON.stringify({schemaVersion:1,gameId,targetPath:path.resolve(targetPath),legacy:legacy || previous?.legacy === true,files:entries},null,2),{flag:'wx'});
   return receiptPath;
 }
-async function legacyReceipt(targetPath) {
+async function legacyReceipt(targetPath, gameId) {
   const manifest = await fs.readFile(path.join(targetPath,'shenpulse-module.json'),'utf8').then(JSON.parse).catch(()=>null);
-  const paths = new Set(['BepInEx/plugins/ShenPulse/ShenPulse.ShopAdapter.dll','BepInEx/plugins/ShenPulse/Newtonsoft.Json.dll','BepInEx/plugins/ShenPulse/ShenPulse.Supermarket.Module.dll','BepInEx/config/ShenPulse.supermarket-simulator.json','shenpulse-module.json','SHENPULSE-MODULE.txt','THIRD-PARTY-NOTICES.txt']);
-  if(manifest?.gameId===GAME)for(const entry of manifest.files || [])if(ownFile(relativeFile(entry.file)))paths.add(entry.file);
+  const paths = new Set(['BepInEx/plugins/ShenPulse/ShenPulse.ShopAdapter.dll','BepInEx/plugins/ShenPulse/Newtonsoft.Json.dll','BepInEx/plugins/ShenPulse/ShenPulse.Supermarket.Module.dll','BepInEx/plugins/ShenPulse/ShenPulse.TCG.Module.dll','BepInEx/plugins/ShenPulse/ShenPulse.Shift.Module.dll','BepInEx/config/ShenPulse.'+gameId+'.json','shenpulse-module.json','SHENPULSE-MODULE.txt','THIRD-PARTY-NOTICES.txt']);
+  if(manifest?.gameId===gameId)for(const entry of manifest.files || [])if(ownFile(relativeFile(entry.file)))paths.add(entry.file);
   const files=[];
   for(const file of paths){const actual=await plainPath(targetPath,file),stat=await fs.lstat(actual).catch(error=>{if(error.code==='ENOENT')return null;throw error;});if(!stat)continue;if(!stat.isFile())throw Error('Un dossier bloque le retrait du module.');files.push({file,installedHash:await sha256File(actual),original:null,retain:false});}
-  return {schemaVersion:1,gameId:GAME,targetPath,legacy:true,files};
+  return {schemaVersion:1,gameId,targetPath,legacy:true,files};
 }
 async function uninstallShopGame(runtime,gameId,{assertAccess = () => runtime.assertAccess(gameId),assertClosed = assertModGameClosed,deploy = commitInstallationDeployment}={}) {
-  if(gameId!==GAME)throw Error('La désinstallation automatique de ce jeu n’est pas encore disponible.');
+  if(!SHOP_GAMES.has(gameId))throw Error('La désinstallation automatique de ce jeu n’est pas encore disponible.');
   assertAccess();
   if(runtime.activeInstalls.has(gameId) || runtime.launchJobs?.has(gameId))throw Error('Une opération est déjà en cours pour ce jeu.');
   const state=readState(runtime.store,['game.installations','session.game']);
@@ -88,7 +89,7 @@ async function uninstallShopGame(runtime,gameId,{assertAccess = () => runtime.as
     await runtime.validateTarget(targetPath,require('../game-installer-manifest').installerForGame(gameId));
     await assertClosed(gameId,targetPath);assertAccess();
     const backupsRoot=path.join(userData,'game-backups',gameId);
-    const receipt=installation.uninstallReceiptPath?await readReceipt(installation.uninstallReceiptPath,gameId,targetPath,backupsRoot):await legacyReceipt(targetPath);
+    const receipt=installation.uninstallReceiptPath?await readReceipt(installation.uninstallReceiptPath,gameId,targetPath,backupsRoot):await legacyReceipt(targetPath,gameId);
     const pluginRoot=path.join(targetPath,'BepInEx/plugins');
     const pluginFiles=await collectFiles(pluginRoot).catch(error=>{if(error.code==='ENOENT')return [];throw error;});
     const otherMods=pluginFiles.some(file=>!ownFile(relativeFile(path.relative(targetPath,file))));

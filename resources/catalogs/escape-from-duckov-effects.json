@@ -175,20 +175,7 @@
     "image": "../../resources/game-interactions/escape-from-duckov/enemy.svg",
     "available": true,
     "service": "native",
-    "sortOrder": 8,
-    "duration": 2,
-    "durationParameter": "durationSeconds",
-    "parameters": [
-      {
-        "id": "durationSeconds",
-        "label": "Durée (secondes)",
-        "type": "number",
-        "defaultValue": 2,
-        "min": 1,
-        "max": 300,
-        "step": 1
-      }
-    ]
+    "sortOrder": 8
   },
   {
     "id": "escape-from-duckov-fillgun",
@@ -257,20 +244,7 @@
     "image": "../../resources/game-interactions/escape-from-duckov/enemy.svg",
     "available": true,
     "service": "native",
-    "sortOrder": 12,
-    "duration": 2,
-    "durationParameter": "durationSeconds",
-    "parameters": [
-      {
-        "id": "durationSeconds",
-        "label": "Durée (secondes)",
-        "type": "number",
-        "defaultValue": 2,
-        "min": 1,
-        "max": 300,
-        "step": 1
-      }
-    ]
+    "sortOrder": 12
   },
   {
     "id": "escape-from-duckov-giveitem-613",
@@ -1086,20 +1060,7 @@
     "image": "../../resources/game-interactions/escape-from-duckov/enemy.svg",
     "available": true,
     "service": "native",
-    "sortOrder": 61,
-    "duration": 2,
-    "durationParameter": "durationSeconds",
-    "parameters": [
-      {
-        "id": "durationSeconds",
-        "label": "Durée (secondes)",
-        "type": "number",
-        "defaultValue": 2,
-        "min": 1,
-        "max": 300,
-        "step": 1
-      }
-    ]
+    "sortOrder": 61
   },
   {
     "id": "escape-from-duckov-giveitem-67",
@@ -1265,20 +1226,7 @@
     "image": "../../resources/game-interactions/escape-from-duckov/enemy.svg",
     "available": true,
     "service": "native",
-    "sortOrder": 71,
-    "duration": 2,
-    "durationParameter": "durationSeconds",
-    "parameters": [
-      {
-        "id": "durationSeconds",
-        "label": "Durée (secondes)",
-        "type": "number",
-        "defaultValue": 2,
-        "min": 1,
-        "max": 300,
-        "step": 1
-      }
-    ]
+    "sortOrder": 71
   },
   {
     "id": "escape-from-duckov-giveitem-640",
@@ -1306,20 +1254,7 @@
     "image": "../../resources/game-interactions/escape-from-duckov/enemy.svg",
     "available": true,
     "service": "native",
-    "sortOrder": 73,
-    "duration": 2,
-    "durationParameter": "durationSeconds",
-    "parameters": [
-      {
-        "id": "durationSeconds",
-        "label": "Durée (secondes)",
-        "type": "number",
-        "defaultValue": 2,
-        "min": 1,
-        "max": 300,
-        "step": 1
-      }
-    ]
+    "sortOrder": 73
   },
   {
     "id": "escape-from-duckov-giveitem-1154",
@@ -1361,20 +1296,7 @@
     "image": "../../resources/game-interactions/escape-from-duckov/enemy.svg",
     "available": true,
     "service": "native",
-    "sortOrder": 76,
-    "duration": 2,
-    "durationParameter": "durationSeconds",
-    "parameters": [
-      {
-        "id": "durationSeconds",
-        "label": "Durée (secondes)",
-        "type": "number",
-        "defaultValue": 2,
-        "min": 1,
-        "max": 300,
-        "step": 1
-      }
-    ]
+    "sortOrder": 76
   },
   {
     "id": "escape-from-duckov-kill",

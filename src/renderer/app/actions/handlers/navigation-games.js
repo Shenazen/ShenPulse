@@ -16,6 +16,7 @@ const NAVIGATION_GAME_ACTIONS = new Set([
   "set-game-category",
   "open-game",
   "open-minecraft-mode",
+  "open-game-mode",
   "close-game",
   "thiercelieux-buy-extension",
   "thiercelieux-live-command",
@@ -99,9 +100,9 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     if (showProNavigationOffers("games")) return;
     if (!canNavigateTo("games")) return toast("Jeu indisponible", "Cette page est masquée par la configuration ShenPulse.", true);
     const pack =
-      id === MINECRAFT_LAUNCHER_ID
+      [MINECRAFT_LAUNCHER_ID,GTA_LAUNCHER_ID].includes(id)
         ? visibleGamePacks().find(
-            (item) => item.id === MINECRAFT_LAUNCHER_ID
+            (item) => item.id === id
           )
         : snapshot.packs.find((item) => item.id === id);
     if (!pack) throw new Error("Jeu introuvable.");
@@ -125,15 +126,15 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     await enterGameWorkspace(pack);
     return;
   }
-  if (action === "open-minecraft-mode") {
+  if (action === "open-minecraft-mode" || action === "open-game-mode") {
     if (showProNavigationOffers("games")) return;
     if (!canNavigateTo("games")) return toast("Jeu indisponible", "Cette page est masquée par la configuration ShenPulse.", true);
     const pack = snapshot.packs.find(
-      (item) => item.id === id && MINECRAFT_MODE_IDS.includes(item.id)
+      (item) => item.id === id && [...MINECRAFT_MODE_IDS,...GTA_MODE_IDS].includes(item.id)
     );
     if (!pack || !canAccessGame(pack)) {
       return toast(
-        "Mode Minecraft indisponible",
+        "Mode indisponible",
         "Ce mode est masqué par la configuration ShenPulse.",
         true
       );
@@ -523,7 +524,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
       render();
       return;
     }
-    if (pack.id === "supermarket-simulator") return revealSupermarketSection(nextStep);
+    if (pack.id === "supermarket-simulator" || typeof usesSharedGameWorkspace === "function" && usesSharedGameWorkspace(pack)) return revealSupermarketSection(nextStep);
     if (!gameJourneyFor(pack).some((step) => step.id === nextStep)) {
       return;
     }
@@ -589,7 +590,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     const form = target.closest("[data-minecraft-round-settings]");
     if (!form) return;
     const durationMinutes = Number(
-      form.querySelector('[name="durationMinutes"]')?.value || 10
+      form.querySelector('[name="durationMinutes"]')?.value || ShenPulseMinecraftRoundSettings.DEFAULT_MINECRAFT_ROUND_MINUTES
     );
     const autoRestart = Boolean(
       form.querySelector('[name="autoRestart"]')?.checked

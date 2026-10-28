@@ -72,7 +72,7 @@ test("les tests s'animent directement dans les cartes et la roue garde ses régl
 test("les actions rapides pilotent aussi les sources OBS déjà ouvertes", () => {
   assert.match(actionRunner, /case "overlay\.like-goal"/);
   assert.match(actionRunner, /case "overlay\.coin-jar"/);
-  assert.match(actionRunner, /"set", "reset", "multiplier"/);
+  assert.match(actionRunner, /"set", "reset", "invert", "multiplier"/);
   assert.match(ipc, /"overlay\.like-goal"/);
   assert.match(ipc, /"overlay\.coin-jar"/);
   assert.match(overlayRuntime, /"like-goal": updateLikeGoal/);

@@ -4,13 +4,14 @@
 const { GTA_ASSET_BASE, GTA_ENHANCED_PLUGIN_BASE } = require("./constants");
 
 module.exports = {
-    version: "1.0.4",
+    version: "1.0.14",
     title: "GTA V Mont Chiliad",
     targetLabel: "dossier GTA V",
     autoDetect: true,
     unattended: true,
     executables: ["GTA5_Enhanced.exe", "GTA5.exe", "PlayGTAV.exe"],
     launchExecutables: ["PlayGTAV.exe", "GTA5_Enhanced.exe", "GTA5.exe"],
+    singleInstanceProcesses: ["GTA5_Enhanced.exe","GTA5.exe"],
     warning:
       "GTA V doit être fermé. Les fichiers remplacés seront copiés dans une sauvegarde ShenPulse avant installation.",
     assets: [
@@ -67,9 +68,9 @@ module.exports = {
         fileName: "ShenPulseMontChiliadEnhanced.asi",
         action: "copy",
         editions: ["enhanced"],
-        size: 396800,
+        size: 698368,
         sha256:
-          "e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1",
+          "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
         url: `${GTA_ENHANCED_PLUGIN_BASE}/shenpulse-mont-chiliad-enhanced.asi`
       },
       {

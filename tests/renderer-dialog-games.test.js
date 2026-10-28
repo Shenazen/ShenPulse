@@ -18,7 +18,7 @@ test("Minecraft utilise une seule jaquette puis propose ses trois modes", () => 
     /MINECRAFT_MODE_IDS = Object\.freeze\(\[[\s\S]*"minecraft-bedrock-box"[\s\S]*"minecraft-sandbox-3"[\s\S]*"minecraft-survival-plugin"/
   );
   assert.match(app, /function openMinecraftModeSelector\(launcher\)/);
-  assert.match(app, /data-action="open-minecraft-mode"/);
+  assert.match(app, /data-action="open-game-mode"/);
   assert.match(app, /SURVIE INTERACTIVE/);
   const dialogActionHandler = app.slice(
     app.indexOf(
@@ -305,8 +305,8 @@ test("un ancien pack GTA propose explicitement la mise à jour du retournement",
   const app = readRendererSource();
   assert.match(app, /pack\.installerVersion/);
   assert.match(app, /installation\.installerVersion/);
-  assert.match(app, /tonneau complet corrigé/);
-  assert.match(app, /Retourner le véhicule/);
+  assert.match(app, /choix distinct du mode KOTH/);
+  assert.match(app, /effets Mont Chiliad/);
   assert.match(app, /Mettre à jour le pack/);
 });
 

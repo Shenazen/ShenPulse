@@ -49,3 +49,6 @@
   color: var(--wins-goal-color, #fff);
   font-size: calc(9px * var(--wins-goal-scale, 1));
 }
+
+/* A bounded waiting image stays centered in the full native preview canvas. */
+.overlay-runtime-placeholder > .overlay-placeholder-wins { margin: auto; }

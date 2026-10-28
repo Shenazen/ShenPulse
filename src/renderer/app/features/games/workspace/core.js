@@ -39,7 +39,7 @@
             idPrefix: options.idPrefix || 'game-' + String(pack.id).replace(/[^a-z0-9_-]/gi, '-'),
             actions: { ...defaultActions, ...options.actions }, bindings: { ...defaultBindings, ...options.bindings },
             columns: options.columns || columns, rows: options.rows || [],
-            features: { hero: true, preview: true, guide: true, interactions: true, freeEvents: true, catalog: true, wins: false, overlays: false, studio: true, conditions: true, ...options.features },
+            features: { hero: true, preview: true, guide: true, interactions: true, freeEvents: true, catalog: true, round: false, wins: false, overlays: false, studio: true, conditions: true, ...options.features },
             ui: { addMenu: '', pendingExtraRuleId: '', ...options.ui, catalog: { search: '', category: 'all', open: false, ...options.ui?.catalog } },
             text: { back: 'Tous les jeux', interactionsEyebrow: 'VOTRE PACK PERSONNALISÉ', interactionsTitle: 'Ce que font vos viewers', interactionsDescription: 'Modifiez vos cartes : les réglages restent propres au profil actif.', catalogEyebrow: 'POUR ALLER PLUS LOIN', catalogTitle: 'Tous les effets du jeu', freeTitle: 'Follow et likes', freeDescription: 'Gratuits pour vos viewers : activez-les pour qu’un follow ou une série de likes déclenche une action.', emptyColumn: 'Ajoutez une interaction ou déplacez une carte dans cette colonne.', emptyNeutral: 'Les actions qui aident autant qu’elles piègent. En jaune sur votre overlay.', ...options.text },
             fragments: options.fragments || {}, freeTypes: options.freeTypes || ['follow', 'like'], freeDefaults: options.freeDefaults || {},
@@ -50,7 +50,7 @@
                 throw new Error('Attribut de composant invalide.');
         // Index et caches limités à ce rendu : aucune donnée de profil ne persiste ici.
         ctx.effectsById = new Map(pack.effects.map(effect => [effect.id, effect]));
-        ctx.availableEffects = pack.effects.filter(effect => effect.available !== false);
+        ctx.availableEffects = pack.effects.filter(effect => effect.available !== false && (!options.effectFilter || options.effectFilter(effect)));
         ctx.effectOptions = new Map();
         ctx.titleForRule = options.titleForRule || ((rule, effect) => rule.gameInteraction?.title || effect.name);
         ctx.defaultColumn = options.defaultColumn || (ctx.columns.some(column => column.id === 'neutral') ? 'neutral' : ctx.columns[0]?.id || 'neutral');
@@ -63,13 +63,14 @@
     };
     C.collectRows = function (pack, mapped) {
         const seen = new Set(), effects = new Map(pack.effects.map(effect => [effect.id, effect]));
-        return mapped.flatMap(row => {
+        const rows = mapped.flatMap(row => {
             const effect = effects.get(row.action.config?.effectId);
-            if (!effect || row.action.type !== 'game.effect' || seen.has(row.rule.id))
+            if (!effect || row.action.config?.packId && row.action.config.packId !== pack.id || !['game.effect', 'overlay.win-counter', 'audio.play'].includes(row.action.type) || seen.has(row.rule.id))
                 return [];
             seen.add(row.rule.id);
             return [{ ...row, effect }];
         });
+        return globalThis.ShenPulseGameInteractionOrder?.rows(rows) || rows;
     };
     C.classifyRow = function (row, { columns, storedKey = 'column', helpCodes = new Set(), neutralCodes = new Set() }) {
         const stored = row.rule.gameInteraction?.[storedKey];

@@ -11,8 +11,8 @@ const { downloadAsset } = require("../src/main/game-runtime/asset-download");
 const publication = require("../scripts/manifests/game-packs.json");
 
 test("les packs migrés gardent exactement leurs versions et empreintes sur Backblaze", () => {
-  assert.equal(publication.assets.length, 18);
-  const keys = new Set();
+  assert.equal(publication.assets.length, 31);
+  const keys = new Map();
   for (const entry of publication.assets) {
     const installer = GAME_INSTALLERS[entry.gameId];
     const asset = installer.assets.find(asset => asset.id === entry.id);
@@ -23,7 +23,8 @@ test("les packs migrés gardent exactement leurs versions et empreintes sur Back
     assert.equal(asset.url, `https://f003.backblazeb2.com/file/shenpulse-media/${entry.key}`);
     assert.equal(asset.size, entry.size);
     assert.equal(asset.sha256, entry.sha256);
-    assert.ok(!keys.has(entry.key)); keys.add(entry.key);
+    if (keys.has(entry.key)) assert.deepEqual(keys.get(entry.key), { size: entry.size, sha256: entry.sha256 }, "un fichier partagé doit garder exactement les mêmes octets");
+    keys.set(entry.key, { size: entry.size, sha256: entry.sha256 });
   }
   for (const installer of Object.values(GAME_INSTALLERS)) for (const asset of installer.assets || []) {
     assert.equal(asset.bundledPath, undefined);

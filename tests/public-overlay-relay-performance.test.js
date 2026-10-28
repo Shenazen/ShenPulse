@@ -489,3 +489,32 @@ test("relay: slow network coalesces pending flushes instead of building a timer/
   assert.equal(h.writes().at(-1).body.lastBatch.messages.length, 101);
   assert.equal(h.relay.eventQueue.length, 0);
 });
+
+
+test("relay: Minecraft round clocks publish scoped timestamps without session internals", async (t) => {
+  const h = harness();
+  t.after(() => h.relay.stop());
+  h.state.commerce.subscription = { tier: "pro", status: "active", source: "paid" };
+  const ids = ["minecraft-bedrock-box", "minecraft-sandbox-3"];
+  h.state.game.roundSettingsByPack = Object.fromEntries(ids.map(id => [id, { durationMinutes: 17, autoRestart: true }]));
+  h.state.game.interactionRulesByPack = Object.fromEntries(ids.map(id => [id, []]));
+  h.state.session.game = {
+    running: true, packId: ids[0], profileId: h.state.session.profileId,
+    roundStatus: "running", roundEndsAt: new Date(Date.now() + 600000).toISOString(),
+    serverPath: "private-server-path", token: "private-session-token"
+  };
+  await h.relay.start();
+  const published = h.writes().find(request => request.body.state?.gamePacks).body.state;
+  const clock = published.gamePacks.packs[ids[0]].wins.roundTimer;
+  assert.equal(clock.status, "running");
+  assert.equal(clock.endsAt, Date.parse(h.state.session.game.roundEndsAt));
+  assert.equal(clock.durationSeconds, 17 * 60);
+  assert.equal(published.gamePacks.packs[ids[1]].wins.roundTimer.status, "stopped");
+  assert.doesNotMatch(JSON.stringify(published), /private-server-path|private-session-token/);
+  h.requests.length = 0;
+  h.state.session.game.roundEndsAt = null;
+  h.state.session.game.roundStatus = "timeout";
+  h.relay.publishState();
+  await pause();
+  assert.equal(h.writes().at(-1).body.state.gamePacks.packs[ids[0]].wins.roundTimer.status, "timeout");
+});

@@ -119,7 +119,7 @@ const HISTORICAL_CHANNELS = [
 ];
 
 const NEW_CHANNELS = [
-  "game:uninstall", "game:interactions:reset",
+  "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level",
   // Existing game-page overlay presentation and studio installation contracts.
   "overlay:game-pack-presentation", "studio:install", "studio:status",
   "controllers:connect-local",

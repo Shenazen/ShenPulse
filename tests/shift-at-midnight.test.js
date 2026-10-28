@@ -23,7 +23,7 @@ test("le catalogue Shift sépare facteurs, quantités et durées avec une restau
  }
  assert.equal(game.effects.find(effect => effect.code === "stuck_player").duration, 6);
  assert.ok(game.effects.some(effect => effect.code === "reset_effects"));
- assert.ok(game.defaultMappings.every(mapping => mapping.triggerEnabled === false));
+ assert.ok(game.defaultMappings.every(mapping => mapping.triggerEnabled === true));
  const source = await fs.readFile(path.join(root, "native/shop-games/ShiftRuntime.cs"), "utf8");
  const accepted = source.match(/new HashSet<string>\(\("([a-z_ ]+)"\)/)[1].split(" ");
  assert.deepEqual(accepted.sort(), game.effects.map(effect => effect.code).sort());

@@ -419,6 +419,7 @@ const STUDIO_ENGLISH = Object.freeze({
   "Modules communautaires inclus dans Pro": "Community modules included with Pro",
   "Inclut automatiquement Pro et ajoute les avantages Premium.": "Automatically includes Pro and adds Premium benefits.",
   "Avantages Premium": "Premium benefits", "1 accès Pro offert à un utilisateur": "1 gifted Pro access for another user",
+  "Rejoindre le Discord": "Join Discord", "Échangez avec la communauté": "Connect with the community",
   "Accueil": "Home", "BIENVENUE CHEZ SHENPULSE": "WELCOME TO SHENPULSE",
   "VOTRE LIVE, VOTRE UNIVERS": "YOUR LIVE, YOUR WORLD", "Un live.": "One live.",
   "Toute une communauté aux commandes.": "An entire community in control.",
