@@ -12,6 +12,7 @@ const { sanitizeEntity, sanitizeGameConfiguration, sanitizeDealOrNoDealHostState
 const { registerIntegrationsIpc } = require("./ipc/integrations");
 const { registerAccountIpc } = require("./ipc/account");
 const { registerAdminIpc } = require("./ipc/admin");
+const { registerAgencyIpc } = require("./ipc/agencies");
 const { registerMediaIpc } = require("./ipc/media");
 const { registerSessionIpc } = require("./ipc/session");
 const { registerSettingsIpc } = require("./ipc/settings");
@@ -53,6 +54,7 @@ function registerIpc({
     "account:register",
     "account:status",
     "admin:status",
+    "agencies:list",
     "admin:visibility-public",
     "catalog:gifts",
     "catalog:media",
@@ -69,7 +71,7 @@ function registerIpc({
   const handle = (channel, listener) => {
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, (...args) => {
-      if (["sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level"].includes(channel) || ["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:"].some((prefix) => channel.startsWith(prefix))) {
+      if (["sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level"].includes(channel) || ["kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:", "agencies:", "admin:agencies"].some((prefix) => channel.startsWith(prefix))) {
         assertIntegrationIpcSender(channel, args[0], getWindow());
       }
       if (["entity:upsert", "entity:remove"].includes(channel) && args[1] === "commands") {
@@ -169,6 +171,7 @@ function registerIpc({
   registerIntegrationsIpc({ handle, core, store, integrationChange });
   registerAccountIpc({ handle, core, store, accountService, adminService, storeUpdateService, getWindow, switchAccountWorkspace, refreshAccountWorkspace });
   registerAdminIpc({ handle, core, store, adminService });
+  registerAgencyIpc({ handle, accountService });
   registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dialog, net });
   registerSessionIpc({ handle, core, store });
   registerSettingsIpc({ handle, core, store, localServerSettingsSignature });

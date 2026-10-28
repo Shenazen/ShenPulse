@@ -65,6 +65,7 @@ function renderCreatorHome() {
       <div class="home-live-slot" data-home-live-slot>${live}</div>
       <span class="home-hero-signature">CRÉEZ · INTERAGISSEZ · DIFFUSEZ</span>
     </section>
+    ${typeof renderAgencyHomeSpotlight === "function" && canNavigateTo("agencies") ? renderAgencyHomeSpotlight() : ""}
     ${features ? `<section class="home-features" aria-label="Les outils ShenPulse">${features}</section>` : ""}
     ${steps ? `<section class="home-start" aria-labelledby="home-steps-heading"><img class="home-start-art" src="assets/studio/home-steps.webp" alt="" loading="lazy" decoding="async" width="1800" height="600"><header class="home-section-heading"><div><span class="home-eyebrow">BIEN DÉMARRER</span><h3 id="home-steps-heading">Comment ça marche ?</h3><p>Votre prochain grand live, en trois étapes.</p></div></header><div class="home-start-steps">${steps}</div></section>` : ""}
     ${explore.length ? `<section class="home-explore" aria-label="Explorez votre studio">${explore.map(([page, art, title, description]) => `<button type="button" class="home-explore-card" data-navigate="${page}"><img src="assets/studio/${art}.webp" alt="" loading="lazy" decoding="async"><span><strong>${escapeHtml(title)}</strong><span>${escapeHtml(description)}</span></span><span class="home-explore-arrow" aria-hidden="true">↗</span></button>`).join("")}</section>` : ""}

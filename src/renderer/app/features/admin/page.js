@@ -134,14 +134,16 @@ function renderAdmin() {
     ["visibility", "Visibilité", "Pages et fonctions"],
     ["game-cheats", "Triche de jeux", "Accès par e-mail"],
     ["trials", "Offres d’essai", "Utilisateurs"],
-    ["commerce", "Tarifs & promotions", "PRO / Premium / jeux"]
+    ["commerce", "Tarifs & promotions", "PRO / Premium / jeux"],
+    ["agencies", "Agences", "Fiches et membres"]
   ];
   const contentByWorkspace = {
     overview: renderAdminOverview,
     visibility: renderAdminVisibility,
     "game-cheats": renderAdminGameCheats,
     trials: renderAdminTrials,
-    commerce: renderAdminCommerce
+    commerce: renderAdminCommerce,
+    agencies: renderAdminAgencies
   };
   return `<div class="admin-page">
     <section class="admin-hero">

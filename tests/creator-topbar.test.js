@@ -289,7 +289,7 @@ test("la promotion affiche le vrai prix Pro sans masquer l’essai, puis dispara
       handlers.get("runtime-state-changed")({ state: { commerce: { ...state.commerce } } });
       await waitUntil(() => button.hidden === !entry.visible && entry.badge.test(document.getElementById("account-plan").textContent),
         `Abonnement mal reflété : ${JSON.stringify(entry.subscription)}`);
-      assert.match(label.textContent, /^Pro - 9,99\s*€$/, "La promotion est toujours le tarif Pro ShenPulse, pas Premium ni le prix de référence");
+      assert.match(label.textContent, /^Pro - 14,99\s*€$/, "La promotion est toujours le tarif Pro ShenPulse, pas Premium ni le prix de référence");
       assert.equal(button.closest(".creator-topbar-left").hidden, !entry.visible);
       assert.equal(document.getElementById("account-membership-button").hidden, false, "Tous gardent accès à leur abonnement via le compte");
     }
@@ -336,7 +336,7 @@ test("la barre supérieure utilise les initiales sans photo et ne révèle aucun
     }
     assert.doesNotMatch(document.getElementById("account-plan").textContent, /premium|pro/i);
     assert.equal(document.getElementById("membership-popup-button").hidden, false, "Un invité garde accès aux offres publiques");
-    assert.match(document.getElementById("membership-popup-label").textContent, /^Pro - 9,99\s*€$/, "Le prix invité ne révèle pas l’ancien abonnement local");
+    assert.match(document.getElementById("membership-popup-label").textContent, /^Pro - 14,99\s*€$/, "Le prix invité ne révèle pas l’ancien abonnement local");
     assert.ok(document.getElementById("profile-control").hidden);
     assert.ok(document.getElementById("tiktok-username").closest("[hidden]"));
     document.getElementById("account-menu-button").click();

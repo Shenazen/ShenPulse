@@ -45,7 +45,12 @@ function popupContext(t, { authenticated = true, subscription } = {}) {
   window.STUDIO_PREFERENCE_ACTIONS = new window.Set();
   window.studioLocale = () => state.settings.locale;
   window.applyStudioLanguage = () => { calls.translated += 1; };
-  window.api = { account: {
+  window.creatorPrivateOperationUid = () => authenticated ? "creator-test" : "";
+  window.creatorPrivateOperationGeneration = 0;
+  window.isVerifiedAdminSession = () => false;
+  window.captureCreatorPrivateOperation = () => ({});
+  window.assertCreatorPrivateOperation = () => {};
+  window.api = { agencies: {list: async () => ({agencies:[],prices:{public:{pro:14.99,premium:20.99},agency:{pro:9.99,premium:13.99}}}), dashboard: async () => ({pricing:{quoted:{pro:14.99,premium:20.99}}})}, account: {
     startSubscriptionCheckout: (payload) => { calls.checkout.push(payload); return checkout.promise; },
     cancelCheckout: (payload) => { calls.cancel.push(payload); return cancel.promise; },
     stopSubscription: () => { calls.stop += 1; return stop.promise; }
@@ -58,7 +63,7 @@ function popupContext(t, { authenticated = true, subscription } = {}) {
   const run = (value) => vm.runInContext(value, dom.getInternalVMContext());
   run(fs.readFileSync(path.join(rendererRoot, "..", "..", "shared", "pro-access.js"), "utf8"));
   run(`${plans}\nlet subscriptionCheckoutBusyTier = ''; let subscriptionStopBusy = false; let currentPage = 'home';`);
-  for (const file of ["features/games/access.js", "features/membership.js", "actions/handlers/contracts.js", "actions/handlers/content-commerce.js", "actions/dispatcher.js", "features/membership-popup.js"]) {
+  for (const file of ["features/games/access.js", "features/membership.js", "actions/handlers/contracts.js", "actions/handlers/content-commerce.js", "actions/dispatcher.js", "features/membership-popup.js", "features/agencies.js"]) {
     run(source(file));
   }
   window.render = () => window.syncMembershipPopup();

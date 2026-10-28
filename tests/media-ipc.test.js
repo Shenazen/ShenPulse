@@ -10,10 +10,10 @@ const { registerMediaIpc } = require("../src/main/ipc/media");
 const { SOUND_CATALOG } = require("../src/main/catalogs");
 const { StateStore } = require("../src/main/store");
 
-function fixture({ changeAt = "", canceled = false } = {}) {
+function fixture({ changeAt = "", canceled = false, file = "C:/fixture/media.mp3" } = {}) {
   const state = { settings: { account: { uid: "member-a" } }, customSounds: [], customMedia: [] };
   const handlers = new Map(), uploads = [], notifications = [], mutationOptions = [], snapshots = [];
-  let dialogs = 0, mutations = 0;
+  let dialogs = 0, mutations = 0, dialogOptions;
   const store = {
     getState: () => state,
     mutate: (mutator, immediate) => { mutations += 1; mutationOptions.push(immediate); mutator(state); }
@@ -27,13 +27,14 @@ function fixture({ changeAt = "", canceled = false } = {}) {
       uploadMedia: async (...args) => { uploads.push(args); if (changeAt === "upload") state.settings.account.uid = "member-b"; return result; }
     },
     getWindow: () => ({}),
-    dialog: { showOpenDialog: async () => {
+    dialog: { showOpenDialog: async (_window, options) => {
+      dialogOptions = options;
       dialogs += 1;
       if (changeAt === "dialog") state.settings.account.uid = "member-b";
-      return { canceled, filePaths: canceled ? [] : ["C:/fixture/media.mp3"] };
+      return { canceled, filePaths: canceled ? [] : [file] };
     } }
   });
-  return { state, store, handlers, uploads, notifications, result, mutationOptions, snapshots, counts: () => ({ dialogs, mutations }) };
+  return { state, store, handlers, uploads, notifications, result, mutationOptions, snapshots, dialogOptions: () => dialogOptions, counts: () => ({ dialogs, mutations }) };
 }
 
 test("les deux imports IPC utilisent le stockage géré et conservent le propriétaire de la demande", async () => {
@@ -224,4 +225,16 @@ test("preload : removeCustomSound conserve l'identifiant et l'UID attendu sans l
   assert.equal(calls[0][0], "sound:remove");
   assert.equal(calls[0][1], "custom:test");
   assert.equal(calls[0][2], "member-a");
+});
+
+test("le logo et la bannière agence n’acceptent que des images et utilisent le stockage du compte", async () => {
+  const item=fixture({file:"C:/fixture/banner.WEBP"});
+  await item.handlers.get("media:upload")({}, "agency-image");
+  assert.deepEqual(item.dialogOptions().filters[0].extensions,["png","jpg","jpeg","webp"]);
+  assert.equal(item.uploads[0][1],"visual");
+  assert.deepEqual(item.uploads[0][2],{expectedUid:"member-a"});
+  const video=fixture({file:"C:/fixture/video.mp4"});
+  await assert.rejects(video.handlers.get("media:upload")({},"agency-image"),/image PNG/);
+  assert.equal(video.uploads.length,0);
+  assert.equal(video.counts().mutations,0);
 });

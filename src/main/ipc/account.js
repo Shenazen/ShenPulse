@@ -79,7 +79,8 @@ function registerAccountIpc({ handle, core, store, accountService, adminService,
   handle("account:subscription-checkout", async (_event, incoming) => {
     try {
       const result = await accountService.startSubscriptionCheckout({
-        tier: safeString(incoming?.tier, 20)
+        tier: safeString(incoming?.tier, 20),
+        ...(incoming?.expectedPrice != null ? { expectedPrice: Number(incoming.expectedPrice) } : {})
       });
       core.overlayServer?.refreshAccess();
       notify(core, "state-changed", core.snapshot());

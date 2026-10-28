@@ -316,7 +316,7 @@ async function handleContentAndCommerceAction({ action, target, id }) {
       return;
     }
     const planName =
-      SUBSCRIPTION_PLANS.find((plan) => plan.tier === subscription.tier)
+      (typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).find((plan) => plan.tier === subscription.tier)
         ?.name || subscription.tier;
     const endDate = membershipDateLabel(subscription.renewalDate);
     if (
@@ -367,13 +367,18 @@ async function handleContentAndCommerceAction({ action, target, id }) {
   }
   if (action === "subscription-checkout") {
     const tier = target.dataset.tier;
-    const plan = SUBSCRIPTION_PLANS.find((item) => item.tier === tier);
     if (subscriptionCheckoutBusyTier) return;
+    const owner = captureCreatorPrivateOperation();
     subscriptionCheckoutBusyTier = tier;
     render();
     try {
+      await refreshAgencies();
+      assertCreatorPrivateOperation(owner);
+      if (agencyState().error || !agencyState().dashboard?.pricing) throw new Error("Impossible de vérifier votre tarif. Actualisez les agences avant de continuer.");
+      const plan = agencySubscriptionPlans().find((item) => item.tier === tier);
+      if (!plan) throw new Error("Offre inconnue.");
       return await perform(async () => {
-        const response = await api.account.startSubscriptionCheckout({ tier });
+        const response = await api.account.startSubscriptionCheckout({ tier, expectedPrice: plan.price });
         const result = response?.result || response;
         if (response?.snapshot) {
           acceptSnapshot(response.snapshot);

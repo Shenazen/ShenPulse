@@ -251,14 +251,14 @@ const SUBSCRIPTION_PLANS = [
   {
     tier: "pro",
     name: "Pro",
-    price: 9.99,
+    price: 14.99,
     description: "Votre studio avancé, avec plus de liberté de création.",
     features: ["Actions et profils illimités", "Jeux vidéo, interactions IRL, commandes et matchs", "Scènes et widgets Pro", "Modules communautaires inclus dans Pro"]
   },
   {
     tier: "premium",
     name: "Premium",
-    price: 13.99,
+    price: 20.99,
     description: "Inclut automatiquement Pro et ajoute les avantages Premium.",
     features: ["Tout Pro inclus", "Avantages Premium", "1 accès Pro offert à un utilisateur"]
   }
@@ -359,6 +359,7 @@ const NAVIGATION_ICONS = {
   settings: `
     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
     <circle cx="12" cy="12" r="3"></circle>`,
+  agencies: `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
   admin: `
     <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
     <path d="m9 12 2 2 4-4"></path>`
@@ -401,6 +402,7 @@ const pages = [
   { id: "goals", label: "Objectifs", icon: "◎", title: "Objectifs", kicker: "PROGRESSION EN DIRECT" },
   { id: "commands", label: "Commandes", icon: "⌘", title: "Commandes", kicker: "PILOTAGE PAR LE CHAT" },
   { section: "SYSTÈME" },
+  { id: "agencies", label: "Agences", icon: "♧", title: "Agences partenaires", kicker: "PROGRAMME AGENCES", defaultScope: "public" },
   { id: "membership", label: "Abonnement", icon: "♛", title: "Tarifs & abonnement", kicker: "ACCÈS SHENPULSE" },
   { id: "connections", label: "Connexions", icon: "⌁", title: "Connexions", kicker: "PLATEFORMES & RELAIS", count: () => snapshot?.state.connections.length },
   { id: "activity", label: "Journal", icon: "≡", title: "Journal d’activité", kicker: "DIAGNOSTIC LOCAL" },

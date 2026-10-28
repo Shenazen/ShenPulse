@@ -5,6 +5,7 @@
  */
 const { SOUND_CATALOG, searchMyInstantsSounds, searchWikimediaMedia } = require("../catalogs");
 const { safeString } = require("../utils");
+const path = require("node:path");
 const { notify } = require("./notifications");
 const { assertMediaAccount, currentMediaAccountUid } = require("../backblaze-media");
 const { readState } = require("../state-projection");
@@ -104,11 +105,12 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
     const expectedUid = currentMediaAccountUid(store);
     assertMediaAccount(store, expectedUid);
     const kind = requestedKind === "sound" ? "sound" : "visual";
+    const agencyImage = requestedKind === "agency-image";
     const result = await dialog.showOpenDialog(getWindow(), {
       title:
         kind === "sound"
           ? "Ajouter un son personnalisé"
-          : "Ajouter une image, un GIF ou une vidéo",
+          : agencyImage ? "Choisir le logo ou la bannière de votre agence" : "Ajouter une image, un GIF ou une vidéo",
       properties: ["openFile"],
       filters:
         kind === "sound"
@@ -118,7 +120,7 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
                 extensions: ["mp3", "wav", "ogg", "m4a", "mp4", "webm"]
               }
             ]
-          : [
+          : agencyImage ? [{ name: "Images de l’agence", extensions: ["png", "jpg", "jpeg", "webp"] }] : [
               {
                 name: "Images, GIF et vidéos",
                 extensions: [
@@ -137,6 +139,9 @@ function registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dial
       return { canceled: true };
     }
     assertMediaAccount(store, expectedUid);
+    if (agencyImage && ![".png", ".jpg", ".jpeg", ".webp"].includes(path.extname(result.filePaths[0]).toLowerCase())) {
+      throw new Error("Choisissez une image PNG, JPG ou WebP.");
+    }
     const media = await backblazeMedia.uploadMedia(
       result.filePaths[0],
       kind,

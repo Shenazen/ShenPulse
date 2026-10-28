@@ -104,18 +104,20 @@ async function publicEntitlements(service, uid) {
 
 /** Applique uniquement les droits admissibles et conserve le bail limité des essais. */
 function applyEntitlements(service, payload = {}) {
-  const tier = ["pro", "premium"].includes(payload.tier)
+  const rewardValid = payload.source !== "agencyReward" || (payload.tier === "pro" && entitlementExpiryMs(payload) > Date.now());
+  const tier = rewardValid && ["pro", "premium"].includes(payload.tier)
     ? payload.tier
     : "free";
-  const source = ["own", "premiumSeat", "trial"].includes(
+  const source = rewardValid && ["own", "premiumSeat", "trial", "agencyReward"].includes(
     payload.source
   )
     ? payload.source
     : "free";
   const trialExpiresAtMs =
-    source === "trial"
-      ? entitlementExpiryMs(payload) ||
-        Date.now() + TRIAL_ENTITLEMENT_LEASE_MS
+    source === "agencyReward"
+      ? Math.min(entitlementExpiryMs(payload), Date.now() + 15 * 60 * 1000)
+      : source === "trial"
+        ? entitlementExpiryMs(payload) || Date.now() + TRIAL_ENTITLEMENT_LEASE_MS
       : 0;
   const trialExpiresAt = trialExpiresAtMs
     ? new Date(trialExpiresAtMs).toISOString()

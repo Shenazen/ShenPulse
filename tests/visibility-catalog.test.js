@@ -24,6 +24,7 @@ const {
 } = require("../src/shared/visibility-catalog");
 
 const CURRENT_PAGE_IDS = [
+  "agencies",
   "home",
   "dashboard",
   "actions",

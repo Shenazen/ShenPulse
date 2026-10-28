@@ -116,7 +116,7 @@ function syncCreatorAccountChrome() {
   const tier = pro ? subscription.tier : "free";
   const label = !session.authenticated ? "INVITÉ" : !pro ? "GRATUIT"
     : subscription.source === "trial" ? "PRO · ESSAI"
-      : subscription.source === "premiumSeat" ? "PRO · OFFERT"
+      : ["premiumSeat", "agencyReward"].includes(subscription.source) ? "PRO · OFFERT"
         : tier === "premium" ? "PREMIUM" : "PRO";
   const badge = document.getElementById("account-plan");
   badge.textContent = label;
@@ -198,7 +198,7 @@ function syncCreatorTopbar() {
   liveAccount.setAttribute("data-studio-user-content", "");
   const subscribed = creatorHasActiveSubscription();
   // The public upgrade price is always Pro, never the remembered/current account tier.
-  const plan = SUBSCRIPTION_PLANS.find((entry) => entry.tier === "pro");
+  const plan = (typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).find((entry) => entry.tier === "pro");
   const label = `Pro - ${new Intl.NumberFormat(studioLocale(), { style: "currency", currency: "EUR" }).format(plan?.price ?? 0)}`;
   const planLabel = document.getElementById("membership-popup-label");
   if (planLabel.textContent !== label) planLabel.textContent = label;

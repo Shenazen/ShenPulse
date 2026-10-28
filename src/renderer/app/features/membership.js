@@ -26,6 +26,7 @@ function membershipDateLabel(value) {
 }
 
 function renderMembership() {
+  if (typeof ensureAgencyData === "function") ensureAgencyData();
   const subscription = currentSubscription();
   const activeSubscriptionTier = hasProAccess()
     ? subscription.tier
@@ -43,22 +44,24 @@ function renderMembership() {
     pendingStop?.effectiveAt || subscription.renewalDate
   );
   const paidPlanName =
-    SUBSCRIPTION_PLANS.find((plan) => plan.tier === paidSubscriptionTier)
+    (typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).find((plan) => plan.tier === paidSubscriptionTier)
       ?.name || paidSubscriptionTier;
-  const activePlan = SUBSCRIPTION_PLANS.find((plan) => plan.tier === activeSubscriptionTier);
+  const activePlan = (typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).find((plan) => plan.tier === activeSubscriptionTier);
   const membershipSummary = activeSubscriptionTier === "free"
     ? "Free"
     : subscription.source === "trial"
       ? `${subscription.tier} · essai`
-      : subscription.source === "premiumSeat"
+      : ["premiumSeat", "agencyReward"].includes(subscription.source)
         ? `${subscription.tier} · offert`
         : activePlan?.name || activeSubscriptionTier;
   const accountDescription = activeSubscriptionTier === "free"
     ? "Jeux vidéo, Interactions IRL, Commandes et Matchs nécessitent un accès Pro ou Premium actif."
     : subscription.source === "trial"
       ? "Vous profitez d’un essai actif. Vos droits restent synchronisés avec votre compte."
-      : subscription.source === "premiumSeat"
-        ? "Votre accès Pro vous est offert. Aucun abonnement personnel n’est nécessaire."
+      : subscription.source === "agencyReward"
+        ? "Votre accès Pro est offert grâce au palier Diamant de votre agence, tant qu’elle compte au moins 25 créateurs abonnés."
+        : subscription.source === "premiumSeat"
+          ? "Votre accès Pro vous est offert. Aucun abonnement personnel n’est nécessaire."
         : "Vos avantages sont actifs sur votre compte ShenPulse.";
   const renewalDate = !pendingStop && paidSubscriptionTier
     ? membershipDateLabel(subscription.renewalDate)
@@ -70,7 +73,7 @@ function renderMembership() {
     if (plan.tier === "free") return "OFFRE ACTUELLE";
     if (paidSubscriptionTier === plan.tier) return "ABONNEMENT ACTUEL";
     if (subscription.source === "trial") return "ESSAI ACTIF";
-    if (subscription.source === "premiumSeat") return "ACCÈS PRO OFFERT";
+    if (["premiumSeat", "agencyReward"].includes(subscription.source)) return "ACCÈS PRO OFFERT";
     return "ACCÈS ACTUEL";
   };
   const premiumBeneficiary =
@@ -108,7 +111,7 @@ function renderMembership() {
       <section class="membership-offers" aria-labelledby="membership-offers-title">
         <header class="membership-section-heading"><div><span class="membership-eyebrow">À CHAQUE LIVE, SON OFFRE</span><h3 id="membership-offers-title">Choisissez la liberté qui vous ressemble.</h3><p>Trois offres, des droits clairs. Les abonnements sont mensuels.</p></div><span class="membership-billing">Abonnements mensuels</span></header>
       <div class="subscription-grid">
-        ${SUBSCRIPTION_PLANS.map((plan) => `
+        ${(typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).map((plan) => `
           <article class="subscription-card tier-${escapeHtml(plan.tier)} ${activeSubscriptionTier === plan.tier ? "current" : ""} ${plan.tier === "premium" ? "premium" : ""}" ${activeSubscriptionTier === plan.tier ? 'aria-current="true"' : ""}>
             <header><span class="membership-plan-icon" aria-hidden="true">${membershipIcon(plan.tier)}</span><small>${membershipPlanLabel(plan)}</small></header>
             <h3>${escapeHtml(plan.name)}</h3>
@@ -117,7 +120,7 @@ function renderMembership() {
             <ul>${plan.features.map((feature) => `<li><span aria-hidden="true">${membershipIcon("check")}</span><span>${escapeHtml(feature)}</span></li>`).join("")}</ul>
             ${subscriptionCheckoutBusyTier === plan.tier
               ? `<button class="button primary" type="button" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}">Annuler PayPal</button>`
-              : activeSubscriptionTier === plan.tier && plan.tier !== "free"
+              : activeSubscriptionTier === plan.tier && plan.tier !== "free" && !(typeof agencyCanApplyTariff === "function" && !pendingStop && agencyCanApplyTariff(plan.tier, subscription))
                 ? `<button class="button" type="button" disabled>Offre active</button>`
               : plan.tier === "free"
                 ? `<button class="button" type="button" disabled>${activeSubscriptionTier === "free" ? "Offre active" : "Offre gratuite"}</button>`

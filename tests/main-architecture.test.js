@@ -119,6 +119,7 @@ const HISTORICAL_CHANNELS = [
 ];
 
 const NEW_CHANNELS = [
+  "agencies:list", "agencies:dashboard", "agencies:command", "admin:agencies-dashboard", "admin:agencies-command",
   "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level",
   // Existing game-page overlay presentation and studio installation contracts.
   "overlay:game-pack-presentation", "studio:install", "studio:status",
@@ -170,7 +171,7 @@ test("la façade conserve les 104 canaux IPC utiles, sans export vidéo, et le c
 
 test("tous les domaines IPC non publics gardent leur garde d’authentification", () => {
   const { handlers, trustedEvent } = registeredHandlers();
-  const publicChannels = new Set(["account:login", "account:login-browser", "account:logout", "account:password-reset", "account:register", "account:status", "admin:status", "admin:visibility-public", "catalog:gifts", "catalog:media", "catalog:sounds", "external:open", "snapshot:get", "startup:ready", "updates:check", "updates:install", "window:close", "window:maximize", "window:minimize"]);
+  const publicChannels = new Set(["agencies:list","account:login", "account:login-browser", "account:logout", "account:password-reset", "account:register", "account:status", "admin:status", "admin:visibility-public", "catalog:gifts", "catalog:media", "catalog:sounds", "external:open", "snapshot:get", "startup:ready", "updates:check", "updates:install", "window:close", "window:maximize", "window:minimize"]);
   for (const [channel, handler] of handlers) {
     if (publicChannels.has(channel)) continue;
     assert.throws(() => handler(trustedEvent, {}), { code: "ACCOUNT_REQUIRED" }, channel);

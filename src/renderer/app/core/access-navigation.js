@@ -559,6 +559,7 @@ function render({ prepareHidden = false } = {}) {
     commands: renderCommands,
     matches: renderCreatorMatches,
     membership: renderMembership,
+    agencies: renderAgencies,
     connections: renderConnections,
     activity: renderActivity,
     settings: renderSettings,

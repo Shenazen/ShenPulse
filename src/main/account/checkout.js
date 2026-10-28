@@ -165,6 +165,7 @@ async function runSubscriptionCheckout(service, incoming = {}, flow) {
           desktopCallbackState: state,
           ownerId: uid,
           requestId: crypto.randomUUID(),
+          ...(incoming.expectedPrice != null ? {expectedPrice: Number(incoming.expectedPrice)} : {}),
           tier
         }),
         signal: AbortSignal.timeout(25000)

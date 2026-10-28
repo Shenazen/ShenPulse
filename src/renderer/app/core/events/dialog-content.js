@@ -190,6 +190,11 @@ dialog.addEventListener("click", async (event) => {
 });
 
 content.addEventListener("submit", async (event) => {
+  if (["agency-profile-form", "agency-join-form"].includes(event.target.id)) {
+    event.preventDefault();
+    await submitAgencyForm(event.target);
+    return;
+  }
   if (!isAccountAuthenticated()) {
     event.preventDefault();
     toast(

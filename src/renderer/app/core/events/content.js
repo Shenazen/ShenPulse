@@ -63,6 +63,7 @@ async function toggleSession() {
 }
 
 content.addEventListener("input", (event) => {
+  rememberAgencyDraft(event);
   if (event.target.matches("[data-creator-user-search]")) {
     filterCreatorUsers(event.target);
     return;

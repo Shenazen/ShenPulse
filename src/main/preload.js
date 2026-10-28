@@ -85,12 +85,19 @@ contextBridge.exposeInMainWorld("shenPulse", {
       invoke("account:sync-entitlements"),
     logout: () => invoke("account:logout")
   },
+  agencies: {
+    list: () => invoke("agencies:list"),
+    dashboard: () => invoke("agencies:dashboard"),
+    command: (command, body) => invoke("agencies:command", command, body)
+  },
   admin: {
     status: () => invoke("admin:status"),
     login: (credentials) => invoke("admin:login", credentials),
     logout: () => invoke("admin:logout"),
     visibility: () => invoke("admin:visibility-public"),
     dashboard: () => invoke("admin:dashboard"),
+    agenciesDashboard: () => invoke("admin:agencies-dashboard"),
+    agenciesCommand: (command, body) => invoke("admin:agencies-command", command, body),
     saveSiteSettings: (settings) => invoke("admin:site-save", settings),
     saveCommerce: (payload) => invoke("admin:commerce-save", payload),
     grantTrial: (payload) => invoke("admin:trial-grant", payload),

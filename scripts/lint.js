@@ -5,7 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { inventorySources, parseScripts, analyzeScript, importCycles } = require("./lib/source-analysis");
 
-const roots = ["src", "scripts", "tests", path.join("resources", "overlays")];
+const roots = ["src", "scripts", "tests", "backend", path.join("resources", "overlays")];
 const files = [];
 const generatedDirectories = new Set([
   path.resolve("src", "renderer", "games", "original"),

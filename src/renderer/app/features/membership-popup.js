@@ -7,6 +7,7 @@ let membershipPopupSignature = "";
 let membershipPopupCancelBusy = false;
 
 function membershipPopupModel() {
+  if (typeof ensureAgencyData === "function") ensureAgencyData();
   const authenticated = isAccountAuthenticated();
   const subscription = authenticated ? currentSubscription() : { tier: "free", source: "free", status: "free" };
   const activeTier = authenticated && hasProAccess() ? subscription.tier : "free";
@@ -27,7 +28,7 @@ function membershipPopupPlanStatus(plan, model) {
   if (plan.tier === "free") return "OFFRE ACTUELLE";
   if (model.paidTier === plan.tier) return "ABONNEMENT ACTUEL";
   if (model.subscription.source === "trial") return "ESSAI ACTIF";
-  if (model.subscription.source === "premiumSeat") return "ACCÈS PRO OFFERT";
+  if (["premiumSeat", "agencyReward"].includes(model.subscription.source)) return "ACCÈS PRO OFFERT";
   return "ACCÈS ACTUEL";
 }
 
@@ -38,6 +39,9 @@ function membershipPopupPlanButton(plan, model) {
   }
   if (model.checkoutTier === plan.tier) {
     return `<button type="button" class="button membership-popup-cancel" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}" ${focus} ${model.cancelBusy ? "disabled" : ""}>${model.cancelBusy ? "Annulation…" : "Annuler PayPal"}</button>`;
+  }
+  if (typeof agencyCanApplyTariff === "function" && !model.pendingStop && agencyCanApplyTariff(plan.tier, model.subscription)) {
+    return `<button type="button" class="button primary" data-action="subscription-checkout" data-tier="${escapeHtml(plan.tier)}" ${focus}>Appliquer le tarif agence</button>`;
   }
   if (model.activeTier === plan.tier && plan.tier !== "free") {
     return `<button type="button" class="button" ${focus} disabled>Offre active</button>`;
@@ -58,6 +62,9 @@ function membershipPopupStatusMarkup(model) {
   if (model.pendingStop) {
     const date = membershipDateLabel(model.pendingStop.effectiveAt || model.subscription.renewalDate);
     return `<p class="membership-popup-notice" role="status"><span>Renouvellement arrêté. Votre accès reste actif jusqu’à la fin de la période payée.</span>${date ? ` <strong>${escapeHtml(date)}</strong>` : ""}</p>`;
+  }
+  if (model.activeTier !== "free" && model.subscription.source === "agencyReward") {
+    return '<p class="membership-popup-notice" role="status">Votre accès Pro est offert grâce au palier Diamant de votre agence, tant qu’elle compte au moins 25 créateurs abonnés.</p>';
   }
   if (model.activeTier !== "free" && model.subscription.source === "premiumSeat") {
     return '<p class="membership-popup-notice" role="status">Votre accès Pro vous est offert. Aucun abonnement personnel n’est nécessaire.</p>';
@@ -82,7 +89,7 @@ function membershipPopupMarkup(model) {
     </header>
     ${membershipPopupStatusMarkup(model)}
     <div class="membership-popup-plans">
-      ${SUBSCRIPTION_PLANS.filter((plan) => ["free", "pro", "premium"].includes(plan.tier)).map((plan) => `<article class="membership-popup-card tier-${escapeHtml(plan.tier)} ${model.activeTier === plan.tier ? "is-current" : ""}" ${model.activeTier === plan.tier ? 'aria-current="true"' : ""}>
+      ${(typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).filter((plan) => ["free", "pro", "premium"].includes(plan.tier)).map((plan) => `<article class="membership-popup-card tier-${escapeHtml(plan.tier)} ${model.activeTier === plan.tier ? "is-current" : ""}" ${model.activeTier === plan.tier ? 'aria-current="true"' : ""}>
         <div class="membership-popup-plan-top"><span class="membership-popup-plan-icon" aria-hidden="true">${plan.tier === "premium" ? "♛" : plan.tier === "pro" ? "◆" : "○"}</span><span class="membership-popup-plan-status">${membershipPopupPlanStatus(plan, model)}</span></div>
         <h3>${escapeHtml(plan.name)}</h3>
         <div class="membership-popup-price"><strong>${plan.price === 0 ? "Gratuit" : `${Number(plan.price).toFixed(2).replace(".", ",")} €`}</strong>${plan.price ? "<span>/ mois</span>" : "<span>Sans abonnement</span>"}</div>

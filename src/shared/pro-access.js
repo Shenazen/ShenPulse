@@ -21,6 +21,9 @@
   function hasProAccess(state, nowMs = Date.now()) {
     const subscription = state?.commerce?.subscription || {};
     if (!["pro", "premium"].includes(subscription.tier)) return false;
+    if (subscription.source === "agencyReward") {
+      return subscription.tier === "pro" && subscription.status === "active" && commerceExpiryMs(subscription) > nowMs;
+    }
     if (subscription.source === "trial" || subscription.status === "trial") {
       return ["active", "trial"].includes(subscription.status) && commerceExpiryMs(subscription) > nowMs;
     }
