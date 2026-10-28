@@ -82,7 +82,7 @@ test("visual setup: explicit preview then two normalized rectangles saves only r
   assert.deepEqual(previewCall.args, ["window:1", { ownerUid: "fixture-owner", profileId: "profile-1" }]);
   await f.window.editorOptions.onSubmit();
   const save = f.calls.find((call) => call.method === "saveVisual");
-  assert.deepEqual(save.args, [{ enabled: true, sourceId: "window:1",
+  assert.deepEqual(save.args, [{ enabled: true, initialOnly: true, sourceId: "window:1",
     bannerROI: { x: 0.1, y: 0.05, width: 0.45000000000000007, height: 0.15000000000000002 },
     ownerROI: { x: 0.05, y: 0.7, width: 0.2, height: 0.10000000000000009 } }, { ownerUid: "fixture-owner", profileId: "profile-1" }]);
   assert.equal(JSON.stringify(save).includes("data:image"), false); assert.equal(f.results.length, 1);
@@ -160,7 +160,7 @@ test("visual setup: entrypoint assets and explicit action route are present", ()
   const routes = fs.readFileSync(path.join(root, "actions/handlers/creator-matches.js"), "utf8");
   const editor = fs.readFileSync(path.join(root, "features/matches/editor.js"), "utf8");
   assert.match(index, /app\/features\/matches\/vision\.js/); assert.match(index, /styles\/matches-vision\.css/);
-  assert.match(routes, /action === "matches-visual-configure"\) return openCreatorMatchesVisualEditor/);
+  assert.match(routes, /action === "matches-visual-configure"\) return openCreatorMatchesStudioVisualEditor/);
   assert.match(editor, /data-action="matches-visual-configure"/);
 });
 
@@ -220,7 +220,7 @@ test("visual own screen: no identity crop is required, but a fresh preview, own 
   assert.equal(f.calls.some(call => call.method === "saveVisual"), false);
   confirmation.click(); assert.equal(f.window.dialogSubmitButton.disabled, false);
   await f.window.editorOptions.onSubmit();
-  assert.deepEqual(f.calls.find(call => call.method === "saveVisual").args, [{ enabled: true, sourceId: "window:1", ownerMode: "self-screen",
+  assert.deepEqual(f.calls.find(call => call.method === "saveVisual").args, [{ enabled: true, initialOnly: true, sourceId: "window:1", ownerMode: "self-screen",
     ownPosition: "left", ownScreenConfirmed: true, ownerROI: null,
     bannerROI: { x: 0.1, y: 0.05, width: 0.45000000000000007, height: 0.15000000000000002 } }, { ownerUid: "fixture-owner", profileId: "profile-1" }]);
   assert.equal(f.calls.some(call => /testAutomation|play|effect/i.test(call.method)), false);
@@ -410,4 +410,45 @@ test("visual own-screen notice: reading remains declared rather than identity-ve
   assert.match(f.window.content.textContent, /nouvel aperçu et une nouvelle confirmation/);
   assert.equal(f.window.content.textContent.includes("La disposition du match a changé"), false);
   assert.equal(f.calls.some(call => call.method !== "visualStatus"), false);
+});
+
+test("first-only notice distinguishes stopped capture from active native detection and clears on session stop", async (context) => {
+  for (const [state, title] of [["initial-complete", "Premier bonus confirmé · lecture arrêtée"], ["native-bonus", "Détection TikTok prioritaire"]]) {
+    const f = statusHarness(context); f.window.snapshot.state.settings.matches.visualBonus.initialOnly = true; f.renderNotice();
+    f.window.creatorMatchesAcceptVisualStatus({ enabled: true, active: false, state, sourceId: "window:1" }, f.window.creatorMatchesCaptureOwner());
+    assert.equal(f.title(), title);
+    assert.match(f.window.content.textContent, /second bonus/);
+    assert.match(f.window.content.textContent, /snipe/);
+    f.window.snapshot.state.session.running = false; f.window.creatorMatchesPaintVisualStatus();
+    assert.equal(f.title(), "En attente du LIVE et du match");
+    assert.equal(f.calls.length, 0, "status rendering cannot start capture or media");
+  }
+});
+
+test("Studio setup auto-selects Studio, has no username, side or identity fields, and confirms only one crop on activation", async (context) => {
+  const f=harness(context,{sources:[{id:"window:7",name:"TikTok LIVE Studio"},{id:"window:9",name:"Private browser"}]});
+  await f.window.openCreatorMatchesStudioVisualEditor();
+  const style = f.window.document.createElement("style");
+  style.textContent = ".field { display: grid; }\\n" + fs.readFileSync(path.resolve(root, "../styles/matches-vision.css"), "utf8");
+  f.window.document.head.append(style);
+  assert.equal(f.window.getComputedStyle(f.window.dialog.querySelector("[data-studio-source-field]")).display, "none");
+  assert.equal(f.window.dialog.querySelector("[data-vision-source]"),null);
+  assert.equal(f.window.dialog.querySelector("[data-vision-owner-mode]"),null);
+  assert.equal(f.window.dialog.querySelector("[data-vision-own-position]"),null);
+  assert.equal(f.window.dialog.querySelector("[data-vision-own-screen-confirmed]"),null);
+  assert.equal(f.window.dialog.querySelector('[data-vision-region="ownerROI"]'),null);
+  await f.preview();f.draw("bannerROI",[100,25],[550,100]);
+  assert.equal(f.window.dialogSubmitButton.disabled,false);await f.window.editorOptions.onSubmit();
+  const saved=f.calls.find(call=>call.method==="saveVisual").args[0];
+  assert.equal(saved.sourceId,"window:7");assert.equal(saved.ownerMode,"studio-banner");assert.equal(saved.initialOnly,true);
+  assert.equal(saved.ownerROI,null);assert.equal("ownPosition" in saved,false);
+  assert.equal(JSON.stringify(saved).includes("creator"),false);
+  assert.equal(f.calls.some(call=>/testAutomation|play|effect/i.test(call.method)),false);
+});
+
+test("Studio setup never silently substitutes a browser when Studio is closed", async(context)=>{
+ const f=harness(context,{sources:[{id:"window:9",name:"TikTok LIVE in Brave"}]});
+ await f.window.openCreatorMatchesStudioVisualEditor();
+ assert.equal(f.window.dialogSubmitButton.disabled,true);assert.match(f.window.dialog.textContent,/Ouvrez TikTok LIVE Studio/);
+ assert.equal(f.calls.some(call=>call.method==="visualPreview"),false);
 });

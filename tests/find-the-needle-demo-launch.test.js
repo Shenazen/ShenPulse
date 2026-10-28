@@ -33,7 +33,7 @@ async function fixture(t, { packId = "find-the-needle-demo", executable = true, 
     }
   }, { filename });
   const state = { game: { installations: { [packId]: { path: target } } } };
-  const runtime = new module.exports.GameRuntimeService({ app: {}, store: { getState: () => state },
+  const runtime = new module.exports.GameRuntimeService({ app: { getPath: () => target }, store: { getState: () => state },
     getWindow: () => null, notifyRenderer: () => {}, assertAccess(id) {
       assert.equal(id, packId);
       if (!allowed) throw new Error("Accès révoqué");

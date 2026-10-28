@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.0.5',
-  title: 'Des jeux autonomes et des overlays plus simples.',
-  summary: 'Installe les packs à la demande, retrouve des conditions de jeu détaillées et configure tes overlays plus facilement.',
+  version: '2.1.0',
+  title: 'Tes jeux, ton agence et ton LIVE dans un seul espace.',
+  summary: 'Prépare tes interactions depuis des fiches de jeu repensées, personnalise tes cadeaux et retrouve les agences partenaires directement dans ShenPulse.',
   highlights: [
-    ['Connecte tes jeux', 'Correction de la connexion Euro Truck Simulator 2 et passerelles locales autonomes. Les conditions de jeu précisent les étapes de préparation et les commandes à configurer.'],
-    ['Personnalise tes overlays', 'Roue et Coin Jar disposent de réglages plus lisibles. Les designs et les classements sont adaptés à leurs zones de texte et de photo.'],
-    ['Allège ton installation', 'Les packs de jeu sont téléchargés à la demande depuis le stockage ShenPulse, avec contrôle d’intégrité. Les profils et associations existants sont conservés.']
+    ['Prépare ton jeu', 'Installation guidée, choix de l’édition compatible, interactions classées et visite pas à pas. Les packs sont téléchargés à la demande avec contrôle d’intégrité.'],
+    ['Compose ton LIVE', 'Trois modèles pour les cartes de cadeaux, aperçus adaptés aux écrans étroits et installation des sources dans ton logiciel de diffusion. Les compteurs restent propres aux jeux compatibles.'],
+    ['Retrouve ta communauté', 'Espace Agences dans l’application, gestion des invitations et des membres par le directeur, connexion Google réparée et commandes musicales synchronisées.']
   ]
 }
 

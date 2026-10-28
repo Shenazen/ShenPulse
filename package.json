@@ -15,7 +15,7 @@
     "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-packaged-dev.ps1",
     "preview:codex": "node scripts/start-codex-preview.js",
     "brand:dev": "node scripts/brand-dev-executable.js",
-    "test": "node --test --test-isolation=none tests/*.test.js",
+    "test": "node --test --test-concurrency=2 tests/*.test.js",
     "lint": "node scripts/lint.js",
     "verify": "npm run matches:protect && npm run lint && npm test",
     "games:build": "node scripts/build-original-game-styles.js && vite build --config vite.games.config.mjs",

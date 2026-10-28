@@ -13,9 +13,9 @@ const key = (value) => JSON.stringify(value);
 const identity = (context) => context ? key({ ...context, endsAtMs: undefined }) : "";
 const username = (value) => String(value || "").trim().replace(/^@+/, "").toLowerCase();
 const RECOVERY_DELAYS_MS = [500, 1500, 4000];
-const ownerMode = (config) => ["studio-self", "self-screen"].includes(config?.ownerMode) ? config.ownerMode : "username";
+const ownerMode = (config) => ["studio-self", "self-screen", "studio-banner"].includes(config?.ownerMode) ? config.ownerMode : "username";
 const regionsKey = (config) => key([config?.bannerROI, config?.ownerROI, ownerMode(config),
-  ownerMode(config) === "self-screen" ? config.ownPosition : null]);
+  ownerMode(config) === "self-screen" ? config.ownPosition : null, config?.initialOnly === true]);
 const exactId = (value) => typeof value === "string" && /^[1-9]\d{0,19}$/.test(value) && BigInt(value) <= 18446744073709551615n;
 function screenLiveKey(state) {
   const tiktok = state.settings?.tiktok, primary = state.connections?.find((row) => row.id === "source_tiktok");
@@ -115,16 +115,30 @@ class MatchVisualService {
       selected = (await this.capture.listSources()).find((row) => row.id === input.sourceId);
       check();
       if (!selected) throw new Error("Choisissez une fenêtre TikTok disponible sur ce PC.");
+      if (ownerMode(config) === "studio-banner" && !/^TikTok\s+LIVE\s+Studio(?:\s*[-–—|].*)?$/i.test(selected.name)) throw new Error("Ouvrez TikTok LIVE Studio pour activer ce secours.");
     }
     check(); this.matches.saveConfig({ visualBonus: config }, scope);
     await this.stopCapture();
     if (this.recoveryPending) await this.recoveryPending;
     check(); this.selection = selected ? { ...scope, sourceId: selected.id, sourceName: selected.name,
-      regionsKey: regionsKey(config), ...(ownerMode(config) === "self-screen" ? { ownScreenConfirmed: true, liveKey: "", layoutKey: "", layoutInvalidated: false, confirmationRequired: false } : {}) } : null;
+      regionsKey: regionsKey(config), studioBanner: ownerMode(config) === "studio-banner", ...(ownerMode(config) === "self-screen" ? { ownScreenConfirmed: true, liveKey: "", layoutKey: "", layoutInvalidated: false, confirmationRequired: false } : {}) } : null;
     this.recoveryAttempts = 0; this.retryAtMs = 0;
     if (this.timer) this.clearTimeoutImpl(this.timer); this.timer = null;
     if (selected) await this.tick(); else this.stateCode = "disabled";
     return this.status();
+  }
+  initialPhaseState() {
+    if (this.state().settings?.matches?.visualBonus?.initialOnly !== true) return "";
+    const current = this.matches.bonuses.current();
+    if (!current || current.ownerVerified !== true) return "";
+    const periods = [...this.matches.bonuses.periods.values()].filter((row) =>
+      row.identity === current.identity && row.battleId === current.battleId &&
+      row.ownerUserId === current.ownerUserId && row.ownerRoomId === current.roomId &&
+      row.ownerTeams === current.ownerTeams && row.matchStartedAtMs === current.startedAtMs);
+    // A native period, including an ordinary task forecast, keeps priority.
+    // This gate only stops OCR; no native timer, settlement or snipe is changed.
+    if (periods.some((row) => row.origin !== "visual" || row.formalBound)) return "native-bonus";
+    return periods.some((row) => row.origin === "visual" && row.fired) ? "initial-complete" : "";
   }
   context() {
     if (!this.selection || this.closed) return null;
@@ -179,6 +193,11 @@ class MatchVisualService {
         new Set(teams.map((team) => team.participantIds[0])).size !== 2)) return null;
       studioIdentity = { ownerDisplayName: String(tiktok.broadcaster.nickname).trim(), otherDisplayNames: [String(rival.displayName).trim()] };
     }
+    if (ownerMode(config) === "studio-banner") {
+      if (!this.selection.studioBanner) return null;
+      studioIdentity = { ownScreenConfirmed: true };
+    }
+    if (this.initialPhaseState()) return null;
     return { sourceId: "source_tiktok", windowId: this.selection.sourceId, accountUid: state.settings.account.uid,
       profileId: state.session.profileId, roomId: tiktok.roomId, battleId: match.battleId,
       ownerUserId: ownerId, ownerUsername: ownUsername, startedAtMs: match.startedAtMs, endsAtMs: match.endsAtMs,
@@ -220,7 +239,7 @@ class MatchVisualService {
       const context = this.context();
       if (!context) {
         if (this.active) await this.stopCapture();
-        this.stateCode = this.selection?.confirmationRequired ? "confirmation-required" : this.selection?.layoutInvalidated ? "layout-changed" : "waiting-match";
+        this.stateCode = this.selection?.confirmationRequired ? "confirmation-required" : this.selection?.layoutInvalidated ? "layout-changed" : this.initialPhaseState() || "waiting-match";
       } else {
         const nextKey = identity(context);
         if (this.trackingKey !== nextKey) {
@@ -234,7 +253,7 @@ class MatchVisualService {
           this.ocr = this.createOcr();
           const config = this.state().settings.matches.visualBonus;
           const started = await this.capture.start({ sourceId: this.selection.sourceId, bannerROI: config.bannerROI, ownerROI: config.ownerROI,
-            ...(ownerMode(config) === "self-screen" ? { ownerMode: "self-screen", ownScreenConfirmed: this.selection.ownScreenConfirmed === true } : {}) });
+            ...(["self-screen", "studio-banner"].includes(ownerMode(config)) ? { ownerMode: "self-screen", ownScreenConfirmed: ownerMode(config) === "studio-banner" || this.selection.ownScreenConfirmed === true } : {}) });
           this.captureGeneration = started?.generation;
           if (generation !== this.generation || identity(this.context()) !== nextKey) await this.stopCapture();
         }
@@ -251,7 +270,7 @@ class MatchVisualService {
     try {
       const context = this.context(); if (!context || identity(context) !== contextKey) return;
       const ocr = this.ocr; if (!ocr) return;
-      const owner = context.ownerMode === "self-screen" ? { available: true, lines: [] } : await ocr.recognize(frame.owner);
+      const owner = ["self-screen", "studio-banner"].includes(context.ownerMode) ? { available: true, lines: [] } : await ocr.recognize(frame.owner);
       if (generation !== this.generation || identity(this.context()) !== contextKey) return;
       if (!owner.available) { this.stateCode = "ocr-unavailable"; this.tracker.interrupt(); return; }
       const banner = await ocr.recognize(frame.banner);

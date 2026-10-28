@@ -565,3 +565,34 @@ lint du projet valide, 153 scripts renderer du paquet natif comparés aux source
 Le contrôle natif sur un vrai match a confirmé les deux photos, l’ordre du compte
 suivi, les mises à jour de scores et du podium ; les onglets Widgets et
 Automatisations restent accessibles et leurs réglages inchangés.
+
+
+### Secours visuel limité au premier bonus (28 octobre 2026)
+
+Le réglage de lecture locale active désormais `initialOnly`. Les rectangles
+et ce choix sont seuls conservés : aucune fenêtre, image ni sortie OCR n’est
+stockée. Deux lectures concordantes du bandeau actif avec un compte à rebours
+décroissant confirment une seule période. La capture s’arrête ensuite et se
+réarme au prochain match identifié, même si l’adversaire change.
+
+Toute période native déjà liée au diffuseur et à la manche a priorité, y
+compris une annonce du défi ordinaire. Une reconnaissance OCR en attente ne
+peut pas déclencher après cette annonce. Cette limite ne modifie ni les timers
+du moteur de bonus, ni les validations du second ×2/×3, ni le snipe. Les anciens
+réglages sans cette option gardent leur comportement jusqu’à leur modification.
+
+Les observations publiques effectuées sur deux débuts complets de manches
+n’ont reçu ni période START_BONUS ni cadeau crédité ×2/×3 ; les périodes du
+second bonus étaient transmises. Cela ne prouve pas l’absence de transmission
+sur tous les LIVE. Une fenêtre TikTok affichant réellement le bandeau du compte
+suivi reste indispensable au secours. La validation simulée ne remplace pas
+l’observation positive d’un premier bonus réel.
+
+
+Le parcours simplifié Studio sélectionne automatiquement la seule fenêtre
+TikTok LIVE Studio ouverte et ne propose plus de champ @, de position du
+créateur, ni de rectangle d’identité. Le mode `studio-banner` vérifie toujours
+le compte connecté, le diffuseur, le salon, le profil et la manche côté moteur.
+Le bandeau est déclaré celui du LIVE dans Studio par l’activation explicite ;
+il ne constitue pas une vérification d’identité par OCR. Ce mode refuse une
+fenêtre de navigateur et ne se rabat jamais sur une autre application.

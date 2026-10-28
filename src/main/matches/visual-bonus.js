@@ -50,12 +50,14 @@ function normalizedContext(input, now) {
     !username(input.ownerUsername) || !absolute(input.startedAtMs) || !absolute(input.endsAtMs) ||
     input.startedAtMs > now || input.endsAtMs <= Math.max(input.startedAtMs, now) ||
     input.status !== undefined && input.status !== "running") return null;
-  const ownerMode = ["studio-self", "self-screen"].includes(input.ownerMode) ? input.ownerMode : "username";
+  const ownerMode = ["studio-self", "self-screen", "studio-banner"].includes(input.ownerMode) ? input.ownerMode : "username";
   if (ownerMode === "self-screen" && (input.ownScreenConfirmed !== true || !["left", "top-left"].includes(input.ownPosition) ||
     typeof input.layoutKey !== "string" || !input.layoutKey || input.layoutKey.length > 128 || /[\x00-\x1f\x7f]/.test(input.layoutKey))) return null;
+  if (ownerMode === "studio-banner" && input.ownScreenConfirmed !== true) return null;
   if (ownerMode === "studio-self" && (!displayName(input.ownerDisplayName) || !Array.isArray(input.otherDisplayNames) ||
     input.otherDisplayNames.length !== 1 || !displayName(input.otherDisplayNames[0]))) return null;
   return { ...Object.fromEntries(CONTEXT_IDS.map((key) => [key, input[key]])), ownerUsername: username(input.ownerUsername), ownerMode,
+    ...(ownerMode === "studio-banner" ? { ownScreenConfirmed: true } : {}),
     ...(ownerMode === "self-screen" ? { ownScreenConfirmed: true, ownPosition: input.ownPosition, layoutKey: input.layoutKey } : {}),
     ...(ownerMode === "studio-self" ? { ownerDisplayName: input.ownerDisplayName, otherDisplayNames: [...input.otherDisplayNames] } : {}),
     startedAtMs: input.startedAtMs, endsAtMs: input.endsAtMs };
@@ -64,7 +66,7 @@ function normalizedContext(input, now) {
 function ownerMatches(input, context) {
   // This mode is a manual assertion about the user's own selected screen,
   // not OCR identity proof or a guessed beneficiary of a global banner.
-  if (context.ownerMode === "self-screen") return context.ownScreenConfirmed === true;
+  if (["self-screen", "studio-banner"].includes(context.ownerMode)) return context.ownScreenConfirmed === true;
   const ownerLines = lines(input);
   if (!ownerLines?.length) return false;
   const expected = context.ownerUsername;

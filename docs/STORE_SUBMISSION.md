@@ -10,13 +10,13 @@
 | PFN attendu | `ShenPulse.ShenPulse_mammcwaggkw0m` |
 | Store ID | `9NDR71Z41ZJG` |
 
-`npm run build:store` génère `dist/ShenPulse-2.0.5-x64.appx` ainsi que le
-conteneur recommandé `dist/ShenPulse-2.0.5-x64.appxupload`. Son manifeste porte
-la version Store `2.0.5.0`, dont le numéro de révision est conforme. Le Microsoft Store
+`npm run build:store` génère `dist/ShenPulse-2.1.0-x64.appx` ainsi que le
+conteneur recommandé `dist/ShenPulse-2.1.0-x64.appxupload`. Son manifeste porte
+la version Store `2.1.0.0`, dont le numéro de révision est conforme. Le Microsoft Store
 accepte le format AppX pour une application Desktop Bridge et le resigne pour la
 distribution. L'identité Store est déjà renseignée dans `package.json`.
 
-Les [notes 2.0.5](releases/2.0.5.fr.md) décrivent les changements. Les résultats
+Les [notes 2.1.0](releases/2.1.0.fr.md) décrivent les changements. Les résultats
 de qualification et le statut réel du canal Store sont consignés séparément
 dans [VALIDATION.md](VALIDATION.md) ; construire le package ne vaut pas soumission.
 

@@ -58,3 +58,34 @@ PayPal, annulations, prorata, déconnexion et fonctionnement hors ligne.
 protègent les droits. `account-architecture.test.js` vérifie les exports,
 la fidélité des options HTTP, la coalescence de renouvellement et le changement
 de propriétaire pendant une demande de présence.
+
+
+## Configuration Google en production
+
+Le fournisseur Google doit rester activé dans Firebase Authentication du projet
+`shenazenoverlay`, avec le nom public `ShenPulse`. Son client OAuth Web doit
+autoriser exactement l’URI de redirection `http://localhost:21216/callback`,
+en plus du gestionnaire Firebase existant. Cette adresse est le retour local
+de l’application Windows ; elle ne doit pas devenir une origine publique ni
+être remplacée par une URL de profil.
+
+Une URI absente provoque `redirect_uri_mismatch` avant même le choix du compte.
+La correction de cette liste dans Google Auth Platform est indépendante du
+déploiement du site et profite aussi aux applications déjà installées qui
+utilisent ce même retour. Google indique un délai possible de propagation.
+
+Le 28 octobre 2026, le parcours réel a été vérifié avec le service de compte
+ShenPulse et un store temporaire en mémoire : choix Google, retour local,
+échange Firebase, identité vérifiée et photo récupérées. La session de
+l’application ouverte n’a pas été remplacée et aucun jeton n’a été enregistré
+dans le rapport d’essai.
+
+Connexion et inscription Google utilisent ce même parcours : Firebase crée
+l’identité lors du premier accès et retrouve l’identité existante aux accès
+suivants. Aucun compte d’essai réel supplémentaire n’est créé par les tests
+automatisés.
+
+`google-loopback.test.js` protège aussi le refus d’un état falsifié contenant
+des caractères UTF-8 : la comparaison porte sur les longueurs en octets avant
+`timingSafeEqual`, pour éviter une exception non interceptée. La page de
+retour reste sans cache ni ressources distantes et efface le fragment OAuth.

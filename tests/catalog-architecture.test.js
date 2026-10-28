@@ -10,7 +10,9 @@ const minecraft = require("../src/main/minecraft-game-catalog");
 const { GAME_INSTALLERS, installerForGame } = require("../src/main/game-installer-manifest");
 const digest = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
-// Références capturées avant extraction ; une évolution volontaire demande une revue de leur mise à jour.
+// Références revues pour la 2.1.0 : Palworld devient un module local et les
+// installateurs Stardew/Terraria sont remplacés par les packs autonomes qualifiés.
+// Les tests dédiés de chaque intégration vérifient aussi leurs contrats exécutables.
 test("le découpage garde exactement les catalogues de jeux et Minecraft", () => {
   const catalog = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
   assert.equal(catalog.length, 62);
@@ -91,7 +93,7 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
   const historicalMinecraft = structuredClone(minecraft);
   historicalMinecraft.MINECRAFT_SANDBOX_DEFAULT_MAPPINGS = rewindSandboxMappings(historicalMinecraft.MINECRAFT_SANDBOX_DEFAULT_MAPPINGS);
   historicalMinecraft.MINECRAFT_SANDBOX_INTERACTION_CATALOG_VERSION = 1;
-  assert.equal(digest(historical), "193b47e17b10d6ac1a5dd0a5f419971b02dba3c2eb7a9f7933db491850934f24");
+  assert.equal(digest(historical), "fcbb9267eee919ae41908eec0dc8f23a9a76031d5a41ecc7266cfafff1e64be3");
   assert.equal(digest(historicalMinecraft), "2e91e74d5a5c4715d75052353ab3ceb1d395ed7c263981995581b3bc6aa63315");
   const next = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
   catalog[0].name = "test isolé";
@@ -123,7 +125,7 @@ test("le manifeste garde versions, URLs, empreintes, ordre et gel de son API", (
   // l’archive distante, sa taille et son empreinte restent identiques.
   // Le client Slim est remplacé par l’hôte local ; les archives des jeux
   // conservent leurs empreintes, RE3 configure uniquement son port dédié.
-  assert.equal(digest(historicalManifest), "bbd15a8562900d35ea376622ddab8039349b3e73394d55334364d64bd9349284");
+  assert.equal(digest(historicalManifest), "a9d2e515485260f7b3e8a97383addb87533ce98697a4268d4d24aee2ee5def7c");
   for(const installer of [shenfarm,shenpaint,shenkite,splash]){assert.equal(installer.shenNative,true);assert.equal(installer.managedTarget,true);}
   assert.ok(Object.isFrozen(GAME_INSTALLERS));
   for (const [id, manifest] of Object.entries(GAME_INSTALLERS)) assert.equal(installerForGame(id), manifest);

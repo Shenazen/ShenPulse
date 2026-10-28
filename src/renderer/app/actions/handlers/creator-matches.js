@@ -48,7 +48,7 @@ async function handleCreatorMatchesAction({ action, target, id }) {
     return;
   }
   if (action === "matches-refresh") return creatorMatchesPerform(target, owner, action, async () => ({ status: await api.matches.status() }), "Matchs actualisés");
-  if (action === "matches-visual-configure") return openCreatorMatchesVisualEditor();
+  if (action === "matches-visual-configure") return openCreatorMatchesStudioVisualEditor();
   if (action === "matches-correct-wins") return openCreatorMatchesWinsEditor();
   if (action === "matches-clear-donors") {
     if (!(await confirmAction("Vider la liste des donateurs du LIVE pour ce profil ? Les scores et l’historique des matchs restent inchangés.", { title: "Vider les donateurs du LIVE", confirmLabel: "Vider", danger: true }))) return;

@@ -112,13 +112,14 @@
       const bannerROI = region(input.visualBonus?.bannerROI, 0.3);
       const ownerMode = input.visualBonus?.ownerMode;
       const ownPosition = ["left", "top-left"].includes(input.visualBonus?.ownPosition) ? input.visualBonus.ownPosition : null;
-      const ownerROI = ownerMode === "self-screen" ? null : region(input.visualBonus?.ownerROI, 0.1);
-      const validMode = ownerMode === undefined || ["username", "studio-self", "self-screen"].includes(ownerMode);
+      const ownerROI = ["self-screen", "studio-banner"].includes(ownerMode) ? null : region(input.visualBonus?.ownerROI, 0.1);
+      const validMode = ownerMode === undefined || ["username", "studio-self", "self-screen", "studio-banner"].includes(ownerMode);
       // Only this explicit preference is persisted. Window IDs, captured
       // names, OCR text and frames never become profile configuration.
-      config.visualBonus = { enabled: input.visualBonus?.enabled === true && validMode && Boolean(bannerROI && (ownerMode === "self-screen" ? ownPosition : ownerROI)), bannerROI, ownerROI,
-        ...(["studio-self", "self-screen"].includes(ownerMode) ? { ownerMode } : {}),
-        ...(ownerMode === "self-screen" && ownPosition ? { ownPosition } : {}) };
+      config.visualBonus = { enabled: input.visualBonus?.enabled === true && validMode && Boolean(bannerROI && (ownerMode === "studio-banner" || (ownerMode === "self-screen" ? ownPosition : ownerROI))), bannerROI, ownerROI,
+        ...(["studio-self", "self-screen", "studio-banner"].includes(ownerMode) ? { ownerMode } : {}),
+        ...(ownerMode === "self-screen" && ownPosition ? { ownPosition } : {}),
+        ...(input.visualBonus?.initialOnly === true || ownerMode === "studio-banner" ? { initialOnly: true } : {}) };
     }
     return config;
   }

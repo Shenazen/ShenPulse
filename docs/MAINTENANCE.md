@@ -85,3 +85,7 @@ fixtures ou rapports. Les tests de paiement/OAuth n'effectuent aucune transactio
 `build:dir` prépare une application locale. Store, installateur, upload,
 déploiement Firebase et publication du site sont des opérations distinctes,
 réservées à une release autorisée.
+
+La suite Node utilise l’isolation par fichier et une concurrence limitée à deux
+processus. Cela libère les contextes DOM/VM entre fichiers et évite qu’une suite
+complète conserve plusieurs gigaoctets de fixtures dans un seul processus.

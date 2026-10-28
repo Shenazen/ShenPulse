@@ -41,3 +41,17 @@ test("declared own screen persists only its position and banner, never the sessi
   }
   assert.equal(normalizeMatchesConfig({ visualBonus: { enabled: true, ownerMode: "self-screen", ownPosition: "left" } }).visualBonus.enabled, false);
 });
+
+test("first-only scope is explicit, survives normalization and retains no window or image", () => {
+  const input = { enabled: true, ...regions, initialOnly: true, sourceId: "window:1", image: "private" };
+  assert.deepEqual(normalizeMatchesConfig({ visualBonus: input }).visualBonus, { enabled: true, ...regions, initialOnly: true });
+  for (const initialOnly of [false, "true", 1]) {
+    assert.equal(Object.hasOwn(normalizeMatchesConfig({ visualBonus: { ...input, initialOnly } }).visualBonus, "initialOnly"), false);
+  }
+});
+
+test("Studio banner needs only its crop and uses the connected account without an identity rectangle", () => {
+  const result = normalizeMatchesConfig({ visualBonus: { enabled: true, ownerMode: "studio-banner", initialOnly: true,
+    bannerROI: regions.bannerROI, ownerROI: regions.ownerROI, sourceId: "window:1" } }).visualBonus;
+  assert.deepEqual(result, { enabled: true, ownerMode: "studio-banner", initialOnly: true, bannerROI: regions.bannerROI, ownerROI: null });
+});

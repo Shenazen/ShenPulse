@@ -88,13 +88,12 @@ async function createGoogleIdTokenLoopback({
         const receivedState = String(payload.state || "");
         const idToken = String(payload.idToken || "");
         const browserError = String(payload.error || "").trim();
+        const receivedStateBytes = Buffer.from(receivedState);
+        const expectedStateBytes = Buffer.from(expectedState);
         const stateMatches = Boolean(
-          expectedState &&
-          receivedState.length === expectedState.length &&
-          crypto.timingSafeEqual(
-            Buffer.from(receivedState),
-            Buffer.from(expectedState)
-          )
+          expectedStateBytes.length &&
+          receivedStateBytes.length === expectedStateBytes.length &&
+          crypto.timingSafeEqual(receivedStateBytes, expectedStateBytes)
         );
         if (
           !stateMatches ||

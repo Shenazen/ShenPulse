@@ -17,7 +17,7 @@ function externalFixture(){
  const file=path.resolve('tests/external-game-workspace.test.js'),source=fs.readFileSync(file,'utf8'),m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));
  m._compile(source.slice(0,source.indexOf("test('les 45"))+'\nmodule.exports={fixture};',file);return m.exports.fixture();
 }
-test('les 36 modules disponibles proposent six aides et six pièges avec les mêmes douze cadeaux, sans wins mélangées',()=>{
+test('les 37 modules disponibles proposent six aides et six pièges avec les mêmes douze cadeaux, sans wins mélangées',()=>{
  let available=0;
  for(const pack of packs.filter(p=>require('../src/shared/game-workspace-policy').eligible(p))){
   if(!pack.effects.some(e=>e.available!==false)){assert.equal(pack.defaultMappings.filter(m=>m.marketColumn).length,0,pack.id);continue;}
@@ -30,7 +30,7 @@ test('les 36 modules disponibles proposent six aides et six pièges avec les mê
   const hub=hubFor(pack);initializeDefaultInteractions(hub,pack.id);const projection=createGamePackOverlay({...hub.state,commerce:{subscription:{tier:'pro',status:'active',source:'paid'}}},pack.id);
   for(const column of ['help','trap'])assert.equal(projection.cards.filter(card=>card.column===column&&card.triggerType==='gift').length,6,pack.id);
  }
- assert.equal(available,36);
+ assert.equal(available,37);
 });
 test('tous les noms du catalogue et des presets tiennent en deux mots ; les données techniques sont conservées',()=>{
  for(const pack of packs){for(const effect of pack.effects)assert.ok(effect.name.trim().split(/\s+/).length<=2,pack.id+': '+effect.name);for(const m of pack.defaultMappings||[])assert.ok(m.title.trim().split(/\s+/).length<=2,pack.id+': '+m.title);}
@@ -105,9 +105,11 @@ test('TikTok et OBS ajoutent la source de wins distincte à la disposition appro
  const obs=prepareCollection(prepareCollection(null,plan).document,plan),scene=obs.document.sources.find(s=>s.id==='scene');assert.equal(scene.settings.items.length,4);assert.equal(obs.document.sources.filter(s=>s.id==='browser_source').length,2);assert.ok(obs.document.sources.some(s=>s.settings?.url===plan.winsOverlayUrl));
 });
 
-test('tous les codes, paramètres, séquences, durées et autres données des effets historiques sont inchangés',()=>{
+// Baseline 2.1.0 revue après le module Palworld autonome et le libellé Blue Prince.
+// Les codes et paramètres restent couverts par cette empreinte complète et les tests natifs.
+test('les codes, paramètres, séquences, durées et autres données des effets correspondent à la référence 2.1.0',()=>{
  const technical=packs.filter(p=>!["gtav-hiking-enhanced","gtav-koth-enhanced","shenfarm","shenpaint","shenkite","splash-bombes"].includes(p.id)).map(p=>({id:p.id,effects:p.effects.filter(e=>!['overlay_win_reset','overlay_win_invert','overlay_win_mute','overlay_win_unmute'].includes(e.code)).map(({name,previousNames,column,...technical})=>technical)}));
- assert.equal(require('node:crypto').createHash('sha256').update(JSON.stringify(technical)).digest('hex'),'8ad93ee5dcd9cf583eb25b24da96c248eed7716340dce73829888270e8c48751');
+ assert.equal(require('node:crypto').createHash('sha256').update(JSON.stringify(technical)).digest('hex'),'c422abca361a23381d7ad1bf030c86e907aa706779e363b05501a3377f651ec5');
 });
 test('les vrais contrôleurs de la page enregistrent paliers, multiplicateur et options, sans toucher aux autres actions',async t=>{
  const f=externalFixture();t.after(()=>f.dom.window.close());const pack=packs.find(p=>p.id==='gtav-montchiliad'),state=f.ctx.snapshot.state;f.ctx.selectedGameId=pack.id;state.settings.account={uid:'owner'};state.game.interactionRulesByPack[pack.id]=rulesFor(pack);

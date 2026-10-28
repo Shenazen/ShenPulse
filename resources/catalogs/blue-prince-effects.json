@@ -355,7 +355,7 @@
     "name": "Forcer les coups de pied",
     "category": "Effets temporaires",
     "duration": 30,
-    "description": "Indisponible : cette entrée du module Crowd Control ne contient aucune action dans Blue Prince.",
+    "description": "Indisponible : cette entrée du module ShenPulse ne contient aucune action dans Blue Prince.",
     "unavailableReason": "Le module officiel Blue Prince ne met pas en œuvre cet effet. Aucun déclencheur ne lui est associé.",
     "icon": "◷",
     "available": false,

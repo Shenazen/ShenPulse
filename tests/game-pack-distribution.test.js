@@ -11,14 +11,14 @@ const { downloadAsset } = require("../src/main/game-runtime/asset-download");
 const publication = require("../scripts/manifests/game-packs.json");
 
 test("les packs migrés gardent exactement leurs versions et empreintes sur Backblaze", () => {
-  assert.equal(publication.assets.length, 31);
+  assert.equal(publication.assets.length, 32);
   const keys = new Map();
   for (const entry of publication.assets) {
     const installer = GAME_INSTALLERS[entry.gameId];
     const asset = installer.assets.find(asset => asset.id === entry.id);
     // L’installateur peut évoluer pour configurer un port local sans remplacer
     // l’archive distante dont l’URL, la taille et l’empreinte restent figées.
-    const localRevisions = { "euro-truck-simulator-2": "1.0.5", "blue-prince": "1.0.1", "resident-evil-3": "2.1.4", "fallout-4": "1.0.1" };
+    const localRevisions = { "stardew-valley": "1.1.0", "euro-truck-simulator-2": "1.0.5", "blue-prince": "1.0.1", "resident-evil-3": "2.1.4", "fallout-4": "1.0.1" };
     assert.equal(installer.version, localRevisions[entry.gameId] || entry.version);
     assert.equal(asset.url, `https://f003.backblazeb2.com/file/shenpulse-media/${entry.key}`);
     assert.equal(asset.size, entry.size);

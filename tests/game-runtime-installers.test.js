@@ -38,6 +38,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       "minecraft-bedrock-box",
       "minecraft-sandbox-3",
       "minecraft-survival-plugin",
+      "palworld",
       "pokemon-red-blue",
       "resident-evil-3",
       "shenfarm",

@@ -23,3 +23,5 @@
 .matches-vision-notice[data-state="reading"] strong { color: #5ee2bf; }
 .matches-vision-notice[data-state="error"] { border-color: #a84f65; }
 .matches-vision-notice[data-state="error"] strong { color: #fda4b7; }
+
+.matches-vision-editor [data-studio-source-field][hidden] { display: none; }

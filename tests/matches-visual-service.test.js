@@ -507,3 +507,88 @@ test("matches IPC keeps the main-window sender, authentication and Pro access gu
   assert.match(ipc, /"matches:"/); assert.match(ipc, /assertIntegrationIpcSender\(channel/); assert.match(ipc, /assertAuthenticatedAccount\(store\)/);
   assert.match(matchesIpc, /assertProFeatureAccess\(store, "matches"\)/);
 });
+
+test("first-only fallback closes capture after proof; native second x2/x3 and snipe still execute independently", async (context) => {
+  for (const second of [2, 3]) {
+    const f = fixture(context); await f.enable({ initialOnly: true });
+    f.matches.saveAutomation({ id: "snipe", moment: "snipe", enabled: true,
+      reaction: { type: "sound", url: "https://media.example.invalid/fixture.mp3" } });
+    f.shift(20000); await f.send(30); f.shift(1000); await f.send(29);
+    assert.deepEqual(f.calls.map((row) => row.moment), ["multiplierX2"]);
+    await f.visual.tick();
+    assert.equal(f.visual.status().state, "initial-complete");
+    assert.equal(f.visual.status().active, false); assert.equal(f.ocrs[0].closed, true);
+    const reads = f.ocrs[0].reads;
+    f.shift(1000); await f.send(28); assert.equal(f.ocrs[0].reads, reads);
+    assert.equal(f.state.matchSession.multiplier, 2, "stopping OCR must preserve the accepted countdown");
+    f.shift(39000); f.matches.bonuses.reconcile();
+    assert.equal(f.state.matchSession.multiplier, 1);
+    const task = (id, bonus) => f.matches.handle({ source: "source_tiktok", phase: "task", id,
+      roomId: ROOM, channelUsername: "creator", battleId: "8001", receivedAtMs: f.now(), participants: [], teams: [], bonus });
+    task("second-announced", { stage: "announced", multiplier: second, startsAtMs: f.now() + 30000, durationMs: 30000, periodKey: "second" });
+    await f.visual.tick(); assert.equal(f.starts.length, 1);
+    f.shift(30000);
+    task("second-settled", { stage: "settled", result: "success", startsAtMs: f.now(), periodKey: "second" });
+    await f.matches.whenIdle();
+    assert.deepEqual(f.calls.map((row) => row.moment), ["multiplierX2", `multiplierX${second}`]);
+    assert.equal(f.state.matchSession.multiplier, second);
+    f.shift(30000); f.matches.bonuses.reconcile(); assert.equal(f.state.matchSession.multiplier, 1);
+    const snipe = f.matches.timers.get("snipe:snipe");
+    assert.ok(snipe); f.shift(snipe.at - f.now()); snipe.callback(); await f.matches.whenIdle();
+    assert.equal(f.calls.at(-1).moment, "snipe");
+    await f.visual.close();
+  }
+});
+
+test("native task ownership suspends first-only OCR, cancels in-flight text and re-arms next battle", async (context) => {
+  const f = fixture(context); await f.enable({ initialOnly: true }); f.shift(20000); await f.send(30); f.shift(1000);
+  const pending = deferred(); f.controls.recognize = async (bytes) => {
+    await pending.promise; return { available: true, lines: [{ text: bytes.toString("utf8") }] };
+  };
+  const frame = f.send(29); await settle();
+  f.matches.handle({ source: "source_tiktok", phase: "task", id: "ordinary-announcement",
+    roomId: ROOM, channelUsername: "creator", battleId: "8001", receivedAtMs: f.now(), participants: [], teams: [],
+    bonus: { stage: "announced", multiplier: 2, startsAtMs: f.now() + 60000, durationMs: 30000, periodKey: "native-second" } });
+  pending.resolve(); await frame; await f.visual.tick();
+  assert.deepEqual(f.calls, []); assert.equal(f.visual.status().state, "native-bonus");
+  assert.equal(f.visual.status().active, false); assert.equal(f.ocrs[0].closed, true);
+  f.controls.recognize = null;
+  f.matches.handle({ source: "source_tiktok", phase: "start", id: "next-open", roomId: ROOM, channelUsername: "creator",
+    battleId: "8002", receivedAtMs: f.now(), startsAtMs: f.now(), endsAtMs: f.now() + 301000,
+    participants: [{ id: OWN, username: "creator", score: 0 }, { id: "9009", username: "another-rival", score: 0 }] });
+  await f.visual.tick(); assert.equal(f.visual.status().active, true); assert.equal(f.starts.length, 2);
+  f.shift(20000); await f.send(30); f.shift(1000); await f.send(29); await f.visual.tick();
+  assert.deepEqual(f.calls.map((row) => row.moment), ["multiplierX2"]);
+  assert.equal(f.visual.status().state, "initial-complete");
+});
+
+test("a verified native initial period has priority over first-only capture without suppressing its reaction", async (context) => {
+  const f = fixture(context);
+  f.matches.handle({ source: "source_tiktok", phase: "task", id: "native-first", roomId: ROOM, channelUsername: "creator",
+    battleId: "8001", receivedAtMs: f.now(), participants: [], teams: [],
+    bonus: { stage: "start-bonus", result: "available", multiplier: 3, startsAtMs: f.now() + 20000, durationMs: 30000 } });
+  await f.enable({ initialOnly: true });
+  assert.equal(f.visual.status().state, "native-bonus"); assert.equal(f.starts.length, 0);
+  f.shift(20000); f.matches.bonuses.reconcile(); await f.matches.whenIdle();
+  assert.deepEqual(f.calls.map((row) => row.moment), ["multiplierX3"]);
+});
+
+test("Studio banner reads only the bonus with the connected account, without a nickname, handle or position crop", async (context) => {
+  const f = fixture(context); await f.enable({ ownerMode: "studio-banner", initialOnly: true, ownerROI: null });
+  assert.equal(f.visual.status().active, true);
+  assert.deepEqual(f.starts[0], { sourceId: "window:42:0", bannerROI: ROI, ownerROI: null, ownerMode: "self-screen", ownScreenConfirmed: true });
+  f.shift(20000); await f.send(30, { owner: null }); f.shift(1000); await f.send(29, { owner: null });
+  assert.equal(f.ocrs[0].reads, 2); assert.deepEqual(f.calls.map(row=>row.moment), ["multiplierX2"]);
+  await f.visual.tick(); assert.equal(f.visual.status().state, "initial-complete");
+});
+
+test("Studio-only activation refuses another window and every connected-account change cancels pending banner text", async (context) => {
+  const other = fixture(context); other.controls.list = async()=>[{id:"window:42:0",name:"TikTok LIVE in a browser"}];
+  await assert.rejects(other.enable({ownerMode:"studio-banner",initialOnly:true,ownerROI:null}), /TikTok LIVE Studio/);
+  assert.equal(other.starts.length,0);
+  const f=fixture(context); await f.enable({ownerMode:"studio-banner",initialOnly:true,ownerROI:null});
+  f.shift(20000); await f.send(30,{owner:null}); f.shift(1000);
+  const pending=deferred();f.controls.recognize=async(bytes)=>{await pending.promise;return {available:true,lines:[{text:bytes.toString("utf8")}]};};
+  const result=f.send(29,{owner:null});await settle();f.state.settings.tiktok.username="other";pending.resolve();await result;
+  assert.deepEqual(f.calls,[]);
+});

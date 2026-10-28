@@ -64,6 +64,7 @@ test("le CTA de promotion ouvre uniquement les offres, même pour un invité", a
 test("l’ancienne route Studio se replie vers Jeux sans changer les droits ni lancer un jeu", () => {
   const context = vm.createContext({
     pages: [{ id: "home" }, { id: "games" }], currentPage: "studio",
+    snapshot: { state: { commerce: { subscription: { tier: "pro", status: "active" } } } },
     accountSession: { authenticated: true, email: "viewer@example.test" }, ADMIN_OWNER_EMAIL: "owner@example.test",
     ShenPulseProAccess: require("../src/shared/pro-access"), hasProAccess: () => true,
     siteVisibility: {}, visibilityTools: { scopeFor: () => "public", canAccessScope: () => true }

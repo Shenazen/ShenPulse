@@ -121,7 +121,7 @@ function renderSteamDemoModInstallation(pack, unlocked) {
       <span>⌁</span>
       <strong>Votre ZIP, sans téléchargement supplémentaire</strong>
       <p>La démo Steam V62 et le ZIP original Find The Needle v1 sont nécessaires. ShenPulse ne contient et ne distribue pas ce mod tiers.</p>
-      <small>Après installation, lancez la démo depuis Steam puis chargez une partie. Aucun logiciel StreamToEarn n’a besoin de rester ouvert.</small>
+      <small>Après installation, lancez la démo depuis Steam puis chargez une partie. Gardez ShenPulse ouvert pour recevoir les interactions du LIVE.</small>
       ${modReady ? `<small>Mod installé le ${escapeHtml(formatAdminDate(installation.installedAt))}</small>` : ""}
     </aside>
   </div>`;

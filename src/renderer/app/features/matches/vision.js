@@ -23,9 +23,10 @@ function creatorMatchesVisualStatusCurrent() {
 
 function creatorMatchesVisualStatusView(status = creatorMatchesVisualStatusCurrent(), config = snapshot?.state?.settings?.matches?.visualBonus) {
   const selfScreen = config?.ownerMode === "self-screen";
+  const studioBanner = config?.ownerMode === "studio-banner";
   if (config?.enabled !== true) return {
     code: "disabled", title: "Lecture visuelle désactivée",
-    detail: "Le premier bonus court peut ne pas être transmis par TikTok. Pour le détecter sans attendre de cadeau, configurez une fenêtre compatible et la zone du bonus, avec identification visible ou déclaration explicite de votre propre écran."
+    detail: "TikTok LIVE Studio peut servir de secours pour le premier bonus, sans attendre de cadeau. Le compte déjà connecté à ShenPulse est utilisé automatiquement ; seule la zone du bandeau est à cadrer."
   };
   if (status?.state === "layout-changed") return { code: "layout-changed", title: "Disposition modifiée : confirmation requise",
     detail: "La disposition du match a changé. La lecture de la zone déclarée est arrêtée : affichez un nouvel aperçu, vérifiez votre position et confirmez à nouveau le bandeau de votre propre côté." };
@@ -40,17 +41,23 @@ function creatorMatchesVisualStatusView(status = creatorMatchesVisualStatusCurre
     detail: "La lecture tente de reprendre uniquement la fenêtre que vous avez choisie. Aucun bonus n’est inventé pendant cette interruption." };
   if (!status || status.state === "choose-window" || !status.hasSelection) return {
     code: "choose-window", title: "Fenêtre à choisir sur ce PC",
-    detail: selfScreen ? "L’option est enregistrée, mais aucune fenêtre n’est sélectionnée. Après chaque relance de ShenPulse, choisissez la fenêtre, affichez un nouvel aperçu et confirmez explicitement votre propre zone ; cette confirmation n’est jamais restaurée."
+    detail: studioBanner ? "Ouvrez TikTok LIVE Studio puis activez le secours. Votre compte et les matchs sont repris automatiquement depuis ShenPulse." : selfScreen ? "L’option est enregistrée, mais aucune fenêtre n’est sélectionnée. Après chaque relance de ShenPulse, choisissez la fenêtre, affichez un nouvel aperçu et confirmez explicitement votre propre zone ; cette confirmation n’est jamais restaurée."
       : "L’option est enregistrée, mais aucune fenêtre n’est sélectionnée. Après chaque relance de ShenPulse, choisissez à nouveau la fenêtre compatible et vérifiez les deux zones."
   };
   if (status.state === "waiting-match" || snapshot?.state?.session?.running !== true) return {
     code: "waiting-match", title: "En attente du LIVE et du match",
     detail: "La fenêtre est choisie. La lecture attend un match identifié sur votre propre LIVE ; elle ne dépend pas de la réception d’un cadeau."
   };
+  if (["initial-complete", "native-bonus"].includes(status.state)) return {
+    code: status.state, title: status.state === "initial-complete" ? "Premier bonus confirmé · lecture arrêtée" : "Détection TikTok prioritaire",
+    detail: "Le secours visuel attend le prochain match. Le second bonus, son compte à rebours et le snipe continuent de suivre les événements TikTok."
+  };
+  if (status.active && status.state === "reading" && studioBanner) return { code: "reading", title: "Premier bonus · lecture Studio active",
+    detail: "ShenPulse lit uniquement le bandeau choisi dans TikTok LIVE Studio. Le compte et la manche viennent de votre session. Le second bonus et le snipe restent détectés via TikTok." };
   if (status.active && status.state === "reading") return selfScreen ? { code: "reading", title: "Lecture active — zone déclarée par vous",
     detail: "Le bandeau est lu dans la zone que vous avez confirmée. Votre identité n’est pas vérifiée par l’image : un bandeau global ou adverse peut être ambigu. Si vous déplacez les panneaux, vérifiez le cadrage. Les contrôles du match et du compte TikTok restent appliqués." }
     : { code: "reading", title: "Lecture visuelle active",
-      detail: "Les deux zones sont lues localement pendant toute la manche. Gardez le bandeau et votre identité visibles dans la fenêtre choisie ; deux images concordantes confirment le bonus." };
+      detail: config?.initialOnly === true ? "Le bandeau et votre identité sont lus localement pour le premier bonus. Deux images concordantes avec un compte à rebours qui descend le confirment ; la lecture s’arrête ensuite jusqu’au prochain match." : "Les deux zones sont lues localement pendant toute la manche. Gardez le bandeau et votre identité visibles dans la fenêtre choisie ; deux images concordantes confirment le bonus." };
   return { code: "starting", title: "Démarrage de la lecture locale",
     detail: "La fenêtre choisie est en cours de préparation. Aucun effet n’est déclenché par cet affichage de statut." };
 }
@@ -145,7 +152,7 @@ async function openCreatorMatchesVisualEditor() {
   const stateLabel = creatorMatchesVisualStatusView({ ...status, hasSelection: Boolean(selectedSource) }, { enabled: status?.enabled, ownerMode }).title;
   openEditor({ title: "Lecture visuelle locale", kicker: "MATCHS · OPTION FACULTATIVE", variant: "wide",
     submitLabel: "Activer", pendingLabel: "Activation…", successMessage: "Lecture visuelle locale activée",
-    body: `<div class="matches-vision-editor"><p class="matches-editor-note">Le premier bonus court peut ne pas être transmis par TikTok. ShenPulse peut lire une ou deux petites zones d’une fenêtre compatible, sans attendre de cadeau. <strong>Aucun cloud, aucune image enregistrée ni envoyée.</strong></p>
+    body: `<div class="matches-vision-editor"><p class="matches-editor-note"><strong>Secours du premier bonus uniquement.</strong> La lecture s’arrête dès qu’un premier bonus est confirmé ou qu’une période de bonus est reçue de TikTok. Le second bonus et le snipe conservent leur détection habituelle.</p><p class="matches-editor-note">Le premier bonus court peut ne pas être transmis par TikTok. ShenPulse peut lire une ou deux petites zones d’une fenêtre compatible, sans attendre de cadeau. <strong>Aucun cloud, aucune image enregistrée ni envoyée.</strong></p>
       <p class="matches-vision-state" role="status">${escapeHtml(stateLabel)}</p>
       <label class="field"><span>Fenêtre TikTok à lire</span><select data-vision-source><option value="">Choisir une fenêtre…</option>${rows.map((row) => `<option value="${escapeHtml(row.id)}" ${row.id === selectedSource ? "selected" : ""}>${escapeHtml(row.name)}</option>`).join("")}</select><small>Après chaque redémarrage de ShenPulse, sélectionnez à nouveau la fenêtre. Ce choix n’est pas enregistré.</small></label>
       <label class="field"><span>Comment identifier votre côté du match ?</span><select data-vision-owner-mode><option value="username" ${ownerMode === "username" ? "selected" : ""}>@pseudo dans la zone</option><option value="studio-self" ${ownerMode === "studio-self" ? "selected" : ""}>TikTok Studio : encart « Toi » (1 contre 1)</option><option value="self-screen" ${ownerMode === "self-screen" ? "selected" : ""}>Mon propre écran — zone déclarée</option></select><small>Le mode Studio est un choix explicite : votre nom vérifié et « Toi » doivent être visibles dans la même zone. En équipe ou si l’identité est ambiguë, utilisez votre @ dans une autre fenêtre compatible, ou déclarez explicitement votre propre écran ci-dessous.</small></label>
@@ -167,7 +174,7 @@ async function openCreatorMatchesVisualEditor() {
       if (selfScreen && !confirmation.checked) throw new Error("Confirmez explicitement que le bandeau sélectionné concerne votre côté et pas celui de l’adversaire.");
       busy = true; update();
       try {
-        const result = await api.matches.saveVisual({ enabled: true, sourceId: selectedSource,
+        const result = await api.matches.saveVisual({ enabled: true, initialOnly: true, sourceId: selectedSource,
           bannerROI: { ...regions.bannerROI }, ownerROI: selfScreen ? null : { ...regions.ownerROI },
           ...(selfScreen ? { ownerMode, ownPosition, ownScreenConfirmed: true } : ownerMode === "studio-self" ? { ownerMode } : {}) }, scope);
         assertCurrent(); creatorMatchesAcceptResult(result, owner);
@@ -298,4 +305,116 @@ async function openCreatorMatchesVisualEditor() {
   const observer = new MutationObserver(() => { if (!dialog.contains(editor)) cleanup(); });
   observer.observe(dialogBody, { childList: true }); dialog.addEventListener("close", cleanup, { once: true });
   update();
+}
+
+
+function openCreatorMatchesStudioVisualEditor() {
+  return creatorMatchesStudioVisualEditor();
+}
+
+async function creatorMatchesStudioVisualEditor() {
+  const owner = creatorMatchesCaptureOwner(), scope = creatorMatchesApiScope(owner), initialDialog = dialogSessionId;
+  if (typeof api.matches.visualStatus !== "function" || typeof api.matches.visualSources !== "function") throw new Error("Relancez ShenPulse pour configurer le secours Studio.");
+  const [status, listed] = await Promise.all([api.matches.visualStatus(), api.matches.visualSources()]);
+  assertCreatorMatchesOwner(owner);
+  if (initialDialog !== dialogSessionId) return;
+  const studioRows = rows => Array.isArray(rows) ? rows.filter(row => typeof row?.id === "string" && row.id.length <= 200 &&
+    typeof row.name === "string" && row.name.length <= 300 && /^TikTok\s+LIVE\s+Studio(?:\s*[-–—|].*)?$/i.test(row.name)).slice(0, 10) : [];
+  let sources = studioRows(listed), selected = sources.some(row => row.id === status?.sourceId) ? status.sourceId : sources.length === 1 ? sources[0].id : "";
+  let region = status?.ownerMode === "studio-banner" ? creatorMatchesVisualRegion(status.bannerROI, 0.3) : null;
+  let previewSource = "", previewAtMs = 0, busy = false, version = 0, drag = null;
+  openEditor({ title: "Premier bonus · TikTok LIVE Studio", kicker: "SECOURS LOCAL", variant: "wide",
+    submitLabel: "Activer le secours", pendingLabel: "Activation…", successMessage: "Secours du premier bonus activé dans Studio",
+    body: `<div class="matches-vision-editor"><p class="matches-editor-note">Le compte connecté à ShenPulse et le match en cours sont repris automatiquement. <strong>Aucun @ ni position à renseigner.</strong></p>
+      <p class="matches-editor-note">ShenPulse lit uniquement le bandeau ×2 / ×3 de votre LIVE dans TikTok LIVE Studio, sans enregistrer ni envoyer d’image. Le second bonus et le snipe gardent leur détection TikTok.</p>
+      <p class="matches-vision-state" data-studio-source-state role="status"></p>
+      <label class="field" data-studio-source-field hidden><span>Fenêtre TikTok LIVE Studio</span><select data-studio-source></select></label>
+      <div class="matches-vision-toolbar"><button type="button" class="button ghost small" data-studio-refresh>Actualiser Studio</button><button type="button" class="button ghost small" data-vision-preview>Afficher le bandeau</button><button type="button" class="button ghost small" data-studio-disable ${status?.enabled ? "" : "disabled"}>Désactiver</button></div>
+      <button type="button" class="button small is-selected" data-vision-region="bannerROI">Zone du bandeau ×2 / ×3</button>
+      <p class="matches-editor-note">Dans l’aperçu, encadrez une fois le bandeau du bonus de votre LIVE. Le cadrage est conservé pour les prochains matchs ; vérifiez-le si vous déplacez les panneaux Studio.</p>
+      <div class="matches-vision-preview" data-vision-stage hidden><img data-vision-image alt="Aperçu local de TikTok LIVE Studio, non enregistré" draggable="false"><div class="matches-vision-selection" data-studio-box hidden><span>×2 / ×3</span></div></div>
+      <p class="matches-vision-feedback" data-vision-feedback role="status">Ouvrez TikTok LIVE Studio puis affichez son aperçu pour cadrer le bandeau.</p></div>`,
+    onSubmit: async () => {
+      assertCurrent();
+      if (busy || !selected || previewSource !== selected || !region || !previewAtMs || Date.now() - previewAtMs > 120000) throw new Error("Affichez un aperçu récent de Studio puis encadrez le bandeau du bonus.");
+      busy = true; update();
+      try {
+        const result = await api.matches.saveVisual({ enabled: true, initialOnly: true, ownerMode: "studio-banner",
+          sourceId: selected, bannerROI: { ...region }, ownerROI: null }, scope);
+        assertCurrent(); creatorMatchesAcceptResult(result, owner); creatorMatchesAcceptVisualStatus(result?.vision, owner);
+      } finally { if (session === dialogSessionId && dialog.contains(editor)) { busy = false; update(); } }
+    } });
+  const session = dialogSessionId, editor = dialog.querySelector(".matches-vision-editor");
+  const source = editor.querySelector("[data-studio-source]"), sourceField = editor.querySelector("[data-studio-source-field]");
+  const sourceState = editor.querySelector("[data-studio-source-state]"), preview = editor.querySelector("[data-vision-preview]");
+  const stage = editor.querySelector("[data-vision-stage]"), image = editor.querySelector("[data-vision-image]"), box = editor.querySelector("[data-studio-box]");
+  const refresh = editor.querySelector("[data-studio-refresh]"), disable = editor.querySelector("[data-studio-disable]");
+  const feedback = editor.querySelector("[data-vision-feedback]");
+  function assertCurrent() {
+    assertCreatorMatchesOwner(owner);
+    if (session !== dialogSessionId || !dialog.open || !dialog.contains(editor)) throw new Error("Le réglage Studio a changé. Rouvrez-le depuis Matchs.");
+  }
+  function updateSources() {
+    source.innerHTML = `<option value="">Choisir Studio…</option>${sources.map(row => `<option value="${escapeHtml(row.id)}" ${row.id === selected ? "selected" : ""}>${escapeHtml(row.name)}</option>`).join("")}`;
+  }
+  function update() {
+    sourceField.hidden = sources.length <= 1;
+    sourceState.textContent = !sources.length ? "Ouvrez TikTok LIVE Studio puis cliquez sur Actualiser Studio." : selected ? "TikTok LIVE Studio détecté · compte repris depuis ShenPulse" : "Plusieurs fenêtres Studio sont ouvertes : choisissez celle de votre LIVE.";
+    source.disabled = busy; preview.disabled = busy || !selected; refresh.disabled = busy;
+    dialogSubmitButton.disabled = busy || !selected || previewSource !== selected || !region || !previewAtMs || Date.now() - previewAtMs > 120000;
+    box.hidden = !region || !previewSource;
+    if (region) Object.assign(box.style, { left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` });
+  }
+  function clearPreview() { version += 1; previewSource = ""; previewAtMs = 0; drag = null; image.removeAttribute("src"); stage.hidden = true; }
+  source.addEventListener("change", () => { selected = source.value; clearPreview(); region = null; update(); });
+  refresh.addEventListener("click", async () => {
+    if (busy) return; busy = true; update();
+    try {
+      assertCurrent(); const rows = await api.matches.visualSources(); assertCurrent();
+      sources = studioRows(rows);
+      const next = sources.some(row => row.id === selected) ? selected : sources.length === 1 ? sources[0].id : "";
+      if (next !== selected) { clearPreview(); region = null; } selected = next; updateSources();
+    } catch (error) { if (session === dialogSessionId && dialog.open) showDialogError(error.message); }
+    finally { if (session === dialogSessionId && dialog.contains(editor)) { busy = false; update(); } }
+  });
+  preview.addEventListener("click", async () => {
+    if (busy || !selected) return;
+    clearPreview(); const requestVersion = version, requestedSource = selected; busy = true; update();
+    try {
+      assertCurrent(); const result = await api.matches.visualPreview(requestedSource, scope); assertCurrent();
+      if (requestVersion !== version || requestedSource !== selected) return;
+      if (typeof result?.image !== "string" || result.image.length > 8 * 1024 * 1024 || !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(result.image)) throw new Error("L’aperçu local de Studio est indisponible.");
+      image.src = result.image; previewSource = selected; previewAtMs = Date.now(); stage.hidden = false;
+      feedback.textContent = region ? "Vérifiez le cadre du bandeau puis activez le secours." : "Encadrez le bandeau du bonus de votre LIVE puis activez le secours.";
+    } catch (error) { if (session === dialogSessionId && dialog.open) showDialogError(error.message); }
+    finally { if (session === dialogSessionId && dialog.contains(editor)) { busy = false; update(); } }
+  });
+  disable.addEventListener("click", async () => {
+    if (busy) return; busy = true; disable.disabled = true; update();
+    try {
+      assertCurrent(); const result = await api.matches.saveVisual({ enabled: false }, scope); assertCurrent();
+      creatorMatchesAcceptResult(result, owner); creatorMatchesAcceptVisualStatus(result?.vision, owner);
+      clearPreview(); feedback.textContent = "Secours arrêté. Les bonus reçus de TikTok restent détectés.";
+    } catch (error) { if (session === dialogSessionId && dialog.open) { disable.disabled = false; showDialogError(error.message); } }
+    finally { if (session === dialogSessionId && dialog.contains(editor)) { busy = false; update(); } }
+  });
+  const point = event => { const rect = stage.getBoundingClientRect(); return rect.width > 0 && rect.height > 0 ? { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height } : null; };
+  stage.addEventListener("pointerdown", event => {
+    if (busy || event.button !== 0 || previewSource !== selected || !image.complete || !image.naturalWidth) return;
+    try { assertCurrent(); } catch { return; }
+    const first = point(event); if (!first) return;
+    event.preventDefault(); drag = { first, pointerId: event.pointerId }; stage.setPointerCapture?.(event.pointerId);
+  });
+  stage.addEventListener("pointermove", event => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const second = point(event); if (!second) return;
+    region = creatorMatchesVisualRectangle(drag.first, second, 0.3);
+    feedback.textContent = region ? "Bandeau cadré. Vous pouvez activer le secours." : "Encadrez uniquement le bandeau, dans 30 % de la fenêtre maximum."; update();
+  });
+  const endDrag = event => { if (drag?.pointerId === event.pointerId) { drag = null; stage.releasePointerCapture?.(event.pointerId); } };
+  stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
+  function cleanup() { clearPreview(); observer.disconnect(); dialog.removeEventListener("close", cleanup); }
+  const observer = new MutationObserver(() => { if (!dialog.contains(editor)) cleanup(); });
+  observer.observe(dialogBody, { childList: true }); dialog.addEventListener("close", cleanup, { once: true });
+  updateSources(); update();
 }

@@ -25,9 +25,10 @@ const { normalizeMatchesConfig } = require("../src/shared/matches-contract");
 
 const root = path.resolve(__dirname, "..");
 const matchesReview = process.argv.includes("--matches-redesign");
-const outputDirectory = path.join(root, matchesReview ? "tmp/matches-page-review-20261016" : "website/public/screenshots");
+const storeCapture = process.argv.includes("--store");
+const outputDirectory = storeCapture ? path.join(root, "store-screenshots", appVersion) : path.join(root, matchesReview ? "tmp/matches-page-review-20261016" : "website/public/screenshots");
 const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "shenpulse-public-captures-"));
-const viewport = { width: matchesReview && process.argv.includes("--narrow") ? 980 : 1440, height: 900 };
+const viewport = storeCapture ? { width: 1920, height: 1080 } : { width: matchesReview && process.argv.includes("--narrow") ? 980 : 1440, height: 900 };
 const consoleErrors = [], blockedRequests = [], frameErrors = [], results = [];
 let captureWindow, staticServer, staticOrigin = "", stage = "initialisation";
 app.setPath("userData", path.join(temporaryDirectory, "chromium"));
@@ -44,7 +45,7 @@ function createFixture() {
   const at = (minutes) => new Date(now - minutes * 60000).toISOString();
   state.settings.account = { uid: "public-demo", email: "", authenticated: true, displayName: "Démonstration", emailVerified: true };
   state.settings.siteVisibility.navigation = { live: { scope: "hidden" }, goals: { scope: "hidden" } };
-  state.commerce.subscription = { ...state.commerce.subscription, tier: "pro", status: "active", source: "own" };
+  state.commerce.subscription = { ...state.commerce.subscription, tier: "premium", status: "active", source: "own", priceMonthly: 20.99 };
   state.profiles[0].name = "LIVE · démonstration";
   state.profiles[0].description = "Configuration d'exemple, sans données personnelles.";
   state.session.running = true;
@@ -119,6 +120,10 @@ function installFixture(snapshot) {
     controlSpotify: async (request) => { if (request.operation === "requests_status") return copy(snapshot.fixtureRequests); if (request.operation === "queue_list") return { queue: [] }; return forbidden("controlSpotify")(request); },
     users: { snapshot: async () => copy(snapshot.fixtureUsers) },
     updates: { check: async () => ({ available: false }) },
+    agencies: {
+      list: async () => ({ ok: true, agencies: [], prices: { public: { pro: 14.99, premium: 20.99 }, agency: { pro: 9.99, premium: 13.99 } } }),
+      dashboard: async () => ({ ok: true, uid: "public-demo", members: [], ownedAgency: null, membership: null, pricing: { quoted: { pro: 14.99, premium: 20.99 }, eligible: false } })
+    },
     account: { status: async () => copy(snapshot.state.settings.account), gameCheatAccess: async () => ({ allowed: false }), syncEntitlements: async () => null },
     admin: { status: async () => ({ authorized: false }), visibility: async () => copy(snapshot.state.settings.siteVisibility) },
     on: () => () => {}
@@ -129,6 +134,14 @@ function installFixture(snapshot) {
   HTMLMediaElement.prototype.play = forbidden("media.play", "media");
   globalThis.addEventListener("error", (event) => publicCaptureCalls.errors.push(String(event.error?.stack || event.message)));
   globalThis.addEventListener("unhandledrejection", (event) => publicCaptureCalls.errors.push(String(event.reason?.stack || event.reason)));
+}
+
+/** Remplace chaque capture et son manifeste seulement après écriture complète. */
+function writeCaptureArtifact(file, contents) {
+  const temporary = file + ".writing-" + process.pid;
+  fs.writeFileSync(temporary, contents);
+  try { fs.renameSync(temporary, file); }
+  catch (error) { fs.rmSync(temporary, { force: true }); throw error; }
 }
 
 async function waitUntil(callback, timeoutMs = 15000) {
@@ -153,7 +166,7 @@ async function capture({ file, label, page, setup = "", scroll = 0 }) {
   if (page === "users") { await captureWindow.webContents.executeJavaScript('refreshCreatorUsersDatabase({force:true})'); await delay(100); }
   await captureWindow.webContents.executeJavaScript(`content.scrollTop=${scroll};`);
   await settleImages();
-  if (matchesReview) {
+  {
     // The synthetic authenticated session is injected after the startup UI
     // schedules its sign-in invitation. This closes only that fixture modal;
     // no real account, authentication dialog or user window is involved.
@@ -164,9 +177,10 @@ async function capture({ file, label, page, setup = "", scroll = 0 }) {
     await waitUntil(() => captureWindow.webContents.executeJavaScript(`Array.from(content.querySelectorAll('iframe[data-overlay-src]')).filter(frame => { const rect=frame.getBoundingClientRect(); return rect.bottom>64 && rect.top<innerHeight; }).every(frame => frame.dataset.overlayPreviewReady==='true')`));
     await delay(400);
   }
-  const audit = await captureWindow.webContents.executeJavaScript(`({ viewport:{width:innerWidth,height:innerHeight}, title:document.title, page:currentPage, authenticated:isAccountAuthenticated(), admin:isVerifiedAdminSession(), overflow:document.documentElement.scrollWidth-innerWidth, calls:publicCaptureCalls, brokenImages:[...document.querySelectorAll('img')].filter(img=>img.getBoundingClientRect().width>0 && (!img.complete || !img.naturalWidth)).map(img=>img.getAttribute('src')), text:document.getElementById('content').innerText })`);
+  const audit = await captureWindow.webContents.executeJavaScript(`({ viewport:{width:innerWidth,height:innerHeight}, title:document.title, page:currentPage, authenticated:isAccountAuthenticated(), dialogOpen:dialog.open, admin:isVerifiedAdminSession(), overflow:document.documentElement.scrollWidth-innerWidth, calls:publicCaptureCalls, brokenImages:[...document.querySelectorAll('img')].filter(img=>img.getBoundingClientRect().width>0 && (!img.complete || !img.naturalWidth)).map(img=>img.getAttribute('src')), text:document.getElementById('content').innerText })`);
   assert.deepEqual(audit.viewport, viewport);
   assert.equal(audit.authenticated, true);
+  assert.equal(audit.dialogOpen, false, `${file} : fenêtre de connexion de la fixture encore ouverte`);
   assert.equal(audit.admin, false);
   assert.ok(audit.overflow <= 1, `${file} : débordement de fenêtre`);
   assert.deepEqual(audit.brokenImages, [], `${file} : images non chargées`);
@@ -175,7 +189,7 @@ async function capture({ file, label, page, setup = "", scroll = 0 }) {
   const target = path.join(outputDirectory, file);
   const png = (await captureWindow.webContents.capturePage()).toPNG();
   assert.equal(png.readUInt32BE(16), viewport.width); assert.equal(png.readUInt32BE(20), viewport.height);
-  fs.writeFileSync(target, png);
+  writeCaptureArtifact(target, png);
   results.push({ path: `/screenshots/${file}`, ...viewport, label, sha256: crypto.createHash("sha256").update(png).digest("hex"), page, scroll });
   process.stdout.write(`Capture : ${file}\n`);
 }
@@ -231,7 +245,7 @@ async function run() {
   assert.deepEqual(consoleErrors, [], "Console Chromium sans erreur");
   assert.deepEqual(frameErrors, [], "Les aperçus réels ne doivent pas échouer");
   const entries = results.map(({ path: file, width, height, label, sha256 }) => `  ${JSON.stringify(file)}: ${JSON.stringify({ width, height, label, sha256 })}`).join(",\n");
-  if (!matchesReview) fs.writeFileSync(path.join(root, "website/app/screenshots.js"), `/** Captures du renderer ${appVersion}, données de démonstration. Générées par scripts/capture-public-site.js. */\nexport const SCREENSHOTS = {\n${entries}\n};\n`);
+  if (!matchesReview && !storeCapture) writeCaptureArtifact(path.join(root, "website/app/screenshots.js"), `/** Captures du renderer ${appVersion}, données de démonstration. Générées par scripts/capture-public-site.js. */\nexport const SCREENSHOTS = {\n${entries}\n};\n`);
   fs.writeFileSync(path.join(temporaryDirectory, "results.json"), JSON.stringify({ appVersion, results, consoleErrors, blockedRequests, frameErrors }, null, 2));
   process.stdout.write(JSON.stringify({ appVersion, outputDirectory, auditDirectory: temporaryDirectory, captures: results.length }, null, 2) + "\n");
 }

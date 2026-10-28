@@ -9,7 +9,7 @@ const path = require("node:path");
 
 test("Minecraft utilise une seule jaquette puis propose ses trois modes", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
-  const app = readRendererSource();
+  const app = readRendererSource().replace(/\r\n/g, "\n");
   const styles = readRendererStyles();
 
   assert.match(app, /const MINECRAFT_LAUNCHER_ID = "minecraft"/);
