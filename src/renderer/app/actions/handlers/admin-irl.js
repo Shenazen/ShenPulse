@@ -27,6 +27,7 @@ const ADMIN_IRL_ACTIONS = new Set([
   "admin-game-version",
   "admin-game-cheat-remove",
   "admin-trial-edit",
+  "admin-trial-agency-counting",
   "admin-trial-revoke",
   "admin-plan-edit",
   "admin-product-edit",
@@ -194,6 +195,27 @@ async function handleAdminAndIrlAction({ action, target, id }) {
     const trial = adminTrialRows().find((item) => item.id === id);
     if (!trial) throw new Error("Essai introuvable.");
     return openAdminTrialEditor(trial);
+  }
+  if (action === "admin-trial-agency-counting") {
+    if (adminBusy) return;
+    if (adminModuleError("trials") || !adminTrialAgencyCountingAvailable()) {
+      throw new Error("Le service de comptage des essais n’est pas encore disponible.");
+    }
+    const trial = adminTrialRows().find((item) => item.id === id);
+    if (!trial?.subscriptionTrial) throw new Error("Choisissez un essai Pro ou Premium.");
+    const countsForAgency = trial.countsForAgency !== true;
+    return perform(async () => {
+      adminBusy = true;
+      render();
+      try {
+        await api.admin.updateTrial({ trialId: id, onlyAgencyCounting: true, countsForAgency });
+        adminDashboard = await api.admin.dashboard();
+      } finally {
+        adminBusy = false;
+        render();
+        restoreAdminTrialFormInteractivity();
+      }
+    }, countsForAgency ? "Essai comptabilisé pour l’agence" : "Essai retiré du comptage agence");
   }
   if (action === "admin-trial-revoke") {
     if (adminModuleError("trials")) {

@@ -37,6 +37,20 @@ test("la console propriétaire est distincte ; les autres comptes ne peuvent pas
  const f=fixture(t);assert.equal(f.w.renderAdminAgencies(),"");
  f.setUid("admin");await f.w.refreshAgencies(true);assert.match(f.w.renderAdminAgencies(),/Aucune commission/);
 });
+
+test("le directeur distingue un essai comptabilisé d’un paiement et d’une adhésion en attente",async t=>{
+ const {w}=fixture(t);
+ const html=w.agencyMemberRows([
+  {uid:'trial',displayName:'Essai choisi',status:'approved',paying:true,tier:'premium',paidSubscription:false,countingSource:'trial'},
+  {uid:'paid',displayName:'Abonné payé',status:'approved',paying:true,tier:'pro',paidSubscription:true,countingSource:'paypal'},
+  {uid:'pending',displayName:'Demande',status:'pending',paying:true,tier:'premium',countingSource:'trial'}
+ ]);
+ const doc=new JSDOM(html).window.document,rows=[...doc.querySelectorAll('.agency-member')];
+ assert.match(rows.find(r=>r.textContent.includes('Essai choisi')).textContent,/PREMIUM · essai comptabilisé/);
+ assert.match(rows.find(r=>r.textContent.includes('Abonné payé')).textContent,/PRO · abonnement actif/);
+ assert.match(rows.find(r=>r.textContent.includes('Demande')).textContent,/Accès non comptabilisé/);
+ assert.doesNotMatch(rows.find(r=>r.textContent.includes('Essai choisi')).textContent,/abonnement actif/);
+});
 test("changement de compte ou reconnexion : aucun cache privé du directeur ne reste visible",async t=>{
  const f=fixture(t);await f.w.refreshAgencies();
  f.run('agencyView.dashboard.ownAgency={name:"Secret agence",status:"approved",code:"SECRET"}');
@@ -179,6 +193,22 @@ test("la revue reste lisible sans images et délègue la gestion des membres au 
  assert.equal(main.querySelector('.agency-profile-logo').textContent,'SA');
  assert.equal(main.querySelector('[data-action="agency-member"]'),null);
  assert.doesNotMatch(main.textContent,/Demandes et membres|m@example.invalid/);
+});
+
+test("les cartes publiques et privées gardent une présentation compacte dépliable sans perdre les décisions",async t=>{
+ const f=fixture(t),description='Notre présentation détaillée <script> reste du texte. '.repeat(35);
+ const agency={id:'a',name:'Une agence avec un nom long',description,status:'pending',level:'silver',payingCount:3,bannerUrl:'https://example.invalid/banner.webp'};
+ let main=f.w.document.querySelector('main');main.innerHTML=f.w.renderAgencyCard(agency);
+ const details=main.querySelector('details.agency-card-description');assert.ok(details);assert.equal(details.open,false);
+ assert.equal(details.querySelector('p').textContent,description);assert.equal(main.querySelector('script'),null);
+ details.open=true;assert.equal(details.querySelector('p').textContent,description);
+ assert.equal(main.querySelectorAll('[data-action="agency-join"]').length,1);
+ f.setUid('admin');f.w.api.admin.agenciesDashboard=async()=>({allAgencies:[agency,{...agency,id:'b',name:'Autre agence',status:'approved'}],members:[]});
+ await f.w.refreshAgencies(true);main.innerHTML=f.w.renderAdminAgencies();
+ assert.equal(main.querySelectorAll('.agency-review-grid > .agency-review-card').length,2);
+ assert.equal(main.querySelectorAll('details.agency-card-description').length,2);
+ assert.equal(main.querySelectorAll('[data-action="agency-review"]').length,5);
+ assert.equal(main.querySelectorAll('[data-action="agency-member"]').length,0);
 });
 
 test("l’en-tête Agences reprend le composant illustré commun et son affiche dédiée",async t=>{

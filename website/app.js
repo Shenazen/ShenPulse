@@ -11,7 +11,7 @@ import { productTour, screenshot, screenshotDialog, bindVisuals } from '/app/vis
 import { escapeHtml } from '/app/html.js?v=20261028-web1'
 
 const app = document.querySelector('#app')
-const DOWNLOAD_URL = '/downloads/ShenPulseSetup-2.1.0.exe'
+const DOWNLOAD_URL = '/downloads/ShenPulseSetup-2.1.1.exe'
 const SITE_ORIGIN = 'https://www.shenpulse.leuridan.fr'
 const RETIRED_ROUTES = ['/login', '/setup', '/admin', '/app']
 let pageController = null

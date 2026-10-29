@@ -16,7 +16,7 @@ void Menu(){
   if(row==4&&direction)ramp.angle=std::max(5.0f,std::min(60.0f,ramp.angle+direction*5));
   if(row==5&&direction)sections=std::max(5,std::min(95,sections+direction*5));
   if(row==6&&direction)design=(design+5+direction)%5;
-  if(row==1){animated=!animated;if(active){Result result=Build();status=result.message;}SaveSettings();status=animated?"Animation activee":"Animation arretee";}
+  if(row==1){animated=!animated;if(active){Result result=Build();status=result.message;if(result.status)animated=oldAnimated;}else{SaveSettings();status=animated?"Animation activee":"Animation arretee";}}
   else if(row==9&&enter)open=false;
   else if(row==0&&enter){if(active){EndJail();ClearObstacles();ClearRamp();won=true;status="Rampe retiree";}else status=Build().message;}
   else if(row==2&&enter)status=Execute(Request{0,"koth_vehicle_adder",1}).message;

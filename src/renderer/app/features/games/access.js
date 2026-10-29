@@ -544,7 +544,7 @@ function openMinecraftModeSelector(launcher) {
   }
   openEditor({
     title: gta ? "Choisir un mod GTA Enhanced/Amélioré" : "Choisir un mode Minecraft",
-    kicker: gta ? "GTA ENHANCED · CHILIAD, KOTH OU HIKING" : "MINECRAFT · BEDROCK BOX, SANDBOX OU SURVIVAL",
+    kicker: gta ? "GTA ENHANCED · CHILIAD, KOTH OU HIKING" : "MINECRAFT · CHOISISSEZ VOTRE MODE",
     variant: "minecraft-modes",
     body: `<div class="minecraft-mode-picker">
       <header>
@@ -555,10 +555,10 @@ function openMinecraftModeSelector(launcher) {
       <div class="minecraft-mode-grid">
         ${modes.map((mode) => `
           <button type="button" class="minecraft-mode-card ${mode.coverArtwork ? "has-cover" : ""}" data-action="open-game-mode" data-id="${escapeHtml(mode.id)}">
-            <img src="${escapeHtml(mode.coverArtwork ? `assets/games/${mode.coverArtwork}` : gameArtwork(mode))}" alt="" loading="eager">
+            <div class="minecraft-mode-art"><img src="${escapeHtml(mode.coverArtwork ? `assets/games/${mode.coverArtwork}` : gameArtwork(mode))}" alt="" loading="eager">${!gta && mode.minecraftVersion ? `<b class="minecraft-mode-version">Minecraft Java ${escapeHtml(mode.minecraftVersion)}</b>` : ""}</div>
             <span>
               <small>${escapeHtml(
-                gta ? (mode.id === "gtav-koth-enhanced" ? "RAMPE INTERACTIVE" : mode.id === "gtav-hiking-enhanced" ? "RANDONNÉE INTERACTIVE" : "ASCENSION INTERACTIVE") : mode.id === "minecraft-bedrock-box"
+                gta ? (mode.id === "gtav-koth-enhanced" ? "RAMPE INTERACTIVE" : mode.id === "gtav-hiking-enhanced" ? "RANDONNÉE INTERACTIVE" : "ASCENSION INTERACTIVE") : mode.id === "minecraft-lavarise" ? "ASCENSION DE LAVE" : mode.id === "minecraft-bedrock-box"
                   ? "SURVIE VERTICALE"
                   : mode.id === "minecraft-survival-plugin"
                     ? "SURVIE INTERACTIVE"

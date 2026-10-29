@@ -183,6 +183,6 @@ test('les clics réels ouvrent immédiatement Supermarket et une autre fiche mê
   const allPacks = loadShenazenGameCatalog(path.join(root, 'resources'));
   dom.window.__allPacksForQa = allPacks;
   const report = dom.window.eval('snapshot.packs=__allPacksForQa; __allPacksForQa.filter(pack=>ShenPulseGameWorkspacePolicy.eligible(pack)).map(pack=>{selectedGameId=pack.id;const template=document.createElement("template");template.innerHTML=renderGameWorkspace(pack);return {id:pack.id,shared:template.content.querySelector("[data-game-pack]")?.dataset.gamePack===pack.id,legacy:!!template.content.querySelector(".game-journey-tabs")};})');
-  assert.equal(report.length,51);for(const result of report){assert.equal(result.shared,true,result.id);assert.equal(result.legacy,false,result.id);}
+  assert.equal(report.length,52);for(const result of report){assert.equal(result.shared,true,result.id);assert.equal(result.legacy,false,result.id);}
   assert.equal(errors.length, 0, errors.map(error => error.stack || error.message).join('\n'));
 });

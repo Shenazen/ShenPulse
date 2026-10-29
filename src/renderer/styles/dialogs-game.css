@@ -319,7 +319,7 @@ dialog[data-variant="game-purchase"] .dialog-actions .primary {
   box-shadow: 0 22px 46px rgba(0, 0, 0, 0.34);
 }
 
-.minecraft-mode-card > img {
+.minecraft-mode-card .minecraft-mode-art > img {
   width: 100%;
   height: 210px;
   object-fit: cover;
@@ -327,7 +327,7 @@ dialog[data-variant="game-purchase"] .dialog-actions .primary {
   transition: transform 220ms ease, filter 220ms ease;
 }
 
-.minecraft-mode-card:hover > img {
+.minecraft-mode-card:hover .minecraft-mode-art > img {
   transform: scale(1.035);
   filter: saturate(1.1);
 }
@@ -382,7 +382,7 @@ dialog[data-variant="game-purchase"] .dialog-actions .primary {
     grid-template-rows: 160px 1fr;
   }
 
-  .minecraft-mode-card > img {
+  .minecraft-mode-card .minecraft-mode-art > img {
     height: 160px;
   }
 }
@@ -1005,4 +1005,9 @@ dialog[data-variant="minecraft-modes"] #dialog-submit[hidden] { display: none; }
 
 /* Full game covers retain their title and composition in the mode selector. */
 .minecraft-mode-card.has-cover {grid-template-rows:auto 1fr;}
-.minecraft-mode-card.has-cover > img {height:auto;aspect-ratio:2/3;object-fit:contain;}
+.minecraft-mode-card.has-cover .minecraft-mode-art > img {height:auto;aspect-ratio:2/3;object-fit:contain;}
+
+/* Version required by the selected server, over its cover. */
+.minecraft-mode-art { position:relative; min-width:0; overflow:hidden; }
+.minecraft-mode-art > img { display:block; width:100%; }
+.minecraft-mode-card .minecraft-mode-version { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); max-width:calc(100% - 24px); width:max-content; padding:8px 12px; border:1px solid #64e8f77a; border-radius:10px; background:#081521ed; color:#e8fdff; box-shadow:0 3px 14px #0008; font-size:12px; font-weight:850; line-height:1.3; text-align:center; overflow-wrap:anywhere; }

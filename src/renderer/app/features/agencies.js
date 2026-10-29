@@ -50,7 +50,8 @@ function renderAgencies(){return renderAgencyPageContent(ensureAgencyData());}
 function renderAdminAgencies(){
   if(!isVerifiedAdminSession())return "";
   const view=ensureAgencyData(true),data=view.admin;
-  return '<div class="agency-page"><section class="agency-panel"><header class="agency-heading"><div><h3>Agences partenaires</h3><p>Validez les fiches des agences. Leurs fondateurs gèrent les adhésions dans Agences → Mon agence. Aucune commission n’est versée aux agences.</p></div><button class="button" data-action="agency-admin-refresh">Actualiser</button></header>'+agencyNotice(view)+'</section>'+(data?(data.allAgencies || []).map(a=>renderAgencyReviewCard(a,(data.members || []).filter(m=>m.agencyId===a.id))).join("") || '<p class="agency-panel">Aucune agence n’a encore envoyé de fiche.</p>':"")+'</div>';
+  const cards=data?(data.allAgencies || []).map(a=>renderAgencyReviewCard(a,(data.members || []).filter(m=>m.agencyId===a.id))).join(""):"";
+  return '<div class="agency-page"><section class="agency-panel"><header class="agency-heading"><div><h3>Agences partenaires</h3><p>Validez les fiches des agences. Leurs fondateurs gèrent les adhésions dans Agences → Mon agence. Aucune commission n’est versée aux agences.</p></div><button class="button" data-action="agency-admin-refresh">Actualiser</button></header>'+agencyNotice(view)+'</section>'+(data?cards?'<div class="agency-review-grid">'+cards+'</div>':'<p class="agency-panel">Aucune agence n’a encore envoyé de fiche.</p>':"")+'</div>';
 }
 async function agencyCommand(command,body={},admin=false){
   const owner=captureCreatorPrivateOperation(),view=agencyState();

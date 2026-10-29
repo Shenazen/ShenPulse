@@ -382,7 +382,7 @@ function openAdminTrialEditor(trial) {
     body: `<div class="form-grid">
       ${field("email", "Adresse e-mail du compte", trial.email || trial.beneficiaryEmail, "email", "full required maxlength=\"254\"")}
       ${field("days", "Nouvelle durée (jours)", trial.durationDays || 7, "number", 'min="1" max="365" required')}
-      ${adminTrialSubscriptionField(trial.subscriptionTrial ? trial.subscriptionTier === "premium" ? "premium" : "pro" : "none")}
+      ${adminTrialSubscriptionField(trial.subscriptionTrial ? trial.subscriptionTier === "premium" ? "premium" : "pro" : "none", trial.countsForAgency === true)}
       <label class="field admin-trial-games-toggle"><span>Jeux</span><span class="switch"><input type="checkbox" name="games" data-admin-trial-games-toggle ${selectedGameIds.length ? "checked" : ""}><span></span></span><small>Activez cette option pour offrir un ou plusieurs jeux.</small></label>
       ${adminTrialGameChoices(selectedGameIds)}
     </div>`,

@@ -239,6 +239,16 @@ class AdminService {
   }
 
   async updateTrial(incoming = {}) {
+    if (incoming.onlyAgencyCounting === true) {
+      const trialId = String(incoming.trialId || "").slice(0, 180);
+      if (!trialId || typeof incoming.countsForAgency !== "boolean") {
+        throw new Error("Essai ou choix de comptage invalide.");
+      }
+      return this.#api("/api/admin/trials/update", {
+        method: "POST",
+        body: { ownerId: this.#ownerId(), trialId, onlyAgencyCounting: true, countsForAgency: incoming.countsForAgency }
+      });
+    }
     const body = normalizeTrialRequest(incoming, this.#ownerId());
     body.trialId = String(incoming.trialId || "").slice(0, 180);
     if (!body.trialId) throw new Error("Essai introuvable.");

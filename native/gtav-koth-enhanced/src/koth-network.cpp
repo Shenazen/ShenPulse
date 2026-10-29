@@ -70,7 +70,7 @@ void Run(){
  while(running){
   Ped ped;bool ready=Ready(ped);
   if(ready){
-   if(!active&&!won&&connected&&GetTickCount64()>=nextBuild){nextBuild=GetTickCount64()+10000;Result result=Build();if(result.status)Log(result.message);}
+   if(!active&&!won&&connected&&GetTickCount64()>=nextBuild){Result result=Build();nextBuild=GetTickCount64()+(result.status?30000:10000);if(result.status)Log(result.message);}
    Menu();
    for(int count=0;count<4;count++){
     Request request;

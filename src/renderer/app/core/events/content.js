@@ -147,7 +147,7 @@ content.addEventListener("change", (event) => {
   if (handleCreatorMusicChange(event.target)) return;
   if (
     event.target.matches(
-      "[data-admin-trial-game-option], [data-admin-trial-games-toggle]"
+      "[data-admin-trial-game-option], [data-admin-trial-games-toggle], [data-admin-trial-subscription-tier]"
     )
   ) {
     syncAdminTrialGameSelection(event.target);
@@ -312,7 +312,7 @@ document.addEventListener("focusin", (event) => {
 dialogBody.addEventListener("change", (event) => {
   if (
     event.target.matches(
-      "[data-admin-trial-game-option], [data-admin-trial-games-toggle]"
+      "[data-admin-trial-game-option], [data-admin-trial-games-toggle], [data-admin-trial-subscription-tier]"
     )
   ) {
     syncAdminTrialGameSelection(event.target);

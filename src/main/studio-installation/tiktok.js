@@ -1,8 +1,12 @@
 "use strict";
 const fs = require("node:fs"), path = require("node:path");
-const { stableId, layout, overlayUrl, OVERLAY_VIEWPORT, tiktokOverlayTransform, readJson, writeJson } = require("./layout");
+const { stableId, layout, winsArea, overlayUrl, OVERLAY_VIEWPORT, WINS_VIEWPORT, tiktokOverlayTransform, readJson, writeJson } = require("./layout");
 function ownsOverlay(source, plan, kind="overlay") {
   try { const url = new URL(source.payload?.url); return source.type === "browser" && url.hostname === new URL(plan.overlayUrl).hostname && url.pathname === new URL(kind==="wins"?plan.winsOverlayUrl:plan.overlayUrl).pathname && url.searchParams.get("jeu") === plan.packId && url.searchParams.get("profile") === plan.profileId; } catch { return false; }
+}
+function inPreview(transform,preview) {
+  const x=preview.preview_cx/(transform?.preview_cx||preview.preview_cx),y=preview.preview_cy/(transform?.preview_cy||preview.preview_cy);
+  return {x:Number(transform?.translateX||0)*x,y:Number(transform?.translateY||0)*y,width:Number(transform?.size?.cx||0)*Number(transform?.scaleX||0)*x};
 }
 function prepareTikTok(document, plan) {
   const doc = structuredClone(document), state = doc.SourceService?.state;
@@ -27,7 +31,15 @@ function prepareTikTok(document, plan) {
       Object.assign(source, { track: 0, lock: false, visible: true, clip: { x:0,y:0,z:0,w:0 }, effectiveClip:{x:0,y:0,z:0,w:0}, advancedFilters:[], alwaysTop:false, schemaVersion:1 });
       delete source.stateData;
     }
-    if (kind === "wins") source.payload = {...(source.payload||{}),url:plan.winsOverlayUrl,cx:1080,cy:1920,enableCustomResolution:true,enableAudio:false,zoom:1};
+    if (kind === "wins") {
+      source.payload = {...(source.payload||{}),url:plan.winsOverlayUrl,cx:WINS_VIEWPORT.width,cy:WINS_VIEWPORT.height,enableCustomResolution:true,enableAudio:false,zoom:1};
+      // Reinstall also repairs old off-canvas transforms and native clipping.
+      const interactions=Object.values(existing.data).find(item=>ownsOverlay(item,plan)),game=Object.values(existing.data).find(item=>item.type==="game");
+      const placed=interactions?.transform,area=winsArea(placed?.size?.cx>0&&placed.scaleX>0?inPreview(placed,preview):areas.overlay,{y:Number.isFinite(game?.transform?.translateY)?inPreview(game.transform,preview).y:areas.game.y});
+      const scale=area.width/WINS_VIEWPORT.width;
+      source.transform={translateX:area.x,translateY:area.y,rotateAngle:0,scaleX:scale,scaleY:scale,flipH:false,flipV:false,size:{cx:WINS_VIEWPORT.width,cy:WINS_VIEWPORT.height},preview_cx:preview.preview_cx,preview_cy:preview.preview_cy,fixed_edge:1};
+      source.clip={x:0,y:0,z:0,w:0};source.effectiveClip={x:0,y:0,z:0,w:0};delete source.stateData;
+    }
     else if (kind === "overlay") {
       const placed = !fresh && source.transform?.size?.cx > 0 && source.transform?.size?.cy > 0;
       const url = new URL(placed ? plan.overlayUrl : overlayUrl(plan));
@@ -37,8 +49,8 @@ function prepareTikTok(document, plan) {
     else if (kind === "game") source.payload = { ...(source.payload || {}), captureMethod:"custom", captureType:"None", exe:plan.executable, windowClass:plan.windowClass ?? "UnityWndClass", handle:0, pid:0, cursor:false, fpsLimit:true, gamecaptureImplVersion:2 };
     else source.payload ||= { deviceId:"", name:"Caméra", width:1920, height:1080, rate:30, audioDeviceID:"", audioDeviceName:"" };
     if (kind === "overlay" && (fresh || !source.transform?.size?.cx || !source.transform?.size?.cy)) source.transform = tiktokOverlayTransform(preview.preview_cx,preview.preview_cy);
-    else if (fresh || !source.transform?.size?.cx || !source.transform?.size?.cy) {
-      const size = kind === "wins" ? {cx:1080,cy:1920} : kind === "game" ? {cx:1920,cy:1080} : {cx:Number(source.payload.width)||1920,cy:Number(source.payload.height)||1080};
+    else if (kind !== "wins" && (fresh || !source.transform?.size?.cx || !source.transform?.size?.cy)) {
+      const size = kind === "game" ? {cx:1920,cy:1080} : {cx:Number(source.payload.width)||1920,cy:Number(source.payload.height)||1080};
       const area = areas[kind], scale = Math.min(area.width / size.cx, area.height / size.cy);
       source.transform = { translateX:area.x+(area.width-size.cx*scale)/2,translateY:area.y+(area.height-size.cy*scale)/2,rotateAngle:0,scaleX:scale,scaleY:scale,flipH:false,flipV:false,size,preview_cx:preview.preview_cx,preview_cy:preview.preview_cy,fixed_edge:1 };
     }

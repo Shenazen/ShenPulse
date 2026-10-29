@@ -9,6 +9,7 @@ const { loadShenazenGameCatalog } = require(path.join(projectRoot, 'src/main/gam
 
 const MINECRAFT_MODE_IDS = [
   'minecraft-bedrock-box',
+  'minecraft-lavarise',
   'minecraft-sandbox-3',
   'minecraft-survival-plugin'
 ]
@@ -104,8 +105,8 @@ const PUBLIC_GAME_GUIDES = {
     interactions: 'Les 66 effets couvrent les téléportations, le niveau de recherche, les véhicules, les explosions, les armes, l’heure, l’invincibilité et les comportements des passants.'
   },
   minecraft: {
-    description: 'Trois expériences Minecraft réunies dans une seule fiche : Bedrock Box, SandBox 3 et Survival. ShenPulse prépare Java 21, le serveur PaperMC, le monde et les plugins nécessaires au mode choisi.',
-    interactions: 'Les modes proposent ensemble 207 interactions autour de la TNT, des blocs, des créatures, des coffres, des objectifs, des compteurs et de nombreux événements de survie.'
+    description: 'Quatre expériences Minecraft réunies dans une seule fiche : Bedrock Box, Lava Rise, SandBox 3 et Survival. ShenPulse prépare le Java portable adapté, le serveur PaperMC, le monde et les plugins nécessaires au mode choisi.',
+    interactions: 'Chaque mode possède ses interactions autour des blocs, des créatures, des objectifs et des compteurs. Dans Lava Rise, le public influence aussi la lave, les plateformes, les déplacements et les effets temporaires pendant l’ascension.'
   },
   'cult-of-the-lamb': {
     description: 'Une partie de Cult of the Lamb reliée à ShenPulse par un mod local. Les réactions du live peuvent aider le joueur, compliquer un combat ou faire évoluer les ressources et les fidèles du culte.',
@@ -260,12 +261,12 @@ function publicMinecraftGame(modes) {
     status: executableInteractions > 0 ? 'Exécutable' : 'Référence',
     description: guide.description,
     interactionGuide: guide.interactions,
-    requirements: 'Minecraft est préparé comme un serveur local géré par ShenPulse. Java 21, PaperMC, le monde et les plugins sont installés pour le mode choisi.',
+    requirements: 'Minecraft Java est requis : version 1.21 pour Bedrock Box, SandBox 3 et Survival, et 26.1.2 pour Lava Rise. ShenPulse installe le Java portable adapté, PaperMC, le monde et les plugins du mode choisi.',
     steps: [
-      'Choisir Bedrock Box, SandBox 3 ou Survival dans la fiche Minecraft.',
+      'Choisir Bedrock Box, Lava Rise, SandBox 3 ou Survival dans la fiche Minecraft.',
       'Cliquer sur Installer, puis accepter le CLUF Minecraft.',
-      'Laisser ShenPulse préparer Java 21, PaperMC, le monde et les plugins du mode choisi.',
-      'Attendre le serveur local, rejoindre 127.0.0.1, puis tester les interactions.'
+      'Laisser ShenPulse préparer le Java portable adapté, PaperMC, le monde et les plugins du mode choisi.',
+      'Ouvrir la version Minecraft Java indiquée, rejoindre le serveur local du mode choisi, puis tester les interactions.'
     ],
     note: modes
       .map((pack) => `${pack.name} : ${pack.effects.length} interactions`)

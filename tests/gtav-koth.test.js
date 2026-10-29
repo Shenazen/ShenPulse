@@ -121,3 +121,17 @@ test("Hasard Obstacle reste disponible sans modifier les douze cadeaux du pack",
  assert.ok((await fs.stat(path.resolve('src/renderer',effect.image))).size>1000);
  assert.equal(pack.defaultMappings.filter(m=>m.marketColumn==='help').length,6);assert.equal(pack.defaultMappings.filter(m=>m.marketColumn==='trap').length,6);
 });
+
+
+test("les trois installateurs GTA partagent le meme module Enhanced et leur registre reste coherent",()=>{
+ const registry=require("../scripts/manifests/game-packs.json").assets;
+ const ids=["gtav-koth-enhanced","gtav-hiking-enhanced","gtav-montchiliad"];
+ const modules=ids.map(id=>{
+  const manifest=GAME_INSTALLERS[id],asset=manifest.assets.find(a=>a.fileName==="ShenPulseMontChiliadEnhanced.asi");
+  assert.ok(asset,id);const published=registry.find(a=>a.gameId===id&&a.id===asset.id);
+  assert.ok(published,id);assert.equal(published.version,manifest.version);assert.equal(published.size,asset.size);assert.equal(published.sha256,asset.sha256);assert.ok(asset.url.endsWith(published.key));
+  assert.equal(packs.find(p=>p.id===id).installerVersion,manifest.version);
+  return asset;
+ });
+ for(const module of modules){assert.equal(module.sha256,modules[0].sha256);assert.equal(module.size,modules[0].size);}
+});

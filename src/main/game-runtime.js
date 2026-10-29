@@ -430,6 +430,8 @@ class GameRuntimeService {
       [
         `-Xms${serverConfig.xms || "1024M"}`,
         `-Xmx${serverConfig.xmx || "2048M"}`,
+        "-Dterminal.jline=false",
+        "-Dterminal.ansi=false",
         "-Dfile.encoding=UTF-8",
         "-jar",
         serverPath,
@@ -469,6 +471,15 @@ class GameRuntimeService {
       await record.ready;
       assertAccess();
       await silenceMinecraftCommandFeedback(record);
+      if(gameId === "minecraft-lavarise") {
+        const state = readState(this.store, ["overlaySession", "settings.overlayConfigs.winCounter"]);
+        const session = state.overlaySession || {};
+        const seconds = Math.max(0, Math.min(3600, Math.ceil((Number(session.winCounterMultiplierUntil || 0) - Date.now()) / 1000)));
+        const factor = seconds > 0 ? Math.max(1, Number(session.winCounterMultiplier) || 1) : 1;
+        const configuredTarget = Number(state.settings?.overlayConfigs?.winCounter?.target);
+        const target = Number.isFinite(configuredTarget) ? Math.max(0, configuredTarget) : 10;
+        await writeMinecraftServerCommand(record, `shenpulse_lava sync ${Number(session.winCounterCurrent) || 0} ${factor} ${seconds} ${target}`);
+      }
       assertAccess();
       if (serverConfig.creativeMode !== false) {
         await enforceMinecraftCreativeMode(record);

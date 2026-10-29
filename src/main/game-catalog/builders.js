@@ -29,6 +29,8 @@ function game(id, name, options = {}) {
     artwork: options.artwork || "",
     ...(options.coverArtwork ? { coverArtwork: String(options.coverArtwork) } : {}),
     ...(options.sceneArtwork?{sceneArtwork:String(options.sceneArtwork)}:{}),
+    ...(options.serverAddress ? { serverAddress: String(options.serverAddress) } : {}),
+    ...(options.minecraftVersion ? { minecraftVersion: String(options.minecraftVersion) } : {}),
     artworkUrl: options.artworkUrl || "",
     accessMode: included ? "included" : "purchase",
     included,

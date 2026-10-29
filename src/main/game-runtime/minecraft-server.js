@@ -213,12 +213,12 @@ function parseMinecraftWinCounterLine(line) {
   );
   if (!match) return null;
   const source = String(match[2] || "").toLowerCase();
-  if (!["auto-win", "bedrock-win", "timer-penalty"].includes(source)) {
+  if (!["auto-win", "bedrock-win", "timer-penalty", "lava-loss"].includes(source)) {
     return null;
   }
   return {
     current: Number(match[1]),
-    outcome: source === "timer-penalty" ? "loss" : "win",
+    outcome: ["timer-penalty", "lava-loss"].includes(source) ? "loss" : "win",
     source
   };
 }

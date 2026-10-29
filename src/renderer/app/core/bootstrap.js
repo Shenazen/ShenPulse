@@ -520,6 +520,7 @@ const AUTOMATED_GAME_INSTALLERS = new Set([
   "minecraft-bedrock-box",
   "minecraft-sandbox-3",
   "minecraft-survival-plugin",
+  "minecraft-lavarise",
   "cult-of-the-lamb",
   "stardew-valley",
   "terraria"
@@ -548,6 +549,7 @@ const MINECRAFT_LAUNCHER_ID = "minecraft";
 const GTA_LAUNCHER_ID = "gta-enhanced";
 const GTA_MODE_IDS = Object.freeze(["gtav-montchiliad", "gtav-koth-enhanced", "gtav-hiking-enhanced"]);
 const MINECRAFT_MODE_IDS = Object.freeze([
+  "minecraft-lavarise",
   "minecraft-bedrock-box",
   "minecraft-sandbox-3",
   "minecraft-survival-plugin"

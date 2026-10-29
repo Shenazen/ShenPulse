@@ -2,7 +2,15 @@
 (()=>{
  const query=new URLSearchParams(location.search),packId=query.get('jeu')||'',profile=query.get('profile')||'',preview=query.get('preview')==='1',root=document.getElementById('wins-hud');let source,poll,retry,documentValue={},current=null,signature='',reactionTimer,lastBatch='',initialized=false;const demoEnds=Date.now()+300000;
  const mode=['counter','multiplier','round-timer','mute'].includes(query.get('mode'))?query.get('mode'):'full';document.documentElement.dataset.winsMode=mode;
- const scale=()=>{const width=mode==='counter'?720:['multiplier','round-timer'].includes(mode)?900:1080,height=mode==='counter'?520:['multiplier','round-timer'].includes(mode)?360:1920;root.style.width=width+'px';root.style.height=height+'px';const factor=['counter','multiplier','round-timer'].includes(mode)?Math.min(innerWidth/width,innerHeight/height):innerWidth/width;root.style.transform='scale('+factor+')';};
+ const scale=()=>{
+  const single=['counter','multiplier','round-timer'].includes(mode),width=mode==='counter'?720:single?900:1080,height=mode==='counter'?520:single?360:1920;
+  root.style.width=width+'px';root.style.height=height+'px';
+  // Full HUD content ends before y=1280; the remaining portrait area is transparent.
+  // Fit both axes when a studio supplies a shorter browser viewport.
+  const factor=mode==='mute'||preview&&!single?innerWidth/width:Math.min(innerWidth/width,innerHeight/(single?height:1280));
+  root.style.transform='scale('+factor+')';
+  if(!single){root.style.left=Math.max(0,(innerWidth-width*factor)/2)+'px';root.style.top='0px';}
+ };
  function image(url,alt){const img=document.createElement('img');img.alt=alt||'';img.src=url||'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g fill="none" stroke="#ffe678" stroke-width="5" stroke-linejoin="round"><path d="M10 28h44v28H10zM6 18h52v12H6zM32 18v38"/><path d="M32 18C8 18 16-6 32 18c16-24 24 0 0 0z"/></g></svg>');return img;}
  function badge(item,kind,title){const node=document.createElement('div');node.className='hud-special hud-'+kind;node.dataset.rule=item.id;node.append(image(item.giftImageUrl,item.giftName));const text=document.createElement('span');text.textContent=title;node.append(text);return node;}
  function column(items,kind,footer){const list=document.createElement('div');list.className='hud-gift-column '+kind;const title=document.createElement('small');title.className='hud-column-title';title.textContent=kind==='positive'?'+ WINS':'− WINS';list.append(title);for(const item of items||[]){const card=document.createElement('div');card.className='hud-gift';card.dataset.rule=item.id;card.title=item.giftName;card.append(image(item.giftImageUrl,item.giftName));const value=document.createElement('strong');value.textContent=(item.amount>0?'+':'−')+Math.abs(item.amount);card.append(value);list.append(card);}if(footer)list.append(badge(footer,'invert','INVERSER'));return list;}

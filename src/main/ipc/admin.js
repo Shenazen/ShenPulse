@@ -58,6 +58,7 @@ function registerAdminIpc({ handle, core, store, adminService }) {
   handle("admin:trial-update", async (_event, incoming) => {
     const request = sanitizeEntity(incoming || {});
     const result = await adminService.updateTrial(request);
+    if (request.onlyAgencyCounting === true) return result;
     const removed = applyTrialRevocation(store, {
       trialId: request.trialId
     });

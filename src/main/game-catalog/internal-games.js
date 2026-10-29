@@ -408,14 +408,25 @@ const INTERNAL_GAMES = [
     coverArtwork: "covers/gtav-montchiliad.png",
     included: true,
     requiresPro: true,
-    installerVersion: "1.0.14",
+    installerVersion: "1.0.15",
     connector: GTA_LOCAL_BRIDGE,
     effects: GTAV_MONT_CHILIAD_EFFECTS,
     defaultMappings: GTAV_MONT_CHILIAD_DEFAULT_MAPPINGS,
     interactionCatalogVersion:
       GTAV_MONT_CHILIAD_INTERACTION_CATALOG_VERSION
   }),
+  game("minecraft-lavarise", "Minecraft Lava Rise", {
+    coverArtwork: "covers/minecraft-lavarise-v2.png", artwork: "covers/minecraft-lavarise-v2.png",
+    serverAddress: "127.0.0.1:25585", minecraftVersion: "26.1.2",
+    included: true, requiresPro: true, installerVersion: "1.0.0",
+    connector: { type: "minecraft-runtime" },
+    description: "Grimpez dans une tour de plateformes pendant que la lave monte. Vos viewers vous aident ou vous piègent ; tenez au sommet pour gagner.",
+    effects: require("./minecraft/lavarise").LAVARISE_EFFECTS,
+    defaultMappings: require("./minecraft/lavarise").LAVARISE_DEFAULT_MAPPINGS,
+    interactionCatalogVersion: 2026102901
+  }),
   game("minecraft-bedrock-box", "Minecraft Bedrock Box", {
+    minecraftVersion: "1.21",
     coverArtwork: "covers/minecraft-bedrock-box.png",
     artwork: "catalog/minecraft-bedrock-box.jpg",
     included: true,
@@ -428,6 +439,7 @@ const INTERNAL_GAMES = [
       MINECRAFT_BEDROCK_INTERACTION_CATALOG_VERSION
   }),
   game("minecraft-sandbox-3", "Minecraft SandBox 3", {
+    minecraftVersion: "1.21",
     coverArtwork: "covers/minecraft-sandbox-3.png",
     artwork: "catalog/minecraft-sandbox-3.jpg",
     included: true,
@@ -440,6 +452,7 @@ const INTERNAL_GAMES = [
       MINECRAFT_SANDBOX_INTERACTION_CATALOG_VERSION
   }),
   game("minecraft-survival-plugin", "Minecraft Survival", {
+    minecraftVersion: "1.21",
     coverArtwork: "covers/minecraft-survival-plugin.png",
     artwork: "catalog/minecraft-survival-plugin.svg",
     included: true,

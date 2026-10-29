@@ -15,11 +15,11 @@ const digest = (value) => createHash("sha256").update(JSON.stringify(value)).dig
 // Les tests dédiés de chaque intégration vérifient aussi leurs contrats exécutables.
 test("le découpage garde exactement les catalogues de jeux et Minecraft", () => {
   const catalog = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
-  assert.equal(catalog.length, 62);
+  assert.equal(catalog.length, 63);
   // Évolution commerciale demandée le 15/10/2026 : seule cette différence
   // est retirée de la comparaison historique, aucun autre champ n'est ignoré.
   const prices = { "tiklive-climb": 9.99, "clash-of-live": 12.99, "tiklive-cube-wars": 9.99, "tiklive-stack-tower": 9.99 };
-  const historical = structuredClone(catalog.filter(pack => !["gtav-hiking-enhanced", "gtav-koth-enhanced", "shenfarm", "shenpaint", "shenkite", "splash-bombes", "hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight", "escape-from-duckov", "dead-by-daylight", "dredge", "egging-on", "fallout-4", "ark-survival-ascended", "balatro", "blue-prince", "find-the-needle-demo", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)));
+  const historical = structuredClone(catalog.filter(pack => !["minecraft-lavarise", "gtav-hiking-enhanced", "gtav-koth-enhanced", "shenfarm", "shenpaint", "shenkite", "splash-bombes", "hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight", "escape-from-duckov", "dead-by-daylight", "dredge", "egging-on", "fallout-4", "ark-survival-ascended", "balatro", "blue-prince", "find-the-needle-demo", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)));
   for (const pack of historical) if (Object.hasOwn(prices, pack.id)) {
     assert.equal(pack.price, prices[pack.id]);
     pack.price = 19.99;
@@ -41,6 +41,11 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
   for (const pack of historical) if (["minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-survival-plugin", "gtav-montchiliad"].includes(pack.id)) {
     assert.equal(pack.coverArtwork, "covers/" + pack.id + ".png");
     delete pack.coverArtwork;
+  }
+  // 29/10 : la version Java requise est affichée sur chaque mode Minecraft.
+  for (const pack of historical) if (pack.id.startsWith("minecraft-")) {
+    assert.equal(pack.minecraftVersion, "1.21");
+    delete pack.minecraftVersion;
   }
   // Le classement du catalogue est ajouté sans changer les anciens jeux ou effets.
   for (const pack of historical) {
@@ -84,7 +89,7 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
     });
   // KOTH ajoute un module commun ; le contenu Mont Chiliad reste inchangé.
   const gta=historical.find(pack=>pack.id==="gtav-montchiliad");
-  assert.equal(gta.installerVersion,"1.0.14");gta.installerVersion="1.0.4";
+  assert.equal(gta.installerVersion,"1.0.15");gta.installerVersion="1.0.4";
   const sandbox = historical.find(pack => pack.id === "minecraft-sandbox-3");
   assert.equal(sandbox.interactionCatalogVersion, 2026102701);
   sandbox.interactionCatalogVersion = 2026102603;
@@ -103,7 +108,7 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
 test("le manifeste garde versions, URLs, empreintes, ordre et gel de son API", () => {
   // Seule l'association de la nouvelle démo est ajoutée. Les installateurs
   // historiques restent comparés champ par champ par leur empreinte complète.
-  const { "gtav-hiking-enhanced": hiking, "gtav-koth-enhanced": koth, "escape-from-duckov": duckov, "dead-by-daylight": dbd, dredge, "egging-on": egging, "fallout-4": fallout, "ark-survival-ascended": ark, balatro, "blue-prince": bluePrince, "find-the-needle-demo": demo, "the-mortuary-assistant": mortuary, unturned, "crash-bandicoot-n-sane-trilogy": crash, "hogwarts-legacy": hogwarts, "tcg-card-shop-simulator": tcg, "supermarket-simulator": market, "shift-at-midnight": shift, shenfarm, shenpaint, shenkite, "splash-bombes": splash, ...historicalInstallers } = GAME_INSTALLERS;
+  const { "minecraft-lavarise": lavaRise, "gtav-hiking-enhanced": hiking, "gtav-koth-enhanced": koth, "escape-from-duckov": duckov, "dead-by-daylight": dbd, dredge, "egging-on": egging, "fallout-4": fallout, "ark-survival-ascended": ark, balatro, "blue-prince": bluePrince, "find-the-needle-demo": demo, "the-mortuary-assistant": mortuary, unturned, "crash-bandicoot-n-sane-trilogy": crash, "hogwarts-legacy": hogwarts, "tcg-card-shop-simulator": tcg, "supermarket-simulator": market, "shift-at-midnight": shift, shenfarm, shenpaint, shenkite, "splash-bombes": splash, ...historicalInstallers } = GAME_INSTALLERS;
   assert.ok(hogwarts && tcg && market && shift);
   assert.ok(duckov, "Duckov est couvert par escape-from-duckov.test.js");
   assert.ok(dbd && dredge && egging && fallout, "les quatre nouvelles intégrations sont couvertes séparément");
@@ -117,9 +122,9 @@ test("le manifeste garde versions, URLs, empreintes, ordre et gel de son API", (
   const migrated = structuredClone(historicalInstallers);
   migrated["euro-truck-simulator-2"].assets[0].url = "https://one-click.crowdcontrol.live/TruckSimulator/TruckSimulator-CC.zip?ver=1.0.4";
   migrated["resident-evil-3"].assets.find(asset => asset.id === "mod").url = "https://one-click.crowdcontrol.live/RE3remake/RE3net-CC.zip?ver=2.1.2";
-  const gtaOld=migrated["gtav-montchiliad"];assert.equal(gtaOld.version,"1.0.14");gtaOld.version="1.0.4";delete gtaOld.singleInstanceProcesses;
-  const plugin=gtaOld.assets.find(asset=>asset.id==="enhancedplugin");plugin.size=396800;plugin.sha256="e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1";plugin.url=plugin.url.replace("/1.0.14/","/1.0.4/");
-  assert.ok(koth && hiking);
+  const gtaOld=migrated["gtav-montchiliad"];assert.equal(gtaOld.version,"1.0.15");gtaOld.version="1.0.4";delete gtaOld.singleInstanceProcesses;
+  const plugin=gtaOld.assets.find(asset=>asset.id==="enhancedplugin");plugin.size=396800;plugin.sha256="e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1";plugin.url=plugin.url.replace("/1.0.15/","/1.0.4/");
+  assert.ok(koth && hiking && lavaRise);
   const historicalManifest = { ...require("../src/main/game-installer-manifest"), GAME_INSTALLERS: migrated };
   // ETS2 1.0.5 ajoute le lancement unique et l’attente du processus ;
   // l’archive distante, sa taille et son empreinte restent identiques.

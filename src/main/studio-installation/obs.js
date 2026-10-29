@@ -1,10 +1,10 @@
 "use strict";
 const fs = require("node:fs"), path = require("node:path");
-const { stableId, layout, overlayUrl, OVERLAY_RENDER_SIZE, readJson, writeJson } = require("./layout");
+const { stableId, layout, overlayUrl, OVERLAY_RENDER_SIZE, WINS_VIEWPORT, readJson, writeJson } = require("./layout");
 const { ObsRpc } = require("./rpc");
 const { prepareObsProfile } = require("./obs-profile");
 function settings(plan, kind) {
-  if(kind === "wins") return { url:plan.winsOverlayUrl,width:1080,height:1920,reroute_audio:false,shutdown:false,restart_when_active:false,fps:30 };
+  if(kind === "wins") return { url:plan.winsOverlayUrl,width:WINS_VIEWPORT.width,height:WINS_VIEWPORT.height,reroute_audio:false,shutdown:false,restart_when_active:false,fps:30 };
   if(kind === "overlay") return { url:overlayUrl(plan),width:OVERLAY_RENDER_SIZE.width,height:OVERLAY_RENDER_SIZE.height,reroute_audio:false,shutdown:false,restart_when_active:false,fps:30 };
   if(kind === "game") return { capture_mode:"window",window:plan.gameName+":"+(plan.windowClass ?? "UnityWndClass")+":"+plan.executable,priority:1,capture_cursor:false,limit_framerate:true };
   return {};
@@ -22,6 +22,7 @@ function prepareCollection(original, plan, camera = {}) {
     if(!input){const id={game:"game_capture",camera:"dshow_input",overlay:"browser_source",wins:"browser_source"}[kind];input={id,versioned_id:id,uuid,name,settings:kind==="camera"?structuredClone(camera):settings(plan,kind),mixers:0,sync:0,flags:0,volume:1,enabled:true,muted:kind!=="game",private_settings:{}};doc.sources.push(input);}else if(kind!=="camera")input.settings={...input.settings,...settings(plan,kind)};
     let item=scene.settings.items.find(s=>s.source_uuid===uuid);if(!item){item={name:input.name,source_uuid:uuid,id:Math.max(0,...scene.settings.items.map(s=>Number(s.id)||0))+1,visible:true,locked:false,rot:0,align:5,bounds_type:2,bounds_align:0,crop_left:0,crop_top:0,crop_right:0,crop_bottom:0,scale:{x:1,y:1},private_settings:{}};scene.settings.items.push(item);}
     Object.assign(item,{pos:{x:area[kind].x,y:area[kind].y},bounds:{x:area[kind].width,y:area[kind].height},scale_ref:{x:area.width,y:area.height}});owned.push(input.name);
+    if(kind==="wins")Object.assign(item,{crop_left:0,crop_top:0,crop_right:0,crop_bottom:0,rot:0,align:5,bounds_type:2,scale:{x:1,y:1}});
   }
   scene.settings.items=[...scene.settings.items.filter(i=>!owned.includes(i.name)),...owned.map(n=>scene.settings.items.find(i=>i.name===n))];
   scene.settings.id_counter=Math.max(Number(scene.settings.id_counter)||0,...scene.settings.items.map(s=>Number(s.id)||0));
@@ -56,7 +57,7 @@ async function installObsOnline(target,plan,client=new ObsRpc()){
       if(!input){const created=await client.call("CreateInput",{sceneName:plan.sceneName,inputName:name,inputKind:{game:"game_capture",camera:"dshow_input",overlay:"browser_source",wins:"browser_source"}[kind],inputSettings:settings(plan,kind),sceneItemEnabled:true});id=created.sceneItemId;
         if(kind==="camera"){const list=await client.call("GetInputPropertiesListPropertyItems",{inputName:name,propertyName:"video_device_id"});const device=list.propertyItems?.find(s=>s.itemEnabled!==false&&s.itemValue);if(device)await client.call("SetInputSettings",{inputName:name,inputSettings:{video_device_id:device.itemValue},overlay:true});}
       }else{if(kind!=="camera")await client.call("SetInputSettings",{inputName:name,inputSettings:settings(plan,kind),overlay:true});if(id===undefined)id=(await client.call("CreateSceneItem",{sceneName:plan.sceneName,sourceName:name,sceneItemEnabled:true})).sceneItemId;}
-      await client.call("SetSceneItemTransform",{sceneName:plan.sceneName,sceneItemId:id,sceneItemTransform:{positionX:area[kind].x,positionY:area[kind].y,alignment:5,boundsType:"OBS_BOUNDS_SCALE_INNER",boundsAlignment:0,boundsWidth:area[kind].width,boundsHeight:area[kind].height}});
+      await client.call("SetSceneItemTransform",{sceneName:plan.sceneName,sceneItemId:id,sceneItemTransform:{positionX:area[kind].x,positionY:area[kind].y,alignment:5,boundsType:"OBS_BOUNDS_SCALE_INNER",boundsAlignment:0,boundsWidth:area[kind].width,boundsHeight:area[kind].height,...(kind==="wins"?{cropLeft:0,cropTop:0,cropRight:0,cropBottom:0,rotation:0,scaleX:1,scaleY:1}:{})}});
       await client.call("SetSceneItemIndex",{sceneName:plan.sceneName,sceneItemId:id,sceneItemIndex:plan.overlayOnly?Math.max(0,items.length-(item?1:0)):index});names.push(name);
     }
     if(!active)await client.call("SetCurrentProgramScene",{sceneName:plan.sceneName});

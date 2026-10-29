@@ -158,7 +158,7 @@ class GameSessionService {
     source = "native"
   } = {}) {
     const packId = String(gameId || "");
-    if (!isMinecraftRoundGame(packId) || !Number.isFinite(Number(current))) {
+    if ((!isMinecraftRoundGame(packId) && packId !== "minecraft-lavarise") || !Number.isFinite(Number(current))) {
       return { synchronized: false };
     }
     const session = readState(this.store, ["session.game"]).session?.game || {};

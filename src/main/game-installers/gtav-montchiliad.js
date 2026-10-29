@@ -4,7 +4,7 @@
 const { GTA_ASSET_BASE, GTA_ENHANCED_PLUGIN_BASE } = require("./constants");
 
 module.exports = {
-    version: "1.0.14",
+    version: "1.0.15",
     title: "GTA V Mont Chiliad",
     targetLabel: "dossier GTA V",
     autoDetect: true,
@@ -68,9 +68,9 @@ module.exports = {
         fileName: "ShenPulseMontChiliadEnhanced.asi",
         action: "copy",
         editions: ["enhanced"],
-        size: 698368,
+        size: 706560,
         sha256:
-          "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
+          "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
         url: `${GTA_ENHANCED_PLUGIN_BASE}/shenpulse-mont-chiliad-enhanced.asi`
       },
       {

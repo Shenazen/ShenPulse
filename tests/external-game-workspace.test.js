@@ -10,15 +10,15 @@ const automatedInstallers=vm.runInNewContext(bootstrap.slice(bootstrap.indexOf("
 function fixture(){
  const file=path.resolve(__dirname,'supermarket-workspace.test.js'),source=fs.readFileSync(file,'utf8'),m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));m._compile(source.slice(0,source.indexOf("test('Supermarket"))+'\nmodule.exports={fixture};',file);
  const f=m.exports.fixture(),ctx=f.ctx;
- Object.assign(ctx,{selectedGameId:'',ShenPulseGameWorkspacePolicy:policy,gamePlatformIds:()=>['steam'],AUTOMATED_GAME_INSTALLERS:new Set(automatedInstallers),MANAGED_BIZHAWK_GAME_IDS:new Set(['pokemon-red-blue','super-mario-kart']),MINECRAFT_MODE_IDS:['minecraft-bedrock-box','minecraft-sandbox-3','minecraft-survival-plugin'],GAME_OVERLAY_GENERATOR_ONLY_IDS:new Set(['supermarket-simulator','tcg-card-shop-simulator','hogwarts-legacy','shift-at-midnight']),
+ Object.assign(ctx,{selectedGameId:'',ShenPulseGameWorkspacePolicy:policy,gamePlatformIds:()=>['steam'],AUTOMATED_GAME_INSTALLERS:new Set(automatedInstallers),MANAGED_BIZHAWK_GAME_IDS:new Set(['pokemon-red-blue','super-mario-kart']),MINECRAFT_MODE_IDS:["minecraft-lavarise",'minecraft-bedrock-box','minecraft-sandbox-3','minecraft-survival-plugin'],GAME_OVERLAY_GENERATOR_ONLY_IDS:new Set(['supermarket-simulator','tcg-card-shop-simulator','hogwarts-legacy','shift-at-midnight']),
  overlayConfig:()=>({}),renderGameInstallation:p=>'<div data-native-setup="'+p.id+'"></div>',renderGameLaunch:p=>'<div data-native-server="'+p.id+'"></div>',gameOverlayItemsFor:()=>[{key:'winCounter'},{key:'timer'}],renderOverlayCard:(item,options)=>'<div data-native-overlay="'+item.key+'" data-options="'+String(options.allowed)+'"></div>'});
  ctx.snapshot.packs=structuredClone(packs);ctx.snapshot.overlayUrls={gamePack:'https://example.test/game-pack.html?channel=public'};ctx.snapshot.localOverlayUrls={gamePack:'http://127.0.0.1/overlay/game-pack.html?token=local'};
  vm.runInContext(fs.readFileSync('src/renderer/app/features/games/external-workspace.js','utf8'),ctx);
  return f;
 }
 function rulesFor(pack){return (pack.defaultMappings||[]).map(mapping=>defaultGameInteractionRule(pack,pack.effects.find(e=>e.id===mapping.effectId),mapping,pack.interactionCatalogVersion));}
-test('les 51 jeux externes partagent la page complète ; les 11 jeux ShenPulse sont exclus',t=>{
- const f=fixture();t.after(()=>f.dom.window.close());const before=JSON.stringify(packs),external=packs.filter(p=>policy.eligible(p));assert.equal(external.length,51);
+test('les 52 jeux externes partagent la page complète ; les 11 jeux ShenPulse sont exclus',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());const before=JSON.stringify(packs),external=packs.filter(p=>policy.eligible(p));assert.equal(external.length,52);
  for(const id of own)assert.equal(policy.eligible(packs.find(p=>p.id===id)),false,id);
  assert.equal(policy.eligible(external[0],['steam','shenpulse']),false);
  for(const pack of external){
@@ -136,4 +136,25 @@ test('Palworld propose installation automatique et lancement apres installation'
  f.ctx.snapshot.state.game.installations[pack.id]={path:'C:/XboxGames/Palworld/Content',platform:'xbox',installerVersion:pack.installerVersion};
  f.ctx.content.innerHTML=f.ctx.renderSupermarketWorkspace(pack);
  assert.equal(f.ctx.content.querySelector('[data-action="launch-game"]').disabled,false);
+});
+
+
+test('Minecraft garde son nom de mode sur une ligne et annonce la version exacte du serveur', t => {
+ const f=fixture();t.after(()=>f.dom.window.close());
+ const ids=['minecraft-bedrock-box','minecraft-lavarise','minecraft-sandbox-3','minecraft-survival-plugin'];
+ for(const id of ids){
+  const pack=packs.find(p=>p.id===id),manifest=require('../src/main/game-installers/'+id);
+  assert.ok(manifest.minecraftServer.serverJar.startsWith('paper-'+pack.minecraftVersion+'-'),id);
+  assert.deepEqual(Array.from(f.ctx.externalTitleLines(pack.name)),['MINECRAFT',pack.name.replace(/^Minecraft\s+/i,'').toUpperCase()]);
+ }
+ const access=fs.readFileSync('src/renderer/app/features/games/access.js','utf8');
+ vm.runInContext(access.slice(access.indexOf('function openMinecraftModeSelector('),access.indexOf('// Page data is already available')),f.ctx);
+ f.ctx.GTA_LAUNCHER_ID='gta-modes';
+ f.ctx.openMinecraftModeSelector({id:'minecraft',modes:packs.filter(p=>ids.includes(p.id))});
+ const badges=[...f.ctx.dialogBody.querySelectorAll('.minecraft-mode-version')];
+ assert.equal(badges.length,4);assert.equal(badges.filter(b=>b.textContent==='Minecraft Java 1.21').length,3);
+ assert.ok(badges.some(b=>b.textContent==='Minecraft Java 26.1.2'));
+ for(const badge of badges)assert.ok(badge.closest('.minecraft-mode-art').querySelector('img'));
+ f.ctx.openMinecraftModeSelector({id:'gta-modes',modes:[packs.find(p=>p.id==='gtav-koth-enhanced')]});
+ assert.equal(f.ctx.dialogBody.querySelector('.minecraft-mode-version'),null);
 });

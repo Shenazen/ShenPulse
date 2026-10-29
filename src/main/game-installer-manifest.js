@@ -36,6 +36,7 @@ const GAME_INSTALLERS = Object.freeze({
   "minecraft-bedrock-box": require("./game-installers/minecraft-bedrock-box"),
   "minecraft-sandbox-3": require("./game-installers/minecraft-sandbox-3"),
   "minecraft-survival-plugin": require("./game-installers/minecraft-survival-plugin"),
+  "minecraft-lavarise": require("./game-installers/minecraft-lavarise"),
   "pokemon-red-blue": require("./game-installers/pokemon-red-blue"),
   "super-mario-kart": require("./game-installers/super-mario-kart"),
 });

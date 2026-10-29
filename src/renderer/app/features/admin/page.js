@@ -371,17 +371,23 @@ function renderAdminGameCheats() {
   </div>`;
 }
 
-function adminTrialSubscriptionField(tier = "pro") {
-  return `<label class="field"><span>Accès à offrir</span><select name="subscriptionTier">
+function adminTrialAgencyCountingAvailable() {
+  return typeof adminDashboard !== "undefined" && adminDashboard?.trials?.agencyCountingAvailable === true;
+}
+
+function adminTrialSubscriptionField(tier = "pro", countsForAgency = false) {
+  const available = adminTrialAgencyCountingAvailable();
+  return `<label class="field"><span>Accès à offrir</span><select name="subscriptionTier" data-admin-trial-subscription-tier>
     <option value="none" ${tier === "none" ? "selected" : ""}>Aucun abonnement</option>
     <option value="pro" ${tier === "pro" ? "selected" : ""}>Pro</option>
     <option value="premium" ${tier === "premium" ? "selected" : ""}>Premium</option>
-  </select><small>Premium inclut toutes les fonctions Pro et les Machines IRL.</small></label>`;
+  </select><small>Premium inclut toutes les fonctions Pro et les Machines IRL.</small></label>
+  <label class="admin-trial-counting-option"><input type="checkbox" name="countsForAgency" data-admin-trial-agency-counting ${countsForAgency && tier !== "none" ? "checked" : ""} ${!available || tier === "none" ? "disabled" : ""}><span><strong>Compter pour l’agence</strong><small>${available ? "Inclure cet essai dans les abonnements actifs de son agence, sans paiement, jusqu’à son expiration ou sa révocation." : "Disponible après la mise à jour du service Agences."}</small></span></label>`;
 }
 
 function adminTrialSubscriptionFromForm(data) {
   const subscriptionTier = String(data.get("subscriptionTier") || "none");
-  return { subscription: subscriptionTier !== "none", subscriptionTier: subscriptionTier === "none" ? "" : subscriptionTier };
+  return { subscription: subscriptionTier !== "none", subscriptionTier: subscriptionTier === "none" ? "" : subscriptionTier, countsForAgency: subscriptionTier !== "none" && data.has("countsForAgency") };
 }
 
 function renderAdminTrials() {
@@ -413,6 +419,7 @@ function renderAdminTrials() {
           <div><strong>${escapeHtml(trial.email || trial.beneficiaryEmail || "Compte inconnu")}</strong><small>${trial.pending ? "En attente de création du compte" : "Compte ShenPulse associé"}</small></div>
           <div class="admin-trial-entitlements">
             ${trial.subscriptionTrial ? `<b>${trial.subscriptionTier === "premium" ? "PREMIUM" : "PRO"}</b>` : ""}
+            ${trial.subscriptionTrial ? `<button type="button" class="button small admin-trial-counting-button" data-action="admin-trial-agency-counting" data-id="${escapeHtml(trial.id)}" aria-pressed="${trial.countsForAgency === true}" title="Changer uniquement le comptage agence, sans modifier les dates ni les accès" ${adminBusy || trialsBlocked || !adminTrialAgencyCountingAvailable() ? "disabled" : ""}>Compte agence : ${trial.countsForAgency === true ? "Oui" : "Non"}</button>` : ""}
             ${(trial.gameTrialIds || []).length ? `<b>${trial.gameTrialIds.length} jeu${trial.gameTrialIds.length > 1 ? "x" : ""}</b>` : ""}
           </div>
           <time>${formatAdminDate(trial.expiresAt, false)}</time>
@@ -450,6 +457,7 @@ function restoreAdminTrialFormInteractivity({ focusEmail = false } = {}) {
         control.removeAttribute("disabled");
         control.removeAttribute("aria-disabled");
       });
+    syncAdminTrialGameSelection(form.querySelector('[name="subscriptionTier"]'));
     const emailInput = form.querySelector('input[name="email"]');
     if (emailInput) {
       emailInput.readOnly = false;
@@ -609,6 +617,11 @@ function adminTrialGameIdsFromForm(data) {
 
 function syncAdminTrialGameSelection(control) {
   const form = control?.closest("form");
+  const agencyCounting = form?.querySelector('[name="countsForAgency"]');
+  if (agencyCounting) {
+    agencyCounting.disabled = !adminTrialAgencyCountingAvailable() || form.querySelector('[name="subscriptionTier"]')?.value === "none";
+    if (agencyCounting.disabled) agencyCounting.checked = false;
+  }
   const gamesToggle = form?.querySelector('[name="games"]');
   if (!form || !gamesToggle) return;
   if (control.matches("[data-admin-trial-game-option]") && control.checked) {

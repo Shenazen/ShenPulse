@@ -112,8 +112,12 @@ function normalizeTrialRequest(value, ownerId) {
   const games = Boolean(value.games);
   const subscription = value.subscription === true || value.subscription === "true";
   const subscriptionTier = subscription ? String(value.subscriptionTier || "pro") : "";
+  const countsForAgency = value.countsForAgency === true || value.countsForAgency === "true";
   if (subscription && !["pro", "premium"].includes(subscriptionTier)) {
     throw new Error("Choisissez un accès Pro ou Premium.");
+  }
+  if (countsForAgency && !subscription) {
+    throw new Error("Le comptage agence nécessite un essai Pro ou Premium.");
   }
   if (!email) {
     throw new Error(
@@ -136,6 +140,7 @@ function normalizeTrialRequest(value, ownerId) {
     ownerId,
     subscription,
     subscriptionTier,
+    countsForAgency,
     email,
     beneficiaryEmail: email
   };

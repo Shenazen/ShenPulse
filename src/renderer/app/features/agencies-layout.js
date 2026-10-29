@@ -31,10 +31,15 @@ function agencyTierBadge(a) {
   const labels={silver:"Argent",gold:"Or",diamond:"Diamant"};
   return agencyLevelClass(a.level)?'<span class="agency-tier-badge '+agencyLevelClass(a.level)+'">'+agencyIcon(a.level==="diamond"?"diamond":a.level==="gold"?"crown":"team")+escapeHtml(labels[a.level] || "")+'</span>':"";
 }
+function renderAgencyCardDescription(description) {
+  const text=escapeHtml(description || "");
+  if(!text)return "";
+  return '<details class="agency-card-description"><summary><span class="agency-description-preview">'+text+'</span><span class="agency-description-toggle"><span class="agency-description-more">Lire la présentation</span><span class="agency-description-less">Réduire la présentation</span></span></summary><p>'+text+'</p></details>';
+}
 function renderAgencyCard(a,active=false) {
-  return '<article class="agency-panel agency-card agency-tier-frame '+agencyLevelClass(a.level)+'">'+(a.bannerUrl?'<img class="agency-card-banner" src="'+escapeHtml(a.bannerUrl)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':"")+
+  return '<article class="agency-panel agency-card agency-tier-frame '+agencyLevelClass(a.level)+'">'+(a.bannerUrl?'<img class="agency-card-banner" src="'+escapeHtml(a.bannerUrl)+'" alt="" width="960" height="400" loading="lazy" referrerpolicy="no-referrer">':'<div class="agency-card-banner agency-banner-empty" aria-hidden="true">'+agencyIcon("building")+'</div>')+
     '<div class="agency-card-body"><div class="agency-card-title">'+(a.logoUrl?'<img src="'+escapeHtml(a.logoUrl)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span class="agency-monogram">'+escapeHtml(a.name.slice(0,2).toUpperCase())+'</span>')+
-    '<div><h3>'+escapeHtml(a.name)+'</h3>'+agencyTierBadge(a)+'</div></div><p class="agency-card-members">'+agencyIcon("member")+'<strong>'+agencySubscriberCount(a).toLocaleString("fr-FR")+' créateurs abonnés</strong></p><p>'+escapeHtml(a.description)+'</p><div class="agency-tools">'+
+    '<div><h3>'+escapeHtml(a.name)+'</h3>'+agencyTierBadge(a)+'</div></div><p class="agency-card-members">'+agencyIcon("member")+'<strong>'+agencySubscriberCount(a).toLocaleString("fr-FR")+' créateurs abonnés</strong></p>'+renderAgencyCardDescription(a.description)+'<div class="agency-tools">'+
     [["website","Site"],["discord","Discord"],["tiktok","TikTok"],["instagram","Instagram"]].filter(([k])=>a[k]).map(([k,label])=>'<button type="button" class="button small" data-action="agency-link" data-value="'+escapeHtml(a[k])+'">'+label+'</button>').join("")+
     '</div><button type="button" class="button primary" data-action="agency-join" data-id="'+escapeHtml(a.id)+'" '+(active?"disabled":"")+'>Rejoindre</button></div></article>';
 }
@@ -52,7 +57,7 @@ function renderAgencyReviewCard(a,members) {
   const paid=members.filter(m=>m.status==="approved" && m.paying).length;
   const links=[["website","Site internet"],["discord","Discord"],["tiktok","TikTok"],["instagram","Instagram"]].filter(([key])=>a[key]);
   return '<section class="agency-panel agency-profile agency-review-card" aria-label="Fiche de '+escapeHtml(a.name)+'">'+renderAgencyProfileHeader(a,"FICHE PARTENAIRE")+
-    '<div class="agency-profile-body"><p class="agency-profile-description">'+escapeHtml(a.description)+'</p><dl class="agency-profile-meta"><div><dt>Contact du directeur</dt><dd>'+escapeHtml(a.contactEmail || "Non renseigné")+'</dd></div><div><dt>Langue</dt><dd>'+escapeHtml(languages[a.language] || a.language || "Non renseignée")+'</dd></div><div><dt>Créateurs abonnés</dt><dd>'+paid+' abonnement'+(paid>1?"s":"")+' actif'+(paid>1?"s":"")+'</dd></div></dl>'+
+    '<div class="agency-profile-body">'+renderAgencyCardDescription(a.description)+'<dl class="agency-profile-meta"><div><dt>Contact du directeur</dt><dd>'+escapeHtml(a.contactEmail || "Non renseigné")+'</dd></div><div><dt>Langue</dt><dd>'+escapeHtml(languages[a.language] || a.language || "Non renseignée")+'</dd></div><div><dt>Créateurs abonnés</dt><dd>'+paid+' abonnement'+(paid>1?"s":"")+' actif'+(paid>1?"s":"")+'</dd></div></dl>'+
     (links.length?'<nav class="agency-tools agency-profile-links" aria-label="Liens de l’agence">'+links.map(([key,label])=>'<button type="button" class="button small" data-action="agency-link" data-value="'+escapeHtml(a[key])+'">'+label+' ↗</button>').join("")+'</nav>':"")+
     (a.reason?'<p class="agency-notice"><strong>Message au directeur</strong><br>'+escapeHtml(a.reason)+'</p>':"")+
     '<div class="agency-tools agency-review-actions">'+["approved","rejected","suspended"].filter(status=>status!==a.status).map(status=>'<button type="button" class="button '+(status==="approved"?"primary":"")+'" data-action="agency-review" data-id="'+escapeHtml(a.id)+'" data-status="'+status+'">'+({approved:"Valider l’agence",rejected:"Refuser",suspended:"Suspendre"}[status])+'</button>').join("")+'</div></div></section>';

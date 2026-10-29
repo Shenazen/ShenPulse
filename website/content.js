@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.1.0',
-  title: 'Tes jeux, ton agence et ton LIVE dans un seul espace.',
-  summary: 'Prépare tes interactions depuis des fiches de jeu repensées, personnalise tes cadeaux et retrouve les agences partenaires directement dans ShenPulse.',
+  version: '2.1.1',
+  title: 'Des jeux plus fiables, un LIVE mieux préparé.',
+  summary: 'Découvre Minecraft Lava Rise, les améliorations de GTA KOTH et un affichage des wins mieux adapté à ton studio. Les agences gagnent aussi en lisibilité et en souplesse.',
   highlights: [
-    ['Prépare ton jeu', 'Installation guidée, choix de l’édition compatible, interactions classées et visite pas à pas. Les packs sont téléchargés à la demande avec contrôle d’intégrité.'],
-    ['Compose ton LIVE', 'Trois modèles pour les cartes de cadeaux, aperçus adaptés aux écrans étroits et installation des sources dans ton logiciel de diffusion. Les compteurs restent propres aux jeux compatibles.'],
-    ['Retrouve ta communauté', 'Espace Agences dans l’application, gestion des invitations et des membres par le directeur, connexion Google réparée et commandes musicales synchronisées.']
+    ['Relève de nouveaux défis', 'Minecraft Lava Rise rejoint les modes disponibles. GTA KOTH améliore la création de sa rampe et indique sa progression pendant la préparation.'],
+    ['Soigne ton affichage', 'Les sources de wins reprennent le cadrage validé dans le studio pour garder les cadeaux visibles. Les aperçus et les informations de version Minecraft sont plus clairs.'],
+    ['Fais grandir ton agence', 'Les cartes des agences deviennent plus compactes et lisibles. L’administration peut choisir de compter certains essais Pro ou Premium actifs dans les paliers.']
   ]
 }
 

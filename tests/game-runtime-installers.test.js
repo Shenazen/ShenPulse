@@ -36,6 +36,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
       "gtav-montchiliad",
       "hogwarts-legacy",
       "minecraft-bedrock-box",
+      "minecraft-lavarise",
       "minecraft-sandbox-3",
       "minecraft-survival-plugin",
       "palworld",
@@ -119,7 +120,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
 
 test("GTA est détecté et installé automatiquement avec une progression novice", () => {
   const gta = GAME_INSTALLERS["gtav-montchiliad"];
-  assert.equal(gta.version, "1.0.14");
+  assert.equal(gta.version, "1.0.15");
   const runtime = readMainSource("game-runtime.js");
   const renderer = readRendererSource();
 
@@ -171,10 +172,10 @@ test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’éd
   const enhancedPlugin = enhanced.find(
     (asset) => asset.id === "enhancedplugin"
   );
-  assert.match(enhancedPlugin.url, /\/1\.0\.14\//);
+  assert.match(enhancedPlugin.url, /\/1\.0\.15\//);
   assert.equal(
     enhancedPlugin.sha256,
-    "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48"
+    "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db"
   );
   assert.throws(
     () => safeInstallerAssetUrl("https://example.com/asset.zip"),

@@ -1,6 +1,6 @@
 "use strict";
 const { StreamlabsRpc } = require("./rpc");
-const { layout, OVERLAY_RENDER_SIZE } = require("./layout");
+const { layout, OVERLAY_RENDER_SIZE, WINS_VIEWPORT } = require("./layout");
 const { settings, sourceName } = require("./obs");
 async function installStreamlabs(target,plan,client=new StreamlabsRpc()){
   await client.connect();
@@ -17,10 +17,10 @@ async function installStreamlabs(target,plan,client=new StreamlabsRpc()){
       plan.assertScope();const name=sourceName(plan,kind);let source=sources.find(s=>s.name===name);
       if(kind==="camera"&&!source)source=sources.find(s=>s.type==="dshow_input");
       let item=source?items.find(s=>s.sourceId===source.sourceId):null;
-      if(!source){item=await client.call(scene.resourceId,"createAndAddSource",name,{game:"game_capture",camera:"dshow_input",overlay:"browser_source",wins:"browser_source"}[kind],settings(plan,kind),{select:false});source={sourceId:item.sourceId,width:kind==="wins"?1080:kind==="overlay"?OVERLAY_RENDER_SIZE.width:1920,height:kind==="wins"?1920:kind==="overlay"?OVERLAY_RENDER_SIZE.height:1080};}
+      if(!source){item=await client.call(scene.resourceId,"createAndAddSource",name,{game:"game_capture",camera:"dshow_input",overlay:"browser_source",wins:"browser_source"}[kind],settings(plan,kind),{select:false});source={sourceId:item.sourceId,width:kind==="wins"?WINS_VIEWPORT.width:kind==="overlay"?OVERLAY_RENDER_SIZE.width:1920,height:kind==="wins"?WINS_VIEWPORT.height:kind==="overlay"?OVERLAY_RENDER_SIZE.height:1080};}
       else {if(kind!=="camera")await client.call(source.resourceId,"updateSettings",settings(plan,kind));if(!item)item=await client.call(scene.resourceId,"addSource",source.sourceId,{select:false});}
       if(!item?.resourceId)throw new Error("Streamlabs n’a pas confirmé une source.");
-      const width=kind==="wins"?1080:kind==="overlay"?OVERLAY_RENDER_SIZE.width:Number(source.width)||1920,height=kind==="wins"?1920:kind==="overlay"?OVERLAY_RENDER_SIZE.height:Number(source.height)||1080,box=area[kind],scale=Math.min(box.width/width,box.height/height);
+      const width=kind==="wins"?WINS_VIEWPORT.width:kind==="overlay"?OVERLAY_RENDER_SIZE.width:Number(source.width)||1920,height=kind==="wins"?WINS_VIEWPORT.height:kind==="overlay"?OVERLAY_RENDER_SIZE.height:Number(source.height)||1080,box=area[kind],scale=Math.min(box.width/width,box.height/height);
       await client.call(item.resourceId,"setTransform",{position:{x:box.x+(box.width-width*scale)/2,y:box.y+(box.height-height*scale)/2},scale:{x:scale,y:scale},rotation:0});
       await client.call(item.resourceId,"setVisibility",true);created.push(item.sourceId);
     }

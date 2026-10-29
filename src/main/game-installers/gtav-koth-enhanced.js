@@ -1,6 +1,6 @@
 "use strict";
 module.exports = {
-  "version": "1.0.9",
+  "version": "1.0.10",
   "title": "GTA V KOTH Enhanced",
   "targetLabel": "dossier GTA V Enhanced",
   "autoDetect": true,
@@ -47,9 +47,9 @@ module.exports = {
       "editions": [
         "enhanced"
       ],
-      "size": 698368,
-      "sha256": "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
-      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-koth-enhanced/1.0.9/shenpulse-gta-enhanced.asi"
+      "size": 706560,
+      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-koth-enhanced/1.0.10/shenpulse-gta-enhanced.asi"
     }
   ]
 };

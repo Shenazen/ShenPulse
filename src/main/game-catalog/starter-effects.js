@@ -1,6 +1,7 @@
 "use strict";
 // Reviewed starter effects. Order follows the six price tiers from Supermarket.
 module.exports={
+ 'minecraft-lavarise':{help:['lava-down','lava-tp-up','lava-boost','lava-mega-jump','lava-clear-mobs','lava-gear5'],trap:['lava-up','lava-tp-down','lava-slow','lava-blind','lava-freeze','lava-mixed']},
  palworld:{help:['fullheal','fillstam','givehunger','attup','defup','catchup'],trap:['damage','slow','freeze','spawnalpha','wanted','meteor']},
  ...Object.fromEntries(Object.entries(require('./shen-native-games').DEFINITIONS).map(([id,rows])=>[id,{help:rows.filter(r=>r[2]==='help').slice(0,6).map(r=>r[0]),trap:rows.filter(r=>r[2]==='trap').slice(0,6).map(r=>r[0])}])),
  'crash-bandicoot-n-sane-trilogy':{help:['givelife','givefruit','giveboxes','infinitejump','groundspeed_300','floatyjump'],trap:['takelife','takefruit','takeboxes','groundspeed_m100','nojump','nospin']},

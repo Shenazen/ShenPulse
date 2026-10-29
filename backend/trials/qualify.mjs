@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { integratePremiumTrials } from './integrate.mjs';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
 
 // Les fonctions exercées sont extraites du vrai serveur préparé, jamais réécrites.
-export async function qualifyPremiumTrials(source) {
+export function createTrialQualificationFixture(source) {
  const names=['grantAdminTrial','updateAdminTrial','revokeAdminTrial','appendAdminTrialApplicationUpdates',
  'applyPendingAdminTrialForUser','listAdminTrials','activeSubscriptionTrial','publicEntitlementPayload',
  'normalizeAdminTrialPayload','normalizePendingAdminTrialPayload','adminTrialBaseFromPendingTrial',
@@ -14,6 +16,7 @@ export async function qualifyPremiumTrials(source) {
  'normalizeTrialGameIds','normalizeAccountEmail','validAccountEmail','emailIndexKey','adminTrialGrantPath',
  'cleanUidForDatabase','safeCommerceId','paymentError','requestedTrialSubscriptionTier',
  'activeSubscriptionTier','publicEntitlementResponse'];
+ if(source.includes('function setAdminTrialAgencyCounting('))names.push('requestedTrialAgencyCounting','setAdminTrialAgencyCounting');
  const functions=names.map(name=>{
   const fn=source.match(new RegExp('^(?:export )?(?:async )?function '+name+'\\([\\s\\S]*?^}$', 'm'))?.[0];
   if(!fn)throw Error('Fonction absente '+name);return fn.replace(/^export /,'');
@@ -23,7 +26,7 @@ export async function qualifyPremiumTrials(source) {
  const get=path=>path.split('/').filter(Boolean).reduce((v,k)=>v?.[k],data);
  const set=(path,val)=>{const parts=path.split('/').filter(Boolean);let o=data;for(const k of parts.slice(0,-1))o=o[k]??={};if(val===null)delete o[parts.at(-1)];else o[parts.at(-1)]=structuredClone(val);};
  const snapshot=(v,key)=>({key,val:()=>structuredClone(v??null),exists:()=>v!=null,forEach:fn=>Object.entries(v??{}).forEach(([k,x])=>fn(snapshot(x,k)))});
- const db={ref(path=''){return{get:async()=>snapshot(get(path)),remove:async()=>set(path,null),update:async patches=>{for(const[k,v]of Object.entries(patches))set(path?path+'/'+k:k,v);}};}};
+ const db={ref(path=''){return{on(){},off(){},once:async()=>snapshot(get(path)),get:async()=>snapshot(get(path)),remove:async()=>set(path,null),transaction:async fn=>{const value=fn(structuredClone(get(path)??null));if(value===undefined)return{committed:false};set(path,value);return{committed:true};},update:async patches=>{for(const[k,v]of Object.entries(patches))set(path?path+'/'+k:k,v);}};}};
  const catalog={products:{permanent:{id:'permanent',enabled:true,accessMode:'purchase'},temporary:{id:'temporary',enabled:true,accessMode:'purchase'}}};
  const context=vm.createContext({
   Date,ServerValue:{TIMESTAMP:Date.now()},paypalCurrency:'EUR',gameCatalog:{},
@@ -36,10 +39,15 @@ export async function qualifyPremiumTrials(source) {
   subscriptionSnapshot:async uid=>get('users/'+uid+'/subscription')??{},
   activeTrialGameEntitlements:async()=>[],
   activePremiumSeatGrantForUser:async()=>null,
-  agencyService:{directorReward:async()=>null}
+  agencyService:{directorReward:async()=>null,invalidateDirectoryCache:()=>{}}
  });
  vm.runInContext(functions,context);
- const run=(name,...args)=>context[name](...args),admin={admin:true},checks=[];
+ const run=(name,...args)=>context[name](...args);
+ return {run,data,accounts,get,set,context};
+}
+
+export async function qualifyPremiumTrials(source) {
+ const {run,data,accounts,get,set}=createTrialQualificationFixture(source),admin={admin:true},checks=[];
  const plain=v=>JSON.parse(JSON.stringify(v));
  const paid=structuredClone(data.users.viewer.subscription);
  data.users.viewer.entitlements={games:{permanent:{source:'purchase',status:'active'}}};
@@ -96,7 +104,7 @@ export async function qualifyPremiumTrials(source) {
  checks.push('Compatibilité des anciennes demandes Pro');
  return {passed:checks.length,checks};
 }
-if(process.argv[2]){
+if(process.argv[2] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const result=integratePremiumTrials(fs.readFileSync(process.argv[2],'utf8'));
  const report=await qualifyPremiumTrials(result);
  if(process.argv[3])fs.writeFileSync(process.argv[3],result);

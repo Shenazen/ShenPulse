@@ -201,7 +201,7 @@
     {
       "gameId": "gtav-koth-enhanced",
       "id": "scripthook-enhanced",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "key": "installer-assets/gtav-montchiliad/1.0.0/script-hook-v-enhanced-3889.0-1158.13.zip",
       "size": 1722210,
       "sha256": "b64c97c3353906f14621e7e9511e4aec2a7d436ecc21ed124d3816585e2e6188"
@@ -209,25 +209,25 @@
     {
       "gameId": "gtav-koth-enhanced",
       "id": "koth-module",
-      "version": "1.0.9",
-      "key": "installer-assets/gtav-koth-enhanced/1.0.9/shenpulse-gta-enhanced.asi",
-      "size": 698368,
-      "sha256": "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
-      "buildPath": ".artifacts/game-pack-builds/gtav-hiking-enhanced/1.0.3/ShenPulseMontChiliadEnhanced.asi"
+      "version": "1.0.10",
+      "key": "installer-assets/gtav-koth-enhanced/1.0.10/shenpulse-gta-enhanced.asi",
+      "size": 706560,
+      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
+      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.10/ShenPulseMontChiliadEnhanced.asi"
     },
     {
       "gameId": "gtav-montchiliad",
       "id": "enhancedplugin",
-      "version": "1.0.14",
-      "key": "installer-assets/gtav-montchiliad/1.0.14/shenpulse-mont-chiliad-enhanced.asi",
-      "size": 698368,
-      "sha256": "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
-      "buildPath": ".artifacts/game-pack-builds/gtav-hiking-enhanced/1.0.3/ShenPulseMontChiliadEnhanced.asi"
+      "version": "1.0.15",
+      "key": "installer-assets/gtav-montchiliad/1.0.15/shenpulse-mont-chiliad-enhanced.asi",
+      "size": 706560,
+      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
+      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.10/ShenPulseMontChiliadEnhanced.asi"
     },
     {
       "gameId": "gtav-hiking-enhanced",
       "id": "scripthook-enhanced",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "key": "installer-assets/gtav-montchiliad/1.0.0/script-hook-v-enhanced-3889.0-1158.13.zip",
       "size": 1722210,
       "sha256": "b64c97c3353906f14621e7e9511e4aec2a7d436ecc21ed124d3816585e2e6188"
@@ -235,11 +235,11 @@
     {
       "gameId": "gtav-hiking-enhanced",
       "id": "hiking-module",
-      "version": "1.0.3",
-      "key": "installer-assets/gtav-hiking-enhanced/1.0.3/shenpulse-gta-enhanced.asi",
-      "size": 698368,
-      "sha256": "b7cd61135b124fb3df2cd4a9f73fbe1e60e7050a1555e0b075296762feb75b48",
-      "buildPath": ".artifacts/game-pack-builds/gtav-hiking-enhanced/1.0.3/ShenPulseMontChiliadEnhanced.asi"
+      "version": "1.0.4",
+      "key": "installer-assets/gtav-hiking-enhanced/1.0.4/shenpulse-gta-enhanced.asi",
+      "size": 706560,
+      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
+      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.10/ShenPulseMontChiliadEnhanced.asi"
     },
     {
       "gameId": "stardew-valley",

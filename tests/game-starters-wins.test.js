@@ -17,7 +17,7 @@ function externalFixture(){
  const file=path.resolve('tests/external-game-workspace.test.js'),source=fs.readFileSync(file,'utf8'),m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));
  m._compile(source.slice(0,source.indexOf("test('les 45"))+'\nmodule.exports={fixture};',file);return m.exports.fixture();
 }
-test('les 37 modules disponibles proposent six aides et six pièges avec les mêmes douze cadeaux, sans wins mélangées',()=>{
+test('les 38 modules disponibles proposent six aides et six pièges avec les mêmes douze cadeaux, sans wins mélangées',()=>{
  let available=0;
  for(const pack of packs.filter(p=>require('../src/shared/game-workspace-policy').eligible(p))){
   if(!pack.effects.some(e=>e.available!==false)){assert.equal(pack.defaultMappings.filter(m=>m.marketColumn).length,0,pack.id);continue;}
@@ -30,7 +30,7 @@ test('les 37 modules disponibles proposent six aides et six pièges avec les mê
   const hub=hubFor(pack);initializeDefaultInteractions(hub,pack.id);const projection=createGamePackOverlay({...hub.state,commerce:{subscription:{tier:'pro',status:'active',source:'paid'}}},pack.id);
   for(const column of ['help','trap'])assert.equal(projection.cards.filter(card=>card.column===column&&card.triggerType==='gift').length,6,pack.id);
  }
- assert.equal(available,37);
+ assert.equal(available,38);
 });
 test('tous les noms du catalogue et des presets tiennent en deux mots ; les données techniques sont conservées',()=>{
  for(const pack of packs){for(const effect of pack.effects)assert.ok(effect.name.trim().split(/\s+/).length<=2,pack.id+': '+effect.name);for(const m of pack.defaultMappings||[])assert.ok(m.title.trim().split(/\s+/).length<=2,pack.id+': '+m.title);}
@@ -101,14 +101,14 @@ test('TikTok et OBS ajoutent la source de wins distincte à la disposition appro
  const {prepareTikTok}=require('../src/main/studio-installation/tiktok'),{prepareCollection}=require('../src/main/studio-installation/obs');
  const plan={identity:'account:profile:gta',packId:'gtav-montchiliad',profileId:'profile',gameName:'GTA',sceneName:'GTA · ShenPulse',executable:'GTA5.exe',overlayUrl:'https://test/game-pack.html?jeu=gtav-montchiliad&profile=profile',winsOverlayUrl:'https://test/game-wins.html?jeu=gtav-montchiliad&profile=profile',assertScope(){}};
  const original={SourceService:{state:{scenes:[],sceneSource:{},layerMap:{}}}},first=prepareTikTok(original,plan),second=prepareTikTok(first.document,plan),sources=Object.values(second.document.SourceService.state.sceneSource[first.sceneId].data);
- assert.equal(sources.length,4);assert.equal(sources.filter(s=>s.type==='browser').length,2);const wins=sources.find(s=>s.payload.url===plan.winsOverlayUrl);assert.deepEqual(wins.transform.size,{cx:1080,cy:1920});assert.equal(wins.transform.translateX,0);assert.equal(wins.transform.translateY,0);assert.equal(wins.transform.scaleX,.625);
+ assert.equal(sources.length,4);assert.equal(sources.filter(s=>s.type==='browser').length,2);const wins=sources.find(s=>s.payload.url===plan.winsOverlayUrl);assert.deepEqual(wins.transform.size,{cx:1080,cy:1019});assert.equal(wins.transform.translateX,0);assert.equal(wins.transform.translateY,78.39580535888672);assert.equal(wins.transform.scaleX,.6201910376548767);
  const obs=prepareCollection(prepareCollection(null,plan).document,plan),scene=obs.document.sources.find(s=>s.id==='scene');assert.equal(scene.settings.items.length,4);assert.equal(obs.document.sources.filter(s=>s.id==='browser_source').length,2);assert.ok(obs.document.sources.some(s=>s.settings?.url===plan.winsOverlayUrl));
 });
 
 // Baseline 2.1.0 revue après le module Palworld autonome et le libellé Blue Prince.
 // Les codes et paramètres restent couverts par cette empreinte complète et les tests natifs.
 test('les codes, paramètres, séquences, durées et autres données des effets correspondent à la référence 2.1.0',()=>{
- const technical=packs.filter(p=>!["gtav-hiking-enhanced","gtav-koth-enhanced","shenfarm","shenpaint","shenkite","splash-bombes"].includes(p.id)).map(p=>({id:p.id,effects:p.effects.filter(e=>!['overlay_win_reset','overlay_win_invert','overlay_win_mute','overlay_win_unmute'].includes(e.code)).map(({name,previousNames,column,...technical})=>technical)}));
+ const technical=packs.filter(p=>!["minecraft-lavarise","gtav-hiking-enhanced","gtav-koth-enhanced","shenfarm","shenpaint","shenkite","splash-bombes"].includes(p.id)).map(p=>({id:p.id,effects:p.effects.filter(e=>!['overlay_win_reset','overlay_win_invert','overlay_win_mute','overlay_win_unmute'].includes(e.code)).map(({name,previousNames,column,...technical})=>technical)}));
  assert.equal(require('node:crypto').createHash('sha256').update(JSON.stringify(technical)).digest('hex'),'c422abca361a23381d7ad1bf030c86e907aa706779e363b05501a3377f651ec5');
 });
 test('les vrais contrôleurs de la page enregistrent paliers, multiplicateur et options, sans toucher aux autres actions',async t=>{
@@ -141,7 +141,7 @@ test('Streamlabs conserve les trois zones et ajoute le HUD de wins en quatrième
   if(method==='setTransform')transforms.push(args[0]);if(['setTransform','setVisibility','makeSceneActive','updateSettings'].includes(method))return;
   throw Error('Unexpected '+method);
  }};
- await installStreamlabs({},plan,client);await installStreamlabs({},plan,client);assert.equal(sources.length,4);assert.equal(items.length,4);assert.equal(settings[3].url,plan.winsOverlayUrl);assert.deepEqual(transforms[3],{position:{x:0,y:0},scale:{x:1,y:1},rotation:0});assert.deepEqual(transforms[7],transforms[3]);
+ await installStreamlabs({},plan,client);await installStreamlabs({},plan,client);assert.equal(sources.length,4);assert.equal(items.length,4);assert.equal(settings[3].url,plan.winsOverlayUrl);assert.deepEqual(transforms[3],{position:{x:0,y:125.4332885742188},scale:{x:0.9923056602478028,y:0.9923056602478028},rotation:0});assert.deepEqual(transforms[7],transforms[3]);
 });
 
 test('modifier un palier ne touche jamais le compteur lié à un autre jeu de la même règle',()=>{

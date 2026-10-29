@@ -44,6 +44,12 @@ const EXTERNAL_GUIDE_URLS = Object.freeze({
 });
 
 const GAME_GUIDES = Object.freeze({
+  "minecraft-lavarise": {
+    mode: "native", summary: "ShenPulse installe et lance votre serveur Lava Rise local et son module autonome.",
+    journey: ["installation","interactions","overlays","launch"],
+    steps: ["Possédez Minecraft Java Edition et lancez-le une première fois.","Cliquez sur Installer automatiquement et acceptez le CLUF Minecraft. ShenPulse télécharge et prépare automatiquement tout le nécessaire.","Personnalisez les six aides et six pièges, leurs cadeaux et les wins, puis installez les sources sur votre studio.","Lancez le jeu depuis ShenPulse. Dans Minecraft Java 26.1.2, ouvrez Multijoueur puis Connexion directe : 127.0.0.1:25585.","Dans la tour, saisissez /lavarise start, puis fermez le chat. Grimpez et tenez dix secondes au sommet pour gagner."],
+    notes: ["Minecraft Java 26.1.2 pour PC requis, depuis Minecraft Launcher ou Xbox / Game Pass si votre compte donne accès à Java Edition.","Gardez ShenPulse ouvert. Aucun raccourci clavier imposé : les commandes sont transmises à votre serveur local.","Les effets de gel, de créatures, de glace et de plateformes mobiles nécessitent une partie commencée et un joueur présent dans la tour.","Retirer le gel nécessite un gel actif ; les équipements temporaires rétablissent ensuite le contenu précédent.","Une victoire ajoute une win ; une défaite en partie en retire une. Le multiplicateur actif s’applique au résultat.","L’arène est recréée automatiquement après une manche. Les cadeaux portent le nom du viewer dans les messages de la partie."], sources: []
+  },
   palworld: require("./palworld-guide"),
   "escape-from-duckov": {
     mode: "native", summary: "ShenPulse détecte le jeu Steam, installe les 83 interactions et démarre leur connexion locale.",

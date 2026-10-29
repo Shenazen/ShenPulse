@@ -47,7 +47,7 @@ function gameInteractionRowData(row) {
 }
 
 function isMinecraftWinCounterPack(packId) {
-  return ["minecraft-bedrock-box", "minecraft-sandbox-3"].includes(
+  return ["minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-lavarise"].includes(
     String(packId || "")
   );
 }

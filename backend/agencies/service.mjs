@@ -7,6 +7,13 @@ const clean = (v, max = 160) => String(v || '').trim().slice(0, max);
 const key = v => { const text = clean(v); if (!text || /[.#$/[\]\\]/.test(text)) fail('Identifiant invalide.'); return text; };
 const empty = v => ({ agencies: {}, memberships: {}, checkouts: {}, audit: {}, ...v });
 const activePaid = (s,at=Date.now()) => s?.status === 'active' && s?.paymentProvider === 'paypal' && !!s?.paypalSubscriptionId && ['pro','premium'].includes(s?.tier) && Number(s?.priceMonthly) > 0 && (!s.renewalDate || Date.parse(s.renewalDate) > at);
+function countingStatus(sub,trial,at) {
+  if(activePaid(sub,at))return {counted:true,paid:true,tier:sub.tier,source:'paypal'};
+  // Seul un essai encore actif et explicitement sélectionné par l'administrateur compte.
+  const expiresAtMs=Number(trial?.expiresAtMs || Date.parse(trial?.expiresAt || ''));
+  const allowed=trial?.countsForAgency===true && trial.source==='trial' && ['pro','premium'].includes(trial.tier) && Number.isFinite(expiresAtMs) && expiresAtMs>at;
+  return allowed?{counted:true,paid:false,tier:trial.tier,source:'trial',expiresAtMs}:{counted:false,paid:false,tier:'free',source:'none'};
+}
 export function agencyUrl(v) {
   if (!v) return '';
   let u; try { u = new URL(String(v)); } catch { fail('Adresse HTTPS invalide.'); }
@@ -32,18 +39,23 @@ export function quoteAgencyPrices(raw, uid, sub = {}) {
   return {...AGENCY_PRICES, quoted:{...AGENCY_PRICES[group==='public'?'public':'agency']},group,agencyId:eligible?a.id:'',agencyName:eligible?a.name:'',eligible,commissionsEnabled:false,currentPrice:activePaid(sub)?Number(sub.priceMonthly):0};
 }
 /** Autorité côté serveur ; une seule transaction protège l'adhésion à une agence unique. */
-export function createAgencyService({db,authenticate,requireAdmin,subscription,now=Date.now}) {
+export function createAgencyService({db,authenticate,requireAdmin,subscription,trial=async()=>null,now=Date.now}) {
   const ref=()=>db().ref(AGENCY_PATH), read=async()=>empty((await ref().get()).val() || {}), stamp=()=>new Date(now()).toISOString();
+  const memberCountingStatus=async uid=>{
+    const sub=await subscription(uid),at=now();
+    return countingStatus(sub,activePaid(sub,at)?null:await trial(uid),at);
+  };
   let directoryCache=null,directoryPending=null,revision=0;
   const directoryStats=async()=>{
-    if(directoryCache && directoryCache.revision===revision && now()-directoryCache.at<30000)return directoryCache.value;
+    if(directoryCache && directoryCache.revision===revision && now()<directoryCache.validUntil)return directoryCache.value;
     if(directoryPending?.revision===revision)return directoryPending.promise;
     const version=revision,promise=(async()=>{
       const s=await read(),entries=Object.entries(s.memberships).filter(([,m])=>m.status==='approved' && s.agencies[m.agencyId]?.status==='approved');
       if(entries.length>20000)fail('Annuaire temporairement indisponible.',503);
-      const counts={};
+      const counts={};let validUntil=now()+30000;
       for(let i=0;i<entries.length;i+=20)await Promise.all(entries.slice(i,i+20).map(async([uid,m])=>{
-        if(activePaid(await subscription(uid),now()))counts[m.agencyId]=(counts[m.agencyId] || 0)+1;
+        const status=await memberCountingStatus(uid);
+        if(status.counted){counts[m.agencyId]=(counts[m.agencyId] || 0)+1;if(status.expiresAtMs)validUntil=Math.min(validUntil,status.expiresAtMs);}
       }));
       const agencies=Object.values(s.agencies).filter(a=>a.status==='approved').map(a=>{
         const payingCount=counts[a.id] || 0;
@@ -54,7 +66,7 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,n
         return candidates.length?candidates[day%candidates.length].id:'';
       };
       const value={ok:true,agencies,featuredAgencyId:select('day'),homeAgencyId:select('home'),prices:AGENCY_PRICES,commissionsEnabled:false};
-      if(version===revision)directoryCache={value,revision:version,at:now()};
+      if(version===revision)directoryCache={value,revision:version,validUntil};
       return value;
     })();
     directoryPending={revision:version,promise};
@@ -79,6 +91,7 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,n
   };
   const service={
     publicList:directoryStats,
+    invalidateDirectoryCache(){revision++;directoryCache=null;},
     async directorReward(uid,current={}){
       if(activePaid(current,now()))return null;
       const s=await read(),own=Object.values(s.agencies).find(a=>a.ownerUid===uid && a.status==='approved');
@@ -95,7 +108,10 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,n
       const visible=admin?Object.values(s.agencies):own?[own]:[],entries=Object.entries(s.memberships).filter(([,m])=>visible.some(a=>a.id===m.agencyId));
       if(entries.length>2000)fail('Liste trop importante. Contactez ShenPulse.',409);
       const members=[];
-      for(let i=0;i<entries.length;i+=20)members.push(...await Promise.all(entries.slice(i,i+20).map(async([uid,m])=>{const sub=await subscription(uid);return {uid,...m,paying:activePaid(sub),tier:activePaid(sub)?sub.tier:'free'};})));
+      for(let i=0;i<entries.length;i+=20)members.push(...await Promise.all(entries.slice(i,i+20).map(async([uid,m])=>{
+        const status=await memberCountingStatus(uid);
+        return {uid,...m,paying:status.counted,tier:status.tier,paidSubscription:status.paid,countingSource:status.source};
+      })));
       return {ok:true,uid:u.uid,...(admin?{admin:true,allAgencies:visible,audit:Object.values(s.audit || {}).slice(-100)}:{}),ownAgency:own || null,membership:s.memberships[u.uid] || null,members,pricing:await service.quote(u.uid),commissionsEnabled:false};
     },
     async save(request,body){

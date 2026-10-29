@@ -365,6 +365,18 @@ class ActionRunner {
           }
         }
         const minecraftPackId = safeString(config.packId, 120);
+        if (minecraftPackId === "minecraft-lavarise") {
+          try {
+            const state = readState(this.store, ["overlaySession", "settings.overlayConfigs.winCounter"]);
+            const session = state.overlaySession || {};
+            const remaining = Math.max(0, Math.min(3600, Math.ceil((Number(session.winCounterMultiplierUntil || 0) - Date.now()) / 1000)));
+            const factor = remaining > 0 ? Math.max(1, Number(session.winCounterMultiplier) || 1) : 1;
+            const configuredTarget = Number(state.settings?.overlayConfigs?.winCounter?.target);
+            const target = Number.isFinite(configuredTarget) ? Math.max(0, configuredTarget) : 10;
+            await this.gameHub.executeMinecraftCommands(minecraftPackId, [`shenpulse_lava sync ${Number(session.winCounterCurrent) || 0} ${factor} ${remaining} ${target}`], { shouldExecute });
+            payload.nativeSynchronized=true;
+          } catch { payload.nativeSynchronized=false; }
+        }
         if (
           ["minecraft-bedrock-box", "minecraft-sandbox-3"].includes(
             minecraftPackId

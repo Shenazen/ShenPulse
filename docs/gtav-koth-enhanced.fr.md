@@ -111,3 +111,16 @@ Essais réels du module final, le 27 octobre 2026 : victoire après dix secondes
 Le harnais natif passe 3 364 assertions et les 47 tests JavaScript ciblés passent. Le lancement respecte désormais les dix minutes de préparation prévues pour le premier chargement GTA, sans démarrer de seconde instance. La construction Electron passe.
 
 Pack publié et retéléchargé dans un dossier vide par le vrai téléchargeur ShenPulse : KOTH 1.0.6, module commun Mont Chiliad Enhanced 1.0.11, 591 360 octets, SHA-256 7ea57e739f265580ad4f6b1657d8409aa85cedbfc937ddd4a17151dd184688b6. Les trois fichiers du runtime wins public ont également été publiés et vérifiés. L’application reste en 2.1.0.
+
+
+## Création progressive de la rampe — module 1.0.10 (29 octobre 2026)
+
+Un utilisateur Epic Games Enhanced signale le menu F10 accessible, mais l'erreur « GTA n'a pas pu créer toute la rampe ». Cette erreur provenait d'un retour nul de CREATE_OBJECT_NO_OFFSET pendant la création des conteneurs ou de l'abri. L'ancien code allouait 271 objets par défaut dans une seule frame ; cette observation ne prouve pas la cause de l'échec sur son PC. Le catalogue prend déjà Epic, Steam et Rockstar en charge.
+
+La construction cède maintenant une frame tous les huit objets et retente un refus temporaire pendant au plus deux secondes par objet, avec un budget global de construction de 25 secondes incluant le chargement des modèles. Le modèle est de nouveau demandé s'il n'est plus chargé. L'ancienne rampe reste conservée jusqu'au succès complet ; l'échec supprime tous les nouveaux objets. Un menu, un chargement ou le passage en ligne interrompt la construction. La relance automatique attend trente secondes après un échec. L'activation de l'animation dans F10 conserve désormais l'erreur réelle au lieu de la masquer.
+
+Le journal %LOCALAPPDATA%/ShenPulse/GtaMode/ShenPulseKoth.log identifie la version du constructeur, le modèle, l'index, la position, le nombre d'objets, les reprises, la durée et le code de version ScriptHook du jeu. Un compteur indique la progression pendant la construction.
+
+Validation : compilation du module ASI complet, 14 scénarios d'allocation (tailles 5/30/95 sections, reprise, échec de l'abri, nettoyage, annulation et délai), 19 678 assertions natives existantes, 50 tests JavaScript ciblés, lint. Les trois installateurs partagent le même binaire : KOTH 1.0.10, Hiking 1.0.4, Mont Chiliad Enhanced 1.0.15. Taille : 706 560 octets ; SHA-256 : bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db. Publication Backblaze et trois téléchargements à froid vérifiés par le téléchargeur de l'application.
+
+Limite : aucune exécution dans le GTA du PC Epic concerné n'a été réalisée. La détection locale ne trouve plus d'exécutable GTA Enhanced sur ce PC de développement ; les essais en jeu antérieurs ne sont pas présentés comme des essais de ce nouveau module. Rapport : .artifacts/gtav-koth-ramp-20261029/verification.json. Archive de support avec remplacement manuel et sauvegarde préalable ; la version Store n'a pas été publiée ni modifiée pendant cette intervention.

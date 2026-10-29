@@ -1,9 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fixture = async () => {
+const fixture = async (now=Date.now) => {
   const { createAgencyService, AGENCY_PATH } = await import('../backend/agencies/service.mjs');
   let state = null;
   const subscriptions = {};
+  const trials = {};
   const users = Object.fromEntries(['director','creator','intruder','admin'].map(uid=>[uid,{uid,email:uid+'@example.invalid',emailVerified:true}]));
   const db = { ref(path) { return {
     async get(){return {val:()=>structuredClone(path===AGENCY_PATH?state:state?.checkouts?.[path.split('/').at(-1)] || null)};},
@@ -13,10 +14,10 @@ const fixture = async () => {
   };}};
   const authenticate=async r=>{if(!users[r.uid])throw Object.assign(new Error('Compte requis'),{statusCode:401});return users[r.uid];};
   const requireAdmin=async r=>{const u=await authenticate(r);if(u.uid!=='admin')throw Object.assign(new Error('Admin requis'),{statusCode:403});return u;};
-  const service=createAgencyService({db:()=>db,authenticate,requireAdmin,subscription:async uid=>subscriptions[uid] || {}});
+  const service=createAgencyService({db:()=>db,authenticate,requireAdmin,subscription:async uid=>subscriptions[uid] || {},trial:async uid=>trials[uid] || null,now});
   await service.save({uid:'director'},{name:'Agence Test',description:'Une agence pour les essais.',status:'approved'});
   const agency=Object.values(state.agencies)[0];
-  return {service,agency,users,subscriptions,state:()=>state};
+  return {service,agency,users,subscriptions,trials,state:()=>state};
 };
 test('création en attente, code privé et validation réservée au propriétaire ShenPulse',async()=>{
   const f=await fixture();
@@ -72,6 +73,70 @@ test('seuls les abonnements PayPal payants actifs sont comptés ; pas les accès
   f.subscriptions.creator={status:'active',tier:'pro',paymentProvider:'paypal',paypalSubscriptionId:'I-TEST',priceMonthly:9.99};
   assert.equal((await f.service.dashboard({uid:'director'})).members[0].paying,true);
 });
+
+test('essai sélectionné : compte dans son agence sans changer ses droits ni créer de paiement',async()=>{
+  const f=await fixture();
+  await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+  for(const uid of ['director','creator','intruder']){
+    await f.service.join({uid},{agencyId:f.agency.id});
+    await f.service.reviewMember({uid:'director'},{uid,status:'approved'});
+  }
+  f.subscriptions.director={tier:'premium',status:'trial',source:'trial',priceMonthly:0};
+  for(const uid of ['creator','intruder'])f.subscriptions[uid]={tier:'pro',status:'active',paymentProvider:'paypal',paypalSubscriptionId:'I-'+uid,priceMonthly:9.99};
+  const before=structuredClone(f.subscriptions);
+  assert.equal((await f.service.publicList()).agencies.length,0);
+  f.trials.director={countsForAgency:true,source:'trial',tier:'premium',expiresAtMs:Date.now()+60000};
+  f.service.invalidateDirectoryCache();
+  const member=(await f.service.dashboard({uid:'director'})).members.find(m=>m.uid==='director');
+  assert.equal(member.paying,true);
+  assert.equal(member.tier,'premium');
+  assert.equal(member.paidSubscription,false);
+  assert.equal(member.countingSource,'trial');
+  assert.equal((await f.service.publicList()).agencies[0].payingCount,3);
+  assert.equal(JSON.stringify(await f.service.publicList()).includes('countsForAgency'),false);
+  assert.deepEqual(f.subscriptions,before);
+  assert.equal((await f.service.quote('director')).currentPrice,0);
+  assert.equal(await f.service.directorReward('director'),null);
+  f.subscriptions.director={tier:'premium',status:'active',paymentProvider:'paypal',paypalSubscriptionId:'I-OWNER',priceMonthly:13.99};
+  await f.service.updateIdentity({uid:'director'},{tiktokUsername:'owner_paid'});
+  assert.equal((await f.service.publicList()).agencies[0].payingCount,3,'Jamais de double comptage');
+});
+
+test('les essais ordinaires, expirés et champs client ne sont pas comptés ; révocation et départ retirent le comptage',async()=>{
+  const f=await fixture();
+  await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+  await f.service.join({uid:'creator'},{agencyId:f.agency.id,countsForAgency:true});
+  await f.service.reviewMember({uid:'director'},{uid:'creator',status:'approved',paying:true});
+  f.subscriptions.creator={tier:'premium',status:'trial',priceMonthly:0,countsForAgency:true};
+  const row=async()=> (await f.service.dashboard({uid:'director'})).members.find(m=>m.uid==='creator');
+  assert.equal((await row()).paying,false);
+  for(const trial of [
+    {countsForAgency:false,source:'trial',tier:'premium',expiresAtMs:Date.now()+60000},
+    {countsForAgency:true,source:'own',tier:'premium',expiresAtMs:Date.now()+60000},
+    {countsForAgency:true,source:'trial',tier:'premium',expiresAtMs:Date.now()-1},
+    {countsForAgency:true,source:'trial',tier:'admin',expiresAtMs:Date.now()+60000},
+    {countsForAgency:true,source:'trial',tier:'pro'}
+  ]){f.trials.creator=trial;assert.equal((await row()).paying,false);}
+  f.trials.creator={countsForAgency:true,source:'trial',tier:'pro',expiresAtMs:Date.now()+60000};
+  assert.equal((await row()).paying,true,'Un essai sélectionné compte aussi pour un simple membre');
+  f.trials.creator=null;assert.equal((await row()).paying,false,'Révocation');
+  f.trials.creator={countsForAgency:true,source:'trial',tier:'premium',expiresAtMs:Date.now()+60000};
+  await f.service.leave({uid:'creator'});
+  assert.equal((await f.service.publicList()).agencies.length,0);
+});
+test('le cache de l’annuaire expire au plus tard avec un essai comptabilisé',async()=>{
+  let at=Date.now();const f=await fixture(()=>at);
+  await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});
+  for(const uid of ['director','creator','intruder']){
+    await f.service.join({uid},{agencyId:f.agency.id});await f.service.reviewMember({uid:'director'},{uid,status:'approved'});
+  }
+  for(const uid of ['creator','intruder'])f.subscriptions[uid]={tier:'pro',status:'active',paymentProvider:'paypal',paypalSubscriptionId:'I-'+uid,priceMonthly:9.99};
+  f.trials.director={tier:'premium',source:'trial',countsForAgency:true,expiresAtMs:at+100};
+  assert.equal((await f.service.publicList()).agencies[0].payingCount,3);
+  at+=101;
+  assert.equal((await f.service.publicList()).agencies.length,0,'Pas de palier conservé pendant le cache de 30 secondes');
+});
+
 test('les anciens abonnés gardent leur tarif ; le prix agence n’est pas confondu avec un ancien contrat',async()=>{
   const {quoteAgencyPrices}=await import('../backend/agencies/service.mjs');
   const old={status:'active',tier:'premium',paymentProvider:'paypal',paypalSubscriptionId:'I-TEST',priceMonthly:13.99};

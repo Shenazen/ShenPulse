@@ -54,21 +54,26 @@ test('le formulaire réel propose Premium et son éditeur conserve le palier lor
  const fn=(s,name)=>s.match(new RegExp('^function '+name+'\\([\\s\\S]*?^}$','m'))[0];
  let configuration,sent;
  const context=vm.createContext({
-  adminBusy:false,adminModuleError:()=>false,adminTrialRows:()=>[{id:'trial',email:'viewer@example.invalid',subscriptionTrial:true,subscriptionTier:'premium',gameTrialIds:[]}],
+  adminBusy:false,adminDashboard:{trials:{agencyCountingAvailable:true}},adminModuleError:()=>false,adminTrialRows:()=>[{id:'trial',email:'viewer@example.invalid',subscriptionTrial:true,subscriptionTier:'premium',gameTrialIds:[]}],
   adminTrialGameProducts:()=>[],adminTrialGameChoices:()=>'',adminTrialGameIdsFromForm:()=>[],
   escapeHtml:v=>String(v??''),formatAdminDate:()=>'',field:()=>'',openEditor:c=>configuration=c,
   api:{admin:{updateTrial:async v=>sent=v,dashboard:async()=>({})}}
  });
- vm.runInContext(['adminTrialSubscriptionField','adminTrialSubscriptionFromForm','renderAdminTrials'].map(n=>fn(page,n)).join('\n')+'\n'+fn(editor,'openAdminTrialEditor'),context);
+ vm.runInContext(['adminTrialAgencyCountingAvailable','adminTrialSubscriptionField','adminTrialSubscriptionFromForm','renderAdminTrials'].map(n=>fn(page,n)).join('\n')+'\n'+fn(editor,'openAdminTrialEditor'),context);
  let doc=new JSDOM(context.renderAdminTrials()).window.document;
  assert.deepEqual([...doc.querySelector('select[name="subscriptionTier"]').options].map(o=>o.textContent),['Aucun abonnement','Pro','Premium']);
  assert.equal(doc.querySelector('select').value,'pro');
+ assert.equal(doc.querySelector('[name="countsForAgency"]').checked,false);
+ assert.equal(doc.querySelector('[name="countsForAgency"]').disabled,false);
  assert.equal(doc.querySelector('.admin-trial-entitlements b').textContent,'PREMIUM');
- context.openAdminTrialEditor({id:'trial',subscriptionTrial:true,subscriptionTier:'premium'});
+ context.openAdminTrialEditor({id:'trial',subscriptionTrial:true,subscriptionTier:'premium',countsForAgency:true});
  doc=new JSDOM('<form>'+configuration.body+'</form>').window.document;
  assert.equal(doc.querySelector('select').value,'premium');
- const data=new Map([['email','viewer@example.invalid'],['days','7'],['subscriptionTier','premium']]);
+ assert.equal(doc.querySelector('[name="countsForAgency"]').checked,true);
+ const data=new Map([['email','viewer@example.invalid'],['days','7'],['subscriptionTier','premium'],['countsForAgency','on']]);
  await configuration.onSubmit(data);assert.equal(sent.subscription,true);assert.equal(sent.subscriptionTier,'premium');
+ assert.equal(sent.countsForAgency,true);
  data.set('subscriptionTier','none');data.set('games','on');
  await configuration.onSubmit(data);assert.equal(sent.subscription,false);assert.equal(sent.games,true);
+ assert.equal(sent.countsForAgency,false);
 });

@@ -12,7 +12,7 @@ const INTEGRATED_GAME_IDS = Object.freeze([
 const GTA_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-montchiliad/1.0.0";
 const GTA_ENHANCED_PLUGIN_BASE =
-  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-montchiliad/1.0.14";
+  "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-montchiliad/1.0.15";
 const MINECRAFT_COMMON_ASSET_BASE =
   "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-common/1.0.0";
 const MINECRAFT_COMMON_TOOLS_ASSET_BASE =

@@ -28,6 +28,7 @@
     "kingdom-come-deliverance-2": "9N4W31HSMVVD",
     minecraft: "9NXP44L49SHJ",
     "minecraft-java": "9NXP44L49SHJ",
+    "minecraft-lavarise": "9NXP44L49SHJ",
     "minecraft-bedrock-box": "9NXP44L49SHJ",
     "minecraft-sandbox-3": "9NXP44L49SHJ",
     "minecraft-survival-plugin": "9NXP44L49SHJ",

@@ -1,0 +1,22 @@
+name: ShenPulse-LavaRise
+version: 1.0.0
+main: fr.shenpulse.lavarise.ShenPulseLavaRise
+api-version: '1.20'
+description: Mode Lava Rise autonome pour ShenPulse.
+author: ShenPulse
+commands:
+  lavarise:
+    description: Commandes de la partie Lava Rise
+    permission: shenpulse.lavarise.use
+    aliases: [lr]
+  shenpulse_lava:
+    description: Connexion locale ShenPulse
+    permission: shenpulse.lavarise.admin
+  shenpulse_win:
+    description: Synchronisation locale des wins ShenPulse
+    permission: shenpulse.lavarise.admin
+permissions:
+  shenpulse.lavarise.use:
+    default: op
+  shenpulse.lavarise.admin:
+    default: op

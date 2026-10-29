@@ -1,0 +1,23 @@
+# ShenPulse Lava Rise
+arena:
+  default-width: 20
+  default-height: 240
+  wall-material: GLASS
+  floor-material: BEDROCK
+lava:
+  default-speed: 90
+  rise-interval-ticks: 60
+  rise-interval-min-ticks: 10
+  rise-interval-max-ticks: 120
+  initial-delay-ticks: 40
+  speed-divisor: 50
+platforms:
+  initial-count: 20
+  min-size: 3
+  max-size: 5
+  material: STONE
+effects:
+  duration: 10
+game:
+  win-timer-seconds: 10
+  win-target: 10
