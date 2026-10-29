@@ -37,6 +37,22 @@ Les ressources graphiques des jeux déjà publiées sur Hosting doivent être co
 
 ## Publication
 
-La soumission publique 13 (1152921505702270386) est préparée dans Partner Center avec le paquet 2.1.1.0. Les nouveautés françaises sont enregistrées ; disponibilité publique, détectabilité et 240 marchés, dont France et Belgique, relus. Publication automatique après certification sélectionnée. L'envoi final en certification n'a pas encore été effectué à ce stade du rapport.
+La soumission publique 13 (1152921505702270386) est préparée dans Partner Center avec le paquet 2.1.1.0. Les nouveautés françaises sont enregistrées ; disponibilité publique, détectabilité et 240 marchés, dont France et Belgique, relus. Publication automatique après certification sélectionnée. La soumission a ensuite été envoyée ; voir le statut confirmé ci-dessous.
 
 Les rapports détaillés, journaux et fichiers distribuables restent ignorés dans .artifacts/release-2.1.1/ et dist/. Aucun secret, certificat privé ou fichier de distribution n'est ajouté à Git.
+
+## Résultats de déploiement
+
+- Commit qualifié 016a598a5ee01818ca65685a7d588bd64a2d6315 poussé sur origin/main ; tag annoté v2.1.1 poussé sur le même commit.
+- Site et EXE 2.1.1 publiés sur https://www.shenpulse.leuridan.fr. Téléchargement public complet : 741 263 388 octets, SHA-256 f84326b25ce598297034008fd279a8d23034b4b717a2c9ba8c39b11f23d6faa5, identique au fichier qualifié. Accueil, documentation et pages légales en HTTP 200. L'installateur 2.1.0 reste disponible en HTTP 200.
+- Sauvegarde privée de la vitrine conservée avant déploiement ; backend et processus PM2 conservés.
+- Firebase : règles Realtime Database compilées et publiées ; version Hosting f2585a2edaa9640b activée. Les six fichiers centraux de l'overlay ont été retéléchargés et comparés aux sources. Lecture anonyme de /users.json refusée en HTTP 401. Les 2 303 images de jeu et les deux ressources hors catalogue sont conservées.
+- Le contrôle visuel du site passe 34 vues sans échec. Les autres résultats sont consignés dans les rapports ignorés sous .artifacts/release-2.1.1/.
+
+## Statut Store confirmé
+
+La soumission publique 13 (1152921505702270386) a été envoyée le 29 octobre 2026. Partner Center affiche « Mise à jour du produit : en cours de certification », étape Prétraitement. Le paquet validé est ShenPulse-2.1.1-x64.appxupload, version Windows 2.1.1.0. Publication automatique dès la réussite de la certification, audience publique et 240 marchés. Aucun vol privé créé. La version Store 2.1.1 n'est pas encore déclarée disponible tant que Microsoft n'a pas terminé sa validation.
+
+Les nouveautés françaises, la description commerciale, les quatre captures existantes et les notes techniques de certification ont été relues. La classification IARC/PEGI 3 et la déclaration d'achats externes sont conservées. Les notes techniques mentionnent les résultats propres à 2.1.1 et la limite de validation du PC Epic ; les identifiants de test restent dans leur section dédiée et n'ont pas été recopiés dans les notes. Aucune mention de fournisseur d'interactions concurrent dans les textes publiés.
+
+Preuve locale : .artifacts/release-2.1.1/store-certification.png. Le paquet Store installé sur le poste reste en 2.1.0.0 ; les essais de qualification n'ont pas remplacé cette installation.
