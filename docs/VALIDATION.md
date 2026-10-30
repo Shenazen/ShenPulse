@@ -10,7 +10,7 @@ Notes : [2.1.2](releases/2.1.2.fr.md). Rapport précédent : [2.1.1](validation/
 - npm run verify, npm run build:store et npm run build:installer : 3 362 tests réussis à chaque passage final, aucun échec ni test ignoré. Quatre assertions obsolètes ont été corrigées avant ces passages ; les contrôles d’accès restent appliqués avant installation et lancement.
 - Lint, génération des jeux et overlays et construction du pont Microsoft Store réussis.
 - Module KOTH : 19 678 assertions géométrie/physique/manches, 14 scénarios de construction et 5 scénarios de sélection des modèles passent. Les packs KOTH 1.0.12, Hiking 1.0.6 et Mont Chiliad 1.0.17 partagent le module qualifié.
-- Treize téléchargements réels Backblaze des packs concernés ont été vérifiés par le téléchargeur de l’application (taille et SHA-256), y compris la sauvegarde GTA et les cinq nouveaux jeux.
+- Quatorze téléchargements réels Backblaze des packs concernés ont été vérifiés par le téléchargeur de l’application (taille et SHA-256), y compris la sauvegarde GTA et les cinq nouveaux jeux.
 - Installation EXE, lancement et désinstallation isolés : réussis. Mise à jour 2.1.1 vers 2.1.2 : réussie avec conservation des données de test. Les profils réels et l’installation Store du poste sont conservés.
 - Windows App Certification Kit 10.0.26100.7705 : PASS, version 2.1.2.0, type Centennial, PARTIAL_RUN=FALSE. Élévation Windows acceptée ; aucun contrôle obligatoire en échec.
 - Identité ShenPulse.ShenPulse, éditeur CN=F6F04997-3A7F-4EC3-8492-5BB9FCC0FE46, architecture x64. L’AppX incorporé dans l’AppXUpload correspond exactement au paquet qualifié.
@@ -40,6 +40,23 @@ Les scénarios de paiement ne prélèvent aucun fonds réel. Carte et Link ont �
 
 ## Publication
 
-La soumission publique 14 (1152921505702280925) est préparée dans Partner Center avec le paquet validé 2.1.2.0. Nouveautés et description françaises enregistrées ; audience publique, détectabilité et 240 marchés relus. Publication automatique après certification sélectionnée. Envoi définitif et déploiements à confirmer dans les résultats ci-dessous.
+La soumission publique 14 (1152921505702280925) est préparée dans Partner Center avec le paquet validé 2.1.2.0. Nouveautés et description françaises enregistrées ; audience publique, détectabilité et 240 marchés relus. Publication automatique après certification sélectionnée. La soumission a ensuite été envoyée ; le statut confirmé est décrit ci-dessous.
 
 Les rapports détaillés, preuves et distribuables restent ignorés sous .artifacts/release-2.1.2/ et dist/. Aucun secret, certificat privé ou fichier de distribution n’est ajouté à Git.
+
+## Résultats de déploiement
+
+- Commit qualifié f6160e32ddd2d30cacd03686c09073664c435f6b poussé sur origin/main ; tag annoté v2.1.2 sur ce même commit, poussé et relu.
+- Site et EXE 2.1.2 publiés sur https://www.shenpulse.leuridan.fr. Téléchargement public complet : 744 407 520 octets, SHA-256 5df4ec93cee211767db823e49afc330faf831305e4aca5304fecf0b0ec720262, identique à l’installateur qualifié. Accueil, documentation et pages légales HTTP 200. L’installateur 2.1.1 reste disponible.
+- Sauvegarde de la vitrine conservée avant déploiement. Backend, processus et données utilisateurs conservés ; aucun redémarrage du service.
+- Firebase : règles Realtime Database publiées et Hosting cdb37028fbe679b8 activé. Les fichiers centraux et un échantillon des images ont été retéléchargés et comparés. Runtime public 2.1.2-overlay1 confirmé ; lecture anonyme de /users.json refusée HTTP 401. Les deux ressources hors des ensembles canoniques sont conservées.
+- Discord : nouvelle annonce dans le salon annonces, sans remplacer les précédentes, avec le lien Microsoft Store et le statut de certification explicite. Cinq nouveaux guides Xbox / Game Pass créés ; sommaire actualisé à 47 fiches / 50 jeux et modes. Guide Minecraft actualisé pour quatre modes et leurs versions ; consignes KOTH et Hiking complétées.
+- [Annonce 2.1.2](https://discord.com/channels/1561730092995051671/1561731045949313327/1565859422679466005). Aucun texte de validation privée ni mention de fournisseur d’interactions concurrent dans les nouveaux textes publiés.
+
+## Statut Store confirmé
+
+La soumission publique 14 (1152921505702280925) a été envoyée le 30 octobre 2026. Partner Center affiche « Mise à jour du produit : en cours de certification », étape Prétraitement. Le paquet validé est ShenPulse-2.1.2-x64.appxupload, version Windows 2.1.2.0. Publication automatique dès la réussite de la certification, audience publique, application détectable et 240 marchés. Aucun vol privé créé.
+
+Les notes françaises, la description commerciale, les quatre captures existantes, la déclaration d’achats externes, la classification héritée et les notes techniques ont été relues. Les identifiants de test sont conservés dans leur section dédiée. La disponibilité effective de la version 2.1.2 dans le Store dépend encore de la certification Microsoft ; l’annonce Discord le précise.
+
+Preuves locales ignorées : .artifacts/release-2.1.2/store-certification.png, discord-announcement.png, discord.json et les rapports de qualification. Le paquet Store installé sur le poste reste en 2.1.0.0 et n’a pas été remplacé par les essais isolés.
