@@ -5,6 +5,7 @@ const { createProFeatureGuard } = require("./pro-feature-access");
 
 const crypto = require("node:crypto");
 const fs = require("node:fs");
+const { nativeMinecraftWinCommand } = require("./game-runtime/minecraft-native-wins");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const {
@@ -306,8 +307,10 @@ class GameRuntimeService {
       assertAccess();
       return this.superMarioKart.launch({ assertAccess });
     }
+    if (manifest.remoteBrowserGame) return require("./prepared-web-integrations").bridgeFor(this.store,gameId,assertAccess).launch({assertAccess});
+    if (manifest.browserGame) return require("./prepared-browser-games").bridgeFor(this.store,gameId,assertAccess).launch({assertAccess});
     if(manifest.shenNative)return require("./shen-native-games/runtime").bridgeFor(this.store,gameId,assertAccess).launch({assertAccess});
-    return launchExternalGame({ gameId, manifest, installation, shell, assertAccess, userDataPath: this.app.getPath("userData"),
+    return launchExternalGame({ gameId, manifest, installation, shell, assertAccess, userDataPath: this.app.getPath("userData"), documentsPath: this.app.getPath("documents"),
       waitForWindowsProcessWindow, scheduleGtaSaveDeployment: () => this.#scheduleGtaSaveDeployment(gameId, { assertAccess }) });
   }
 
@@ -471,14 +474,15 @@ class GameRuntimeService {
       await record.ready;
       assertAccess();
       await silenceMinecraftCommandFeedback(record);
-      if(gameId === "minecraft-lavarise") {
+      const nativeWinCommand = nativeMinecraftWinCommand(gameId);
+      if(nativeWinCommand) {
         const state = readState(this.store, ["overlaySession", "settings.overlayConfigs.winCounter"]);
         const session = state.overlaySession || {};
         const seconds = Math.max(0, Math.min(3600, Math.ceil((Number(session.winCounterMultiplierUntil || 0) - Date.now()) / 1000)));
         const factor = seconds > 0 ? Math.max(1, Number(session.winCounterMultiplier) || 1) : 1;
         const configuredTarget = Number(state.settings?.overlayConfigs?.winCounter?.target);
         const target = Number.isFinite(configuredTarget) ? Math.max(0, configuredTarget) : 10;
-        await writeMinecraftServerCommand(record, `shenpulse_lava sync ${Number(session.winCounterCurrent) || 0} ${factor} ${seconds} ${target}`);
+        await writeMinecraftServerCommand(record, `${nativeWinCommand} sync ${Number(session.winCounterCurrent) || 0} ${factor} ${seconds} ${target}`);
       }
       assertAccess();
       if (serverConfig.creativeMode !== false) {
@@ -604,7 +608,7 @@ class GameRuntimeService {
         const result = await deployGtaEnhancedSave({
           sourceDirectory: stagingDirectory,
           backupRoot,
-          documentsPath: this.app.getPath("documents")
+          documentsPath: this.app.getPath("documents"), assertAccess
         });
         assertAccess();
         if (result.deployed || result.alreadyPresent) {
@@ -622,17 +626,17 @@ class GameRuntimeService {
         }
         // Le profil peut être temporairement verrouillé pendant la synchronisation Rockstar.
       }
-      if (attempt >= 29) {
+      if (attempt >= 149) {
         this.saveDeploymentJobs.delete(gameId);
         return;
       }
       const timer = setTimeout(
         () => tryDeployment(attempt + 1),
-        10_000
+        2_000
       );
       this.saveDeploymentJobs.set(gameId, timer);
     };
-    const timer = setTimeout(() => tryDeployment(0), 20_000);
+    const timer = setTimeout(() => tryDeployment(0), 2_000);
     this.saveDeploymentJobs.set(gameId, timer);
   }
 

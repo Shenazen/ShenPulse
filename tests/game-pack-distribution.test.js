@@ -8,10 +8,12 @@ const path = require("node:path");
 const { createHash } = require("node:crypto");
 const { GAME_INSTALLERS } = require("../src/main/game-installer-manifest");
 const { downloadAsset } = require("../src/main/game-runtime/asset-download");
-const publication = require("../scripts/manifests/game-packs.json");
+const originalPublication = require("../scripts/manifests/game-packs.json");
+const privateIds = new Set(require("../scripts/integration-preparation/requested-games.json").games.map(g=>g.id));
+const publication = {...originalPublication,assets:originalPublication.assets.filter(a=>!privateIds.has(a.gameId)&&!["unity-dotnet-runtime","minecraft-owner-runtime"].includes(a.gameId))};
 
 test("les packs migrés gardent exactement leurs versions et empreintes sur Backblaze", () => {
-  assert.equal(publication.assets.length, 32);
+  assert.equal(publication.assets.length, 34);
   const keys = new Map();
   for (const entry of publication.assets) {
     const installer = GAME_INSTALLERS[entry.gameId];

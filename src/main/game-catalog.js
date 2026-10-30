@@ -13,6 +13,7 @@ const gameCategories = require("../shared/game-categories");
 function loadShenazenGameCatalog(resourcesDirectory) {
   const interactionsDirectory = path.join(resourcesDirectory, "game-interactions");
   const external = EXTERNAL_GAMES.map((entry) => {
+    if (entry.ownerPreparation) return {...entry,guide:buildGameGuide(entry,entry.effects)};
     if (entry.effects?.length) return { ...entry, guide: buildGameGuide(entry, entry.effects) };
     const effects = interactionEffects(interactionsDirectory, entry.id);
     // Une illustration marquée « native » ne fournit aucun module exécutable.

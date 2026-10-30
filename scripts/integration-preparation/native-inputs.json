@@ -1,0 +1,10 @@
+{
+  ".artifacts/integration-wave-20261029/upstream/Peggle/CrowdControlPeggle-111.zip.extracted/Mods/peggle-cc.dll": "53a1a016f1fad6f5fbdf0f3487d6b66e77ba0a22bb7dbbe9c0a58a7eef72b7e3",
+  ".artifacts/integration-wave-20261029/upstream/Peggle/CrowdControlPeggle-111.zip.extracted/Mods/haggle-sdk.dll": "2e7a17ceca156551dfa6d97e896cf091d6bbf0cd3549f7aef78a19b9a8931db8",
+  ".artifacts/integration-wave-20261029/upstream/Peggle/loader-v0.4.0.zip.extracted/ddraw.dll": "8c301b01579b86e253fde5c5b6059295ecbed3e642e8c546502ebd26e321b5fd",
+  ".artifacts/integration-wave-20261029/upstream/PeggleNights/CrowdControlPeggleNights-111.zip.extracted/Mods/peggle-cc.dll": "53a1a016f1fad6f5fbdf0f3487d6b66e77ba0a22bb7dbbe9c0a58a7eef72b7e3",
+  ".artifacts/integration-wave-20261029/upstream/PeggleNights/CrowdControlPeggleNights-111.zip.extracted/Mods/haggle-sdk.dll": "2e7a17ceca156551dfa6d97e896cf091d6bbf0cd3549f7aef78a19b9a8931db8",
+  ".artifacts/integration-wave-20261029/upstream/PeggleNights/loader-v0.4.0.zip.extracted/ddraw.dll": "8c301b01579b86e253fde5c5b6059295ecbed3e642e8c546502ebd26e321b5fd",
+  ".artifacts/integration-wave-20261029/upstream/Doom2016/DOOM2016-CC-0.6.1.zip.extracted/dinput8.dll": "68fc85d8c0bfe170f6a84d07c926777e7178c93da783452875dee9aeca581cdf",
+  ".artifacts/integration-wave-20261029/upstream/Doom2016/DOOM2016-CC-0.6.1.zip.extracted/CrowdControl.ini": "433bf625298b552a97538620b0c5bbbe21b10d2b3275b6c44b9b39ea7a8a6cdf"
+}

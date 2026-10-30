@@ -14,7 +14,42 @@ const MINECRAFT_MODE_IDS = [
   'minecraft-survival-plugin'
 ]
 
+// Instantané public relu avant chaque release, sans donnée de compte ni jeu privé.
+const PUBLIC_GAME_IDS = new Set(require('../public-game-visibility.json').gameIds)
+
 const PUBLIC_GAME_GUIDES = {
+  'find-the-needle-demo': {
+    description: 'Un défi de recherche dans lequel les spectateurs influencent votre progression. La démo Find The Needle conserve sa fiche et son installation guidée dans ShenPulse.',
+    interactions: 'Installez le module compatible, chargez une partie et préparez vos cadeaux avant le LIVE. Les conditions et effets disponibles sont indiqués dans la fiche du jeu.'
+  },
+  fortnite: {
+    description: 'Préparez vos séquences interactives Fortnite et associez-les aux événements du LIVE. ShenPulse envoie les commandes dans la fenêtre de jeu choisie.',
+    interactions: 'Configurez les touches indiquées dans CONDITION DE JEU, fermez les menus et le chat puis testez chaque séquence. Les effets reposent sur les commandes du joueur et ne modifient pas le serveur.'
+  },
+  'escape-from-duckov': {
+    description: 'Une expédition Escape From Duckov influencée par les cadeaux des spectateurs. Le module installé par ShenPulse agit directement sur votre partie Steam.',
+    interactions: 'Chargez une expédition jouable, hors refuge et menus. Les effets concernent les ressources, le personnage et l’équipement ; certaines interactions exigent une arme à feu tenue en main.'
+  },
+  'ball-x-pit': {
+    description: 'Transformez les combats de BALL x PIT en partie interactive avec des aides et des pièges choisis par votre communauté. Édition Xbox / PC Game Pass compatible.',
+    interactions: 'Les effets agissent sur le personnage, les ressources, les balles et plusieurs paramètres temporaires. Chargez un niveau de combat, hors menus, avant de lancer les interactions.'
+  },
+  brotato: {
+    description: 'Laissez vos spectateurs influencer les vagues de Brotato, les ressources et les capacités du personnage. ShenPulse prépare le module pour l’édition Xbox / PC Game Pass.',
+    interactions: 'Les interactions couvrent notamment les statistiques, les ressources, les ennemis et les effets temporaires. Les fichiers remplacés sont sauvegardés pendant l’installation et restaurés à la désinstallation du pack.'
+  },
+  cloverpit: {
+    description: 'Une partie CloverPit dans laquelle les cadeaux du LIVE influencent les ressources, les tours et les charmes. Édition Xbox / PC Game Pass compatible.',
+    interactions: 'Les effets de tours demandent une manche active. Ranger un charme exige un charme équipé ainsi qu’un tiroir débloqué et disponible ; les retraits de ressources demandent le solde correspondant.'
+  },
+  'fallout-new-vegas': {
+    description: 'Rendez votre exploration de Fallout: New Vegas — Ultimate Edition interactive grâce au module Xbox / PC Game Pass installé par ShenPulse.',
+    interactions: 'Les effets concernent les ressources, les armes, les munitions, le personnage et des états temporaires. Acceptez l’autorisation Windows du module au lancement puis chargez une partie jouable, hors menus.'
+  },
+  'escape-the-backrooms': {
+    description: 'Les spectateurs interviennent dans votre exploration d’Escape the Backrooms grâce à des objets, créatures et effets de jeu. Édition Xbox / PC Game Pass compatible.',
+    interactions: 'Jouez en solo ou en tant qu’hôte. Les dons exigent des places libres et les créatures sont limitées à huit simultanément. Certains effets dangereux peuvent terminer la vie du personnage.'
+  },
   "gtav-koth-enhanced": {"description":"Un parcours vertical dans le mode Histoire de GTA V Enhanced : atteignez le cercle au sommet avant la fin du chrono et résistez aux obstacles lancés par les spectateurs. Les victoires, défaites et réglages de la rampe sont gérés depuis ShenPulse.","interactions":"Le public déclenche des véhicules, des obstacles, des événements et des changements du personnage. Les cadeaux de wins restent séparés des effets de jeu et disposent de leurs propres sources de diffusion."},
   "gtav-hiking-enhanced": {"description":"Une randonnée interactive dans le mode Histoire de GTA V Enhanced, avec trente points de contrôle sur le Mont Chiliad. Préparez le parcours puis laissez votre communauté faciliter la progression ou compliquer l’ascension.","interactions":"Les effets agissent sur les déplacements, le personnage, les véhicules et les événements du parcours. Les réglages et les associations de cadeaux sont conservés séparément des autres modes GTA."},
   "hogwarts-legacy": {"description":"Une aventure Hogwarts Legacy rendue interactive : vos spectateurs influencent la magie, les ressources et les rencontres pendant une sauvegarde jouable. L’installation guidée permet de choisir l’édition compatible présente sur le PC.","interactions":"Les effets couvrent les ressources, les sorts, la météo, les créatures, les ennemis et plusieurs modifications temporaires. Les prérequis et les limites de chaque effet sont présentés dans la fiche du jeu."},
@@ -226,7 +261,7 @@ export function currentPublicGames() {
 }
 
 export function buildPublicGames(packs = []) {
-  const visible = packs.filter((pack) => pack?.id && pack.ownerOnly !== true)
+  const visible = packs.filter((pack) => PUBLIC_GAME_IDS.has(pack?.id))
   const minecraftModes = visible.filter((pack) => MINECRAFT_MODE_IDS.includes(pack.id))
   const firstMinecraftIndex = visible.findIndex((pack) => MINECRAFT_MODE_IDS.includes(pack.id))
 

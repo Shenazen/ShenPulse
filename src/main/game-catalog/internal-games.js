@@ -408,7 +408,7 @@ const INTERNAL_GAMES = [
     coverArtwork: "covers/gtav-montchiliad.png",
     included: true,
     requiresPro: true,
-    installerVersion: "1.0.15",
+    installerVersion: "1.0.17",
     connector: GTA_LOCAL_BRIDGE,
     effects: GTAV_MONT_CHILIAD_EFFECTS,
     defaultMappings: GTAV_MONT_CHILIAD_DEFAULT_MAPPINGS,

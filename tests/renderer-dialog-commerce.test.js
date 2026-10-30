@@ -232,7 +232,7 @@ test("les boutons d’abonnement gèrent le paiement et l’arrêt à échéance
     /type="button" data-action="subscription-checkout"/
   );
   assert.match(membership, /subscriptionCheckoutBusyTier/);
-  assert.match(membership, /Annuler PayPal/);
+  assert.match(membership, /Annuler le paiement/);
   assert.match(membership, /Arrêter l’abonnement/);
   assert.match(membership, /Votre abonnement .* s’arrêtera le/);
   assert.match(membership, /data-action="subscription-stop"/);

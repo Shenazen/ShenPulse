@@ -4,15 +4,32 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 
 const PLATFORM_LABELS = Object.freeze({ steam: "Steam", xbox: "Xbox / Game Pass" });
-const supportsPlatformChoice = manifest => Boolean(manifest.xboxIdentity && manifest.steamAppIds?.length);
+const supportsPlatformChoice = manifest => Boolean((manifest.xboxIdentity || manifest.xboxDirectoryNames?.length) && manifest.steamAppIds?.length);
 
 async function installationPlatform(directory, manifest) {
-  if (!supportsPlatformChoice(manifest)) return "";
+  if (!supportsPlatformChoice(manifest) && !manifest.detectPlatform) return "";
   if (/[\\/]steamapps[\\/]common[\\/]/i.test(path.resolve(directory) + path.sep)) return "steam";
   const config = await fs.readFile(path.join(directory, "MicrosoftGame.Config"), "utf8").catch(() => "");
-  if (config.match(/<Identity\s+Name="([^"]+)"/i)?.[1] === manifest.xboxIdentity) return "xbox";
+  if (manifest.xboxIdentity && config.match(/<Identity\s+Name="([^"]+)"/i)?.[1] === manifest.xboxIdentity) return "xbox";
   if ((await fs.stat(path.join(directory, "gamelaunchhelper.exe")).catch(() => null))?.isFile()) return "xbox";
+  // Some Xbox editions keep the actual executable in a localized child folder.
+  const parentDepth = Math.min(2, Math.max(0, Number(manifest.xboxParentDirectoryDepth) || 0));
+  let parent = path.resolve(directory);
+  for (let depth = 0; depth < parentDepth && manifest.xboxIdentity; depth += 1) {
+    const next = path.dirname(parent);
+    if (next === parent) break;
+    parent = next;
+    const parentConfig = await fs.readFile(path.join(parent, "MicrosoftGame.Config"), "utf8").catch(() => "");
+    if (parentConfig.match(/<Identity\s+Name="([^"]+)"/i)?.[1] === manifest.xboxIdentity) return "xbox";
+  }
   return "";
+}
+
+function assertSupportedPlatform(manifest, platform) {
+  if (!manifest.unsupportedPlatforms?.includes(platform)) return;
+  const message = manifest.unsupportedPlatformReasons?.[platform];
+  throw new Error(typeof message === "string" && message.trim()
+    ? message : "Cette édition du jeu nécessite encore une adaptation du module ShenPulse. Utilisez une édition prise en charge.");
 }
 
 async function canonicalPath(value) {
@@ -38,4 +55,4 @@ async function assertRunningInstallation(existing, installation, manifest) {
   }
 }
 
-module.exports = { PLATFORM_LABELS, supportsPlatformChoice, installationPlatform, canonicalPath, assertRunningInstallation };
+module.exports = { PLATFORM_LABELS, supportsPlatformChoice, installationPlatform, assertSupportedPlatform, canonicalPath, assertRunningInstallation };

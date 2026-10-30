@@ -15,7 +15,8 @@ nouvelle route IPC, ni changement de droits ou de tarification.
 | `http-client.js` | Lecture JSON et classification d'erreur commune. |
 | `entitlement-payload.js` | Fonctions pures de fusion et de validation des droits. |
 | `entitlements.js` | Synchronisation serveur et application des droits locaux. |
-| `checkout.js` | Achat de jeu, abonnement et paiement complémentaire de prorata. |
+| `checkout.js` | Achat de jeu, abonnement PayPal et paiement complémentaire de prorata. |
+| `stripe-checkout.js` | Stripe Checkout et portail de gestion, avec retour local vérifié et synchronisation serveur. |
 | `browser-auth.js` | Échange Google/Firebase orchestré par le compte. |
 | `browser-loopback.js` | Retour OAuth local historique par code. |
 | `google-loopback.js` | Retour OpenID en POST local, état vérifié. |
@@ -41,7 +42,7 @@ authentifications et checkouts.
   est comparé avec `timingSafeEqual`. Le fragment Google est envoyé en POST
   local puis retiré de l'historique du navigateur.
 - Les pages d'authentification sont limitées à `accounts.google.com` en
-  HTTPS ; les approbations de paiement restent limitées à PayPal en HTTPS.
+  HTTPS ; les approbations de paiement restent limitées à PayPal en HTTPS et aux domaines exacts checkout.stripe.com et billing.stripe.com en HTTPS.
 - La forme et le numéro d'ordre sont vérifiés avant capture. Annuler une
   attente locale n'effectue jamais d'annulation distante non demandée.
 - Les erreurs, délais, URLs, méthodes HTTP, en-têtes et corps restent ceux

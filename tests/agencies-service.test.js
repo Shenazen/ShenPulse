@@ -324,3 +324,10 @@ test('le code se régénère uniquement pour le fondateur d’une agence validé
  assert.notEqual(f.state().agencies[f.agency.id].code,previous);
  assert.equal((await f.service.invitation(f.state().agencies[f.agency.id].code)).code,undefined);
 });
+
+test('les abonnements Stripe payes comptent dans les agences et conservent le tarif convenu',async()=>{
+ const f=await fixture();await f.service.reviewAgency({uid:'admin'},{agencyId:f.agency.id,status:'approved'});await f.service.join({uid:'creator'},{agencyId:f.agency.id});
+ f.subscriptions.creator={status:'active',tier:'pro',paymentProvider:'stripe',stripeSubscriptionId:'sub_example',priceMonthly:9.99,renewalDate:'2099-01-01'};
+ const member=(await f.service.dashboard({uid:'director'})).members[0];assert.equal(member.paidSubscription,true);assert.equal(member.countingSource,'stripe');assert.equal((await f.service.quote('creator')).quoted.pro,9.99);
+ f.subscriptions.creator.renewalDate='2000-01-01';assert.equal((await f.service.dashboard({uid:'director'})).members[0].paidSubscription,false);
+});

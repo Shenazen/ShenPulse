@@ -30,7 +30,7 @@ function prepareGamePresentation(pack){
  const external=policy.eligible(pack);
  if(!external)return {...pack,effects,defaultMappings:mappings};
  if(pack.id==='supermarket-simulator')return {...pack,effects,defaultMappings:supermarketDefaultMappings(effects)};
- const curated=starters[pack.id],selected=[];
+ const curated=starters[pack.id]||(pack.ownerPreparation?Object.fromEntries(["help","trap"].map(column=>[column,effects.filter(e=>e.available&&e.column===column).slice(0,6).map(e=>e.code)])):null),selected=[];
  if(curated)for(const column of ['help','trap'])for(const [index,key]of curated[column].entries()){
   const effect=effects.find(effect=>(effect.code===key||effect.id===key)&&effect.available!==false);if(!effect)continue;effect.column=column;
   const [giftName,giftId,giftCost,giftIds=[]]=GIFTS[column][index];

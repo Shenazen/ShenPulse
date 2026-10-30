@@ -6,9 +6,9 @@ const { collectFiles, commitInstallationDeployment } = require('./deployments');
 const { readState } = require('../state-projection');
 const { assertModGameClosed } = require('./mod-installation-ready');
 const GAME = 'supermarket-simulator';
-const SHOP_GAMES = new Set([GAME, 'tcg-card-shop-simulator', 'shift-at-midnight']);
+const SHOP_GAMES = new Set([GAME, 'tcg-card-shop-simulator', 'shift-at-midnight', 'brotato']);
 const ownFile = file => /^BepInEx\/plugins\/ShenPulse\//i.test(file) || /^BepInEx\/config\/ShenPulse[.](?:supermarket-simulator|tcg-card-shop-simulator|shift-at-midnight)[.]json$/i.test(file) || ['shenpulse-module.json','SHENPULSE-MODULE.txt','THIRD-PARTY-NOTICES.txt'].includes(file);
-const allowed = file => /^(?:BepInEx\/[^:]+|dotnet\/[^:]+|ShenPulse-Licenses\/[^:]+|winhttp\.dll|doorstop_config\.ini|\.doorstop_version|changelog\.txt|shenpulse-module\.json|SHENPULSE-MODULE\.txt|THIRD-PARTY-NOTICES\.txt)$/i.test(file);
+const allowed = file => /^(?:BepInEx\/[^:]+|dotnet\/[^:]+|ShenPulse-Licenses\/[^:]+|winhttp\.dll|doorstop_config\.ini|\.doorstop_version|changelog\.txt|shenpulse-module\.json|SHENPULSE-MODULE\.txt|THIRD-PARTY-NOTICES\.txt|boot\.hvp|ShenPulseBrotato\/(?:xbox-scripts\.json|hvp-state\.json|boot\.original\.hvp)|mods\/(?:ShenPulse-Bridge\.zip|local_mods_loader\.gd)|override\.cfg)$/i.test(file);
 const key = file => process.platform === 'win32' ? path.resolve(file).toLowerCase() : path.resolve(file);
 function relativeFile(value) {
   const file = String(value || '').replaceAll('\\','/');
@@ -41,7 +41,7 @@ async function prepareShopUninstallReceipt({ gameId, targetPath, deploymentRoot,
   const backupsRoot = path.join(userData, 'game-backups', gameId), files = await collectFiles(deploymentRoot);
   let previous = null;
   if (previousInstallation?.uninstallReceiptPath && key(previousInstallation.path) === key(targetPath)) previous = await readReceipt(previousInstallation.uninstallReceiptPath, gameId, targetPath, backupsRoot);
-  const legacy = !previous && Boolean(await fs.stat(path.join(targetPath,'shenpulse-module.json')).catch(() => null));
+  const legacy = gameId !== 'brotato' && !previous && Boolean(await fs.stat(path.join(targetPath,'shenpulse-module.json')).catch(() => null));
   const entries = [];
   for (const source of files) {
     assertAccess(); const file = relativeFile(path.relative(deploymentRoot, source));
@@ -53,7 +53,10 @@ async function prepareShopUninstallReceipt({ gameId, targetPath, deploymentRoot,
       if (stat && !stat.isFile()) throw Error('Un dossier bloque le module : ' + file);
       if (stat) {
         const saved = safeChildPath(backupRoot, 'original/' + file); await fs.mkdir(path.dirname(saved),{recursive:true});
-        await fs.copyFile(destination,saved); original = {file:relativeFile(path.relative(backupsRoot,saved)),hash:await sha256File(saved)};
+        // The native Xbox archive is generated locally. Its clean source, rather
+        // than an earlier ShenPulse-patched archive, is the uninstall baseline.
+        const baseline=gameId==='brotato'&&file==='boot.hvp'?path.join(deploymentRoot,'ShenPulseBrotato/boot.original.hvp'):destination;
+        await fs.copyFile(baseline,saved); original = {file:relativeFile(path.relative(backupsRoot,saved)),hash:await sha256File(saved)};
       }
     }
     entries.push({file,installedHash:await sha256File(source),original,retain});
@@ -88,6 +91,7 @@ async function uninstallShopGame(runtime,gameId,{assertAccess = () => runtime.as
     if(!targetStat)return {ok:true,gameId,alreadyRemoved:true,removedFiles:0,restoredFiles:0,sharedLoaderRetained:false};
     await runtime.validateTarget(targetPath,require('../game-installer-manifest').installerForGame(gameId));
     await assertClosed(gameId,targetPath);assertAccess();
+    if(gameId==='brotato')await require('./brotato-gamepass').assertBrotatoReady(targetPath);
     const backupsRoot=path.join(userData,'game-backups',gameId);
     const receipt=installation.uninstallReceiptPath?await readReceipt(installation.uninstallReceiptPath,gameId,targetPath,backupsRoot):await legacyReceipt(targetPath,gameId);
     const pluginRoot=path.join(targetPath,'BepInEx/plugins');

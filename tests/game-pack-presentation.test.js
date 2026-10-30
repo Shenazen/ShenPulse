@@ -16,6 +16,16 @@ test("la présentation publique ne contient que modèle, mouvement et couleur va
  assert.deepEqual(normalizeGamePackPresentation({model:99,motion:"invalid",backgroundColor:"url(secret)"}),{model:1,motion:"animated",backgroundColor:"#082b63",configured:true});
  assert.equal(normalizeGamePackPresentation().configured,false);
 });
+
+test("l’URL copiée Hiking utilise le panneau compact sans changer celles de Cult ou Euro Truck",t=>{
+ const dom=new JSDOM('',{runScripts:'outside-only'});t.after(()=>dom.window.close());dom.window.ShenPulseGameWorkspace={escape:v=>String(v)};
+ dom.window.eval(fs.readFileSync(path.join(__dirname,'../src/renderer/app/features/games/workspace/preview.js'),'utf8'));
+ const source=dom.window.ShenPulseGameWorkspace.overlayUrl,base='https://overlay.test/game-pack.html?channel=creator-channel';
+ for(const packId of ['gtav-hiking-enhanced','cult-of-the-lamb','euro-truck-simulator-2']){
+  const url=new URL(source({base,packId,profileId:'creator-profile'}));assert.equal(url.searchParams.get('jeu'),packId);assert.equal(url.searchParams.get('profile'),'creator-profile');assert.equal(url.searchParams.get('channel'),'creator-channel');assert.equal(url.searchParams.get('layout'),packId==='gtav-hiking-enhanced'?'compact':null);
+  assert.equal(new URL(source({base,packId,profileId:'creator-profile',compact:true})).searchParams.get('layout'),'compact');
+ }
+});
 test("une source ouverte suit les trois modèles et le mode fixe sans changer d’URL",async()=>{
  const dom=new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>',{runScripts:"outside-only",url:"https://overlay.test/game-pack.html?profile=profile&motion=animated"});const pending=[],calls=[];dom.window.ShenPulseGamePackModels={render:(state,model,compact)=>{calls.push({model,compact});return new Promise(resolve=>pending.push(resolve));}};
  dom.window.eval(fs.readFileSync(path.join(__dirname,"../resources/overlays/runtime/game-pack.js"),"utf8"));

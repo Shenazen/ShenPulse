@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const policy=require('../src/shared/game-workspace-policy');
 const {defaultGameInteractionRule}=require('../src/main/game-hub/interaction-defaults');
 const {createGamePackOverlay,createGamePackOverlays,gamePackOverlayTrigger}=require('../src/shared/game-pack-overlay');
-const packs=require('../src/main/game-catalog').loadShenazenGameCatalog(path.resolve('resources'));
+const packs=require('../src/main/game-catalog').loadShenazenGameCatalog(path.resolve('resources')).filter(pack=>!pack.ownerPreparation);
 const own=['thiercelieux','coin-pusher','connect-four','clash-of-live','color-strike','tiklive-climb','tiklive-cube-wars','tiklive-stack-tower','deal-or-no-deal','diamond-bridge','diamond-drop'];
 const bootstrap=fs.readFileSync("src/renderer/app/core/bootstrap.js","utf8");
 const automatedInstallers=vm.runInNewContext(bootstrap.slice(bootstrap.indexOf("const AUTOMATED_GAME_INSTALLERS ="),bootstrap.indexOf("const MANAGED_BIZHAWK_GAME_IDS ="))+"\nArray.from(AUTOMATED_GAME_INSTALLERS);");

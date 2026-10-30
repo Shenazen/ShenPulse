@@ -367,6 +367,9 @@ async function handleContentAndCommerceAction({ action, target, id }) {
   }
   if (action === "subscription-checkout") {
     const tier = target.dataset.tier;
+    const methodField = target.closest?.(".membership-page")?.querySelector('[name="subscriptionPaymentProvider"]');
+    const paymentMethod = ["card", "google_pay", "apple_pay", "link"].includes(methodField?.value) ? methodField.value : "";
+    const paymentProvider = (typeof currentSubscription === "function" && currentSubscription().paymentProvider === "stripe") || paymentMethod ? "stripe" : "paypal";
     if (subscriptionCheckoutBusyTier) return;
     const owner = captureCreatorPrivateOperation();
     subscriptionCheckoutBusyTier = tier;
@@ -378,7 +381,7 @@ async function handleContentAndCommerceAction({ action, target, id }) {
       const plan = agencySubscriptionPlans().find((item) => item.tier === tier);
       if (!plan) throw new Error("Offre inconnue.");
       return await perform(async () => {
-        const response = await api.account.startSubscriptionCheckout({ tier, expectedPrice: plan.price });
+        const response = await api.account.startSubscriptionCheckout({ tier, expectedPrice: plan.price, ...(paymentProvider === "stripe" ? { paymentProvider, ...(paymentMethod ? { paymentMethod } : {}) } : {}) });
         const result = response?.result || response;
         if (response?.snapshot) {
           acceptSnapshot(response.snapshot);

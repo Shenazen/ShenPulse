@@ -72,14 +72,24 @@ function resolveEffectCode(effect, runtimeEffect) {
   return String(effect?.code || effect?.id || "");
 }
 
+/** Keep enum values intact and reject values absent from the effect's declared choices. */
+function effectChoiceValue(parameter, value) {
+  const choices=parameter.options||[];
+  const choice=choices.find(option=>String(option.value)===String(value));
+  if(!choice)throw new Error("Choix invalide pour "+(parameter.label||parameter.id)+".");
+  return choice.value;
+}
+
 /** Paramètres initiaux communs aux associations automatiques et aux effets exécutés. */
 function defaultEffectParameters(effect) {
   return Object.fromEntries((effect.parameters || []).map((parameter) => [
     parameter.id,
-    parameter.type === "text"
+    parameter.type === "select"
+      ? effectChoiceValue(parameter, parameter.defaultValue ?? parameter.options?.[0]?.value)
+      : parameter.type === "text"
       ? safeString(parameter.defaultValue || "", Math.min(80, Number(parameter.maxLength) || 80))
       : Number(parameter.defaultValue || 0)
   ]));
 }
 
-module.exports = { validatePack, interpolateCommand, resolveEffectCode, defaultEffectParameters };
+module.exports = { validatePack, interpolateCommand, resolveEffectCode, defaultEffectParameters, effectChoiceValue };

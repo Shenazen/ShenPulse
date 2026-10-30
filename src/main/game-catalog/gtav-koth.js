@@ -30,7 +30,7 @@ const effects=[
 const mappings=require("./gtav-koth-wins").kothWinMappings(GTAV_MONT_CHILIAD_EFFECTS);
 const GTAV_KOTH=game("gtav-koth-enhanced","GTA V KOTH Enhanced",{
  included:true,workspaceLayout:"shared",storefronts:["rockstar-games","steam","epic-games"],
- artwork:"catalog/gtav-koth-enhanced.jpg",coverArtwork:"covers/gtav-koth-enhanced.png",installerVersion:"1.0.10",
+ artwork:"catalog/gtav-koth-enhanced.jpg",coverArtwork:"covers/gtav-koth-enhanced.png",installerVersion:"1.0.12",
  source:"ShenPulse",description:"Gravissez une rampe géante pendant que vos viewers y font dévaler véhicules et obstacles. Mode Histoire de GTA V Enhanced, avec rampe réglable, wins et interactions locales ShenPulse.",
  connector:{type:"tcp-server",host:"127.0.0.1",port:58469,timeoutMs:30000,expectResponse:true,launchConnectionTimeoutMs:600000,focusProcessOnManualTrigger:"GTA5_Enhanced",launchConnectionFailureMessage:"Le module KOTH ne répond pas. Installez les interactions dans GTA V Enhanced, fermez le jeu puis lancez-le depuis cette page et chargez le mode Histoire."},
  effects,defaultMappings:mappings,interactionCatalogVersion:2026102702

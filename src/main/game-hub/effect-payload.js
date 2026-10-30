@@ -1,7 +1,7 @@
 "use strict";
 
 const { id, safeString } = require("../utils");
-const { defaultEffectParameters, interpolateCommand, resolveEffectCode } = require("./commands");
+const { defaultEffectParameters, effectChoiceValue, interpolateCommand, resolveEffectCode } = require("./commands");
 
 /** Charge utile indépendante : paramètres, commandes, quantités et durées historiques. */
 function createEffectPayload(effect, context = {}, options = {}) {
@@ -11,6 +11,7 @@ function createEffectPayload(effect, context = {}, options = {}) {
     ...defaultParameters,
     ...(options.parameters || {})
   };
+  for (const parameter of effect.parameters||[]) if(parameter.type === "select") parameters[parameter.id]=effectChoiceValue(parameter,parameters[parameter.id]);
   const configuredDuration =
     effect.durationParameter &&
     Object.prototype.hasOwnProperty.call(

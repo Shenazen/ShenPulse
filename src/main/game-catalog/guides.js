@@ -505,22 +505,22 @@ const GAME_GUIDES = Object.freeze({
   },
   "gtav-hiking-enhanced": {
     mode:"native", summary:"Suivez trente points de contrôle en montagne avec vos viewers. Installation et connexion locales ShenPulse.",
-    requirements:["GTA V Enhanced installé (Steam, Epic Games ou Rockstar Games), en mode Histoire.","Terminez le prologue puis chargez une sauvegarde où le personnage est libre.","Installez le pack sur cette fiche, jeu fermé, puis lancez GTA depuis cette même fiche.","Les autres modes GTA exigent de fermer le jeu avant de changer de mode. Le mode Online n’est pas pris en charge."],
-    steps:["Cliquez sur Installer automatiquement et choisissez le dossier GTA V Enhanced détecté.","Configurez les cadeaux, la durée de randonnée et les sources de votre studio.","Cliquez sur Lancer le jeu puis chargez le mode Histoire. Attendez la connexion Hiking.","Suivez les trente points dans l’ordre pour gagner. Une mort ou un TIME OUT retire une win.","F10 ouvre les réglages : véhicules autorisés, compteur, téléportations et création d’un parcours personnel."],
-    notes:["Les interactions sont natives et communiquent seulement avec ShenPulse sur ce PC.","Les durées temporaires sont réglables sur chaque interaction.","Pour Adversaires embrasés, faites d’abord apparaître au moins un adversaire.","Un nouveau parcours F10 exige un départ et au moins deux points ; terminez-le pour le sauvegarder."]
+    requirements:["GTA V Enhanced installé (Steam, Epic Games ou Rockstar Games), en mode Histoire.","ShenPulse installe une sauvegarde Histoire préparée pour accéder au parcours sans refaire le prologue.","Installez le pack sur cette fiche, jeu fermé, puis lancez GTA depuis cette même fiche.","Les autres modes GTA exigent de fermer le jeu avant de changer de mode. Le mode Online n’est pas pris en charge."],
+    steps:["Cliquez sur Installer automatiquement et choisissez le dossier GTA V Enhanced détecté. La sauvegarde préparée est téléchargée avec le module.","Configurez les cadeaux, la durée de randonnée et les sources de votre studio.","Cliquez sur Lancer le jeu puis chargez le mode Histoire. Si GTA reprend le prologue ou une autre partie, chargez la sauvegarde préparée depuis Jeu → Charger partie. Hiking vous emmène ensuite au départ de la randonnée dès sa connexion.","Suivez les trente points dans l’ordre pour gagner. Une mort ou un TIME OUT retire une win.","F10 ouvre les réglages : véhicules autorisés, compteur, téléportations et création d’un parcours personnel."],
+    notes:["La sauvegarde est ajoutée au profil Rockstar récemment utilisé, dans un emplacement libre en priorité. Si tous les emplacements sont occupés, celui remplacé est copié en sécurité avant l’installation.","Les interactions sont natives et communiquent seulement avec ShenPulse sur ce PC.","Les durées temporaires sont réglables sur chaque interaction.","Pour Adversaires embrasés, faites d’abord apparaître au moins un adversaire.","Un nouveau parcours F10 exige un départ et au moins deux points ; terminez-le pour le sauvegarder."]
   },
   "gtav-koth-enhanced": {
     mode:"native",
     summary:"Gravissez la rampe KOTH pendant que vos viewers font dévaler véhicules et obstacles. Installation et connexion locales ShenPulse.",
     steps:[
-      "Fermez GTA V. Cliquez sur Installer automatiquement et choisissez le dossier contenant GTA5_Enhanced.exe.",
+      "Fermez GTA V. Cliquez sur Installer automatiquement et choisissez le dossier contenant GTA5_Enhanced.exe. Le module et la sauvegarde Histoire préparée sont téléchargés ensemble.",
       "Choisissez les cadeaux et les interactions, puis installez votre scène dans le studio.",
       "Cliquez sur Lancer le jeu depuis cette page KOTH : ShenPulse sélectionne ce mode avant le démarrage.",
-      "Chargez une partie en mode Histoire et attendez la création de la rampe. F10 ouvre les réglages ; les flèches choisissent l’angle, la longueur et le design, puis Entrée recrée la rampe.",
+      "Chargez le mode Histoire et attendez la création automatique de la rampe. Si GTA reprend le prologue ou une autre partie, choisissez la sauvegarde préparée dans Jeu → Charger partie. F10 ouvre les réglages ; les flèches choisissent l’angle, la longueur et le design, puis Entrée recrée la rampe.",
       "Réglez la durée de la partie dans ShenPulse (15 minutes par défaut). Tenez dix secondes dans le cercle avant la fin pour gagner. Mort, chute ou temps écoulé retirent une seule WIN ; la protection automatique ne s’applique que sur la rampe."
     ],
     requirements:["GTA V Enhanced sur PC uniquement. GTA Online n’est pas pris en charge.","Utilisez le mode Histoire avec BattlEye désactivé dans les paramètres du Rockstar Games Launcher.","La version de ScriptHookV doit prendre en charge la version installée de GTA V Enhanced.","Gardez ShenPulse ouvert. Fermez GTA avant de passer de KOTH au Mont Chiliad."],
-    notes:["Jusqu’à 256 obstacles ; ils restent présents jusqu’à leur chute complète hors de la rampe.","Un modèle de véhicule absent de votre version GTA est refusé avec un message explicite.","Les modifications remplacées sont sauvegardées pendant l’installation ; aucune partie sauvegardée n’est remplacée par KOTH.","Désactivez dans GTA la pause lorsque la fenêtre devient inactive pour permettre les essais et les effets en arrière-plan."],
+    notes:["Jusqu’à 256 obstacles ; ils restent présents jusqu’à leur chute complète hors de la rampe.","Un modèle de véhicule absent de votre version GTA est refusé avec un message explicite.","La sauvegarde préparée est ajoutée au profil Rockstar récemment utilisé, dans un emplacement libre en priorité. Si tous les emplacements sont occupés, celui remplacé est copié en sécurité avant l’installation.","Désactivez dans GTA la pause lorsque la fenêtre devient inactive pour permettre les essais et les effets en arrière-plan."],
     sources:[]
   },
   "gtav-montchiliad": {
@@ -661,6 +661,7 @@ function modGuide(summary) {
 }
 
 function buildGameGuide(entry, effects) {
+  if(entry.ownerPreparation && entry.guide)return structuredClone(entry.guide);
   if(entry.connector?.type==="shen-native")return {mode:"native",summary:"Jeu autonome ShenPulse. Aucun autre logiciel n’est nécessaire pour recevoir les interactions.",steps:["Cliquez sur Installer automatiquement : ShenPulse télécharge le jeu et prépare sa connexion locale.","Choisissez les cadeaux et les effets, puis installez la scène dans votre studio.","Cliquez sur Lancer le jeu, puis sur Jouer dans son menu. Gardez ShenPulse ouvert pendant le LIVE."],notes:["Les actions s’appliquent pendant une manche. Les personnages portent le nom du viewer qui déclenche leur arrivée.","Les réglages, sauvegardes et clés locales restent propres à votre installation ShenPulse."]};
   const specialized = GAME_GUIDES[entry.id];
   if (specialized) return structuredClone(specialized);

@@ -201,7 +201,7 @@
     {
       "gameId": "gtav-koth-enhanced",
       "id": "scripthook-enhanced",
-      "version": "1.0.10",
+      "version": "1.0.12",
       "key": "installer-assets/gtav-montchiliad/1.0.0/script-hook-v-enhanced-3889.0-1158.13.zip",
       "size": 1722210,
       "sha256": "b64c97c3353906f14621e7e9511e4aec2a7d436ecc21ed124d3816585e2e6188"
@@ -209,25 +209,25 @@
     {
       "gameId": "gtav-koth-enhanced",
       "id": "koth-module",
-      "version": "1.0.10",
-      "key": "installer-assets/gtav-koth-enhanced/1.0.10/shenpulse-gta-enhanced.asi",
-      "size": 706560,
-      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
-      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.10/ShenPulseMontChiliadEnhanced.asi"
+      "version": "1.0.12",
+      "key": "installer-assets/gtav-koth-enhanced/1.0.12/shenpulse-gta-enhanced.asi",
+      "size": 710144,
+      "sha256": "9d907dc245b3cb1f49f6233fb67b9632bf3783c1a8f1cc0f20d635ec0d375ca1",
+      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.12/ShenPulseMontChiliadEnhanced.asi"
     },
     {
       "gameId": "gtav-montchiliad",
       "id": "enhancedplugin",
-      "version": "1.0.15",
-      "key": "installer-assets/gtav-montchiliad/1.0.15/shenpulse-mont-chiliad-enhanced.asi",
-      "size": 706560,
-      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
-      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.10/ShenPulseMontChiliadEnhanced.asi"
+      "version": "1.0.17",
+      "key": "installer-assets/gtav-montchiliad/1.0.17/shenpulse-mont-chiliad-enhanced.asi",
+      "size": 710144,
+      "sha256": "9d907dc245b3cb1f49f6233fb67b9632bf3783c1a8f1cc0f20d635ec0d375ca1",
+      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.12/ShenPulseMontChiliadEnhanced.asi"
     },
     {
       "gameId": "gtav-hiking-enhanced",
       "id": "scripthook-enhanced",
-      "version": "1.0.4",
+      "version": "1.0.6",
       "key": "installer-assets/gtav-montchiliad/1.0.0/script-hook-v-enhanced-3889.0-1158.13.zip",
       "size": 1722210,
       "sha256": "b64c97c3353906f14621e7e9511e4aec2a7d436ecc21ed124d3816585e2e6188"
@@ -235,11 +235,11 @@
     {
       "gameId": "gtav-hiking-enhanced",
       "id": "hiking-module",
-      "version": "1.0.4",
-      "key": "installer-assets/gtav-hiking-enhanced/1.0.4/shenpulse-gta-enhanced.asi",
-      "size": 706560,
-      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
-      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.10/ShenPulseMontChiliadEnhanced.asi"
+      "version": "1.0.6",
+      "key": "installer-assets/gtav-hiking-enhanced/1.0.6/shenpulse-gta-enhanced.asi",
+      "size": 710144,
+      "sha256": "9d907dc245b3cb1f49f6233fb67b9632bf3783c1a8f1cc0f20d635ec0d375ca1",
+      "buildPath": ".artifacts/game-pack-builds/gtav-koth-enhanced/1.0.12/ShenPulseMontChiliadEnhanced.asi"
     },
     {
       "gameId": "stardew-valley",
@@ -285,6 +285,418 @@
       "size": 8733611,
       "sha256": "dcd496afdcdc51da61ac794043c287ca26fd0f169e81a7d23b8bca78e247d407",
       "buildPath": ".artifacts/game-pack-builds/palworld/1.0.0/palworld-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "ball-x-pit",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/ball-x-pit/1.0.0/ball-x-pit-shenpulse-1.0.0.zip",
+      "size": 54565836,
+      "sha256": "68f468abfc0c1691b67d0dee357087988abf34127461de5bae110acc3af772db",
+      "buildPath": ".artifacts/game-pack-builds/ball-x-pit/1.0.0/ball-x-pit-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "cloverpit",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/cloverpit/1.0.0/cloverpit-shenpulse-1.0.0.zip",
+      "size": 962739,
+      "sha256": "4090f857ff0d0c3b9f321f6c8de7e70dfcbcb31eff77b93b1f932a560d61deed",
+      "buildPath": ".artifacts/game-pack-builds/cloverpit/1.0.0/cloverpit-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "final-fantasy-1-pixel-remaster",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/final-fantasy-1-pixel-remaster/1.0.0/final-fantasy-1-pixel-remaster-shenpulse-1.0.0.zip",
+      "size": 34521193,
+      "sha256": "ad4bd7dc218b8cf65d473858443e6df8eeff70875b9b331fbaf702b9709af88f",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-1-pixel-remaster/1.0.0/final-fantasy-1-pixel-remaster-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "final-fantasy-2-pixel-remaster",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/final-fantasy-2-pixel-remaster/1.0.0/final-fantasy-2-pixel-remaster-shenpulse-1.0.0.zip",
+      "size": 34522249,
+      "sha256": "e92fea86e15aa5c030bd82f1f617357b5de509529086d38887c4d8802d4b2b24",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-2-pixel-remaster/1.0.0/final-fantasy-2-pixel-remaster-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "final-fantasy-3-pixel-remaster",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/final-fantasy-3-pixel-remaster/1.0.0/final-fantasy-3-pixel-remaster-shenpulse-1.0.0.zip",
+      "size": 34520793,
+      "sha256": "67d2ef5e1aa54914b75a4b817440ecd218cce94d4baabb5a3dd3a242daefea9a",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-3-pixel-remaster/1.0.0/final-fantasy-3-pixel-remaster-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "final-fantasy-4-pixel-remaster",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/final-fantasy-4-pixel-remaster/1.0.0/final-fantasy-4-pixel-remaster-shenpulse-1.0.0.zip",
+      "size": 47612065,
+      "sha256": "bfdf7c9d04b048030efc89d78e4509fa6226ed627517a9a6380a899a0205e5b6",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-4-pixel-remaster/1.0.0/final-fantasy-4-pixel-remaster-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "final-fantasy-5-pixel-remaster",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/final-fantasy-5-pixel-remaster/1.0.0/final-fantasy-5-pixel-remaster-shenpulse-1.0.0.zip",
+      "size": 48294919,
+      "sha256": "69e0aadd772638b18f161bc1fd94afdd8dc3008a3b0f23876fa9d0dc8446372e",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-5-pixel-remaster/1.0.0/final-fantasy-5-pixel-remaster-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "frog-sqwad",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/frog-sqwad/1.0.0/frog-sqwad-shenpulse-1.0.0.zip",
+      "size": 748182,
+      "sha256": "f6ecdb5e077701a2f46eaf8c95b8316cff79d4631946b32c90020af14d9eed16",
+      "buildPath": ".artifacts/game-pack-builds/frog-sqwad/1.0.0/frog-sqwad-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "resident-evil-2",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/resident-evil-2/1.0.0/resident-evil-2-shenpulse-1.0.0.zip",
+      "size": 19169163,
+      "sha256": "9c7ef1ebf0eb04c7d9a2efc95f1d9c84fa37424ede507faa2f951d920dfb5ed1",
+      "buildPath": ".artifacts/game-pack-builds/resident-evil-2/1.0.0/resident-evil-2-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "resident-evil-village",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/resident-evil-village/1.0.0/resident-evil-village-shenpulse-1.0.0.zip",
+      "size": 18747930,
+      "sha256": "4719033d3ab4e978bdc2d0073ea5d70d8fe9bfd9182d502818e5dc43b5820808",
+      "buildPath": ".artifacts/game-pack-builds/resident-evil-village/1.0.0/resident-evil-village-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "supermarket-together",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/supermarket-together/1.0.0/supermarket-together-shenpulse-1.0.0.zip",
+      "size": 670762,
+      "sha256": "dc7db8ebca8386d6d23bd587554ad127bd3496a1c8690f797bad2a3ba6a6146d",
+      "buildPath": ".artifacts/game-pack-builds/supermarket-together/1.0.0/supermarket-together-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "vampire-crawlers",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/vampire-crawlers/1.0.0/vampire-crawlers-shenpulse-1.0.0.zip",
+      "size": 18627066,
+      "sha256": "c610391e7a35ab05d4e34a3798f664f10257e62788b7d76a118ac78ffe8e4d97",
+      "buildPath": ".artifacts/game-pack-builds/vampire-crawlers/1.0.0/vampire-crawlers-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "mari0",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/mari0/1.0.0/mari0-shenpulse-1.0.0.zip",
+      "size": 10210230,
+      "sha256": "25ccb0eabf4b53be8a98e8890450780ec477667306b382ca37426de8caf315c3",
+      "buildPath": ".artifacts/game-pack-builds/mari0/1.0.0/mari0-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "the-sims-4",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/the-sims-4/1.0.0/the-sims-4-shenpulse-1.0.0.zip",
+      "size": 25965,
+      "sha256": "2c413a09863edb49d9d7f8bdd9ab78706487915cf3c3220eddb391d8de1d91d5",
+      "buildPath": ".artifacts/game-pack-builds/the-sims-4/1.0.0/the-sims-4-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "brotato",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/brotato/1.0.0/brotato-shenpulse-1.0.0.zip",
+      "size": 17407,
+      "sha256": "8ab2d40d7dd0351f40d457e19511e082e3dd84cdc95008a28e61f9efc8955070",
+      "buildPath": ".artifacts/game-pack-builds/brotato/1.0.0/brotato-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "brotato",
+      "id": "module",
+      "version": "1.0.1",
+      "key": "installer-assets/brotato/1.0.1/brotato-shenpulse-1.0.1.zip",
+      "size": 17411,
+      "sha256": "50c624f91bdc10a81900152a644c791d2f9bc4f83151578d2b9e3a07646f68b6",
+      "buildPath": ".artifacts/game-pack-builds/brotato/1.0.1/brotato-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "unreal-tournament-99",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/unreal-tournament-99/1.0.0/unreal-tournament-99-shenpulse-1.0.0.zip",
+      "size": 80063,
+      "sha256": "5443a469057dd08b276e5b443b4de5647eecc9b12b6787b6ad9d4f3ab890c8d3",
+      "buildPath": ".artifacts/game-pack-builds/unreal-tournament-99/1.0.0/unreal-tournament-99-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "unreal-tournament-2004",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/unreal-tournament-2004/1.0.0/unreal-tournament-2004-shenpulse-1.0.0.zip",
+      "size": 95022,
+      "sha256": "c3f19145be4f117128e84c17ff383a4d18e40e4d7394e497262607e04d3d37a2",
+      "buildPath": ".artifacts/game-pack-builds/unreal-tournament-2004/1.0.0/unreal-tournament-2004-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "crown-clash",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/crown-clash/1.0.0/crown-clash-shenpulse-1.0.0.zip",
+      "size": 270650,
+      "sha256": "905c36cb0dba75be56bff971d044767cc7388f18f0921dba50fc8a4de210904c",
+      "buildPath": ".artifacts/game-pack-builds/crown-clash/1.0.0/crown-clash-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "farming-simulator-25",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/farming-simulator-25/1.0.0/farming-simulator-25-shenpulse-1.0.0.zip",
+      "size": 20117,
+      "sha256": "65dc6d09b5649079b77fc072bd3503f64ee37d66a232fa17897c440481f4be71",
+      "buildPath": ".artifacts/game-pack-builds/farming-simulator-25/1.0.0/farming-simulator-25-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "sonic-robo-blast-2",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/sonic-robo-blast-2/1.0.0/sonic-robo-blast-2-shenpulse-1.0.0.zip",
+      "size": 264873,
+      "sha256": "6261be1182f9d84184c78ac3ff9fea37a3fcb7e41906f4da102e4596f87aca12",
+      "buildPath": ".artifacts/game-pack-builds/sonic-robo-blast-2/1.0.0/sonic-robo-blast-2-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "peggle-deluxe",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/peggle-deluxe/1.0.0/peggle-deluxe-shenpulse-1.0.0.zip",
+      "size": 503885,
+      "sha256": "811accdb66f63370f550c98e5f4a53ecf5a7b8bc08d9b30c31edd04c91c51ce0",
+      "buildPath": ".artifacts/game-pack-builds/peggle-deluxe/1.0.0/peggle-deluxe-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "peggle-nights",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/peggle-nights/1.0.0/peggle-nights-shenpulse-1.0.0.zip",
+      "size": 503883,
+      "sha256": "8cad52873c470ab11c6ca7425c5945e004d984f52dd3df9290b1e5203a5a66b0",
+      "buildPath": ".artifacts/game-pack-builds/peggle-nights/1.0.0/peggle-nights-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "doom-2016",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/doom-2016/1.0.0/doom-2016-shenpulse-1.0.0.zip",
+      "size": 388204,
+      "sha256": "8346da06be8cb421ecae6147c82c7034383af69de285588cdee7d773b5e7cd80",
+      "buildPath": ".artifacts/game-pack-builds/doom-2016/1.0.0/doom-2016-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "rv-there-yet",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/rv-there-yet/1.0.0/rv-there-yet-shenpulse-1.0.0.zip",
+      "size": 9907519,
+      "sha256": "f69b624e95314ca57a1bb73932dbd8dd4e435c2683d7b183771ae7625c662c0c",
+      "buildPath": ".artifacts/game-pack-builds/rv-there-yet/1.0.0/rv-there-yet-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "voices-of-the-void",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/voices-of-the-void/1.0.0/voices-of-the-void-shenpulse-1.0.0.zip",
+      "size": 9080988,
+      "sha256": "62116e650f94a9193ab0c71e1deee042d5d607f01495dd8ad7c465d8e0d65c72",
+      "buildPath": ".artifacts/game-pack-builds/voices-of-the-void/1.0.0/voices-of-the-void-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "fallout-new-vegas",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/fallout-new-vegas/1.0.0/fallout-new-vegas-shenpulse-1.0.0.zip",
+      "size": 785052,
+      "sha256": "893a7e83f404bebc8666b485918fbd563d65c965c90b3f4b78a2a25aaca39b2a",
+      "buildPath": ".artifacts/game-pack-builds/fallout-new-vegas/1.0.0/fallout-new-vegas-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "unity-dotnet-runtime",
+      "id": "dotnet6-runtime",
+      "version": "6.0.36",
+      "key": "installer-assets/common/dotnet/6.0.36/dotnet-runtime-6.0.36-win-x64.zip",
+      "size": 33057872,
+      "sha256": "c077ccc342c5571ceb7a3c06d1dfbc99b989ed5a6e0f3a0b0b450531c1259615",
+      "buildPath": ".artifacts/game-pack-builds/unity-dotnet-runtime/6.0.36/dotnet-runtime-6.0.36-win-x64.zip"
+    },
+    {
+      "gameId": "pvz-fusion",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/pvz-fusion/1.0.0/pvz-fusion-shenpulse-1.0.0.zip",
+      "size": 21236060,
+      "sha256": "49ec420475aa648ae4fc04f1a31c0ff7bd214aa91af3b0ad5a4517ba519e2cb5",
+      "buildPath": ".artifacts/game-pack-builds/pvz-fusion/1.0.0/pvz-fusion-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "totally-accurate-battle-simulator",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/totally-accurate-battle-simulator/1.0.0/totally-accurate-battle-simulator-shenpulse-1.0.0.zip",
+      "size": 765575,
+      "sha256": "1355b03bba39e20385f6f7e82c9849f75912e018dbf0a080a3d209c5b84cf493",
+      "buildPath": ".artifacts/game-pack-builds/totally-accurate-battle-simulator/1.0.0/totally-accurate-battle-simulator-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "roadside-research",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/roadside-research/1.0.0/roadside-research-shenpulse-1.0.0.zip",
+      "size": 35307796,
+      "sha256": "75d2411199961f55741b90648a9e2999a2116e43cac7d98008e0c52e597d9f6a",
+      "buildPath": ".artifacts/game-pack-builds/roadside-research/1.0.0/roadside-research-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "cookie-clicker",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/cookie-clicker/1.0.0/cookie-clicker-shenpulse-1.0.0.zip",
+      "size": 4130,
+      "sha256": "b3ca037105bc043593765ee79edae0e57470f0b375a1547bdbe718abee655eb1",
+      "buildPath": ".artifacts/game-pack-builds/cookie-clicker/1.0.0/cookie-clicker-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "nova-the-squirrel",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/nova-the-squirrel/1.0.0/nova-the-squirrel-shenpulse-1.0.0.zip",
+      "size": 68320851,
+      "sha256": "c48ebb35c276c342d81107107760c9a4e636221955a6d65a63c82ef93dab97bb",
+      "buildPath": ".artifacts/game-pack-builds/nova-the-squirrel/1.0.0/nova-the-squirrel-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "team-fortress-2",
+      "id": "module",
+      "version": "1.0.1",
+      "key": "installer-assets/team-fortress-2/1.0.1/team-fortress-2-shenpulse-1.0.1.zip",
+      "size": 34752529,
+      "sha256": "b5c987820c4aceb5cde6ba6df4b35d27e0d6457f4205672c3077dc4a45697fc3",
+      "buildPath": ".artifacts/game-pack-builds/team-fortress-2/1.0.1/team-fortress-2-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "minecraft-owner-runtime",
+      "id": "minecraft-paper",
+      "version": "1.20.4",
+      "key": "installer-assets/common/minecraft-paper/1.20.4/minecraft-paper-1.20.4.zip",
+      "size": 123297975,
+      "sha256": "9920a66ff8cf4e251d13a6aa6e070ef48311bab234ab545b6cc86d189e0a8e6f",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-owner-runtime/1.20.4/minecraft-paper-1.20.4.zip"
+    },
+    {
+      "gameId": "minecraft-diamond-rush",
+      "id": "module",
+      "version": "1.0.1",
+      "key": "installer-assets/minecraft-diamond-rush/1.0.1/minecraft-diamond-rush-shenpulse-1.0.1.zip",
+      "size": 26691,
+      "sha256": "cb438ea0bc8950d57e0323d9f13e820dd853512ddc9b5f00701be8e27d8f74c4",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-diamond-rush/1.0.1/minecraft-diamond-rush-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "minecraft-box-cyber",
+      "id": "module",
+      "version": "1.0.1",
+      "key": "installer-assets/minecraft-box-cyber/1.0.1/minecraft-box-cyber-shenpulse-1.0.1.zip",
+      "size": 35407,
+      "sha256": "ccfae3df54e6592200a8294a67e34ce90d6c6912f19b5fd520ec668b18350b99",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-box-cyber/1.0.1/minecraft-box-cyber-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "plants-vs-zombies-goty",
+      "id": "module",
+      "version": "1.0.0",
+      "key": "installer-assets/plants-vs-zombies-goty/1.0.0/plants-vs-zombies-goty-shenpulse-1.0.0.zip",
+      "size": 39802395,
+      "sha256": "0b021356e12fc4741ad676c4bdc9e430ab93a82405b86188284f0699b5172ab8",
+      "buildPath": ".artifacts/game-pack-builds/plants-vs-zombies-goty/1.0.0/plants-vs-zombies-goty-shenpulse-1.0.0.zip"
+    },
+    {
+      "gameId": "ball-x-pit",
+      "id": "module",
+      "version": "1.0.1",
+      "key": "installer-assets/ball-x-pit/1.0.1/ball-x-pit-shenpulse-1.0.1.zip",
+      "size": 55781035,
+      "sha256": "5bf1103143106a07fe6bcb8dfcde417ba51c149be1fa7e09f45329d1e8a05ba0",
+      "buildPath": ".artifacts/game-pack-builds/ball-x-pit/1.0.1/ball-x-pit-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "ball-x-pit",
+      "id": "module",
+      "version": "1.0.2",
+      "key": "installer-assets/ball-x-pit/1.0.2/ball-x-pit-shenpulse-1.0.2.zip",
+      "size": 55781265,
+      "sha256": "094f76dc29afff2f4ac8816247daa854832c55ce068d53ae5dbad65fe7dc8dfc",
+      "buildPath": ".artifacts/game-pack-builds/ball-x-pit/1.0.2/ball-x-pit-shenpulse-1.0.2.zip"
+    },
+    {
+      "gameId": "brotato",
+      "id": "module",
+      "version": "1.0.2",
+      "key": "installer-assets/brotato/1.0.2/brotato-shenpulse-1.0.2.zip",
+      "size": 31851,
+      "sha256": "345babdafd1af794392dc98b0892128c024ed818634edfeb41345d4a97566c19",
+      "buildPath": ".artifacts/game-pack-builds/brotato/1.0.2/brotato-shenpulse-1.0.2.zip"
+    },
+    {
+      "gameId": "fallout-new-vegas",
+      "id": "xbox-module",
+      "version": "1.1.0",
+      "key": "installer-assets/fallout-new-vegas/1.1.0/fallout-new-vegas-xbox-shenpulse-1.1.0.zip",
+      "size": 248162,
+      "sha256": "10c84caf2b4c61fbb2f73b2c4f2a47bf1ce5b5eed830a91e4739475f42508455",
+      "buildPath": ".artifacts/game-pack-builds/fallout-new-vegas/1.1.0/fallout-new-vegas-xbox-shenpulse-1.1.0.zip"
+    },
+    {
+      "gameId": "farming-simulator-25",
+      "id": "module",
+      "version": "1.0.4",
+      "key": "installer-assets/farming-simulator-25/1.0.4/farming-simulator-25-shenpulse-1.0.4.zip",
+      "size": 264535,
+      "sha256": "6898049812a2986182f6f10f393739258b58d0315006fd226a98887d99ce237f",
+      "buildPath": ".artifacts/game-pack-builds/farming-simulator-25/1.0.4/farming-simulator-25-shenpulse-1.0.4.zip"
+    },
+    {
+      "gameId": "escape-the-backrooms",
+      "id": "module",
+      "version": "1.0.2",
+      "key": "installer-assets/escape-the-backrooms/1.0.2/escape-the-backrooms-shenpulse-1.0.2.zip",
+      "size": 7529435,
+      "sha256": "aafd2aebb29b91715d9e202b4b70633118530976df8f46a438b664df10daec67",
+      "buildPath": ".artifacts/game-pack-builds/escape-the-backrooms/1.0.2/escape-the-backrooms-shenpulse-1.0.2.zip"
+    },
+    {
+      "gameId": "gtav-koth-enhanced",
+      "id": "enhancedsave",
+      "version": "1.0.12",
+      "key": "installer-assets/gtav-montchiliad/1.0.0/gta-v-enhanced-mont-chiliad-save.zip",
+      "size": 789698,
+      "sha256": "13f06f99c75c913b2ce6c953e7bd1d545f14f47c369520cab3e6b681e448111e"
+    },
+    {
+      "gameId": "gtav-hiking-enhanced",
+      "id": "enhancedsave",
+      "version": "1.0.6",
+      "key": "installer-assets/gtav-montchiliad/1.0.0/gta-v-enhanced-mont-chiliad-save.zip",
+      "size": 789698,
+      "sha256": "13f06f99c75c913b2ce6c953e7bd1d545f14f47c369520cab3e6b681e448111e"
     }
   ]
 }

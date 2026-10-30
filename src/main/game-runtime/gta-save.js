@@ -41,8 +41,10 @@ async function stageGtaEnhancedSave(
 async function deployGtaEnhancedSave({
   sourceDirectory,
   backupRoot,
-  documentsPath = ""
+  documentsPath = "",
+  assertAccess = () => {}
 }) {
+  assertAccess();
   const canonical =
     (await existingFile(path.join(sourceDirectory, "SGTA50015"))) ||
     (await existingFile(path.join(sourceDirectory, "SGTA50001")));
@@ -69,6 +71,7 @@ async function deployGtaEnhancedSave({
       `SGTA5${String(slot).padStart(4, "0")}`
     );
     if (!(await existingFile(existing))) continue;
+    assertAccess();
     if ((await sha256File(existing)) === canonicalHash) {
       return {
         deployed: false,
@@ -110,6 +113,7 @@ async function deployGtaEnhancedSave({
       backupRoot,
       path.basename(existing)
     );
+    assertAccess();
     await fs.promises.copyFile(existing, backupDestination);
     replaced.push({
       source: existing,
@@ -117,7 +121,9 @@ async function deployGtaEnhancedSave({
     });
   }
 
+  assertAccess();
   await fs.promises.copyFile(canonical, target);
+  assertAccess();
   await fs.promises.copyFile(sourceBackup, targetBackup);
   if ((await sha256File(target)) !== canonicalHash) {
     throw new Error(
@@ -158,18 +164,38 @@ async function findGtaEnhancedProfile({ documentsPath = "" } = {}) {
         (file) => file.isFile() && /^SGTA5\d{4}(?:\.bak)?$/i.test(file.name)
       ).length;
       const stat = await fs.promises.stat(directory).catch(() => null);
+      // Epic, Steam and Rockstar can leave several profiles behind. The
+      // active account's recently written settings take priority over an old
+      // account that merely has more save slots.
+      const settings = await Promise.all(["cfg.dat", "pc_settings.bin", "cloudsavedata.dat"].map(name =>
+        fs.promises.stat(path.join(directory, name)).catch(() => null)));
+      const settingsModifiedAt = Math.max(0, ...settings.filter(item => item?.isFile()).map(item => item.mtimeMs));
       profiles.push({
         directory,
         saves,
+        settingsModifiedAt,
         modifiedAt: stat?.mtimeMs || 0
       });
     }
   }
   profiles.sort(
     (left, right) =>
-      right.saves - left.saves || right.modifiedAt - left.modifiedAt
+      right.settingsModifiedAt - left.settingsModifiedAt || right.saves - left.saves || right.modifiedAt - left.modifiedAt
   );
   return profiles[0]?.directory || "";
+}
+
+async function prepareGtaEnhancedSaveForLaunch({ gameId, userDataPath, documentsPath, assertAccess = () => {} }) {
+  assertAccess();
+  if (!userDataPath || !path.isAbsolute(userDataPath)) throw new Error("Le dossier des sauvegardes ShenPulse est introuvable.");
+  const result = await deployGtaEnhancedSave({
+    sourceDirectory: path.join(userDataPath, "game-assets", gameId, "enhanced-save"),
+    backupRoot: path.join(userDataPath, "game-backups", gameId, "save-profile", `${Date.now()}-${require("node:crypto").randomBytes(4).toString("hex")}`),
+    documentsPath,
+    assertAccess
+  });
+  if (result.reason === "save-not-staged") throw new Error("Réinstallez les interactions pour télécharger la sauvegarde Histoire nécessaire à ce mode GTA.");
+  return result;
 }
 
 function gtaEnhancedProfileRoots(documentsPath = "") {
@@ -199,5 +225,6 @@ module.exports = {
   deployGtaEnhancedSave,
   findGtaEnhancedProfile,
   gtaEnhancedProfileRoots,
+  prepareGtaEnhancedSaveForLaunch,
 };
 

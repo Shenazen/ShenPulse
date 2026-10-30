@@ -1,0 +1,383 @@
+{
+  "peggle-deluxe": {
+    "add_ball": {
+      "name": "Balle offerte",
+      "column": "help"
+    },
+    "remove_ball": {
+      "name": "Balle retirée",
+      "column": "trap"
+    },
+    "dapper": {
+      "name": "Tenue élégante",
+      "column": "neutral"
+    },
+    "add_board": {
+      "name": "Tableau suivant",
+      "column": "help"
+    },
+    "remove_board": {
+      "name": "Tableau précédent",
+      "column": "trap"
+    },
+    "super_guide": {
+      "name": "Super guide",
+      "column": "help"
+    },
+    "multiball": {
+      "name": "Multiballe",
+      "column": "help"
+    },
+    "pyramid": {
+      "name": "Pyramide",
+      "column": "help"
+    },
+    "flippers": {
+      "name": "Flippers",
+      "column": "help"
+    },
+    "spooky_ball": {
+      "name": "Balle fantôme",
+      "column": "help"
+    },
+    "lucky_spin": {
+      "name": "Roue chanceuse",
+      "column": "help"
+    },
+    "fireball": {
+      "name": "Balle enflammée",
+      "column": "help"
+    },
+    "zen_ball": {
+      "name": "Balle zen",
+      "column": "help"
+    },
+    "electrobolt": {
+      "name": "Éclair électrique",
+      "column": "help"
+    },
+    "timebomb": {
+      "name": "Bombe retardée",
+      "column": "trap"
+    },
+    "nudge": {
+      "name": "Secousse",
+      "column": "neutral"
+    },
+    "restart_board": {
+      "name": "Tableau recommencé",
+      "column": "trap"
+    },
+    "hard_reset": {
+      "name": "Partie quittée",
+      "column": "trap"
+    },
+    "boulder_ball": {
+      "name": "Balle lourde",
+      "column": "trap"
+    },
+    "feather_ball": {
+      "name": "Balle légère",
+      "column": "trap"
+    },
+    "offset_shoot": {
+      "name": "Tir décalé",
+      "column": "trap"
+    },
+    "lock_shot": {
+      "name": "Tir verrouillé",
+      "column": "trap"
+    },
+    "no_guide": {
+      "name": "Guide masqué",
+      "column": "trap"
+    },
+    "add_jimmy": {
+      "name": "Jimmy",
+      "column": "neutral"
+    },
+    "toggle_colorblind": {
+      "name": "Couleurs adaptées",
+      "column": "neutral"
+    }
+  },
+  "peggle-nights": {
+    "add_ball": {
+      "name": "Balle offerte",
+      "column": "help"
+    },
+    "remove_ball": {
+      "name": "Balle retirée",
+      "column": "trap"
+    },
+    "dapper": {
+      "name": "Tenue élégante",
+      "column": "neutral"
+    },
+    "add_board": {
+      "name": "Tableau suivant",
+      "column": "help"
+    },
+    "remove_board": {
+      "name": "Tableau précédent",
+      "column": "trap"
+    },
+    "super_guide": {
+      "name": "Super guide",
+      "column": "help"
+    },
+    "multiball": {
+      "name": "Multiballe",
+      "column": "help"
+    },
+    "pyramid": {
+      "name": "Pyramide",
+      "column": "help"
+    },
+    "flippers": {
+      "name": "Flippers",
+      "column": "help"
+    },
+    "spooky_ball": {
+      "name": "Balle fantôme",
+      "column": "help"
+    },
+    "lucky_spin": {
+      "name": "Roue chanceuse",
+      "column": "help"
+    },
+    "fireball": {
+      "name": "Balle enflammée",
+      "column": "help"
+    },
+    "zen_ball": {
+      "name": "Balle zen",
+      "column": "help"
+    },
+    "electrobolt": {
+      "name": "Éclair électrique",
+      "column": "help"
+    },
+    "timebomb": {
+      "name": "Bombe retardée",
+      "column": "trap"
+    },
+    "nudge": {
+      "name": "Secousse",
+      "column": "neutral"
+    },
+    "restart_board": {
+      "name": "Tableau recommencé",
+      "column": "trap"
+    },
+    "hard_reset": {
+      "name": "Partie quittée",
+      "column": "trap"
+    },
+    "boulder_ball": {
+      "name": "Balle lourde",
+      "column": "trap"
+    },
+    "feather_ball": {
+      "name": "Balle légère",
+      "column": "trap"
+    },
+    "offset_shoot": {
+      "name": "Tir décalé",
+      "column": "trap"
+    },
+    "lock_shot": {
+      "name": "Tir verrouillé",
+      "column": "trap"
+    },
+    "no_guide": {
+      "name": "Guide masqué",
+      "column": "trap"
+    },
+    "add_jimmy": {
+      "name": "Jimmy",
+      "column": "neutral"
+    },
+    "toggle_colorblind": {
+      "name": "Couleurs adaptées",
+      "column": "neutral"
+    }
+  },
+  "frog-sqwad": {
+    "spawn_ranged_enemy": {
+      "name": "Ennemi distant",
+      "column": "trap"
+    },
+    "spawn_flying_enemy": {
+      "name": "Ennemi volant",
+      "column": "trap"
+    },
+    "spawn_slime_enemy": {
+      "name": "Ennemi gluant",
+      "column": "trap"
+    },
+    "spawn_ground_enemy": {
+      "name": "Ennemi terrestre",
+      "column": "trap"
+    },
+    "heavy_gravity": {
+      "name": "Gravité renforcée",
+      "column": "trap"
+    },
+    "increase_food_quota": {
+      "name": "Quota augmenté",
+      "column": "trap"
+    },
+    "super_jump": {
+      "name": "Super saut",
+      "column": "help"
+    },
+    "speed_up": {
+      "name": "Course rapide",
+      "column": "help"
+    },
+    "ragdoll": {
+      "name": "Corps désarticulé",
+      "column": "trap"
+    }
+  },
+  "cookie-clicker": {
+    "cps_p1m": {
+      "name": "Cookies offerts",
+      "column": "help"
+    },
+    "cps_s1m": {
+      "name": "Cookies volés",
+      "column": "trap"
+    },
+    "ticker": {
+      "name": "Pseudo vedette",
+      "column": "neutral"
+    },
+    "season_": {
+      "name": "Saison normale",
+      "column": "neutral"
+    },
+    "season_christmas": {
+      "name": "Saison Noël",
+      "column": "neutral"
+    },
+    "season_easter": {
+      "name": "Saison Pâques",
+      "column": "neutral"
+    },
+    "season_halloween": {
+      "name": "Saison Halloween",
+      "column": "neutral"
+    },
+    "season_fools": {
+      "name": "Saison farceuse",
+      "column": "neutral"
+    },
+    "season_valentines": {
+      "name": "Saint-Valentin",
+      "column": "neutral"
+    },
+    "ascend": {
+      "name": "Ascension forcée",
+      "column": "trap"
+    },
+    "buy_expensive": {
+      "name": "Bâtiment offert",
+      "column": "help"
+    },
+    "sell_expensive": {
+      "name": "Bâtiment retiré",
+      "column": "trap"
+    },
+    "golden_cookie": {
+      "name": "Cookie doré",
+      "column": "help"
+    },
+    "buff_frenzy": {
+      "name": "Production multipliée",
+      "column": "help"
+    },
+    "buff_click frenzy": {
+      "name": "Clics multipliés",
+      "column": "help"
+    },
+    "buff_cookie storm": {
+      "name": "Tempête cookies",
+      "column": "help"
+    },
+    "buff_building special": {
+      "name": "Bâtiments renforcés",
+      "column": "help"
+    },
+    "buff_cursed finger": {
+      "name": "Doigt maudit",
+      "column": "trap"
+    },
+    "buff_clot": {
+      "name": "Production ralentie",
+      "column": "trap"
+    },
+    "sugar_add": {
+      "name": "Sucre offert",
+      "column": "help"
+    },
+    "sugar_sub": {
+      "name": "Sucre retiré",
+      "column": "trap"
+    }
+  },
+  "nova-the-squirrel": {
+    "fullheal": {
+      "name": "Soins complets"
+    },
+    "heal": {
+      "name": "Cœur rendu"
+    },
+    "hurt": {
+      "name": "Cœur retiré"
+    },
+    "kill": {
+      "name": "Nova éliminée"
+    },
+    "ohko": {
+      "name": "Fragilité extrême"
+    },
+    "ability_none": {
+      "name": "Pouvoir retiré"
+    },
+    "ability_blaster": {
+      "name": "Blaster"
+    },
+    "ability_glider": {
+      "name": "Planeur"
+    },
+    "ability_bomb": {
+      "name": "Bombes"
+    },
+    "ability_fire": {
+      "name": "Feu"
+    },
+    "ability_firework": {
+      "name": "Feux artificiels"
+    },
+    "ability_ice": {
+      "name": "Glace"
+    },
+    "ability_boomerang": {
+      "name": "Boomerang"
+    },
+    "ability_mirror": {
+      "name": "Miroir"
+    },
+    "ability_water": {
+      "name": "Eau"
+    },
+    "ability_fan": {
+      "name": "Ventilateur"
+    },
+    "ability_burger": {
+      "name": "Super blaster"
+    }
+  }
+}

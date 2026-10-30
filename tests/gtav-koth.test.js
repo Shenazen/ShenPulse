@@ -28,7 +28,9 @@ test("KOTH possède sa fiche Enhanced, ses 741 véhicules et douze cadeaux disti
  for(const effect of pack.effects)assert.ok(effect.name.trim().split(/\s+/).length<=2,effect.name);
  const installer=GAME_INSTALLERS[pack.id];assert.deepEqual(installer.executables,["GTA5_Enhanced.exe"]);
  assert.ok(installer.assets.every(a=>a.editions.includes("enhanced")&&a.url.startsWith("https://f003.backblazeb2.com/")));
- assert.ok(!installer.assets.some(a=>a.action==="gta-enhanced-save"||a.action==="gta-archive"));
+ const save=installer.assets.filter(a=>a.action==="gta-enhanced-save");
+ assert.equal(save.length,1);assert.deepEqual(save[0],GAME_INSTALLERS['gtav-montchiliad'].assets.find(a=>a.action==='gta-enhanced-save'));
+ assert.ok(!installer.assets.some(a=>a.action==="gta-archive"));
 });
 test("le choix de mode est atomique, lié au dossier et bloque un changement pendant que GTA tourne",async t=>{
  const f=await fixture(t);
@@ -63,13 +65,26 @@ test("les compteurs KOTH ne peuvent pas être traités comme ceux du Mont Chilia
  assert.equal(readMontChiliadCounterEvent(pack,{...base,type:"montchiliad:victory",counterEventId:2,counterDelta:-1,counterEvent:"death"},cursors),null);
 });
 
-test("le vrai lancement choisit KOTH avant l’ouverture du jeu et ne déploie aucune sauvegarde Mont Chiliad",async t=>{
+test("le lancement prépare la sauvegarde puis choisit le parcours KOTH sans réinitialiser une partie déjà préparée",async t=>{
  const f=await fixture(t),calls=[];
  const result=await launchExternalGame({gameId:"gtav-koth-enhanced",manifest:GAME_INSTALLERS["gtav-koth-enhanced"],installation:f.installation,assertAccess(){},findRunning:async()=>null,
  selectGtaMode:async args=>{calls.push("selection");await prepareGtaMode({...args,localAppData:f.local});},
+ prepareGtaSave:async args=>{calls.push("save");assert.equal(args.gameId,'gtav-koth-enhanced');return {pending:false,alreadyPresent:true};},
  shell:{openPath:async executable=>{calls.push("launch");assert.equal(path.basename(executable),"PlayGTAV.exe");assert.ok((await fs.readFile(modeSelectionPath(f.local),"utf16le")).includes("mode=koth"));return "";}},scheduleGtaSaveDeployment(){throw Error("Must not replace a save");}
  });
- assert.equal(result.ok,true);assert.deepEqual(calls,["selection","launch"]);
+ assert.equal(result.ok,true);assert.deepEqual(calls,["selection","save","launch"]);assert.equal(result.saveDeployment.alreadyPresent,true);
+});
+
+test("le lancement attend la sauvegarde pour chaque mode Enhanced, mais ne touche pas un jeu ouvert",async t=>{
+ const f=await fixture(t);
+ for(const gameId of ['gtav-koth-enhanced','gtav-hiking-enhanced','gtav-montchiliad']){
+  const calls=[],options={gameId,manifest:GAME_INSTALLERS[gameId],installation:f.installation,assertAccess(){},selectGtaMode:async()=>{},findRunning:async()=>null,
+   prepareGtaSave:async()=>{calls.push('save');return {pending:true,reason:'rockstar-profile-not-found'};},
+   shell:{openPath:async()=>{calls.push('launch');return '';}},scheduleGtaSaveDeployment(){calls.push('schedule');}};
+  await launchExternalGame(options);assert.deepEqual(calls,['save','launch','schedule'],gameId);
+  calls.length=0;await launchExternalGame({...options,findRunning:async()=>({ProcessId:42,ExecutablePath:path.join(f.game,'GTA5_Enhanced.exe')})});assert.deepEqual(calls,[],gameId);
+  await assert.rejects(launchExternalGame({...options,prepareGtaSave:async()=>{throw Error('Sauvegarde indisponible');}}),/Sauvegarde indisponible/);assert.deepEqual(calls,[],gameId);
+ }
 });
 
 test("le rattachement valide le mode avant toute lecture d’un ASI déjà verrouillé par GTA",async t=>{

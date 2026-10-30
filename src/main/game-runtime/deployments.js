@@ -296,6 +296,7 @@ async function deployAdditionalInstallTargets({
   backupRoot,
   documentsPath,
   appDataPath,
+  programDataPath = process.env.ProgramData,
   edition,
   assertAccess = () => {}
 }) {
@@ -306,13 +307,15 @@ async function deployAdditionalInstallTargets({
   for (const entry of targets) {
     if (entry.editions?.length && !entry.editions.includes(edition)) continue;
     assertAccess();
-    if (!["documents", "appData"].includes(entry?.root)) {
+    if (!["documents", "appData", "programData"].includes(entry?.root)) {
       throw new Error(
         "Destination d’installation supplémentaire non autorisée."
       );
     }
     const source = safeChildPath(targetPath, entry.sourcePath || "");
-    const root = path.resolve(entry.root === "appData" ? appDataPath : documentsPath);
+    const selectedRoot=entry.root === "programData" ? programDataPath : entry.root === "appData" ? appDataPath : documentsPath;
+    if (!selectedRoot || !path.isAbsolute(selectedRoot)) throw new Error("La destination du chargeur n’a pas pu être résolue.");
+    const root = path.resolve(selectedRoot);
     const destination = safeChildPath(root, entry.targetPath || "");
     const stat = await fs.promises.stat(source).catch(() => null);
     if (!(entry.directory ? stat?.isDirectory() : stat?.isFile())) {

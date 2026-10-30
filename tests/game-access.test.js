@@ -204,7 +204,7 @@ test("le renderer et les IPC appliquent le verrou avant d’entrer", () => {
   assert.match(core, /startGameSession\(packId\)[\s\S]*?this\.gameHub\.assertAccess\(targetId\);/);
   assert.match(hub, /async trigger\(effectId[\s\S]*?this\.assertAccess\(packId\);/);
   assert.match(runtime, /status\(gameId\) \{\s*this\.assertAccess\(gameId\);/);
-  assert.match(runtime, /async function installGame\(runtime, gameId\) \{\s*runtime\.assertAccess\(gameId\);/);
+  assert.match(runtime, /async function installGame\(runtime, gameId, \{assertClosed=assertModGameClosed\} = \{\}\) \{\s*runtime\.assertAccess\(gameId\);/);
   assert.match(runtime, /async launch\(gameId\) \{\s*this\.assertAccess\(gameId\);/);
   assert.match(preload, /auditGameInteraction:/);
   assert.match(ipc, /handle\(\s*"game:interaction-audit"/);

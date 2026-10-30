@@ -19,7 +19,8 @@ async function detectInstalledGames(gameId, manifest, previousPath = "", sources
   if (["gtav-montchiliad","gtav-koth-enhanced","gtav-hiking-enhanced"].includes(gameId)) candidates.push(...await (sources.gta || gtaInstallCandidates)());
   if (Array.isArray(manifest.steamAppIds) || Array.isArray(manifest.directoryNames)) candidates.push(...await (sources.steam || steamGameInstallCandidates)(manifest));
   const found = [], seen = new Set();
-  for (const candidate of [...new Set(candidates.map(value => path.resolve(value)))]) {
+  for (let candidate of [...new Set(candidates.map(value => path.resolve(value)))]) {
+    if(gameId==="fallout-new-vegas"&&await installationPlatform(candidate,manifest)==="xbox")candidate=await require("./fnv-gamepass").fnvXboxRoot(candidate);
     const stat = await fs.promises.stat(candidate).catch(() => null);
     if (!stat?.isDirectory()) continue;
     const executable = await findLaunchTarget(candidate, manifest.executables || [], false);
@@ -148,21 +149,22 @@ async function windowsSteamInstallRoots() {
   return [...new Set(roots.map((root) => path.resolve(root)))];
 }
 
-async function gtaInstallCandidates() {
-  const programFiles = [
+async function gtaInstallCandidates({ epic = require("./gta-epic-launch").gtaEpicInstallCandidates, programFiles = [
     process.env.ProgramW6432,
     process.env.ProgramFiles,
     process.env["ProgramFiles(x86)"],
     "C:\\Program Files",
     "C:\\Program Files (x86)"
-  ].filter(Boolean);
-  const candidates = [];
+  ].filter(Boolean) } = {}) {
+  const candidates = [...await epic()];
   for (const root of programFiles) {
     candidates.push(
       path.join(root, "Rockstar Games", "Grand Theft Auto V"),
       path.join(root, "Rockstar Games", "Grand Theft Auto V Enhanced"),
       path.join(root, "Epic Games", "GTAV"),
+      path.join(root, "Epic Games", "GTAVEnhanced"),
       path.join(root, "Epic Games", "Grand Theft Auto V"),
+      path.join(root, "Epic Games", "Grand Theft Auto V Enhanced"),
       path.join(root, "Steam", "steamapps", "common", "Grand Theft Auto V"),
       path.join(
         root,

@@ -47,7 +47,7 @@ function gameInteractionRowData(row) {
 }
 
 function isMinecraftWinCounterPack(packId) {
-  return ["minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-lavarise"].includes(
+  return ["minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-lavarise", "minecraft-diamond-rush", "minecraft-box-cyber"].includes(
     String(packId || "")
   );
 }
@@ -166,6 +166,7 @@ function gameEffectParameterFields(effect, config) {
         `max="${Number(parameter.max ?? 100000)}"`,
         `step="${Number(parameter.step ?? 1)}"`
       ].join(" ");
+      if (parameter.type === "select") return '<label class="field"><span>'+escapeHtml(parameter.label||parameter.id)+'</span><select name="'+escapeHtml(name)+'">'+parameter.options.map(option=>'<option value="'+escapeHtml(option.value)+'" '+(String(option.value)===String(value)?'selected':'')+'>'+escapeHtml(option.label||option.value)+'</option>').join('')+'</select></label>';
       if (parameter.type === "text") {
         return field(name, parameter.label || parameter.id, value, "text",
           `maxlength="${Math.min(80, Math.max(1, Number(parameter.maxLength) || 80))}" pattern="[a-zA-Z0-9_-]+"`);
@@ -184,6 +185,12 @@ function gameEffectParameterFields(effect, config) {
 function gameEffectParametersFromForm(effect, data) {
   return Object.fromEntries(
     (effect.parameters || []).map((parameter) => {
+      if(parameter.type === "select") {
+        const raw=String(data.get('effectParameter_'+parameter.id) ?? parameter.defaultValue ?? '');
+        const choice=parameter.options?.find(option=>String(option.value)===raw);
+        if(!choice)throw new Error('Choix invalide pour '+(parameter.label||parameter.id)+'.');
+        return [parameter.id,choice.value];
+      }
       if (parameter.type === "text") {
         const value = String(data.get(`effectParameter_${parameter.id}`) ?? parameter.defaultValue ?? "")
           .trim().slice(0, Math.min(80, Math.max(1, Number(parameter.maxLength) || 80)));
@@ -347,7 +354,7 @@ function openGameInteractionEditor(pack, effect, row = null) {
       parameters: Object.fromEntries(
         (effect.parameters || []).map((parameter) => [
           parameter.id,
-          parameter.type === "text" ? String(parameter.defaultValue || "") : Number(parameter.defaultValue || 0)
+          ["text","select"].includes(parameter.type) ? String(parameter.defaultValue ?? "") : Number(parameter.defaultValue || 0)
         ])
       ),
       ...(effect.winCounter

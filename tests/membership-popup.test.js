@@ -160,7 +160,7 @@ test("le choix et l’annulation passent par le vrai dispatcher, avec états occ
   assert.equal(calls.checkout[0].tier, "pro");
   assert.equal(window.eval("subscriptionCheckoutBusyTier"), "pro");
   assert.equal(popup.querySelector('.tier-premium [data-action="subscription-checkout"]').disabled, true);
-  assert.match(popup.querySelector('[role="status"]').textContent, /Paiement PayPal en cours/);
+  assert.match(popup.querySelector('[role="status"]').textContent, /Paiement en cours/);
   const cancelButton = popup.querySelector('[data-action="subscription-checkout-cancel"]');
   assert.equal(cancelButton.disabled, false);
   cancelButton.click();
@@ -248,4 +248,59 @@ test("les offres du dialogue passent en anglais puis reviennent en français ave
   assert.equal(popup.querySelector(".tier-pro button").textContent, "Choisir Pro");
   assert.equal(popup.querySelector("[data-membership-close]").getAttribute("aria-label"), "Fermer les offres ShenPulse");
   assert.deepEqual(calls.checkout, []);
+});
+
+test("chaque moyen de paiement des offres est transmis avec le tarif vérifié", async (t) => {
+  for (const paymentMethod of ["card", "google_pay", "apple_pay", "link"]) {
+    await t.test(paymentMethod, async (t) => {
+      const { window, calls, checkout, state } = popupContext(t);
+      const popup = window.openMembershipPopup();
+      const select = popup.querySelector('[name="subscriptionPaymentProvider"]');
+      assert.equal(select.value, "paypal");
+      assert.deepEqual(Array.from(select.options, option => option.value), ["paypal", "card", "google_pay", "apple_pay", "link"]);
+      assert.deepEqual(Array.from(select.options, option => option.textContent.trim()), ["PayPal", "Carte bancaire", "Google Pay", "Apple Pay", "Link"]);
+      select.value = paymentMethod;
+      popup.querySelector('.tier-pro [data-action="subscription-checkout"]').click();
+      await settle();
+      assert.equal(calls.checkout.length, 1);
+      assert.equal(calls.checkout[0].paymentProvider, "stripe");
+      assert.equal(calls.checkout[0].paymentMethod, paymentMethod);
+      assert.equal(calls.checkout[0].expectedPrice, 14.99);
+      assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').value, paymentMethod);
+      assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').disabled, true);
+      window.syncMembershipPopup();
+      assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').value, paymentMethod);
+      checkout.resolve({result:{cancelled:true},snapshot:{state,packs:[]}});
+      await settle();
+      assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').value, paymentMethod);
+      assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').disabled, false);
+    });
+  }
+});
+
+test("un abonnement Stripe existant conserve son fournisseur et interdit le second abonnement PayPal", (t) => {
+  const { window } = popupContext(t, { subscription: {tier:"pro",source:"own",status:"active",paymentProvider:"stripe"} });
+  const select = window.openMembershipPopup().querySelector('[name="subscriptionPaymentProvider"]');
+  assert.equal(select.value,"card");
+  assert.equal(select.disabled,true);
+});
+
+test("le brouillon de paiement repart sur PayPal après un changement de compte", (t) => {
+  const { window } = popupContext(t);
+  const popup = window.openMembershipPopup();
+  popup.querySelector('[name="subscriptionPaymentProvider"]').value = "google_pay";
+  window.creatorPrivateOperationUid = () => "another-creator";
+  window.creatorPrivateOperationGeneration += 1;
+  window.syncMembershipPopup();
+  assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').value, "paypal");
+});
+
+test("un abonnement PayPal conserve son fournisseur après une actualisation des offres", (t) => {
+  const { window, state } = popupContext(t);
+  const popup = window.openMembershipPopup();
+  popup.querySelector('[name="subscriptionPaymentProvider"]').value = "google_pay";
+  state.commerce.subscription = { tier: "pro", source: "own", status: "active", paymentProvider: "paypal" };
+  window.syncMembershipPopup();
+  assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').value, "paypal");
+  assert.equal(popup.querySelector('[name="subscriptionPaymentProvider"]').disabled, true);
 });

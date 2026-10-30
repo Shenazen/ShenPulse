@@ -6,9 +6,9 @@ const fail = (message, statusCode = 400) => { throw Object.assign(new Error(mess
 const clean = (v, max = 160) => String(v || '').trim().slice(0, max);
 const key = v => { const text = clean(v); if (!text || /[.#$/[\]\\]/.test(text)) fail('Identifiant invalide.'); return text; };
 const empty = v => ({ agencies: {}, memberships: {}, checkouts: {}, audit: {}, ...v });
-const activePaid = (s,at=Date.now()) => s?.status === 'active' && s?.paymentProvider === 'paypal' && !!s?.paypalSubscriptionId && ['pro','premium'].includes(s?.tier) && Number(s?.priceMonthly) > 0 && (!s.renewalDate || Date.parse(s.renewalDate) > at);
+const activePaid = (s,at=Date.now()) => s?.status === 'active' && ((s?.paymentProvider === 'paypal' && !!s?.paypalSubscriptionId) || (s?.paymentProvider === 'stripe' && !!s?.stripeSubscriptionId)) && ['pro','premium'].includes(s?.tier) && Number(s?.priceMonthly) > 0 && (!s.renewalDate || Date.parse(s.renewalDate) > at);
 function countingStatus(sub,trial,at) {
-  if(activePaid(sub,at))return {counted:true,paid:true,tier:sub.tier,source:'paypal'};
+  if(activePaid(sub,at))return {counted:true,paid:true,tier:sub.tier,source:sub.paymentProvider};
   // Seul un essai encore actif et explicitement sélectionné par l'administrateur compte.
   const expiresAtMs=Number(trial?.expiresAtMs || Date.parse(trial?.expiresAt || ''));
   const allowed=trial?.countsForAgency===true && trial.source==='trial' && ['pro','premium'].includes(trial.tier) && Number.isFinite(expiresAtMs) && expiresAtMs>at;

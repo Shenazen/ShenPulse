@@ -7,7 +7,7 @@ const {defaultGameInteractionRule}=require('../src/main/game-hub/interaction-def
 const {initializeDefaultInteractions}=require('../src/main/game-hub/interaction-management');
 const {GiftCatalog}=require('../src/main/catalogs');
 const {createGamePackOverlay}=require('../src/shared/game-pack-overlay');
-const packs=loadShenazenGameCatalog(path.resolve('resources')),gifts=new GiftCatalog(path.resolve('resources'));
+const packs=loadShenazenGameCatalog(path.resolve('resources')).filter(pack=>!pack.ownerPreparation),gifts=new GiftCatalog(path.resolve('resources'));
 const rulesFor=pack=>pack.defaultMappings.map(m=>defaultGameInteractionRule(pack,pack.effects.find(e=>e.id===m.effectId),m,pack.interactionCatalogVersion,gifts));
 function hubFor(pack,rules=[],version=0,directory){
  const state={session:{profileId:'profile'},settings:{account:{uid:'owner'}},game:{interactionRulesByPack:{[pack.id]:rules},interactionCatalogVersions:{[pack.id]:version}}};
@@ -15,7 +15,7 @@ function hubFor(pack,rules=[],version=0,directory){
 }
 function externalFixture(){
  const file=path.resolve('tests/external-game-workspace.test.js'),source=fs.readFileSync(file,'utf8'),m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));
- m._compile(source.slice(0,source.indexOf("test('les 45"))+'\nmodule.exports={fixture};',file);return m.exports.fixture();
+ m._compile(source.slice(0,source.indexOf("test('les 52"))+'\nmodule.exports={fixture};',file);return m.exports.fixture();
 }
 test('les 38 modules disponibles proposent six aides et six pièges avec les mêmes douze cadeaux, sans wins mélangées',()=>{
  let available=0;

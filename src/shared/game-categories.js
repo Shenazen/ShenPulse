@@ -27,6 +27,77 @@
     sandbox: ["minecraft", "minecraft-java", "minecraft-lavarise", "minecraft-bedrock-box", "minecraft-sandbox-3", "minecraft-survival-plugin", "terraria", "wobbly-life"],
     shenpulse: ["shenfarm","shenpaint","shenkite","splash-bombes","thiercelieux", "coin-pusher", "connect-four", "deal-or-no-deal", "diamond-bridge", "diamond-drop", "color-strike", "tiklive-climb", "tiklive-cube-wars", "tiklive-stack-tower", "clash-of-live", "generic-sandbox"]
   };
+  // Private integrations use the same explicit category map in the application and in tests.
+  const preparationGroups = {
+  "sandbox": [
+    "minecraft-diamond-rush",
+    "minecraft-box-cyber"
+  ],
+  "gta": [
+    "gtav-train"
+  ],
+  "simulation": [
+    "supermarket-together",
+    "the-sims-4",
+    "cookie-clicker",
+    "microsoft-flight-simulator-2024",
+    "roadside-research",
+    "totally-accurate-battle-simulator",
+    "farming-simulator-25"
+  ],
+  "action": [
+    "team-fortress-2",
+    "unreal-tournament-99",
+    "unreal-tournament-2004",
+    "pvz-fusion",
+    "ball-x-pit",
+    "brotato",
+    "halo-combat-evolved",
+    "vampire-crawlers",
+    "plants-vs-zombies-goty",
+    "doom-2016"
+  ],
+  "adventure": [
+    "mari0",
+    "sonic-robo-blast-2",
+    "nova-the-squirrel",
+    "curse-of-the-minesweeper",
+    "zelda-again",
+    "fallout-new-vegas",
+    "final-fantasy-1-pixel-remaster",
+    "final-fantasy-2-pixel-remaster",
+    "final-fantasy-3-pixel-remaster",
+    "final-fantasy-4-pixel-remaster",
+    "final-fantasy-5-pixel-remaster",
+    "frog-sqwad",
+    "rv-there-yet",
+    "skyrim-special-edition",
+    "peggle-deluxe",
+    "peggle-nights",
+    "mikoverse"
+  ],
+  "horror": [
+    "escape-the-backrooms",
+    "voices-of-the-void",
+    "cloverpit",
+    "resident-evil-2",
+    "resident-evil-village"
+  ],
+  "shenpulse": [
+    "zombie-turret-defense",
+    "verba",
+    "county-hill-clash",
+    "pixel-wall-builder-3d",
+    "juicy-merge",
+    "crown-clash",
+    "jelly-drift",
+    "tower-builder"
+  ],
+  "racing": [
+    "snowrunner"
+  ]
+};
+  for (const [category,entries] of Object.entries(preparationGroups)) groups[category].push(...entries);
   const byId = Object.freeze(Object.fromEntries(Object.entries(groups).flatMap(([category, ids]) => ids.map((id) => [id, category]))));
   const ids = new Set(categories.slice(1).map((category) => category.id));
   // La catégorie principale reste compatible avec les consommateurs existants.
@@ -35,7 +106,7 @@
     action: ["hogwarts-legacy", "crash-bandicoot-n-sane-trilogy", "unturned", "rocket-league", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "demonologist", "hollow-knight", "hollow-knight-silksong", "egging-on", "celeste", "palworld", "ark-survival-ascended", "kingdom-come-deliverance-2", "terraria", "no-mans-sky", "wobbly-life", "cult-of-the-lamb", "color-strike", "tiklive-climb", "tiklive-cube-wars", "clash-of-live", "gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "minecraft-survival-plugin"],
     racing: ["gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas"],
     simulation: ["euro-truck-simulator-2", "dredge", "the-mortuary-assistant", "no-mans-sky", "palworld", "wobbly-life", "coin-pusher", "tiklive-stack-tower", "shift-at-midnight"],
-    adventure: ["the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge", "escape-from-duckov", "fortnite", "deep-rock-galactic", "deep-rock-galactic-survivor", "fallout-4", "hades", "hades-ii", "vampire-survivors", "cult-of-the-lamb", "stardew-valley", "terraria", "wobbly-life", "minecraft", "minecraft-java", "minecraft-lavarise", "minecraft-survival-plugin", "gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "tiklive-climb", "diamond-bridge"],
+    adventure: ["escape-the-backrooms", "the-mortuary-assistant", "demonologist", "resident-evil-3", "resident-evil-7-biohazard", "dead-by-daylight", "inscryption", "dredge", "escape-from-duckov", "fortnite", "deep-rock-galactic", "deep-rock-galactic-survivor", "fallout-4", "hades", "hades-ii", "vampire-survivors", "cult-of-the-lamb", "stardew-valley", "terraria", "wobbly-life", "minecraft", "minecraft-java", "minecraft-lavarise", "minecraft-survival-plugin", "gtav-hiking-enhanced", "gtav-koth-enhanced", "gtav-montchiliad", "gta-v-community-bridge", "gta-v", "gta-iv", "gta-san-andreas", "tiklive-climb", "diamond-bridge"],
     sandbox: ["unturned", "ark-survival-ascended", "palworld", "no-mans-sky", "fallout-4", "stardew-valley", "fortnite", "generic-sandbox"]
   };
   const additionalById = new Map();

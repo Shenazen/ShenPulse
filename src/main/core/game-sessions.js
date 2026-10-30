@@ -4,6 +4,7 @@
  * Les services métier restent injectés ; le noyau conserve son API publique.
  */
 const { safeString } = require("../utils");
+const { nativeMinecraftWinCommand } = require("../game-runtime/minecraft-native-wins");
 const { readState } = require("../state-projection");
 const { isMinecraftRoundGame, normalizeMinecraftRoundSettings } = require("../game-round-timer");
 
@@ -158,7 +159,7 @@ class GameSessionService {
     source = "native"
   } = {}) {
     const packId = String(gameId || "");
-    if ((!isMinecraftRoundGame(packId) && packId !== "minecraft-lavarise") || !Number.isFinite(Number(current))) {
+    if ((!isMinecraftRoundGame(packId) && !nativeMinecraftWinCommand(packId)) || !Number.isFinite(Number(current))) {
       return { synchronized: false };
     }
     const session = readState(this.store, ["session.game"]).session?.game || {};

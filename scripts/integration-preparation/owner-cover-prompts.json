@@ -1,0 +1,69 @@
+{
+  "mode": "built-in image_gen",
+  "images": [
+    {
+      "id": "crown-clash",
+      "title": "CROWN CLASH",
+      "scene": "Two colorful fantasy armies of tiny knights, archers and wizards charge between rival castles, a floating golden crown at the center.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/crown-clash.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: Two colorful fantasy armies of tiny knights, archers and wizards charge between rival castles, a floating golden crown at the center. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"CROWN CLASH\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    },
+    {
+      "id": "county-hill-clash",
+      "title": "COUNTY HILL CLASH",
+      "scene": "A playful arena on a green hill, crowds of stylized toy competitors each with a different colorful country flag, climbing toward a summit.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/county-hill-clash.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: A playful arena on a green hill, crowds of stylized toy competitors each with a different colorful country flag, climbing toward a summit. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"COUNTY HILL CLASH\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    },
+    {
+      "id": "zombie-turret-defense",
+      "title": "ZOMBIE TURRET DEFENSE",
+      "scene": "A powerful stylized defensive turret on a fortified platform holds back a horde of funny green zombies at dusk, bright projectile trails.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/zombie-turret-defense.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: A powerful stylized defensive turret on a fortified platform holds back a horde of funny green zombies at dusk, bright projectile trails. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"ZOMBIE TURRET DEFENSE\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    },
+    {
+      "id": "verba",
+      "title": "VERBA",
+      "scene": "Colorful letter tiles and luminous word shapes spiral through a vibrant midnight-blue puzzle universe, clever energetic word-game mood.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/verba.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: Colorful letter tiles and luminous word shapes spiral through a vibrant midnight-blue puzzle universe, clever energetic word-game mood. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"VERBA\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    },
+    {
+      "id": "juicy-merge",
+      "title": "JUICY MERGE",
+      "scene": "Cute juicy fruit characters, oranges, strawberries and a big smiling watermelon tumble and merge in a colorful playful arcade composition.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/juicy-merge.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: Cute juicy fruit characters, oranges, strawberries and a big smiling watermelon tumble and merge in a colorful playful arcade composition. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"JUICY MERGE\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    },
+    {
+      "id": "jelly-drift",
+      "title": "JELLY DRIFT",
+      "scene": "Glossy translucent jelly shapes and flowing curved neon tracks with dynamic motion streaks, playful slippery arcade energy.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/jelly-drift.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: Glossy translucent jelly shapes and flowing curved neon tracks with dynamic motion streaks, playful slippery arcade energy. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"JELLY DRIFT\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    },
+    {
+      "id": "tower-builder",
+      "title": "TOWER BUILDER",
+      "scene": "A colorful precariously stacked tower of chunky blocks stretches into the clouds, one new block suspended above, a fun construction challenge.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/tower-builder.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: A colorful precariously stacked tower of chunky blocks stretches into the clouds, one new block suspended above, a fun construction challenge. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"TOWER BUILDER\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    },
+    {
+      "id": "pixel-wall-builder-3d",
+      "title": "PIXEL WALL BUILDER 3D",
+      "scene": "A floating square enclosure built from colorful voxel blocks, some rows filling in while other cubes burst out into the sky, polished 3D arcade construction art.",
+      "mode": "built-in image_gen",
+      "destination": "src/renderer/assets/games/catalog/owner/pixel-wall-builder-3d.webp",
+      "prompt": "Use case: ads-marketing. Asset: vertical 2:3 illustrated game cover for the ShenPulse game gallery. Create a polished high-end stylized 3D key art poster: A floating square enclosure built from colorful voxel blocks, some rows filling in while other cubes burst out into the sky, polished 3D arcade construction art. Dynamic perspective, excellent lighting, rich color and readable silhouettes at thumbnail size. Integrate the exact title \"PIXEL WALL BUILDER 3D\" in large beautiful crisp custom 3D typography in the upper third, safely inset from all edges. Only this title as text. Fill the whole canvas, no border, no collage, no watermark, no publisher or third-party app logos. This is promotional illustration, not a screenshot."
+    }
+  ]
+}

@@ -492,6 +492,36 @@ const EVENT_LABELS = {
 };
 
 const AUTOMATED_GAME_INSTALLERS = new Set([
+  // Prepared private integrations.
+  "escape-the-backrooms",
+  "ball-x-pit",
+  "brotato",
+  "cloverpit",
+  "doom-2016",
+  "fallout-new-vegas",
+  "farming-simulator-25",
+  "final-fantasy-1-pixel-remaster",
+  "final-fantasy-2-pixel-remaster",
+  "final-fantasy-3-pixel-remaster",
+  "final-fantasy-4-pixel-remaster",
+  "final-fantasy-5-pixel-remaster",
+  "frog-sqwad",
+  "minecraft-box-cyber",
+  "minecraft-diamond-rush",
+  "peggle-deluxe",
+  "peggle-nights",
+  "plants-vs-zombies-goty",
+  "resident-evil-2",
+  "resident-evil-village",
+  "roadside-research",
+  "rv-there-yet",
+  "supermarket-together",
+  "team-fortress-2",
+  "the-sims-4",
+  "totally-accurate-battle-simulator",
+  "vampire-crawlers",
+  // End prepared private integrations.
+
   "palworld",
   "escape-from-duckov",
   "shenfarm", "shenpaint", "shenkite", "splash-bombes",
@@ -549,6 +579,8 @@ const MINECRAFT_LAUNCHER_ID = "minecraft";
 const GTA_LAUNCHER_ID = "gta-enhanced";
 const GTA_MODE_IDS = Object.freeze(["gtav-montchiliad", "gtav-koth-enhanced", "gtav-hiking-enhanced"]);
 const MINECRAFT_MODE_IDS = Object.freeze([
+  "minecraft-diamond-rush",
+  "minecraft-box-cyber",
   "minecraft-lavarise",
   "minecraft-bedrock-box",
   "minecraft-sandbox-3",

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "modules": [
+    {
+      "gameId": "ball-x-pit",
+      "upstream": "BallxPit",
+      "root": ".artifacts/integration-wave-20261029/upstream/BallxPit/BallxPit-CC-ML-101.zip.extracted",
+      "module": "Mods/CrowdControl.dll",
+      "sourceSha256": "1bdc92945ab9d0002ae44ce2ce1c5b1585ff1d51dec845784a0f93ac34c1012c",
+      "fromPort": 51337,
+      "port": 58801,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "cloverpit",
+      "upstream": "CloverPit",
+      "root": ".artifacts/integration-wave-20261029/upstream/CloverPit/CloverPit-CC-100.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "9166b1468db666631b6ecca582926042a4e052cee8e22f025c6db6e3c7488da2",
+      "fromPort": 51337,
+      "port": 58802,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "final-fantasy-1-pixel-remaster",
+      "upstream": "FinalFantasy1PixelRemake",
+      "root": ".artifacts/integration-wave-20261029/upstream/FinalFantasy1PixelRemake/FinalFantasy1PixelRemake-CC-1.3.0.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "92610e9cf7f9a09cc9f98a2271f4ccb3087226e16e75f37665afff07523b4544",
+      "fromPort": 51337,
+      "port": 58803,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "final-fantasy-2-pixel-remaster",
+      "upstream": "FinalFantasy2PixelRemake",
+      "root": ".artifacts/integration-wave-20261029/upstream/FinalFantasy2PixelRemake/FinalFantasy2PixelRemake-CC-1.3.0.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "bbab52d8d7ce3ff5e8e396354f50ecce1df81127d7cd141d8280b6d0aa301395",
+      "fromPort": 51337,
+      "port": 58804,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "final-fantasy-3-pixel-remaster",
+      "upstream": "FinalFantasy3PixelRemake",
+      "root": ".artifacts/integration-wave-20261029/upstream/FinalFantasy3PixelRemake/FinalFantasy3PixelRemake-CC-1.3.0.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "0a5343e504f9f90218d5bb572796116e660d61da9535cab495fa85eeba34b817",
+      "fromPort": 51337,
+      "port": 58805,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "final-fantasy-4-pixel-remaster",
+      "upstream": "FinalFantasy4PixelRemake",
+      "root": ".artifacts/integration-wave-20261029/upstream/FinalFantasy4PixelRemake/FinalFantasy4PixelRemake-CC-1.3.1.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "5946db8ab9f4cd6ea4ff9d5dfb7024303ecd5fdd8d403ddeacef37c86f9a279c",
+      "fromPort": 51337,
+      "port": 58806,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "final-fantasy-5-pixel-remaster",
+      "upstream": "FinalFantasy5PixelRemake",
+      "root": ".artifacts/integration-wave-20261029/upstream/FinalFantasy5PixelRemake/FinalFantasy5PixelRemake-CC-1.0.0.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "88c49d17b9fc17433fa2723c32f62ee1a0b39e99befacb347e9bba643c780c91",
+      "fromPort": 51337,
+      "port": 58807,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "frog-sqwad",
+      "upstream": "FrogSqwad",
+      "root": ".artifacts/integration-wave-20261029/upstream/FrogSqwad/FrogSqwad-CC-101.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "60aa0b52a76dee2206b79357edfaecaf1f7806424bcfb82967326cd1e3f4ba7d",
+      "fromPort": 51337,
+      "port": 58808,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "resident-evil-2",
+      "upstream": "ResidentEvil2NET",
+      "root": ".artifacts/integration-wave-20261029/upstream/ResidentEvil2NET/RE2net-CC-2.2.2.zip.extracted",
+      "module": "reframework/plugins/managed/RE2-CrowdControl.dll",
+      "sourceSha256": "700287df46149d8591812fdd8ff9c07b14db11a07d0f653bb8557babccf35325",
+      "fromPort": 58431,
+      "port": 58809,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "resident-evil-village",
+      "upstream": "ResidentEvilVillage",
+      "root": ".artifacts/integration-wave-20261029/upstream/ResidentEvilVillage/ResidentEvilVillage-CC-1.0.56.zip.extracted",
+      "module": "reframework/plugins/managed/CrowdControl.ResidentEvilVillage.dll",
+      "sourceSha256": "a7de6b8123e89cb35701fef54b85e2fd243357a3239c0953cd8b872efdd2ddd9",
+      "fromPort": 64772,
+      "port": 58810,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "supermarket-together",
+      "upstream": "SupermarketTogether",
+      "root": ".artifacts/integration-wave-20261029/upstream/SupermarketTogether/SupermarketTogether-CC-116.zip.extracted",
+      "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+      "sourceSha256": "4cbb90be9193d36ef88c48a596a5844e2c149ce385f945491244d7c253c9a33e",
+      "fromPort": 51337,
+      "port": 58811,
+      "durationMultiplier": 1000
+    },
+    {
+      "gameId": "vampire-crawlers",
+      "upstream": "VampireCrawlers",
+      "root": ".artifacts/integration-wave-20261029/upstream/VampireCrawlers/VampireCrawlers-CC-1.0.2.zip.extracted",
+      "module": "Mods/CrowdControl.VampireCrawlers.dll",
+      "sourceSha256": "11ff56d83d9c604058d116bbab66d9609ec39df9f7c035bbc12e3471276de1e6",
+      "fromPort": 51337,
+      "port": 58812,
+      "durationMultiplier": 1000
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+"use strict";
+const {spawn}=require('node:child_process');
+function preparedLaunchArguments(manifest,installationPath){if(!Array.isArray(manifest.launchArguments)||manifest.launchArguments.length>16)throw Error('Arguments de lancement invalides.');return manifest.launchArguments.map(value=>{if(typeof value!=='string'||value.length>2000||/[\r\n\0]/.test(value))throw Error('Argument de lancement invalide.');const argument=value.replace(/\{\{installation\}\}/g,installationPath);if(argument.includes('{{'))throw Error('Paramètre de lancement inconnu.');return argument;});}
+async function launchPreparedProcess(executable,manifest,installationPath,{spawnProcess=spawn,assertAccess=()=>{}}={}){const args=preparedLaunchArguments(manifest,installationPath);assertAccess();await new Promise((resolve,reject)=>{const child=spawnProcess(executable,args,{cwd:installationPath,detached:true,stdio:'ignore',windowsHide:false,shell:false});child.once('error',reject);child.once('spawn',()=>{child.unref();resolve();});});}
+module.exports={preparedLaunchArguments,launchPreparedProcess};

@@ -16,7 +16,7 @@
   // Le seuil de l'ancienne migration IRL ne suit pas les migrations futures.
   const IRL_PUBLIC_SCHEMA_VERSION = 9;
   const SHARED_MEDIA_FEATURES = Object.freeze(["backblaze.sounds", "backblaze.media"]);
-  const GAME_PLATFORM_IDS = Object.freeze(["shenpulse", "steam", "game-pass", "epic-games", "rockstar-games", "microsoft-store", "nintendo"]);
+  const GAME_PLATFORM_IDS = Object.freeze(["shenpulse", "steam", "game-pass", "epic-games", "rockstar-games", "microsoft-store", "nintendo", "ea", "gog"]);
 
   function gamePlatformConfig(entry) {
     if (!Array.isArray(entry?.platforms) && entry?.platformsConfigured !== true) return {};

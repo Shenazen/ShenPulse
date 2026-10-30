@@ -102,7 +102,9 @@ class SimpleTcpServerBridge extends EventEmitter {
       viewer: String(options.viewer || "ShenPulse"),
       quantity: Math.max(1, Number(options.quantity || 1)),
       duration: Math.max(0, Number(options.duration || 0)),
-      parameters: { ...(options.parameters || {}) }
+      parameters: Array.isArray(options.parameterOrder)
+        ? options.parameterOrder.map(key => (options.parameters || {})[key])
+        : { ...(options.parameters || {}) }
     };
     const reservedFields = new Set([
       "id",

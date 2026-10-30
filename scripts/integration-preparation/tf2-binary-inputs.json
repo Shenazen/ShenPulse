@@ -1,0 +1,9 @@
+{
+  "EffectSystem.dll": "af40f74089569c624eb16e99f03d6fb0dd43fe7fe1ec3e4b03acc3af305fa777",
+  "TF2FrameworkInterface.dll": "af94a0ee069f8ffdd19be388269cd7512526197371ac7ab4b9b97dff78c78e23",
+  "Aspen.dll": "3724677b599e747726a1e9da507494a2b23ed2d2784c77fca889762f02fa0be6",
+  "CoreRCON.dll": "c8c1618d27bda2384ace56a771acce668ef132baf548309b16b1791f3cba29db",
+  "Microsoft.Extensions.Logging.Abstractions.dll": "154a5cac85be0c7d144f4e46bc8f054550405ab8c14444b8872cf904f4750b8a",
+  "Newtonsoft.Json.dll": "a28c251dfe36d881e9e2462e171441b8b0ec156fe3f452602c9149b1b9efe05b",
+  "System.IO.Pipelines.dll": "d3b818a4f7a84fb0ebd8607dc22f9333367c5d0e02d9e7800783499169deae61"
+}

@@ -1,6 +1,7 @@
 "use strict";
 
 const { randomUUID } = require("node:crypto");
+const { nativeMinecraftWinCommand } = require("./game-runtime/minecraft-native-wins");
 const { shell } = require("electron");
 const { clamp, safeString } = require("./utils");
 const { renderValue } = require("./template");
@@ -365,7 +366,8 @@ class ActionRunner {
           }
         }
         const minecraftPackId = safeString(config.packId, 120);
-        if (minecraftPackId === "minecraft-lavarise") {
+        const nativeWinCommand = nativeMinecraftWinCommand(minecraftPackId);
+        if (nativeWinCommand) {
           try {
             const state = readState(this.store, ["overlaySession", "settings.overlayConfigs.winCounter"]);
             const session = state.overlaySession || {};
@@ -373,7 +375,7 @@ class ActionRunner {
             const factor = remaining > 0 ? Math.max(1, Number(session.winCounterMultiplier) || 1) : 1;
             const configuredTarget = Number(state.settings?.overlayConfigs?.winCounter?.target);
             const target = Number.isFinite(configuredTarget) ? Math.max(0, configuredTarget) : 10;
-            await this.gameHub.executeMinecraftCommands(minecraftPackId, [`shenpulse_lava sync ${Number(session.winCounterCurrent) || 0} ${factor} ${remaining} ${target}`], { shouldExecute });
+            await this.gameHub.executeMinecraftCommands(minecraftPackId, [`${nativeWinCommand} sync ${Number(session.winCounterCurrent) || 0} ${factor} ${remaining} ${target}`], { shouldExecute });
             payload.nativeSynchronized=true;
           } catch { payload.nativeSynchronized=false; }
         }

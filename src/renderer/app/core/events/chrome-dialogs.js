@@ -144,6 +144,7 @@ dialogForm.addEventListener("input", () => {
 dialogForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!dialogSubmitHandler) return dialog.close();
+  if (dialogForm.getAttribute("aria-busy") === "true") return;
   const activeDialogSessionId = dialogSessionId;
   const activeSubmitHandler = dialogSubmitHandler;
   clearDialogError();
@@ -155,11 +156,14 @@ dialogForm.addEventListener("submit", async (event) => {
     dialogSubmitButton.dataset.pendingLabel ||
     "Enregistrement…";
   const successMessage = dialog.dataset.successMessage || "";
+  const formData = new FormData(dialogForm);
+  const paymentFields = [...dialogForm.querySelectorAll(".checkout-payment-method select")].map(field => ({ field, disabled: field.disabled }));
+  for (const { field } of paymentFields) field.disabled = true;
   dialogSubmitButton.disabled = true;
   dialogSubmitButton.textContent = pendingLabel;
   dialogForm.setAttribute("aria-busy", "true");
   try {
-    await activeSubmitHandler(new FormData(dialogForm));
+    await activeSubmitHandler(formData);
     if (
       activeDialogSessionId !== dialogSessionId ||
       activeSubmitHandler !== dialogSubmitHandler
@@ -183,6 +187,7 @@ dialogForm.addEventListener("submit", async (event) => {
       activeDialogSessionId === dialogSessionId &&
       activeSubmitHandler === dialogSubmitHandler
     ) {
+      for (const { field, disabled } of paymentFields) field.disabled = disabled;
       dialogForm.setAttribute("aria-busy", "false");
       dialogSubmitButton.disabled = false;
       dialogSubmitButton.textContent = defaultLabel;

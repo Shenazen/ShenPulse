@@ -1,13 +1,20 @@
 #include "runtime.h"
 #include "object-build.h"
+#include "object-model.h"
 namespace ShenPulse { namespace Koth {
+static Object CreateLocalContainer(Hash model,Point p){
+ Object object=OBJECT::CREATE_OBJECT_NO_OFFSET(model,p.x,p.y,p.z,FALSE,FALSE,FALSE);
+ if(!object||!ENTITY::DOES_ENTITY_EXIST(object))object=OBJECT::CREATE_OBJECT(model,p.x,p.y,p.z,FALSE,TRUE,FALSE);
+ if(!object||!ENTITY::DOES_ENTITY_EXIST(object))object=OBJECT::CREATE_OBJECT_NO_OFFSET(model,p.x,p.y,p.z,FALSE,TRUE,TRUE);
+ return object&&ENTITY::DOES_ENTITY_EXIST(object)?object:0;
+}
 static std::wstring SettingsPath(){wchar_t local[MAX_PATH];if(!GetEnvironmentVariableW(L"LOCALAPPDATA",local,MAX_PATH))return L"";return std::wstring(local)+L"\\ShenPulse\\GtaMode\\koth-settings.ini";}
 const char* DesignName(int id){const char* names[]={"Multicolore","Jaune clair / fonce","Vert clair / fonce","Bleu","Rouge"};return names[std::max(0,std::min(4,id))];}
 void LoadSettings(){auto p=SettingsPath();ramp.angle=static_cast<float>(GetPrivateProfileIntW(L"Ramp",L"angle",20,p.c_str()));sections=std::max(5,std::min(95,static_cast<int>(GetPrivateProfileIntW(L"Ramp",L"sections",30,p.c_str()))));design=std::max(0,std::min(4,static_cast<int>(GetPrivateProfileIntW(L"Ramp",L"design",0,p.c_str()))));animated=GetPrivateProfileIntW(L"Ramp",L"animated",0,p.c_str())!=0;ramp.clamp();}
 void SaveSettings(){auto p=SettingsPath();WritePrivateProfileStringW(L"Ramp",L"angle",std::to_wstring(static_cast<int>(ramp.angle)).c_str(),p.c_str());WritePrivateProfileStringW(L"Ramp",L"sections",std::to_wstring(sections).c_str(),p.c_str());WritePrivateProfileStringW(L"Ramp",L"design",std::to_wstring(design).c_str(),p.c_str());WritePrivateProfileStringW(L"Ramp",L"animated",animated?L"1":L"0",p.c_str());}
 static void Place(const RampTile& t,float lift=0){Point p=ramp.at(t.side,t.distance,t.height+lift);ENTITY::SET_ENTITY_COORDS_NO_OFFSET(t.entity,p.x,p.y,p.z,FALSE,FALSE,TRUE);ENTITY::SET_ENTITY_ROTATION(t.entity,ramp.angle,t.roll,0,2,TRUE);}
-// Native container textures do not reliably match the theme names. Keep their
-// collisions and relief, then paint the exact roof faces with the selected palette.
+// Preserve the native corrugated metal. Themes add only a translucent tint;
+// the multicolour theme uses the containers' own materials without a flat roof.
 void DrawRampDesign(Ped ped){
  if(!active||design==0||!ped)return;Vector3 player=ENTITY::GET_ENTITY_COORDS(ped,TRUE);
  for(size_t index=0;index<rampTiles.size();index++){
@@ -16,7 +23,7 @@ void DrawRampDesign(Ped ped){
   if(design==1){r=light?247:155;g=light?207:116;b=light?57:24;}
   else if(design==2){r=light?79:24;g=light?173:82;b=light?69:38;}
   else if(design==3){r=34;g=96;b=194;}else{r=187;g=38;b=45;}
-  auto triangle=[&](int a,int c,int d){const auto& p=t.roof[a];const auto& q=t.roof[c];const auto& v=t.roof[d];GRAPHICS::DRAW_POLY(p.x,p.y,p.z+t.lift,q.x,q.y,q.z+t.lift,v.x,v.y,v.z+t.lift,r,g,b,255);};
+  auto triangle=[&](int a,int c,int d){const auto& p=t.roof[a];const auto& q=t.roof[c];const auto& v=t.roof[d];GRAPHICS::DRAW_POLY(p.x,p.y,p.z+t.lift,q.x,q.y,q.z+t.lift,v.x,v.y,v.z+t.lift,r,g,b,48);};
   triangle(0,1,2);triangle(0,2,3);
  }
 }
@@ -27,11 +34,29 @@ Result Build(){
  ramp.clamp();sections=std::max(5,std::min(95,sections));design=std::max(0,std::min(4,design));
  const char* names[]={"prop_container_01a","prop_container_01b","prop_container_01c","prop_container_01d","prop_container_01e"};Hash models[5]{};Vector3 lows[5]{},highs[5]{};
  // Release model requests on every exit, including failed dimensions/loading.
- struct ModelRequests {Hash* models;int requested=0;~ModelRequests(){for(int i=0;i<requested;i++)STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(models[i]);}} loaded{models};
- Log("Ramp build 1.0.10 started sections="+std::to_string(sections)+" design="+std::to_string(design)+" previous="+std::to_string(tiles.size())+" gameVersion="+std::to_string(static_cast<int>(getGameVersion())));
+ struct ModelRequests {std::vector<Hash> models;~ModelRequests(){for(Hash model:models)STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);}} loaded;
+ const char* fallbackNames[]={"prop_container_03b","prop_container_03a","prop_container_04a","prop_container_05a","prop_container_03mb"};
+ std::vector<std::pair<Hash,bool>> probes;const Hash fallback=HashOf(fallbackNames[0]);
+ auto load=[&](Hash model){if(std::find(loaded.models.begin(),loaded.models.end(),model)==loaded.models.end())loaded.models.push_back(model);return Load(model);};
+ auto probe=[&](Hash model){
+  for(const auto& previous:probes)if(previous.first==model)return previous.second;
+  Vector3 p=ENTITY::GET_ENTITY_COORDS(ped,TRUE);Object object=CreateLocalContainer(model,{p.x+3,p.y,p.z+1});bool valid=object!=0;
+  if(valid){ENTITY::SET_ENTITY_AS_MISSION_ENTITY(object,TRUE,TRUE);ENTITY::FREEZE_ENTITY_POSITION(object,TRUE);ENTITY::DELETE_ENTITY(&object);}
+  probes.push_back({model,valid});return valid;
+ };
+ Log("Ramp build 1.0.12 started sections="+std::to_string(sections)+" design="+std::to_string(design)+" previous="+std::to_string(tiles.size())+" gameVersion="+std::to_string(static_cast<int>(getGameVersion())));
  for(int i=0;i<5;i++){
-  models[i]=HashOf(names[i]);loaded.requested++;
-  if(!Load(models[i])){Log(std::string("Ramp build model unavailable: ")+names[i]);return {3,"Un modele de conteneur est indisponible : "+std::string(names[i])+"."};}
+  // Mixed archetypes must have the same footprint or their roofs leave gaps.
+  auto compatible=[&](Hash model){
+   if(!probe(model))return false;
+   if(i==0)return true;
+   Vector3 low{},high{};GAMEPLAY::GET_MODEL_DIMENSIONS(model,&low,&high);
+   return std::abs((high.x-low.x)-(highs[0].x-lows[0].x))<.1f&&std::abs((high.y-low.y)-(highs[0].y-lows[0].y))<.1f;
+  };
+  Hash preferred=HashOf(names[i]);const Hash variant=HashOf(fallbackNames[i]);models[i]=ResolveSpawnModel(preferred,variant,load,compatible);
+  if(!models[i])models[i]=ResolveSpawnModel(fallback,fallback,load,compatible);
+  if(!models[i]){Log(std::string("Ramp build model unavailable: ")+names[i]);return {3,"Les conteneurs ne peuvent pas etre crees dans cette version de GTA."};}
+  if(models[i]!=preferred)Log(std::string("Ramp container fallback: ")+names[i]+" -> "+(models[i]==variant?fallbackNames[i]:fallbackNames[0]));
   GAMEPLAY::GET_MODEL_DIMENSIONS(models[i],&lows[i],&highs[i]);
  }
  const float cellLength=highs[0].y-lows[0].y-0.08f,cellWidth=highs[0].x-lows[0].x-0.03f;
@@ -55,7 +80,7 @@ Result Build(){
   const float coverPitch=15.0f,halfLength=std::max(std::abs(lows[0].y),std::abs(highs[0].y));
   Point position=cover?nextRamp.at(0,std::max(halfLength+2.0f,12.0f),CoverCentreHeight(halfLength,highs[0].z,coverPitch)):nextRamp.at(tile.side,tile.distance,tile.height);
   lastPosition=position;
-  Object object=OBJECT::CREATE_OBJECT_NO_OFFSET(models[variant],position.x,position.y,position.z,FALSE,FALSE,FALSE);
+  Object object=CreateLocalContainer(models[variant],position);
   if(!object||!ENTITY::DOES_ENTITY_EXIST(object))return 0;
   ENTITY::SET_ENTITY_AS_MISSION_ENTITY(object,TRUE,TRUE);ENTITY::FREEZE_ENTITY_POSITION(object,TRUE);
   ENTITY::SET_ENTITY_ROTATION(object,cover?nextRamp.angle-coverPitch:nextRamp.angle,cover?0:roll,0,2,TRUE);
@@ -72,6 +97,8 @@ Result Build(){
  },[]{return GetTickCount64();},[&]{Ped current;return Ready(current);},[](int object){Entity entity=object;ENTITY::DELETE_ENTITY(&entity);},budget);
  if(!stage.ok()){
   std::ostringstream detail;detail<<"Ramp build failed reason="<<static_cast<int>(stage.failure)<<" completed="<<stage.completed<<"/"<<total<<" index="<<stage.failedIndex<<" model="<<names[lastVariant]<<" loaded="<<STREAMING::HAS_MODEL_LOADED(models[lastVariant])<<" position="<<lastPosition.x<<","<<lastPosition.y<<","<<lastPosition.z<<" retries="<<stage.retries<<" elapsedMs="<<GetTickCount64()-started;
+  Vector3 playerPosition=ENTITY::GET_ENTITY_COORDS(ped,TRUE);int objectHandles[2048];
+  detail<<" player="<<playerPosition.x<<","<<playerPosition.y<<","<<playerPosition.z<<" objectPoolSample="<<worldGetAllObjects(objectHandles,2048);
   Log(detail.str());
   if(stage.failure==ObjectBuildFailure::NotReady)return {3,"Creation interrompue : reprenez le mode Histoire hors menus, puis reessayez."};
   return {3,"Rampe incomplete ("+std::to_string(stage.completed)+"/"+std::to_string(total)+"). Relancez GTA. Journal : ShenPulseKoth.log."};

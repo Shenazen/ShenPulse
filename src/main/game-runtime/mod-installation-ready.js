@@ -9,7 +9,7 @@ async function assertModGameClosed(gameId, targetPath, { platform = process.plat
     if (await require("./stardew-terraria").findModdedGameProcess(gameId,targetPath,{platform,execute})) throw new Error(`Fermez ${gameId === "terraria" ? "tModLoader / Terraria" : "Stardew Valley"} avant de remplacer son module.`);
     return;
   }
-  const shop = require("../game-installers/shop-games")[gameId] || require("../game-installers/shen-native-games")[gameId];
+  const shop = require("../game-installers/shop-games")[gameId] || require("../game-installers/shen-native-games")[gameId] || require("../game-installers/owner-integrations")[gameId];
   const names = shop?.singleInstanceProcesses || { palworld: ["Palworld-Win64-Shipping","Palworld-WinGDK-Shipping"], "gtav-koth-enhanced":["GTA5_Enhanced","GTA5"], "gtav-hiking-enhanced":["GTA5_Enhanced","GTA5"], "gtav-montchiliad":["GTA5_Enhanced","GTA5"], "euro-truck-simulator-2": ["eurotrucks2"], "escape-from-duckov": ["Duckov"], balatro: ["Balatro", "love"], "blue-prince": ["BLUE PRINCE", "BluePrince"], dredge: ["DREDGE"], "egging-on": ["Egging On"], "fallout-4": ["Fallout4", "f4se_loader"], "resident-evil-3": ["re3"], "pokemon-red-blue": ["EmuHawk"], "super-mario-kart": ["EmuHawk"] }[gameId] || [];
   if (platform !== "win32" || !names.length) return;
   const root = await require("node:fs/promises").realpath(targetPath).catch(() => path.resolve(targetPath));

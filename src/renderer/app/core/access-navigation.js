@@ -602,7 +602,9 @@ function render({ prepareHidden = false } = {}) {
     globalThis.ShenPulseGameWorkspace.patchPage(content, renderedContentMarkup, nextContentMarkup);
   if (!workspacePatched) {
     if (typeof disposeOverlayRuntimePreviews === "function") disposeOverlayRuntimePreviews(content);
+    const paymentDraft = typeof captureCheckoutPaymentDraft === "function" ? captureCheckoutPaymentDraft(content) : null;
     content.innerHTML = nextContentMarkup;
+    if (typeof restoreCheckoutPaymentDraft === "function") restoreCheckoutPaymentDraft(content, paymentDraft);
   }
   renderedContentPage = currentPage;
   renderedContentMarkup = nextContentMarkup;

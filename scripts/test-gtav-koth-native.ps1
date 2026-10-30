@@ -4,7 +4,7 @@ Initialize-ShenPulseVisualStudioEnvironment
 $nativeTestRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "native/gtav-koth-enhanced/tests"
 $nativeTestOutput = Join-Path ([IO.Path]::GetTempPath()) "ShenPulseKoth-native-tests"
 [IO.Directory]::CreateDirectory($nativeTestOutput) | Out-Null
-foreach ($nativeTestName in @("GeometryHarness", "MotionHarness", "RoundHarness", "ObjectBuildHarness")) {
+foreach ($nativeTestName in @("GeometryHarness", "MotionHarness", "RoundHarness", "ObjectBuildHarness", "ObjectModelHarness")) {
   $nativeTestSource = Join-Path $nativeTestRoot ($nativeTestName + ".cpp")
   $nativeTestBinary = Join-Path $nativeTestOutput ($nativeTestName + ".exe")
   $nativeTestObject = Join-Path $nativeTestOutput ($nativeTestName + ".obj")

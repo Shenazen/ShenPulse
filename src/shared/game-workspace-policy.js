@@ -4,7 +4,7 @@
  const WITHOUT_OVERLAY_SECTION=new Set(['demonologist','escape-from-duckov','euro-truck-simulator-2','find-the-needle-demo','fortnite','pokemon-red-blue','resident-evil-3','rocket-league','super-mario-kart']);
  const ROUND_TIMER_GAMES=new Set(['minecraft-bedrock-box','minecraft-sandbox-3','gtav-koth-enhanced','gtav-hiking-enhanced']);
  function hasRoundTimer(pack){return ROUND_TIMER_GAMES.has(pack?.id);}
- function hasIntegratedWinModels(pack){return ['gtav-montchiliad','gtav-koth-enhanced','minecraft-lavarise'].includes(pack?.id)||hasRoundTimer(pack);}
+ function hasIntegratedWinModels(pack){return ['gtav-montchiliad','gtav-koth-enhanced','minecraft-lavarise','minecraft-diamond-rush','minecraft-box-cyber'].includes(pack?.id)||hasRoundTimer(pack);}
  function showOverlaySection(pack){return !WITHOUT_OVERLAY_SECTION.has(pack?.id);}
  function eligible(pack,platforms=pack?.storefronts||[]){return !!pack?.id&&(pack.workspaceLayout==='shared'||!categories.categoriesFor(pack).includes('shenpulse')&&!platforms.includes('shenpulse'));}
  function column(row){

@@ -84,7 +84,7 @@ test("la galerie explique où obtenir le jeu et ce que ShenPulse inclut", () => 
   );
   assert.match(
     catalog,
-    /\$\{gameCatalogPlatformLegend\(availablePacks\)\}/
+    /\$\{gameCatalogPlatformLegend\(packs\)\}/
   );
   assert.match(styles, /\.game-platform-legend \{/);
   assert.match(styles, /\.game-platform-legend-item \{/);

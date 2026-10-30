@@ -7,6 +7,7 @@
  * Il partage uniquement les contrats globaux documentés dans README.md.
  */
 
+
 function pendingSubscriptionStop(subscription = currentSubscription()) {
   const pending = subscription?.pendingChange;
   return pending && pending.targetTier === "free" ? pending : null;
@@ -107,9 +108,10 @@ function renderMembership() {
           <span class="badge warning">RENOUVELLEMENT ARRÊTÉ</span>
         </section>
       ` : ""}
-      ${subscriptionCheckoutBusyTier ? `<p class="membership-checkout-notice" role="status">Paiement PayPal en cours. Vous pouvez annuler sans modifier votre abonnement.</p>` : ""}
+      ${subscriptionCheckoutBusyTier ? `<p class="membership-checkout-notice" role="status">Paiement en cours. Vous pouvez annuler sans modifier votre abonnement.</p>` : ""}
       <section class="membership-offers" aria-labelledby="membership-offers-title">
         <header class="membership-section-heading"><div><span class="membership-eyebrow">À CHAQUE LIVE, SON OFFRE</span><h3 id="membership-offers-title">Choisissez la liberté qui vous ressemble.</h3><p>Trois offres, des droits clairs. Les abonnements sont mensuels.</p></div><span class="membership-billing">Abonnements mensuels</span></header>
+      ${checkoutPaymentMethodsField("subscriptionPaymentProvider", subscription, Boolean(subscriptionCheckoutBusyTier))}
       <div class="subscription-grid">
         ${(typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).map((plan) => `
           <article class="subscription-card tier-${escapeHtml(plan.tier)} ${activeSubscriptionTier === plan.tier ? "current" : ""} ${plan.tier === "premium" ? "premium" : ""}" ${activeSubscriptionTier === plan.tier ? 'aria-current="true"' : ""}>
@@ -119,7 +121,7 @@ function renderMembership() {
             <p>${escapeHtml(plan.description)}</p>
             <ul>${plan.features.map((feature) => `<li><span aria-hidden="true">${membershipIcon("check")}</span><span>${escapeHtml(feature)}</span></li>`).join("")}</ul>
             ${subscriptionCheckoutBusyTier === plan.tier
-              ? `<button class="button primary" type="button" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}">Annuler PayPal</button>`
+              ? `<button class="button primary" type="button" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}">Annuler le paiement</button>`
               : activeSubscriptionTier === plan.tier && plan.tier !== "free" && !(typeof agencyCanApplyTariff === "function" && !pendingStop && agencyCanApplyTariff(plan.tier, subscription))
                 ? `<button class="button" type="button" disabled>Offre active</button>`
               : plan.tier === "free"

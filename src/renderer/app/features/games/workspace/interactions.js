@@ -1,6 +1,11 @@
 "use strict";
 (function (C) {
     const escapeHtml = C.escape;
+    function renderParameterInput(parameter, value, attributes, disabled, fallbackLabel) {
+        const label=parameter?.label||fallbackLabel||'Valeur';
+        if(parameter?.type==='select')return '<select class="game-pack-amount game-pack-choice" '+attributes+' aria-label="'+escapeHtml(label)+'" title="'+escapeHtml(label)+'" '+disabled+'>'+parameter.options.map(option=>'<option value="'+escapeHtml(option.value)+'" '+(String(option.value)===String(value)?'selected':'')+'>'+escapeHtml(option.label||option.value)+'</option>').join('')+'</select>';
+        return '<input class="game-pack-amount" type="'+(parameter?.type==='text'?'text':'number')+'" '+attributes+' min="'+Number(parameter?.min??1)+'" max="'+Number(parameter?.max??120)+'" step="'+Number(parameter?.step??1)+'" aria-label="'+escapeHtml(label)+'" title="'+escapeHtml(label)+'" value="'+escapeHtml(parameter?.type==='text'?value??'':Number(value||0))+'" '+disabled+'>';
+    }
     function renderEffectSelect(ctx, effectId, attributes, label, withImage = true) {
         const pack = ctx.pack;
         const effect = ctx.effectsById.get(effectId);
@@ -43,10 +48,10 @@
             extras.map(extra => '<div class="game-pack-extra-effect">' + C.renderEffectSelect(ctx, extra.config.effectId, 'data-' + ctx.bindings.inline + '="extra-effect" data-extra-id="' + escapeHtml(extra.id) + '" ' + disabled, 'Action supplémentaire') + '<button type="button" data-action="' + escapeHtml(ctx.actions.removeExtra) + '" data-extra-id="' + escapeHtml(extra.id) + '" ' + attributes + ' aria-label="Retirer cette action supplémentaire" ' + disabled + '>×</button></div>').join('') +
             (ctx.ui.pendingExtraRuleId === rule.id ? '<div class="game-pack-extra-effect">' + C.renderEffectSelect(ctx, '', 'data-' + ctx.bindings.inline + '="new-extra-effect" ' + disabled, 'Nouvelle action supplémentaire') + '<button type="button" data-action="' + escapeHtml(ctx.actions.cancelExtra) + '" aria-label="Annuler l’ajout">×</button></div>' : '') +
             '<div class="game-pack-card-bottom"><div class="game-pack-effect-extra">' +
-            (firstParameter || effect.duration ? '<input class="game-pack-amount" type="' + (firstParameter?.type === 'text' ? 'text' : 'number') + '" data-' + ctx.bindings.inline + '="parameter" data-parameter="' + escapeHtml(firstParameter?.id || '') + '" min="' + Number(firstParameter?.min ?? 1) + '" max="' + Number(firstParameter?.max ?? 120) + '" step="' + Number(firstParameter?.step ?? 1) + '" aria-label="' + escapeHtml(parameterLabel) + '" title="' + escapeHtml(parameterLabel) + '" value="' + escapeHtml(firstParameter?.type === 'text' ? parameterValue ?? '' : Number(parameterValue || 0)) + '" ' + disabled + '>' : '') +
+            (firstParameter || effect.duration ? renderParameterInput(firstParameter,parameterValue,'data-'+ctx.bindings.inline+'="parameter" data-parameter="'+escapeHtml(firstParameter?.id||'')+'"',disabled,parameterLabel) : '') +
             '<button type="button" class="game-pack-extra-button" data-action="' + escapeHtml(ctx.actions.extraAdd) + '" ' + attributes + ' ' + disabled + '>+ action' + (extras.length ? ' (' + extras.length + ')' : '') + '</button></div>' +
             '<div class="game-pack-card-management"><select data-' + ctx.bindings.inline + '="column" aria-label="Colonne de cette interaction" ' + disabled + '>' + ctx.columns.map(column => '<option value="' + escapeHtml(column.id) + '" ' + (ctx.classify(row) === column.id ? 'selected' : '') + '>' + escapeHtml(column.shortLabel || column.label) + '</option>').join('') + '</select>' +
             '<button type="button" class="game-pack-delete-button" data-action="' + escapeHtml(ctx.actions.delete) + '" ' + attributes + ' aria-label="Supprimer ' + escapeHtml(title) + '" title="Supprimer" ' + disabled + '><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>Supprimer</button></div></div></div></article>';
     }
-    Object.assign(C, { renderEffectSelect, renderAddButton, renderInteractionCard });
+    Object.assign(C, { renderParameterInput, renderEffectSelect, renderAddButton, renderInteractionCard });
 })(globalThis.ShenPulseGameWorkspace);

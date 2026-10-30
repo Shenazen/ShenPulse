@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.1.1',
-  title: 'Des jeux plus fiables, un LIVE mieux préparé.',
-  summary: 'Découvre Minecraft Lava Rise, les améliorations de GTA KOTH et un affichage des wins mieux adapté à ton studio. Les agences gagnent aussi en lisibilité et en souplesse.',
+  version: '2.1.2',
+  title: 'Cinq nouveaux jeux, des interactions plus fiables.',
+  summary: 'BALL x PIT, Brotato, CloverPit, Fallout: New Vegas et Escape the Backrooms rejoignent les jeux compatibles Xbox / PC Game Pass. Profite aussi des corrections GTA Enhanced et du paiement par carte bancaire.',
   highlights: [
-    ['Relève de nouveaux défis', 'Minecraft Lava Rise rejoint les modes disponibles. GTA KOTH améliore la création de sa rampe et indique sa progression pendant la préparation.'],
-    ['Soigne ton affichage', 'Les sources de wins reprennent le cadrage validé dans le studio pour garder les cadeaux visibles. Les aperçus et les informations de version Minecraft sont plus clairs.'],
-    ['Fais grandir ton agence', 'Les cartes des agences deviennent plus compactes et lisibles. L’administration peut choisir de compter certains essais Pro ou Premium actifs dans les paliers.']
+    ['Prépare tes nouveaux jeux', 'Installe automatiquement les packs des cinq nouveaux jeux, choisis les cadeaux et lance ta partie depuis ShenPulse. Les effets temporaires, ressources et choix d’interactions gagnent en fiabilité.'],
+    ['Retrouve GTA Enhanced', 'KOTH et Hiking préparent la sauvegarde Histoire et le départ du parcours. Le lancement Epic Games, la rampe et ses conteneurs sont corrigés ; les cartes Hiking sont plus nettes dans le studio.'],
+    ['Choisis ton paiement', 'La carte bancaire et les portefeuilles compatibles complètent PayPal pour les abonnements et achats de jeux. Les abonnements existants conservent leur tarif contractuel.']
   ]
 }
 
@@ -176,7 +176,7 @@ export const APP_TABS = [
     summary: 'Cette page affiche l’offre courante, les accès et le renouvellement.',
     parts: [
       ['Offre actuelle', 'Indique Free, Pro ou Premium et l’état de l’accès.'],
-      ['Choisir une offre', 'Compare les prix et avantages affichés dans l’application. Le bouton de souscription ouvre PayPal et le retour validé synchronise l’accès.'],
+      ['Choisir une offre', 'Compare les prix et avantages affichés dans l’application. Le bouton de souscription ouvre le paiement sécurisé et le retour validé synchronise l’accès.'],
       ['Accès Premium offert', 'Le plan Premium peut attribuer un accès Pro à un autre compte selon les conditions affichées.'],
       ['Jeux achetés', 'Les droits individuels se synchronisent avec le compte ShenPulse ; certains modules restent des achats distincts de l’abonnement.'],
       ['Accès Pro', 'Jeux vidéo, Commandes et Matchs nécessitent au moins Pro. Machines IRL est réservé à Premium. Une restriction spécifique affichée dans l’application reste applicable.']
@@ -472,7 +472,7 @@ export const POPUP_GROUPS = [
     purpose: 'Ouvre les offres depuis le bouton Pro lorsqu’il est affiché ou depuis Abonnement. Consulter les offres ne lance pas de paiement.',
     fields: [
       ['Offre et prix', 'Lis les accès, le tarif et les conditions effectivement affichés pour ton compte.'],
-      ['Souscrire', 'Le choix d’une offre ouvre le parcours PayPal autorisé. Ne ferme pas ShenPulse avant la confirmation du retour.'],
+      ['Souscrire', 'Le choix d’une offre ouvre le parcours de paiement sécurisé. Ne ferme pas ShenPulse avant la confirmation du retour.'],
       ['État de l’accès', 'L’offre active apparaît sous le nom du compte. Jeux vidéo, Commandes et Matchs exigent Pro ou Premium. Machines IRL est réservé à Premium.'],
       ['Renouvellement', 'Consulte les informations et les changements programmés disponibles dans Abonnement.']
     ]

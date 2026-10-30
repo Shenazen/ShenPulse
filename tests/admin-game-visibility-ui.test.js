@@ -111,7 +111,7 @@ test("la saisie de version refuse une borne invalide, un autre propriétaire ou 
   assert.equal(context.saved.length, 0);
 });
 
-test("chaque jeu ouvre un choix de sept logos multiples sans enregistrer à l’ouverture", async t => {
+test("chaque jeu ouvre un choix de neuf logos multiples sans les plateformes retirées", async t => {
   const context = fixture(t);
   const page = context.renderVisibility();
   assert.equal(page.querySelectorAll('[data-action="admin-game-platforms"]').length, context.snapshot.packs.length);
@@ -119,7 +119,8 @@ test("chaque jeu ouvre un choix de sept logos multiples sans enregistrer à l’
   vm.runInContext(fs.readFileSync(path.join(renderer, "actions/handlers/admin-irl.js"), "utf8"), context);
   await context.handleAdminAndIrlAction({ action: "admin-game-platforms", id: "fortnite" });
   const editor = JSDOM.fragment(context.editor.body);
-  assert.equal(editor.querySelectorAll('input[type="checkbox"][name="platforms"]').length, 7);
+  assert.equal(editor.querySelectorAll('input[type="checkbox"][name="platforms"]').length, 9);
+  for (const platform of ["browser", "itch-io", "standalone"]) assert.equal(editor.querySelector('input[value="' + platform + '"]'), null);
   assert.deepEqual([...editor.querySelectorAll("input:checked")].map(input => input.value), ["epic-games"]);
   assert.equal(context.saved.length, 0);
   await context.editor.onSubmit({ getAll: name => { assert.equal(name, "platforms"); return ["steam", "game-pass", "epic-games"]; } });

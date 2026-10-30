@@ -1,0 +1,9 @@
+import hashlib,importlib.util,json,pathlib
+ROOT=pathlib.Path(__file__).resolve().parents[2];source=ROOT/'.artifacts/integration-wave-20261029/cookie-game.js'
+spec=importlib.util.spec_from_file_location('common',ROOT/'scripts/integration-preparation/build-script-games.py');common=importlib.util.module_from_spec(spec);spec.loader.exec_module(common)
+pin=json.loads((ROOT/'scripts/integration-preparation/cookie-inputs.json').read_text());data=source.read_bytes()
+if hashlib.sha256(data).hexdigest()!=pin['sha256']:raise ValueError('Cookie integration changed')
+text=data.decode('utf8').replace('export const api =','const api =').replace('//# sourceMappingURL=cookieclicker.js.map','')
+# Do not ship the vendor activation loader. Only the actual game effect functions are used.
+text='(()=>{\n'+text+'''\nwindow.ShenPulseCookie={ready:()=>Boolean(window.Game&&Game.ready&&Game.T>=3),run:(request)=>{if(Date.now()>request.deadline||!window.Game||!Game.ready)return {success:false,message:'Le jeu n’est pas prêt.'};const effect=api.getEffects().find(e=>e.effectID===request.code);if(!effect)return {success:false,message:'Interaction inconnue.'};try{const name=String(request.viewer||'Viewer').replace(/[<>&"']/g,'').slice(0,64);const result=effect.execute({payload:{quantity:Math.max(1,Math.min(1000,Math.floor(Number(request.parameters?.quantity||request.quantity)||1))),userDisplay:{name}}});return {success:result?.status==='success',message:result?.message||'Interaction appliquée.'};}catch{return {success:false,message:'Le jeu a refusé cette interaction.'};}}};})();\n'''
+common.publish_record('cookie-clicker',{'ShenPulseCookie.js':text.encode('utf8')},'ShenPulseCookie.js',58830,dict(remoteBrowserGame='cookie',managedTarget=True,executables=['ShenPulseCookie.js'],launchExecutables=[],singleInstanceProcesses=[],requireLaunchExecutable=False,forceSteamLaunch=False))

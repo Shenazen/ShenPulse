@@ -1,7 +1,9 @@
 "use strict";
 
-const { prepareGtaMode } = require("./gta-mode");
-const { supportsPlatformChoice, installationPlatform, assertRunningInstallation } = require("./installation-platform");
+const { prepareGtaMode, GTA_IDS } = require("./gta-mode");
+const { prepareGtaEnhancedSaveForLaunch } = require("./gta-save");
+const { gtaEpicLaunchUrl } = require("./gta-epic-launch");
+const { supportsPlatformChoice, installationPlatform, assertRunningInstallation, assertSupportedPlatform } = require("./installation-platform");
 const { findLaunchTarget } = require("./paths");
 const { launchSteamDemo, launchSteamGame } = require("./steam-launch");
 const { runProcess } = require("./processes");
@@ -28,10 +30,13 @@ async function runningGameProcess(names, { platform = process.platform, execute 
 }
 
 async function launchExternalGame({ gameId, manifest, installation, shell, assertAccess,
-  waitForWindowsProcessWindow, scheduleGtaSaveDeployment, userDataPath, findRunning = runningGameProcess, selectGtaMode = prepareGtaMode, findModdedProcess = findModdedGameProcess }) {
+  waitForWindowsProcessWindow, scheduleGtaSaveDeployment, userDataPath, documentsPath, findRunning = runningGameProcess, selectGtaMode = prepareGtaMode, prepareGtaSave = prepareGtaEnhancedSaveForLaunch, findEpicLaunchUrl = gtaEpicLaunchUrl, findModdedProcess = findModdedGameProcess,connectFnvXbox=require("./fnv-gamepass").connectFnvXbox }) {
   const detectedPlatform = await installationPlatform(installation.path, manifest);
   const platform = ["steam", "xbox"].includes(installation.platform) ? installation.platform : detectedPlatform;
   if (platform && detectedPlatform && platform !== detectedPlatform) throw new Error("Le dossier mémorisé ne correspond plus à la plateforme choisie. Réinstallez les interactions depuis l’étape Installation.");
+  assertSupportedPlatform(manifest, platform);
+  const nativeFnv=gameId==="fallout-new-vegas"&&platform==="xbox";
+  if(nativeFnv)installation={...installation,path:await require("./fnv-gamepass").fnvXboxRoot(installation.path)};
   const names = manifest.launchExecutables || manifest.executables || [];
   const launchNames = platform === "xbox" ? ["gamelaunchhelper.exe"] : platform === "steam" ? names.filter(name => !/gamelaunchhelper|[\\/]WinGDK[\\/]/i.test(name)) : names;
   const manualTerrariaLauncher = await terrariaManualLauncher(gameId, installation.path, userDataPath);
@@ -45,16 +50,27 @@ async function launchExternalGame({ gameId, manifest, installation, shell, asser
   }
   const existing = isModdedFarmGame(gameId) ? await findModdedProcess(gameId,installation.path,{userDataPath}) : await findRunning(manifest.singleInstanceProcesses);
   assertAccess();
-  await assertRunningInstallation(existing, { ...installation, platform }, manifest);
+  // The native helper verifies the exact Xbox process path, even when Windows
+  // hides that path from the unelevated application. It never accepts another edition.
+  if(!nativeFnv)await assertRunningInstallation(existing, { ...installation, platform }, manifest);
   assertAccess();
   await selectGtaMode({gameId,installation,existing,assertAccess});
+  const needsGtaSave = GTA_IDS.has(gameId) && (gameId !== "gtav-montchiliad" || installation.edition === "enhanced");
+  const saveDeployment = needsGtaSave && !existing ? await prepareGtaSave({ gameId, userDataPath, documentsPath, assertAccess }) : null;
+  assertAccess();
   if (gameId === "euro-truck-simulator-2") await assertTruckSimulatorReady(installation.path);
   await assertStandaloneModuleReady(gameId, installation.path);
+  await require("./owner-integration-installation").assertOwnerIntegrationReady(gameId,installation.path,{documentsPath});
   await assertShopModuleReady(gameId, installation.path);
   await require("./palworld-installation").assertPalworldModuleReady(gameId,installation.path);
   await assertModdedGameReady(gameId, installation.path, userDataPath);
+  if(nativeFnv&&existing)await connectFnvXbox(installation.path,{assertAccess});
   if (!existing) {
-    if ((gameId === "terraria" && !manualTerrariaLauncher) || gameId === "escape-from-duckov" || (platform === "steam" && !isModdedFarmGame(gameId) && supportsPlatformChoice(manifest))) await launchSteamGame({ gameId, manifest, executable, shell, assertAccess });
+    const epicUrl = needsGtaSave ? await findEpicLaunchUrl(installation.path) : '';
+    assertAccess();
+    if (epicUrl) await shell.openExternal(epicUrl);
+    else if ((gameId === "terraria" && !manualTerrariaLauncher) || gameId === "escape-from-duckov" || (platform === "steam" && !manifest.directLauncher && !isModdedFarmGame(gameId) && (supportsPlatformChoice(manifest) || manifest.forceSteamLaunch))) await launchSteamGame({ gameId, manifest, executable, shell, assertAccess });
+    else if (manifest.launchArguments) await require("./prepared-game-launch").launchPreparedProcess(executable,manifest,installation.path,{assertAccess});
     else {
       const error = await shell.openPath(executable);
       if (error) throw new Error(error);
@@ -62,9 +78,10 @@ async function launchExternalGame({ gameId, manifest, installation, shell, asser
   }
   const processName = gameId === "palworld" ? (platform === "xbox" ? "Palworld-WinGDK-Shipping" : "Palworld-Win64-Shipping") : gameId === "dead-by-daylight" ? deadByDaylightProcess(installation).replace(/\.exe$/i, "") : manifest.waitForWindowProcess;
   if (processName) await waitForWindowsProcessWindow(processName, manifest.waitForWindowTimeoutMs);
+  if(nativeFnv&&!existing)await connectFnvXbox(installation.path,{assertAccess});
   assertAccess();
-  if (gameId === "gtav-montchiliad" && installation.edition === "enhanced") scheduleGtaSaveDeployment();
-  return { ok: true, path: executable, ...(platform ? { platform } : {}), ...(existing ? { alreadyRunning: true, processId: existing.ProcessId } : {}) };
+  if (saveDeployment?.pending) scheduleGtaSaveDeployment();
+  return { ok: true, path: executable, ...(saveDeployment ? { saveDeployment } : {}), ...(platform ? { platform } : {}), ...(existing ? { alreadyRunning: true, processId: existing.ProcessId } : {}) };
 }
 
 module.exports = { launchExternalGame, runningGameProcess };

@@ -1,6 +1,6 @@
 "use strict";
 module.exports = {
-  "version": "1.0.4",
+  "version": "1.0.6",
   "title": "GTA V Hiking Enhanced",
   "targetLabel": "dossier GTA V Enhanced",
   "autoDetect": true,
@@ -47,9 +47,10 @@ module.exports = {
       "editions": [
         "enhanced"
       ],
-      "size": 706560,
-      "sha256": "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db",
-      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-hiking-enhanced/1.0.4/shenpulse-gta-enhanced.asi"
-    }
+      "size": 710144,
+      "sha256": "9d907dc245b3cb1f49f6233fb67b9632bf3783c1a8f1cc0f20d635ec0d375ca1",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/gtav-hiking-enhanced/1.0.6/shenpulse-gta-enhanced.asi"
+    },
+    require("./gtav-enhanced-save")
   ]
 };

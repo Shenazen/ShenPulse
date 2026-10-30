@@ -14,7 +14,7 @@ const root = path.join(__dirname, "..");
 
 test("publie l’installation Pokémon complète avec sa ROM autorisée", () => {
   assert.deepEqual(
-    Object.keys(GAME_INSTALLERS).sort(),
+    Object.keys(GAME_INSTALLERS).filter(id=>!Object.hasOwn(require("../resources/catalogs/owner-prepared-modules.json"),id)).sort(),
     [
       "ark-survival-ascended",
       "balatro",
@@ -120,7 +120,7 @@ test("publie l’installation Pokémon complète avec sa ROM autorisée", () => 
 
 test("GTA est détecté et installé automatiquement avec une progression novice", () => {
   const gta = GAME_INSTALLERS["gtav-montchiliad"];
-  assert.equal(gta.version, "1.0.15");
+  assert.equal(gta.version, "1.0.17");
   const runtime = readMainSource("game-runtime.js");
   const renderer = readRendererSource();
 
@@ -172,10 +172,10 @@ test("GTA télécharge les bons packs versionnés depuis Backblaze selon l’éd
   const enhancedPlugin = enhanced.find(
     (asset) => asset.id === "enhancedplugin"
   );
-  assert.match(enhancedPlugin.url, /\/1\.0\.15\//);
+  assert.match(enhancedPlugin.url, /\/1\.0\.17\//);
   assert.equal(
     enhancedPlugin.sha256,
-    "bac3018dfa7bbdda57767fe0746c329bf0583bde9532cb81863cc34a355a68db"
+    "9d907dc245b3cb1f49f6233fb67b9632bf3783c1a8f1cc0f20d635ec0d375ca1"
   );
   assert.throws(
     () => safeInstallerAssetUrl("https://example.com/asset.zip"),

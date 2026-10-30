@@ -177,6 +177,7 @@ function applyEntitlements(service, payload = {}) {
       priceMonthly:
         source === "own" ? Math.max(0, Number(payload.priceMonthly) || 0) : 0,
       renewalDate: String(payload.renewalDate || ""),
+      paymentProvider: source === "own" && payload.paymentProvider === "stripe" ? "stripe" : source === "own" ? "paypal" : "",
       pendingChange:
         source === "own"
           ? normalizeSubscriptionPendingChange(payload.pendingChange)

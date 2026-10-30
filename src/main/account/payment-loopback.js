@@ -44,7 +44,7 @@ async function createPaymentLoopbackCallback({ state, timeoutMs }) {
       const receivedState = target.searchParams.get("state") || "";
       const status = target.searchParams.get("status") || "";
       const stateMatches =
-        receivedState.length === state.length &&
+        Buffer.byteLength(receivedState) === Buffer.byteLength(state) &&
         crypto.timingSafeEqual(
           Buffer.from(receivedState),
           Buffer.from(state)
@@ -61,7 +61,7 @@ async function createPaymentLoopbackCallback({ state, timeoutMs }) {
         response.end(paymentResponseHtml("error"));
         finish(
           new Error(
-            "Le retour PayPal n’a pas pu être vérifié par ShenPulse."
+            "Le retour du paiement n’a pas pu être vérifié par ShenPulse."
           )
         );
         return;
@@ -76,6 +76,7 @@ async function createPaymentLoopbackCallback({ state, timeoutMs }) {
       response.end(paymentResponseHtml(status));
       finish(null, {
         cancelled: status === "cancelled",
+        ...(target.searchParams.has("session_id") ? { sessionId: String(target.searchParams.get("session_id") || "").trim() } : {}),
         subscriptionId: String(
           target.searchParams.get("subscription_id") ||
           target.searchParams.get("subscriptionId") ||

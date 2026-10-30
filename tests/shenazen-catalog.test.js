@@ -43,7 +43,7 @@ const {
 const root = path.join(__dirname, "..");
 
 test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", () => {
-  const games = loadShenazenGameCatalog(path.join(root, "resources"));
+  const games = loadShenazenGameCatalog(path.join(root, "resources")).filter(pack=>!pack.ownerPreparation);
   assert.equal(games.length, 63);
   assert.equal(new Set(games.map((game) => game.id)).size, 63);
   assert.equal(
@@ -83,7 +83,7 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
   assert.ok(games.some((game) => game.id === "gtav-montchiliad"));
   assert.equal(
     games.find((game) => game.id === "gtav-montchiliad")?.installerVersion,
-    "1.0.15"
+    "1.0.17"
   );
   assert.deepEqual(
     games

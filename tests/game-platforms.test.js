@@ -91,3 +91,64 @@ test("la légende Game Pass suit uniquement les jeux visibles et ne modifie ni a
   assert.equal(page.querySelector(".game-platform-legend .platform-game-pass"), null);
   assert.equal(page.querySelector('[data-value="all"] .game-category-count').textContent, "1");
 });
+
+
+test("la légende ne conserve que les plateformes des résultats de recherche et de catégorie",t=>{
+ const packs=[
+  {id:"the-sims-4",name:"Les Sims 4",storefronts:["ea"],effects:[],accessMode:"included"},
+  {id:"doom-2016",name:"DOOM",storefronts:["gog"],effects:[],accessMode:"included"},
+  {id:"coin-pusher",name:"Coin Pusher",effects:[],accessMode:"purchase"}
+ ];
+ const f=fixture(t,packs),before=JSON.stringify(f.context.snapshot);
+ let page=f.render();assert.equal(page.querySelectorAll('.game-platform-legend-item').length,3);
+ f.context.gameSearch="Sims";page=f.render();assert.ok(page.querySelector('.game-platform-legend .platform-ea'));assert.equal(page.querySelectorAll('.game-platform-legend-item').length,1);
+ f.context.gameSearch="";f.context.gameCategory="shenpulse";page=f.render();assert.ok(page.querySelector('.game-platform-legend .platform-shenpulse'));assert.equal(page.querySelector('.game-platform-legend .platform-ea'),null);assert.equal(page.querySelector('.game-platform-legend .platform-gog'),null);
+ f.context.gameSearch="absent-game";page=f.render();assert.equal(page.querySelector('.game-platform-legend'),null);assert.ok(page.querySelector('.empty-inline'));
+ assert.equal(JSON.stringify(f.context.snapshot),before);
+});
+
+test("une plateforme d’un mode masqué ne reste pas dans l’entête du lanceur",t=>{
+ const f=fixture(t,[{id:"minecraft-bedrock-box",name:"Bedrock",effects:[]},{id:"minecraft-sandbox-3",name:"Sandbox",effects:[]}]);
+ f.context.siteVisibility.games={"minecraft-bedrock-box":{scope:"public",platforms:["microsoft-store"]},"minecraft-sandbox-3":{scope:"hidden",platforms:["gog"]}};
+ const page=f.render();assert.ok(page.querySelector('.game-platform-legend .platform-microsoft-store'));assert.equal(page.querySelector('.game-platform-legend .platform-gog'),null);
+});
+
+
+test("une fiche privée Game Pass seul ne récupère pas le logo Steam de secours", t => {
+  const { context } = fixture(t);
+  const pack = { id: "ball-x-pit", storefronts: ["game-pass"], ownerPreparation: { platformAvailabilityVerified: true } };
+  assert.deepEqual(Array.from(context.gamePlatformIds(pack)), ["game-pass"]);
+  const logo = context.gamePlatformLogos(pack);
+  assert.match(logo, /platform-game-pass/);
+  assert.doesNotMatch(logo, /platform-steam|platform-microsoft-store/);
+  assert.deepEqual(Array.from(context.gamePlatformIds(pack, { games: { "ball-x-pit": { platforms: ["steam"], platformsConfigured: true } } })), ["steam"]);
+});
+
+test("les nouveaux jeux affichent les plateformes gratuites ou incluses retenues, sans changer leurs installateurs", t => {
+  const requested = require("../scripts/integration-preparation/requested-games.json").games;
+  const prepared = require("../resources/catalogs/owner-prepared-modules.json");
+  const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
+  const { installerForGame } = require("../src/main/game-installer-manifest");
+  const packs = loadShenazenGameCatalog(require("node:path").resolve(__dirname, "../resources"));
+  const { context } = fixture(t, packs);
+  const recent = packs.filter(pack => pack.ownerPreparation);
+  const gamePassPacks = recent.filter(pack => gamePass.products[pack.id]);
+  assert.equal(gamePassPacks.length, 20);
+  for (const pack of recent) {
+    const specification = requested.find(game => game.id === pack.id);
+    assert.deepEqual(pack.storefronts, specification.platforms, pack.id);
+    assert.deepEqual(Array.from(context.gamePlatformIds(pack)), specification.platforms, pack.id);
+  }
+  for (const pack of gamePassPacks) assert.deepEqual(Array.from(context.gamePlatformIds(pack)), ["game-pass"], pack.id);
+  for (const id of ["peggle-deluxe", "peggle-nights", "plants-vs-zombies-goty"]) {
+    assert.deepEqual(Array.from(context.gamePlatformIds(recent.find(pack => pack.id === id))), ["ea"], id);
+  }
+  assert.deepEqual(Array.from(context.gamePlatformIds(recent.find(pack => pack.id === "doom-2016"))), ["gog"]);
+  for (const id of ["team-fortress-2", "supermarket-together"]) {
+    assert.deepEqual(Array.from(context.gamePlatformIds(recent.find(pack => pack.id === id))), ["steam"], id);
+  }
+  assert.deepEqual(Array.from(context.gamePlatformIds(recent.find(pack => pack.id === "the-sims-4"))), ["steam", "ea"]);
+  assert.ok(packs.some(pack => pack.id === "find-the-needle-demo"));
+  assert.deepEqual(installerForGame("ball-x-pit").steamAppIds, ["2062430"]);
+  assert.equal(prepared["ball-x-pit"].asset.sha256.length, 64);
+});

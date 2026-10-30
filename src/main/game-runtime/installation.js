@@ -16,7 +16,7 @@ const { installationSlotPercent, cleanupStaleInstallerRuns } = require("./housek
 const { installFindTheNeedleMod } = require("./find-the-needle-mod-installation");
 const { detectBalatroEdition, stageBalatroInstallation } = require("./balatro-installation");
 const { stageBluePrinceInstallation } = require("./blue-prince-installation");
-const { installationPlatform } = require("./installation-platform");
+const { installationPlatform, assertSupportedPlatform } = require("./installation-platform");
 const { assertModGameClosed } = require("./mod-installation-ready");
 const { stageFourGamesInstallation, detectDredgeEdition } = require("./four-games-installation");
 const { stageTruckSimulatorInstallation } = require("./truck-simulator-installation");
@@ -24,7 +24,7 @@ const { stageStandaloneModule } = require("./standalone-module-installation");
 const { prepareShopUninstallReceipt } = require("./shop-game-uninstall");
 const { stageShopGameInstallation, assertShopModuleReady } = require("./shop-games-installation");
 
-async function installGame(runtime, gameId) {
+async function installGame(runtime, gameId, {assertClosed=assertModGameClosed} = {}) {
     runtime.assertAccess(gameId);
     // Le runtime réel capture compte/profil et relit Pro avant chaque nouvelle
     // étape. Les doubles historiques restent compatibles via assertAccess.
@@ -53,7 +53,7 @@ async function installGame(runtime, gameId) {
       percent: 2,
       message: "Recherche automatique du jeu…"
     });
-    const targetPath = manifest.temporaryTarget
+    let targetPath = manifest.temporaryTarget
       ? path.join(
           runtime.app.getPath("temp"),
           "ShenPulse",
@@ -68,10 +68,12 @@ async function installGame(runtime, gameId) {
           )
       : await runtime.pickTarget(gameId, manifest);
     if (!targetPath) return { canceled: true };
+    if(gameId==="fallout-new-vegas"&&await installationPlatform(targetPath,manifest)==="xbox")targetPath=await require("./fnv-gamepass").fnvXboxRoot(targetPath);
     assertAccess();
     await runtime.validateTarget(targetPath, manifest);
     const platform = await installationPlatform(targetPath, manifest);
-    await assertModGameClosed(gameId, targetPath);
+    assertSupportedPlatform(manifest, platform);
+    await assertClosed(gameId, targetPath);
     if (gameId === "pokemon-red-blue") await runtime.pokemonRedBlue?.stop();
     if (gameId === "super-mario-kart") await runtime.superMarioKart?.stop();
     assertAccess();
@@ -119,7 +121,8 @@ async function installGame(runtime, gameId) {
         : gameId === "dredge" ? await detectDredgeEdition(targetPath) : "";
     const candidateAssets = manifest.assets.filter(
       (asset) =>
-        !asset.editions?.length || asset.editions.includes(edition)
+        (!asset.editions?.length || asset.editions.includes(edition)) &&
+        (!asset.platforms?.length || asset.platforms.includes(platform))
     );
     const assets = [];
     for (const asset of candidateAssets) {
@@ -246,6 +249,7 @@ async function installGame(runtime, gameId) {
       const preparedModule = ["dredge", "egging-on", "fallout-4", "escape-from-duckov"].includes(gameId)
         ? await stageFourGamesInstallation({ gameId, targetPath, deploymentRoot, edition, assertAccess }) : null;
       await stageStandaloneModule({ gameId, deploymentRoot, assertAccess });
+      await require("./brotato-gamepass").stageBrotatoGamePass({gameId,targetPath,deploymentRoot,assertAccess});
       const preparedShop = await stageShopGameInstallation({ gameId, targetPath, deploymentRoot, assertAccess });
       const preparedPalworld = await require("./palworld-installation").stagePalworldInstallation({gameId,targetPath,deploymentRoot,assertAccess});
       runtime.progress(gameId, {
@@ -270,7 +274,7 @@ async function installGame(runtime, gameId) {
       }
       assertAccess();
       await assertModGameClosed(gameId, targetPath);
-      const uninstallReceiptPath = ['supermarket-simulator','tcg-card-shop-simulator','shift-at-midnight'].includes(gameId) ? await prepareShopUninstallReceipt({gameId,targetPath,deploymentRoot,backupRoot,userData:runtime.app.getPath('userData'),previousInstallation,assertAccess}) : '';
+      const uninstallReceiptPath = ['supermarket-simulator','tcg-card-shop-simulator','shift-at-midnight','brotato'].includes(gameId) ? await prepareShopUninstallReceipt({gameId,targetPath,deploymentRoot,backupRoot,userData:runtime.app.getPath('userData'),previousInstallation,assertAccess}) : '';
       stardewBootstrap = await require("./stardew-terraria").prepareStardewGamePassBootstrap({gameId,targetPath,deploymentRoot,backupRoot,assertAccess});
       const deployment = await commitInstallationDeployment({
         deploymentRoot,
@@ -282,6 +286,7 @@ async function installGame(runtime, gameId) {
       });
       if (gameId === "terraria") await require("./stardew-terraria").configureTerrariaMod({gameId,targetPath,documentsPath:runtime.app.getPath("documents"),userDataPath:runtime.app.getPath("userData"),backupRoot,tempRoot,assertAccess});
       await assertShopModuleReady(gameId, targetPath);
+      await require("./owner-integration-installation").assertOwnerIntegrationReady(gameId,targetPath);
       await require("./palworld-installation").assertPalworldModuleReady(gameId,targetPath);
       assertAccess();
       const additionalDeployments =
@@ -295,6 +300,8 @@ async function installGame(runtime, gameId) {
           assertAccess
         });
 
+      additionalDeployments.push(...(await require("./owner-integration-installation").configureOwnerIntegration(gameId,{targetPath,documentsPath:runtime.app.getPath("documents"),backupRoot,assertAccess}) || []));
+      await require("./owner-integration-installation").assertOwnerIntegrationReady(gameId,targetPath,{documentsPath:runtime.app.getPath("documents")});
       assertAccess();
       const emulatorSetup =
         gameId === "pokemon-red-blue"
@@ -313,7 +320,8 @@ async function installGame(runtime, gameId) {
         saveDeployment = await deployGtaEnhancedSave({
           sourceDirectory: preparedSaveDirectory,
           backupRoot: path.join(backupRoot, "save-profile"),
-          documentsPath: runtime.app.getPath("documents")
+          documentsPath: runtime.app.getPath("documents"),
+          assertAccess
         });
       }
 

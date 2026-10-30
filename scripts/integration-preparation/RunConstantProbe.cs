@@ -1,0 +1,2 @@
+using System;using System.IO;using System.Text;using System.Reflection;
+public static class RunConstantProbe{public static void Main(string[] a){var asm=Assembly.LoadFile(Path.GetFullPath(a[0]));var values=(string[])asm.GetType("ShenPulse.Tools.ConstantProbe").GetMethod("Decode").Invoke(null,null);for(int i=0;i<values.Length;i++)values[i]=Convert.ToBase64String(Encoding.UTF8.GetBytes(values[i]??""));File.WriteAllLines(a[1],values);Console.WriteLine(values.Length+" decoded");}}

@@ -42,9 +42,18 @@ function prepareTikTok(document, plan) {
     }
     else if (kind === "overlay") {
       const placed = !fresh && source.transform?.size?.cx > 0 && source.transform?.size?.cy > 0;
-      const url = new URL(placed ? plan.overlayUrl : overlayUrl(plan));
-      if (placed) { const previous=new URL(source.payload.url);if(previous.searchParams.has("layout"))url.searchParams.set("layout",previous.searchParams.get("layout")); }
-      source.payload = { ...(source.payload || {}), url:url.href, cx:placed ? source.payload.cx || 1080 : OVERLAY_VIEWPORT.width, cy:placed ? source.payload.cy || 1920 : OVERLAY_VIEWPORT.height, enableCustomResolution:true, enableAudio:false, zoom:source.payload?.zoom || 1 };
+      const hiking = plan.packId === "gtav-hiking-enhanced";
+      const nativeSize = source.transform?.size;
+      const repairResolution = hiking && placed && (source.payload?.cx !== OVERLAY_VIEWPORT.width || source.payload?.cy !== OVERLAY_VIEWPORT.height || (source.payload?.zoom || 1) !== 1 || new URL(source.payload.url).searchParams.get("layout") !== "compact" || Math.abs(nativeSize.cx - OVERLAY_VIEWPORT.width) > 4 || Math.abs(nativeSize.cy - OVERLAY_VIEWPORT.height) > 4);
+      const url = new URL(placed && !hiking ? plan.overlayUrl : overlayUrl(plan));
+      if (placed && !hiking) { const previous=new URL(source.payload.url);if(previous.searchParams.has("layout"))url.searchParams.set("layout",previous.searchParams.get("layout")); }
+      source.payload = { ...(source.payload || {}), url:url.href, cx:placed && !hiking ? source.payload.cx || 1080 : OVERLAY_VIEWPORT.width, cy:placed && !hiking ? source.payload.cy || 1920 : OVERLAY_VIEWPORT.height, enableCustomResolution:true, enableAudio:false, zoom:hiking ? 1 : source.payload?.zoom || 1 };
+      if (repairResolution) {
+        // A cached low-resolution texture must not survive a repair. Recreate
+        // the approved transform together with its matching native viewport.
+        source.transform = tiktokOverlayTransform(preview.preview_cx,preview.preview_cy);
+        source.clip={x:0,y:0,z:0,w:0};source.effectiveClip={x:0,y:0,z:0,w:0};delete source.stateData;
+      }
     }
     else if (kind === "game") source.payload = { ...(source.payload || {}), captureMethod:"custom", captureType:"None", exe:plan.executable, windowClass:plan.windowClass ?? "UnityWndClass", handle:0, pid:0, cursor:false, fpsLimit:true, gamecaptureImplVersion:2 };
     else source.payload ||= { deviceId:"", name:"Caméra", width:1920, height:1080, rate:30, audioDeviceID:"", audioDeviceName:"" };

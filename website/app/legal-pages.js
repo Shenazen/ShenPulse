@@ -14,7 +14,7 @@ export const LEGAL_PAGES = {
         'L’utilisateur doit fournir des informations exactes, protéger ses identifiants et signaler sans délai tout accès non autorisé.'
       ]],
       ['Plateformes et services tiers', [
-        'TikTok, Twitch, Spotify, OBS, PayPal, les jeux, mods et services de stockage cités appartiennent à leurs titulaires respectifs. ShenPulse n’est pas affilié à ces services sauf mention explicite.',
+        'TikTok, Twitch, Spotify, OBS, PayPal, Stripe, Apple Pay, Google Pay, les jeux, mods et services de stockage cités appartiennent à leurs titulaires respectifs. ShenPulse n’est pas affilié à ces services sauf mention explicite.',
         'L’utilisateur est responsable du respect des conditions des plateformes, des droits d’auteur, des licences des médias, des jeux et des mods qu’il utilise.'
       ]],
       ['Automatisations et jeux', [
@@ -57,12 +57,12 @@ export const LEGAL_PAGES = {
         'Certains jeux intégrés peuvent faire l’objet d’un achat distinct. L’accès à un jeu peut aussi nécessiter un abonnement actif lorsque cela est clairement indiqué avant la commande.'
       ]],
       ['Commande et paiement', [
-        'La commande est initiée uniquement depuis l’application. Le paiement est traité par PayPal sur son environnement sécurisé ; ShenPulse ne reçoit pas les données complètes de la carte ou du compte bancaire.',
-        'L’accès est activé après confirmation du paiement par le serveur. En cas d’échec ou de délai, l’utilisateur doit conserver la référence PayPal et contacter le support.'
+        'La commande est initiée uniquement depuis l’application. Le paiement est traité par PayPal ou Stripe, selon le moyen choisi, sur leur environnement sécurisé ; ShenPulse ne reçoit pas les données complètes de la carte ou du compte bancaire.',
+        'L’accès est activé après confirmation du paiement par le serveur. En cas d’échec ou de délai, l’utilisateur doit conserver la référence du paiement et contacter le support.'
       ]],
       ['Durée, renouvellement et résiliation', [
-        'Un abonnement est renouvelé selon la périodicité affichée jusqu’à sa résiliation. La prochaine échéance et l’état de l’accès sont visibles dans l’application ou le compte PayPal.',
-        'L’utilisateur peut résilier le renouvellement depuis PayPal et demander de l’aide au support. La résiliation prend effet pour les périodes futures ; l’accès payé reste disponible jusqu’à la fin de la période en cours, sauf disposition légale contraire.'
+        'Un abonnement est renouvelé selon la périodicité affichée jusqu’à sa résiliation. La prochaine échéance et l’état de l’accès sont visibles dans l’application ou le compte du prestataire de paiement.',
+        'L’utilisateur peut résilier le renouvellement depuis l’application ou le prestataire de paiement et demander de l’aide au support. La résiliation prend effet pour les périodes futures ; l’accès payé reste disponible jusqu’à la fin de la période en cours, sauf disposition légale contraire.'
       ]],
       ['Droit de rétractation', [
         'Le consommateur dispose en principe d’un délai légal de quatorze jours pour se rétracter d’un contrat conclu à distance.',
@@ -141,7 +141,7 @@ export const LEGAL_PAGES = {
         'L’annuaire ne publie pas les profils de configuration, les secrets locaux ou l’adresse e-mail du compte ShenPulse.'
       ]],
       ['Paiement et services tiers', [
-        'PayPal traite le paiement et renvoie un identifiant et un état de transaction. ShenPulse ne stocke pas le numéro complet d’un moyen de paiement.',
+        'PayPal ou Stripe traite le paiement et renvoie un identifiant et un état de transaction. ShenPulse ne stocke pas le numéro complet d’un moyen de paiement.',
         'Firebase peut assurer l’authentification et la synchronisation des droits. OVHcloud héberge le site et des API. Backblaze B2, Spotify, TikTok, Twitch ou d’autres services ne sont contactés que pour les fonctions configurées.'
       ]],
       ['Bases, durées et destinataires', [

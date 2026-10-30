@@ -64,7 +64,7 @@ test('les titres automatiques commencent par une majuscule, les noms saisis par 
 });
 
 test('les paliers conservent leur position après une édition indépendante et exposent deux champs et deux activations',t=>{
- const file=path.resolve('tests/external-game-workspace.test.js'),source=fs.readFileSync(file,'utf8'),Module=require('node:module'),m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));m._compile(source.slice(0,source.indexOf("test('les 45"))+'\nmodule.exports={fixture};',file);
+ const file=path.resolve('tests/external-game-workspace.test.js'),source=fs.readFileSync(file,'utf8'),Module=require('node:module'),m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));m._compile(source.slice(0,source.indexOf("test('les 52"))+'\nmodule.exports={fixture};',file);
  const f=m.exports.fixture();t.after(()=>f.dom.window.close());const pack=catalog.find(p=>p.id==='minecraft-bedrock-box');f.ctx.selectedGameId=pack.id;f.ctx.snapshot.state.game.interactionRulesByPack[pack.id]=rulesFor(pack);
  f.ctx.content.innerHTML=f.ctx.renderSupermarketWorkspace(pack);
  const level=f.ctx.content.querySelector('.game-pack-win-level'),fields=[...level.querySelectorAll('[data-game-win-level]')],ids=fields.map(field=>JSON.parse(field.dataset.gameWinLevel)[0]);assert.equal(fields.length,2);assert.equal(level.querySelectorAll('[data-game-win-enabled]').length,2);assert.notEqual(ids[0],ids[1]);

@@ -43,7 +43,7 @@ test("chaque jeu exécutable utilise un moteur ShenPulse identifié et un port d
 });
 
 test("les illustrations sans module autonome ne déclenchent pas une passerelle tierce et conservent leurs identifiants", async () => {
-  const packs = catalog(), unresolved = packs.filter(p => p.guide.mode === "reference");
+  const packs = catalog(), unresolved = packs.filter(p => !p.ownerPreparation && p.guide.mode === "reference");
   assert.equal(unresolved.length, 14);
   const reference = unresolved[0];
   const state = { commerce: { subscription: { tier: "pro", status: "active", source: "subscription" } }, session: { activeGamePackId: reference.id }, game: { connectorOverrides: {}, interactionRulesByPack: {

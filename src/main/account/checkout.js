@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { runStripeCheckout } = require("./stripe-checkout");
 const { BROWSER_AUTH_TIMEOUT_MS } = require("./constants");
 const { createPaymentLoopbackCallback } = require("./payment-loopback");
 const { requireGameProductId, requireSubscriptionTier, cleanUid, paypalApprovalUrl, withoutApprovalUrl } = require("./validation");
@@ -8,6 +9,7 @@ const { requestJson, invalidSessionError } = require("./http-client");
 
 /** Achat de jeu : identité, ordre, retour local vérifié puis capture ; nettoyage dans tous les cas. */
 async function runGameCheckout(service, incoming = {}, flow) {
+  if (incoming.paymentProvider === "stripe") return runStripeCheckout(service, incoming, flow, "game");
   const productId = requireGameProductId(incoming.productId);
   const token = await flow.token();
   await flow.synchronizeIdentity(token);
@@ -132,6 +134,7 @@ async function runGameCheckout(service, incoming = {}, flow) {
 
 /** Abonnement et prorata : conserve les confirmations et l'annulation de chaque étape PayPal. */
 async function runSubscriptionCheckout(service, incoming = {}, flow) {
+  if (incoming.paymentProvider === "stripe") return runStripeCheckout(service, incoming, flow, "subscription");
   const tier = requireSubscriptionTier(incoming.tier);
   const token = await flow.token();
   await flow.synchronizeIdentity(token);

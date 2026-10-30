@@ -4,6 +4,7 @@
 const { INTEGRATED_GAME_IDS } = require("./game-installers/constants");
 
 const GAME_INSTALLERS = Object.freeze({
+  ...require("./game-installers/owner-integrations"),
   palworld: require("./game-installers/palworld"),
   ...require("./game-installers/shen-native-games"),
   ...require("./game-installers/shop-games"),

@@ -1,6 +1,6 @@
 # Politique de confidentialité de ShenPulse
 
-Dernière mise à jour : 21 octobre 2026
+Dernière mise à jour : 29 octobre 2026
 
 ShenPulse traite localement les événements de livestream nécessaires aux
 automatisations choisies par l'utilisateur : pseudonyme public, avatar public,
@@ -25,6 +25,16 @@ le coffre-fort du système et il est supprimé lors de la déconnexion. Les droi
 d'abonnement, les achats de jeux et les bénéficiaires Premium sont rattachés à
 l'identifiant Firebase et à l'adresse e-mail du compte, jamais au pseudonyme
 TikTok.
+
+## Paiements et abonnements
+
+Les paiements sont traités par PayPal ou Stripe selon le moyen choisi. Stripe
+permet de payer par carte bancaire, Apple Pay, Google Pay ou Link lorsque ces
+moyens sont disponibles sur l’appareil. Le serveur transmet au prestataire
+l’identifiant du compte ShenPulse, son adresse e-mail et la référence de l’offre
+ou du jeu acheté. Les références de transaction, montants, états du paiement et
+échéances servent à synchroniser les droits dans Firebase. Les numéros complets
+de carte et les codes de sécurité restent chez le prestataire de paiement.
 
 ## Annuaire public des créateurs en direct
 

@@ -22,7 +22,7 @@ class GameTransports {
     let bridge = this.serverBridges.get(cacheKey);
     if (!bridge) {
       const Bridge = connector.type === "shop-mod" ? ShopGameBridge : connector.type === "balatro-gamepass" ? BalatroGamePassBridge : connector.type === "websocket-server" ? SimpleWebSocketGameBridge : SimpleTcpServerBridge;
-      bridge = connector.type==="shen-native" ? require("../shen-native-games/runtime").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : new Bridge({
+      bridge = connector.helperGame ? require("../prepared-helper-games").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : connector.remoteBrowserGame ? require("../prepared-web-integrations").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : connector.localHttpGame ? require("../prepared-local-http-games").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : connector.fileGame ? require("../prepared-file-games").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : connector.browserGame ? require("../prepared-browser-games").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : connector.type==="shen-native" ? require("../shen-native-games/runtime").bridgeFor(this.hub.store,pack.id,()=>this.hub.assertAccess(pack.id)) : new Bridge({
         gameId: pack.id,
         installationPath: ["shop-mod", "balatro-gamepass"].includes(connector.type) ? readState(this.hub.store, ["game.installations"]).game.installations?.[pack.id]?.path : undefined,
         host: connector.host || "127.0.0.1",
@@ -159,6 +159,7 @@ class GameTransports {
     );
     const request = {
       ...payload.effect,
+      ...(connector.parameterOrderByCode?.[payload.effect.code] ? {parameterOrder:connector.parameterOrderByCode[payload.effect.code]} : connector.parameterFormat==="array"?{parameterOrder:[]}:{}),
       duration: Math.round(
         Number(payload.effect.duration || 0) * durationMultiplier
       )

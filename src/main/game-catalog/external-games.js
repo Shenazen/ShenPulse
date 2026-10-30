@@ -4,6 +4,7 @@
 const { external } = require("./builders");
 
 const EXTERNAL_GAMES = [
+  ...require("./owner-integrations").OWNER_INTEGRATIONS,
   ...require("./shop-games"),
   require("./escape-from-duckov"),
   require("./crowd-control-games").BLUE_PRINCE,

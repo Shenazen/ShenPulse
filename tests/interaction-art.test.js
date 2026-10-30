@@ -42,6 +42,13 @@ function pixelRange(png) {
 test("chaque interaction du catalogue possède une image existante", () => {
   const missing = [];
   for (const pack of loadShenazenGameCatalog(resources)) for (const effect of pack.effects) {
+    if (effect.image?.startsWith("data:image/svg+xml,")) {
+      const svg=decodeURIComponent(effect.image.slice("data:image/svg+xml,".length));
+      assert.match(svg, /^<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/);
+      assert.ok(svg.includes('data-effect="'+effect.id+'"'));
+      assert.doesNotMatch(svg, /<script|onload=/i);
+      continue;
+    }
     if (!effect.image || (!/^https?:\/\//.test(effect.image) && !fs.existsSync(path.resolve(root, "src/renderer", effect.image))))
       missing.push(`${pack.id}/${effect.id}`);
   }

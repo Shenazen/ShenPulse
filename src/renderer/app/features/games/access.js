@@ -7,6 +7,48 @@
  * Il partage uniquement les contrats globaux documentés dans README.md.
  */
 
+/** Le choix appartient au formulaire courant, y compris lorsque les offres sont ouvertes en fenêtre. */
+function checkoutPaymentMethodsField(name = "paymentProvider", subscription = null, busy = false) {
+  const own = subscription?.source === "own" && ["active", "paid"].includes(subscription.status);
+  const selected = own && subscription.paymentProvider === "stripe" ? "card" : "paypal";
+  const methods = [
+    ["paypal", "PayPal", "paypal.svg"],
+    ["card", "Carte bancaire", "card.svg"],
+    ["google_pay", "Google Pay", "google-pay.svg"],
+    ["apple_pay", "Apple Pay", "apple-pay.svg"],
+    ["link", "Link", "link.svg"]
+  ];
+  return `<label class="checkout-payment-method"><span>Moyen de paiement</span><select name="${name}" data-checkout-owner="${checkoutPaymentOwner()}" data-payment-provider-locked="${own}" data-membership-focus="payment-method" ${own || busy ? "disabled" : ""}>
+    <button type="button"><selectedcontent></selectedcontent></button>
+    ${methods.map(([value, label, logo]) => `<option value="${value}" ${selected === value ? "selected" : ""}><span class="checkout-payment-logo"><img src="assets/payments/${logo}" alt="" aria-hidden="true"></span><span>${label}</span></option>`).join("")}
+  </select><small>${own ? "Votre abonnement reste géré avec son moyen de paiement actuel." : "Les portefeuilles disponibles s’affichent sur la page de paiement sécurisée."}</small></label>`;
+}
+
+/** Les brouillons restent dans leur formulaire et ne passent jamais à un autre compte. */
+function checkoutPaymentOwner() {
+  const uid = typeof creatorPrivateOperationUid === "function" ? creatorPrivateOperationUid() : "";
+  const generation = typeof creatorPrivateOperationGeneration === "number" ? creatorPrivateOperationGeneration : 0;
+  return encodeURIComponent(uid) + ":" + generation;
+}
+
+function captureCheckoutPaymentDraft(root) {
+  const field = root?.querySelector(".checkout-payment-method select");
+  return field ? { name: field.name, value: field.value, owner: field.dataset.checkoutOwner } : null;
+}
+
+function restoreCheckoutPaymentDraft(root, draft) {
+  if (!draft) return;
+  const field = root?.querySelector(".checkout-payment-method select");
+  if (!field || field.name !== draft.name || field.dataset.checkoutOwner !== draft.owner || field.dataset.paymentProviderLocked === "true") return;
+  if ([...field.options].some(option => option.value === draft.value)) field.value = draft.value;
+}
+
+function checkoutPaymentSelection(value) {
+  return ["card", "google_pay", "apple_pay", "link"].includes(value)
+    ? { paymentProvider: "stripe", paymentMethod: value }
+    : { paymentProvider: "paypal" };
+}
+
 function gameAccessGroup(pack) {
   return pack.accessMode === "purchase" ? "purchase" : "included";
 }
@@ -119,6 +161,7 @@ const GAME_PLATFORM_OVERRIDES = Object.freeze({
 });
 
 const GAME_PLATFORM_LABELS = Object.freeze({
+  ea: "Electronic Arts", gog: "GOG",
   "game-pass": "Game Pass",
   "epic-games": "Epic Games",
   "microsoft-store": "Microsoft Store",
@@ -137,8 +180,9 @@ function gamePlatformIds(pack, settings = typeof siteVisibility === "undefined" 
   if (pack?.modeSelector && pack.modes?.length) {
     return [...new Set(pack.modes.flatMap(mode => gamePlatformIds(mode, settings)))];
   }
+  const showGamePass = (GAME_PASS_BADGE_GAME_IDS.has(pack?.id) || (pack?.ownerPreparation?.platformAvailabilityVerified && pack?.storefronts?.includes("game-pass"))) && ShenPulseGamePassCatalog.offerFor(pack);
   const configured = Array.isArray(pack?.storefronts)
-    ? pack.storefronts.filter((id) => id !== "game-pass" && GAME_PLATFORM_LABELS[id])
+    ? pack.storefronts.filter((id) => GAME_PLATFORM_LABELS[id] && (id !== "game-pass" || showGamePass))
     : [];
   let platforms = configured;
   if (!platforms.length && (
@@ -147,11 +191,12 @@ function gamePlatformIds(pack, settings = typeof siteVisibility === "undefined" 
     String(pack?.id || "").startsWith("minecraft-")
   )) platforms = ["microsoft-store"];
   if (!platforms.length) platforms = SHENPULSE_PLATFORM_GAME_IDS.has(pack?.id) ? ["shenpulse"] : GAME_PLATFORM_OVERRIDES[pack?.id] || ["steam"];
-  const showGamePass = GAME_PASS_BADGE_GAME_IDS.has(pack?.id) && ShenPulseGamePassCatalog.offerFor(pack);
   return [...new Set([...platforms, ...(showGamePass ? ["game-pass"] : [])])];
 }
 
 function gamePlatformIcon(platformId) {
+  if (["ea","gog"].includes(platformId)) { const label={ea:"EA",gog:"gog"}[platformId];return '<svg viewBox="0 0 40 32" aria-hidden="true"><rect x="1" y="2" width="38" height="28" rx="7" fill="currentColor"/><text x="20" y="22" text-anchor="middle" font-family="Arial,sans-serif" font-size="'+(platformId==='ea'?19:16)+'" font-weight="900" fill="#101020">'+label+'</text></svg>'; }
+
   if (platformId === "game-pass") {
     return `<svg viewBox="0 0 86 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#107c10"/><path d="M7 5.5c3.5.5 6.7 2.6 9 4.6 2.3-2 5.5-4.1 9-4.6-2.5 2.2-4.5 4.7-6.4 7.3 4.4 5.1 7.5 10 7.9 13.2-3.4-4.5-7-8.5-10.5-11.2C12.5 17.5 8.9 21.5 5.5 26c.4-3.2 3.5-8.1 7.9-13.2C11.5 10.2 9.5 7.7 7 5.5Z" fill="#fff"/><g fill="#fff" font-family="Arial, sans-serif" font-size="13" font-weight="800"><text x="36" y="14">GAME</text><text x="36" y="28">PASS</text></g></svg>`;
   }
@@ -182,6 +227,8 @@ function gamePlatformLogos(pack, settings = typeof siteVisibility === "undefined
 }
 
 const GAME_CATALOG_PLATFORM_EXPLANATIONS = Object.freeze({
+  ea: "Jeu disponible dans l’application Electronic Arts · compatibilité du module selon l’édition.",
+  gog: "Jeu disponible sur GOG · compatibilité du module selon l’édition.",
   shenpulse: "Jeu et interactions accessibles avec Pro · achat supplémentaire si indiqué.",
   steam: "Jeu à télécharger sur Steam · accès Pro requis pour les interactions.",
   "game-pass": "Jeux PC et avantages selon votre formule Microsoft · abonnement distinct de ShenPulse Pro, version compatible requise pour les interactions.",
@@ -198,6 +245,7 @@ function gameCatalogPlatformLegend(packs) {
   const platformIds = Object.keys(GAME_CATALOG_PLATFORM_EXPLANATIONS).filter(
     (id) => availablePlatformIds.has(id)
   );
+  if (!platformIds.length) return "";
   return `
     <ul class="game-platform-legend" aria-label="Comment obtenir les jeux et leurs interactions">
       ${platformIds.map((id) => `
@@ -280,10 +328,10 @@ function openGamePurchaseDialog(pack) {
     : "Un abonnement Pro ou Premium actif sera aussi nécessaire pour lancer le jeu.";
   openEditor({
     title: `Acheter ${pack.name}`,
-    kicker: "ACHAT UNIQUE · PAIEMENT PAYPAL",
+    kicker: "ACHAT UNIQUE · PAIEMENT SÉCURISÉ",
     variant: "game-purchase",
     submitLabel: `Acheter pour ${price}`,
-    pendingLabel: "Ouverture de PayPal…",
+    pendingLabel: "Ouverture du paiement…",
     successMessage: "",
     body: `
       <div class="game-purchase-dialog">
@@ -303,16 +351,18 @@ function openGamePurchaseDialog(pack) {
             <strong>${escapeHtml(price)}</strong>
             <small>Paiement unique, sans renouvellement pour le jeu</small>
           </div>
+          ${checkoutPaymentMethodsField()}
           <ul class="game-purchase-facts">
-            <li><span>✓</span><div><strong>Conservé sur votre compte</strong><small>L’achat est resynchronisé automatiquement après votre retour de PayPal.</small></div></li>
+            <li><span>✓</span><div><strong>Conservé sur votre compte</strong><small>L’achat est resynchronisé automatiquement après votre retour du paiement.</small></div></li>
             <li><span>✓</span><div><strong>${hasProAccess() ? "Accès Pro actif" : "Accès Pro requis pour jouer"}</strong><small>${escapeHtml(subscriptionMessage)}</small></div></li>
-            <li><span>✓</span><div><strong>Paiement sécurisé par PayPal</strong><small>Votre navigateur s’ouvrira après confirmation.</small></div></li>
+            <li><span>✓</span><div><strong>Paiement sécurisé</strong><small>Votre navigateur s’ouvrira après confirmation.</small></div></li>
           </ul>
         </div>
       </div>`,
-    onSubmit: async () => {
+    onSubmit: async (formData) => {
       const response = await api.account.startGameCheckout({
-        productId: pack.id
+        productId: pack.id,
+        ...checkoutPaymentSelection(formData?.get("paymentProvider"))
       });
       const result = response?.result || response;
       if (response?.snapshot) {
@@ -353,10 +403,10 @@ function openThiercelieuxExtensionPurchaseDialog(pack, extension) {
     .join("");
   openEditor({
     title: `Acheter ${extension.name}`,
-    kicker: "EXTENSION · ACHAT UNIQUE · PAIEMENT PAYPAL",
+    kicker: "EXTENSION · ACHAT UNIQUE · PAIEMENT SÉCURISÉ",
     variant: "game-purchase",
     submitLabel: `Acheter pour ${price}`,
-    pendingLabel: "Ouverture de PayPal…",
+    pendingLabel: "Ouverture du paiement…",
     successMessage: "",
     body: `
       <div class="game-purchase-dialog thiercelieux-extension-purchase">
@@ -376,15 +426,17 @@ function openThiercelieuxExtensionPurchaseDialog(pack, extension) {
             <strong>${escapeHtml(price)}</strong>
             <small>Paiement unique, conservé sur votre compte ShenPulse</small>
           </div>
+          ${checkoutPaymentMethodsField()}
           <ul class="game-purchase-facts">
             ${includes}
-            <li><span>✓</span><div><strong>Paiement sécurisé par PayPal</strong><small>Les contenus apparaissent automatiquement après validation.</small></div></li>
+            <li><span>✓</span><div><strong>Paiement sécurisé</strong><small>Les contenus apparaissent automatiquement après validation.</small></div></li>
           </ul>
         </div>
       </div>`,
-    onSubmit: async () => {
+    onSubmit: async (formData) => {
       const response = await api.account.startGameCheckout({
-        productId: extension.id
+        productId: extension.id,
+        ...checkoutPaymentSelection(formData?.get("paymentProvider"))
       });
       const result = response?.result || response;
       if (response?.snapshot) {
@@ -511,7 +563,7 @@ function renderGamesV2() {
   return `
     <div class="reference-page games-gallery-page">
       ${renderStudioHero("games", "Jeux vidéo compatibles", "Vos spectateurs agissent dans votre jeu avec Pro ou Premium. Jeu original et pack adapté nécessaires ; achat supplémentaire si indiqué.")}
-      <div class="games-heading-content">${gameCatalogPlatformLegend(availablePacks)}</div>
+      <div class="games-heading-content">${gameCatalogPlatformLegend(packs)}</div>
       ${hasProAccess() ? "" : `<section class="game-access-warning game-catalog-access-warning"><span aria-hidden="true">◇</span><div><strong>Jeux vidéo : accès Pro requis</strong><p>Un accès Pro ou Premium actif est nécessaire, y compris pour les packs déjà achetés. Le jeu original et son pack compatible restent requis ; les modules vendus séparément exigent aussi leur achat ou un essai produit actif.</p></div><button class="button small primary" type="button" data-navigate="membership">Découvrir Pro</button></section>`}
       <section class="catalog-toolbar games-toolbar">
         <label class="search-control"><span>⌕</span><input data-search="games" type="search" value="${escapeHtml(gameSearch)}" placeholder="Rechercher un jeu, un connecteur ou un effet"></label>

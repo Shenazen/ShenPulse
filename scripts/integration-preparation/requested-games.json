@@ -1,0 +1,644 @@
+{
+  "schemaVersion": 1,
+  "requestedAt": "2026-10-29",
+  "games": [
+    {
+      "id": "minecraft-diamond-rush",
+      "name": "Minecraft Diamond Rush",
+      "upstream": "Minecraft",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "sandbox",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "minecraft-box-cyber",
+      "name": "Minecraft Box Cyber",
+      "upstream": "Minecraft",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "sandbox",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "gtav-train",
+      "name": "GTA Train",
+      "upstream": "GTA",
+      "platforms": [
+        "steam",
+        "epic-games",
+        "rockstar-games"
+      ],
+      "category": "gta",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "compatibilityNote": "Le mode d’origine cible GTA V Legacy et un serveur multijoueur ; portage autonome à préparer.",
+      "preparationBlocker": {
+        "kind": "server-resources",
+        "message": "Les ressources du serveur multijoueur nécessaires à une version autonome ne sont pas encore disponibles."
+      }
+    },
+    {
+      "id": "supermarket-together",
+      "name": "Supermarket Together",
+      "upstream": "SupermarketTogether",
+      "platforms": [
+        "steam"
+      ],
+      "category": "simulation",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "the-sims-4",
+      "name": "Les Sims 4",
+      "upstream": "Sims4",
+      "platforms": [
+        "steam",
+        "ea"
+      ],
+      "category": "simulation",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "team-fortress-2",
+      "name": "Team Fortress 2",
+      "upstream": "TF2Spectator",
+      "platforms": [
+        "steam"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "cookie-clicker",
+      "name": "Cookie Clicker",
+      "upstream": "CookieClicker",
+      "platforms": [
+        "browser"
+      ],
+      "category": "simulation",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "mari0",
+      "name": "Mari0",
+      "upstream": "Mari0",
+      "platforms": [
+        "standalone"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "sonic-robo-blast-2",
+      "name": "Sonic Robo Blast 2",
+      "upstream": "SonicRoboBlast2",
+      "platforms": [
+        "standalone"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "nova-the-squirrel",
+      "name": "Nova the Squirrel",
+      "upstream": "NovaTheSquirrel",
+      "platforms": [
+        "standalone"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "curse-of-the-minesweeper",
+      "name": "Curse Of The Minesweeper",
+      "upstream": "CurseOfTheMinesweeper",
+      "platforms": [
+        "itch-io"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "base-game-download",
+        "message": "L’archive gratuite 1.3.rar du jeu est encore nécessaire pour assembler le pack."
+      }
+    },
+    {
+      "id": "voices-of-the-void",
+      "name": "Voices of the Void",
+      "upstream": "VoicesOfTheVoid",
+      "platforms": [
+        "itch-io"
+      ],
+      "category": "horror",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "compatibilityNote": "Le module récupéré vise la version Windows indiquée par son éditeur. La partie et les effets restent à vérifier avant ouverture aux utilisateurs."
+    },
+    {
+      "id": "unreal-tournament-99",
+      "name": "Unreal Tournament 99",
+      "upstream": "UnrealTournament99",
+      "platforms": [
+        "standalone"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "unreal-tournament-2004",
+      "name": "Unreal Tournament 2004",
+      "upstream": "UnrealTournament2004",
+      "platforms": [
+        "standalone"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "zelda-again",
+      "name": "Zelda Again: Link is Adventuresome",
+      "upstream": "ZALiA",
+      "platforms": [
+        "itch-io"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "base-game-download",
+        "message": "L’archive du jeu de base ZALiA 1.7.12 est encore nécessaire pour appliquer le module."
+      }
+    },
+    {
+      "id": "pvz-fusion",
+      "name": "PvZ Fusion",
+      "upstream": "pvzfusion",
+      "platforms": [
+        "standalone"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "compatibilityNote": "Module prévu pour PvZ Fusion Windows 2.5.1 (PlantsVsZombiesRH.exe). Le chargeur et le runtime portable sont téléchargés automatiquement depuis Backblaze. Les essais de cette version restent à effectuer."
+    },
+    {
+      "id": "zombie-turret-defense",
+      "name": "Zombie Turret Defense",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "download-access",
+        "message": "L’archive du jeu n’est pas accessible avec les droits de téléchargement actuels."
+      }
+    },
+    {
+      "id": "verba",
+      "name": "Verba",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "download-access",
+        "message": "L’archive du jeu n’est pas accessible avec les droits de téléchargement actuels."
+      }
+    },
+    {
+      "id": "county-hill-clash",
+      "name": "County Hill Clash",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "download-access",
+        "message": "L’archive du jeu n’est pas accessible avec les droits de téléchargement actuels."
+      }
+    },
+    {
+      "id": "pixel-wall-builder-3d",
+      "name": "Pixel Wall Builder 3D",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "download-access",
+        "message": "L’archive du jeu n’est pas accessible avec les droits de téléchargement actuels."
+      }
+    },
+    {
+      "id": "juicy-merge",
+      "name": "Juicy Merge",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "download-access",
+        "message": "L’archive du jeu n’est pas accessible avec les droits de téléchargement actuels."
+      }
+    },
+    {
+      "id": "crown-clash",
+      "name": "Crown Clash",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "jelly-drift",
+      "name": "Jelly Drift",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "download-access",
+        "message": "L’archive du jeu n’est pas accessible avec les droits de téléchargement actuels."
+      }
+    },
+    {
+      "id": "tower-builder",
+      "name": "Tower Builder",
+      "upstream": "webgame",
+      "platforms": [
+        "browser"
+      ],
+      "category": "shenpulse",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "download-access",
+        "message": "L’archive du jeu n’est pas accessible avec les droits de téléchargement actuels."
+      }
+    },
+    {
+      "id": "ball-x-pit",
+      "name": "BALL x PIT",
+      "upstream": "BallxPit",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "brotato",
+      "name": "Brotato",
+      "upstream": "Brotato",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "cloverpit",
+      "name": "CloverPit",
+      "upstream": "CloverPit",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "horror",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "fallout-new-vegas",
+      "name": "Fallout: New Vegas — Ultimate Edition",
+      "upstream": "FalloutNewVegas",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "compatibilityNote": "Ce module utilise xNVSE et l’édition Steam 1.4.0.525. Le chargeur est inclus et sera lancé automatiquement. L’édition Xbox / Game Pass n’est pas encore prise en charge par ce module."
+    },
+    {
+      "id": "final-fantasy-1-pixel-remaster",
+      "name": "Final Fantasy I — Pixel Remaster",
+      "upstream": "FinalFantasy1PixelRemake",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "final-fantasy-2-pixel-remaster",
+      "name": "Final Fantasy II — Pixel Remaster",
+      "upstream": "FinalFantasy2PixelRemake",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "final-fantasy-3-pixel-remaster",
+      "name": "Final Fantasy III — Pixel Remaster",
+      "upstream": "FinalFantasy3PixelRemake",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "final-fantasy-4-pixel-remaster",
+      "name": "Final Fantasy IV — Pixel Remaster",
+      "upstream": "FinalFantasy4PixelRemake",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "final-fantasy-5-pixel-remaster",
+      "name": "Final Fantasy V — Pixel Remaster",
+      "upstream": "FinalFantasy5PixelRemake",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "frog-sqwad",
+      "name": "Frog Sqwad",
+      "upstream": "FrogSqwad",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "halo-combat-evolved",
+      "name": "Halo: Combat Evolved — MCC",
+      "upstream": "MCCHaloCE",
+      "platforms": [
+        "steam",
+        "game-pass"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "workshop-map",
+        "message": "La carte de campagne modifiée requise n’a pas encore été récupérée."
+      }
+    },
+    {
+      "id": "microsoft-flight-simulator-2024",
+      "name": "Microsoft Flight Simulator 2024",
+      "upstream": "MicrosoftFlightSimulator",
+      "platforms": [
+        "steam",
+        "game-pass"
+      ],
+      "category": "simulation",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "simulation-bridge",
+        "message": "Le panneau est récupéré ; la passerelle complète de simulation reste à préparer."
+      }
+    },
+    {
+      "id": "resident-evil-2",
+      "name": "Resident Evil 2",
+      "upstream": "ResidentEvil2NET",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "horror",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "resident-evil-village",
+      "name": "Resident Evil Village",
+      "upstream": "ResidentEvilVillage",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "horror",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "roadside-research",
+      "name": "Roadside Research",
+      "upstream": "roadsideresearch",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "simulation",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "rv-there-yet",
+      "name": "RV There Yet?",
+      "upstream": "RVThereYet",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "skyrim-special-edition",
+      "name": "The Elder Scrolls V: Skyrim Special Edition",
+      "upstream": "SkyrimAE",
+      "platforms": [
+        "steam",
+        "gog",
+        "game-pass"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "loader-download",
+        "message": "Le chargeur SKSE Steam 2.3.1 est encore nécessaire. L’intégration actuelle ne prend pas en charge Game Pass."
+      }
+    },
+    {
+      "id": "totally-accurate-battle-simulator",
+      "name": "Totally Accurate Battle Simulator",
+      "upstream": "tabs",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "simulation",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "vampire-crawlers",
+      "name": "Vampire Crawlers",
+      "upstream": "VampireCrawlers",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "peggle-deluxe",
+      "name": "Peggle Deluxe",
+      "upstream": "Peggle",
+      "platforms": [
+        "ea"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "peggle-nights",
+      "name": "Peggle Nights",
+      "upstream": "PeggleNights",
+      "platforms": [
+        "ea"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "plants-vs-zombies-goty",
+      "name": "Plants vs. Zombies — GOTY Edition",
+      "upstream": "PlantsVsZombies",
+      "platforms": [
+        "ea"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "doom-2016",
+      "name": "DOOM (2016)",
+      "upstream": "DOOM2016",
+      "platforms": [
+        "gog"
+      ],
+      "category": "action",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "mikoverse",
+      "name": "MikoVerse",
+      "upstream": "MikoVerse",
+      "platforms": [
+        "steam"
+      ],
+      "category": "adventure",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "preparationBlocker": {
+        "kind": "standalone-module",
+        "message": "Un accès au playtest Steam et un module local autonome restent nécessaires."
+      }
+    },
+    {
+      "id": "farming-simulator-25",
+      "name": "Farming Simulator 25",
+      "upstream": "fs25",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "simulation",
+      "ownerOnly": true,
+      "inGameValidation": "pending"
+    },
+    {
+      "id": "snowrunner",
+      "name": "SnowRunner",
+      "upstream": "snowrunner",
+      "platforms": [
+        "steam",
+        "epic-games",
+        "game-pass"
+      ],
+      "category": "racing",
+      "ownerOnly": true,
+      "inGameValidation": "pending",
+      "deferGameInstallation": true,
+      "preparationBlocker": {
+        "kind": "deferred-by-owner",
+        "message": "Préparation différée à votre demande, après installation du jeu."
+      }
+    },
+    {
+      "id": "escape-the-backrooms",
+      "name": "Escape the Backrooms",
+      "upstream": "Backrooms",
+      "platforms": [
+        "game-pass"
+      ],
+      "category": "horror",
+      "ownerOnly": true,
+      "inGameValidation": "tested-gamepass-2026-10-30"
+    }
+  ],
+  "excludedByUser": [
+    "roblox"
+  ]
+}

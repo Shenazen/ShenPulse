@@ -18,7 +18,9 @@
         url.searchParams.set('lang', language);
         url.searchParams.delete('motion');
         url.searchParams.delete('model');
-        if (compact)
+        // Hiking uses a separate wins source; its gifts must not occupy a
+        // portrait canvas that a studio can shrink and then enlarge again.
+        if (compact || packId === 'gtav-hiking-enhanced')
             url.searchParams.set('layout', 'compact');
         return url.href;
     };

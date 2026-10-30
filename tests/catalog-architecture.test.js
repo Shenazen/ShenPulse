@@ -14,7 +14,7 @@ const digest = (value) => createHash("sha256").update(JSON.stringify(value)).dig
 // installateurs Stardew/Terraria sont remplacés par les packs autonomes qualifiés.
 // Les tests dédiés de chaque intégration vérifient aussi leurs contrats exécutables.
 test("le découpage garde exactement les catalogues de jeux et Minecraft", () => {
-  const catalog = loadShenazenGameCatalog(path.join(__dirname, "..", "resources"));
+  const catalog = loadShenazenGameCatalog(path.join(__dirname, "..", "resources")).filter(pack=>!pack.ownerPreparation);
   assert.equal(catalog.length, 63);
   // Évolution commerciale demandée le 15/10/2026 : seule cette différence
   // est retirée de la comparaison historique, aucun autre champ n'est ignoré.
@@ -89,7 +89,7 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
     });
   // KOTH ajoute un module commun ; le contenu Mont Chiliad reste inchangé.
   const gta=historical.find(pack=>pack.id==="gtav-montchiliad");
-  assert.equal(gta.installerVersion,"1.0.15");gta.installerVersion="1.0.4";
+  assert.equal(gta.installerVersion,"1.0.17");gta.installerVersion="1.0.4";
   const sandbox = historical.find(pack => pack.id === "minecraft-sandbox-3");
   assert.equal(sandbox.interactionCatalogVersion, 2026102701);
   sandbox.interactionCatalogVersion = 2026102603;
@@ -119,11 +119,12 @@ test("le manifeste garde versions, URLs, empreintes, ordre et gel de son API", (
   assert.ok(mortuary, "le nouvel installateur Mortuary est couvert séparément");
   assert.ok(unturned, "le module Unturned est couvert séparément");
   // Migration Backblaze : seules les deux URL de packs historiques changent.
-  const migrated = structuredClone(historicalInstallers);
+  const ownerIds = new Set(Object.keys(require("../src/main/game-installers/owner-integrations")));
+  const migrated = structuredClone(Object.fromEntries(Object.entries(historicalInstallers).filter(([id])=>!ownerIds.has(id))));
   migrated["euro-truck-simulator-2"].assets[0].url = "https://one-click.crowdcontrol.live/TruckSimulator/TruckSimulator-CC.zip?ver=1.0.4";
   migrated["resident-evil-3"].assets.find(asset => asset.id === "mod").url = "https://one-click.crowdcontrol.live/RE3remake/RE3net-CC.zip?ver=2.1.2";
-  const gtaOld=migrated["gtav-montchiliad"];assert.equal(gtaOld.version,"1.0.15");gtaOld.version="1.0.4";delete gtaOld.singleInstanceProcesses;
-  const plugin=gtaOld.assets.find(asset=>asset.id==="enhancedplugin");plugin.size=396800;plugin.sha256="e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1";plugin.url=plugin.url.replace("/1.0.15/","/1.0.4/");
+  const gtaOld=migrated["gtav-montchiliad"];assert.equal(gtaOld.version,"1.0.17");gtaOld.version="1.0.4";delete gtaOld.singleInstanceProcesses;
+  const plugin=gtaOld.assets.find(asset=>asset.id==="enhancedplugin");plugin.size=396800;plugin.sha256="e344fd5c5f6575324b1678447fa126db765b367958f70cdbdd3dfd66412d42f1";plugin.url=plugin.url.replace("/1.0.17/","/1.0.4/");
   assert.ok(koth && hiking && lavaRise);
   const historicalManifest = { ...require("../src/main/game-installer-manifest"), GAME_INSTALLERS: migrated };
   // ETS2 1.0.5 ajoute le lancement unique et l’attente du processus ;

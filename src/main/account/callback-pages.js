@@ -51,7 +51,7 @@ function googleBrowserCallbackHtml() {
 </html>`;
 }
 
-/** Résultat visible du retour PayPal : aucune donnée de paiement interpolée. */
+/** Résultat visible du retour du paiement : aucune donnée de paiement interpolée. */
 function paymentResponseHtml(status) {
   const cancelled = status === "cancelled";
   const error = status === "error";

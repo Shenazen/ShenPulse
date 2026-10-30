@@ -104,6 +104,11 @@ async function saveSupermarketInline(target) {
     if (kind === 'parameter') {
       const effect = pack.effects.find(item => item.id === action.config.effectId);
       const parameter = effect.parameters?.find(item => item.id === parameterId);
+      if (parameter?.type === 'select') {
+        const choice=parameter.options?.find(option=>String(option.value)===String(value));
+        if(!choice)throw new Error('Choix invalide.');
+        action.config.parameters={...action.config.parameters,[parameter.id]:choice.value};return;
+      }
       if (parameter?.type === 'text') { action.config.parameters = { ...action.config.parameters, [parameter.id]: String(value).slice(0, parameter.maxLength || 500) }; return; }
       const parsed = Number(value);
       if (!Number.isFinite(parsed)) throw new Error('Entrez une valeur numérique valide.');

@@ -537,3 +537,6 @@ dialog.game-tour-layer::backdrop { background:transparent; backdrop-filter:none;
 .game-pack-round .game-pack-round-settings label{font-size:14px}
 .game-pack-round .game-pack-round-settings input[type=number]{width:90px;font-size:16px}
 .game-pack-round .game-pack-round-settings p{font-size:12px}
+
+/* Named effect choices need room for their translated option labels. */
+.game-pack-workspace .game-pack-choice { width:auto; min-width:110px; max-width:100%; flex:0 1 180px; }

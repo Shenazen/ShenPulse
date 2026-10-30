@@ -38,7 +38,7 @@ function membershipPopupPlanButton(plan, model) {
     return `<button type="button" class="button ${plan.tier === "free" ? "" : "primary"}" data-membership-login ${focus}>${plan.tier === "free" ? "Commencer gratuitement" : `Choisir ${escapeHtml(plan.name)}`}</button>`;
   }
   if (model.checkoutTier === plan.tier) {
-    return `<button type="button" class="button membership-popup-cancel" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}" ${focus} ${model.cancelBusy ? "disabled" : ""}>${model.cancelBusy ? "Annulation…" : "Annuler PayPal"}</button>`;
+    return `<button type="button" class="button membership-popup-cancel" data-action="subscription-checkout-cancel" data-tier="${escapeHtml(plan.tier)}" ${focus} ${model.cancelBusy ? "disabled" : ""}>${model.cancelBusy ? "Annulation…" : "Annuler le paiement"}</button>`;
   }
   if (typeof agencyCanApplyTariff === "function" && !model.pendingStop && agencyCanApplyTariff(plan.tier, model.subscription)) {
     return `<button type="button" class="button primary" data-action="subscription-checkout" data-tier="${escapeHtml(plan.tier)}" ${focus}>Appliquer le tarif agence</button>`;
@@ -57,7 +57,7 @@ function membershipPopupPlanButton(plan, model) {
 
 function membershipPopupStatusMarkup(model) {
   if (model.checkoutTier) {
-    return `<p class="membership-popup-notice" role="status">${model.cancelBusy ? "Annulation du paiement en cours…" : "Paiement PayPal en cours. Vous pouvez annuler sans modifier votre abonnement."}</p>`;
+    return `<p class="membership-popup-notice" role="status">${model.cancelBusy ? "Annulation du paiement en cours…" : "Paiement en cours. Vous pouvez annuler sans modifier votre abonnement."}</p>`;
   }
   if (model.pendingStop) {
     const date = membershipDateLabel(model.pendingStop.effectiveAt || model.subscription.renewalDate);
@@ -88,6 +88,7 @@ function membershipPopupMarkup(model) {
       <span class="membership-popup-billing">Abonnements mensuels</span>
     </header>
     ${membershipPopupStatusMarkup(model)}
+    ${typeof checkoutPaymentMethodsField === "function" ? checkoutPaymentMethodsField("subscriptionPaymentProvider", model.subscription, Boolean(model.checkoutTier)) : ""}
     <div class="membership-popup-plans">
       ${(typeof agencySubscriptionPlans === "function" ? agencySubscriptionPlans() : SUBSCRIPTION_PLANS).filter((plan) => ["free", "pro", "premium"].includes(plan.tier)).map((plan) => `<article class="membership-popup-card tier-${escapeHtml(plan.tier)} ${model.activeTier === plan.tier ? "is-current" : ""}" ${model.activeTier === plan.tier ? 'aria-current="true"' : ""}>
         <div class="membership-popup-plan-top"><span class="membership-popup-plan-icon" aria-hidden="true">${plan.tier === "premium" ? "♛" : plan.tier === "pro" ? "◆" : "○"}</span><span class="membership-popup-plan-status">${membershipPopupPlanStatus(plan, model)}</span></div>
@@ -106,12 +107,14 @@ function syncMembershipPopup() {
   if (!membershipPopupDialog?.open) return false;
   const model = membershipPopupModel();
   const locale = typeof studioLocale === "function" ? studioLocale() : snapshot?.state?.settings?.locale;
-  const signature = JSON.stringify([model, SUBSCRIPTION_PLANS, locale]);
+  const signature = JSON.stringify([model, SUBSCRIPTION_PLANS, locale, typeof checkoutPaymentOwner === "function" ? checkoutPaymentOwner() : ""]);
   if (signature === membershipPopupSignature) return false;
   const focused = membershipPopupDialog.contains(document.activeElement)
     ? document.activeElement.dataset.membershipFocus : "";
   const scrollTop = membershipPopupDialog.scrollTop;
+  const paymentDraft = typeof captureCheckoutPaymentDraft === "function" ? captureCheckoutPaymentDraft(membershipPopupDialog) : null;
   membershipPopupDialog.innerHTML = membershipPopupMarkup(model);
+  if (typeof restoreCheckoutPaymentDraft === "function") restoreCheckoutPaymentDraft(membershipPopupDialog, paymentDraft);
   membershipPopupSignature = signature;
   if (typeof applyStudioLanguage === "function") applyStudioLanguage(membershipPopupDialog);
   membershipPopupDialog.scrollTop = scrollTop;

@@ -130,6 +130,29 @@ test("TikTok conserve le cadrage, le zoom et les découpes personnalisés lors d
  const saved=Object.values(second.data).find(s=>s.type==="browser");assert.equal(saved.payload.url,updated.overlayUrl);assert.equal(saved.payload.cx,1080);assert.equal(saved.payload.cy,1920);assert.equal(saved.payload.zoom,1.25);
 });
 
+test("Hiking répare une ancienne source réduite avec le même viewport que les autres scènes neuves",()=>{
+ const hiking={...plan,identity:"account:profile:hiking",packId:"gtav-hiking-enhanced",overlayUrl:plan.overlayUrl.replace("supermarket-simulator","gtav-hiking-enhanced")};
+ const first=prepareTikTok(tiktokFixture(),hiking),scene=first.document.SourceService.state.sceneSource[first.sceneId],overlay=Object.values(scene.data).find(s=>s.type==="browser");
+ const reference=prepareTikTok(tiktokFixture(),{...plan,packId:"cult-of-the-lamb"}),referenceOverlay=Object.values(reference.document.SourceService.state.sceneSource[reference.sceneId].data).find(s=>s.type==="browser");
+ overlay.payload={...overlay.payload,url:hiking.overlayUrl,cx:800,cy:600,zoom:1.25};overlay.stateData={cachedTexture:"old"};overlay.clip={x:1,y:2,z:3,w:4};overlay.effectiveClip={...overlay.clip};
+ overlay.transform={...overlay.transform,size:{cx:800,cy:600},scaleX:1.8,scaleY:1.8};
+ const unrelated=structuredClone(first.document.SourceService.state.sceneSource.other),camera=structuredClone(Object.values(scene.data).find(s=>s.type==="camera"));
+ const repaired=prepareTikTok(first.document,hiking).document.SourceService.state.sceneSource[first.sceneId],result=repaired.data[overlay.id];
+ assert.equal(result.payload.cx,referenceOverlay.payload.cx);assert.equal(result.payload.cy,referenceOverlay.payload.cy);assert.equal(result.payload.zoom,1);assert.equal(new URL(result.payload.url).searchParams.get("layout"),"compact");
+ assert.deepEqual(result.transform,referenceOverlay.transform);assert.deepEqual(result.clip,{x:0,y:0,z:0,w:0});assert.deepEqual(result.effectiveClip,result.clip);assert.equal(result.stateData,undefined);
+ assert.deepEqual(repaired.data[camera.id],camera);assert.deepEqual(first.document.SourceService.state.sceneSource.other,unrelated);
+ const repeat=prepareTikTok({...first.document,SourceService:{...first.document.SourceService,state:{...first.document.SourceService.state,sceneSource:{...first.document.SourceService.state.sceneSource,[first.sceneId]:repaired}}}},hiking);
+ assert.deepEqual(repeat.document.SourceService.state.sceneSource[first.sceneId].data[overlay.id],result);
+});
+
+test("la réparation Hiking laisse les cadrages Cult of the Lamb et Euro Truck inchangés",()=>{
+ for(const packId of ['cult-of-the-lamb','euro-truck-simulator-2']){
+  const other={...plan,identity:packId,packId,overlayUrl:plan.overlayUrl.replace('supermarket-simulator',packId)},first=prepareTikTok(tiktokFixture(),other),scene=first.document.SourceService.state.sceneSource[first.sceneId],source=Object.values(scene.data).find(s=>s.type==='browser');
+  source.payload.cx=800;source.payload.cy=600;source.payload.zoom=1.25;source.transform.translateX=91;source.clip={x:2,y:3,z:4,w:5};source.stateData={keep:true};const before=structuredClone(source);
+  const after=prepareTikTok(first.document,other).document.SourceService.state.sceneSource[first.sceneId].data[source.id];assert.deepEqual(after,before);
+ }
+});
+
 test("les nouvelles scènes partagent les trois zones de référence et un overlay compact sans chevauchement",()=>{
  const tiktok=prepareTikTok(tiktokFixture(),plan),data=tiktok.document.SourceService.state.sceneSource[tiktok.sceneId].data;
  const overlay=Object.values(data).find(s=>s.type==="browser"),camera=Object.values(data).find(s=>s.type==="camera"),game=Object.values(data).find(s=>s.type==="game");
