@@ -1,4 +1,3 @@
-import { CLIENT_RELEASE } from '/content.js?v=20261104-release213'
 import { PRODUCT_TOUR } from '/app/product-tour.js?v=20261104-release213'
 import { SCREENSHOTS } from '/app/screenshots.js?v=20261104-release213'
 import { escapeHtml } from '/app/html.js?v=20261104-release213'
@@ -11,12 +10,12 @@ export function screenshot(src, alt, priority = false) {
   if (!metadata) throw new Error(`Dimensions de capture absentes : ${src}`)
   const loading = priority ? 'eager' : 'lazy'
   const fetchPriority = priority ? ' fetchpriority="high"' : ''
-  return `<figure class="app-shot"><button type="button" class="shot-zoom" data-screenshot-open aria-label="Agrandir : ${escapeHtml(alt)}"><img src="${src}?v=${SCREENSHOT_VERSION}" alt="${escapeHtml(alt)}" width="${metadata.width}" height="${metadata.height}" loading="${loading}" decoding="async"${fetchPriority}></button><figcaption>${escapeHtml(alt)} · ShenPulse ${CLIENT_RELEASE.version} · données de démonstration.</figcaption></figure>`
+  return `<figure class="app-shot"><button type="button" class="shot-zoom" data-screenshot-open aria-label="Agrandir : ${escapeHtml(alt)}"><img src="${src}?v=${SCREENSHOT_VERSION}" alt="${escapeHtml(alt)}" width="${metadata.width}" height="${metadata.height}" loading="${loading}" decoding="async"${fetchPriority}></button><figcaption>${escapeHtml(alt)} · aperçu de l’interface · données de démonstration.</figcaption></figure>`
 }
 
 export function productTour() {
   return `<section class="section product-tour" id="decouvrir" aria-labelledby="product-tour-title">
-    <div class="section-heading"><div><span class="eyebrow">ShenPulse, aujourd’hui</span><h2 id="product-tour-title">Découvre ton prochain espace de création.</h2></div><p>Des captures de la version ${CLIENT_RELEASE.version}, sans données personnelles. Choisis un espace pour voir comment il fonctionne.</p></div>
+    <div class="section-heading"><div><span class="eyebrow">ShenPulse, aujourd’hui</span><h2 id="product-tour-title">Découvre ton prochain espace de création.</h2></div><p>Des aperçus de l’interface, sans données personnelles. Choisis un espace pour voir comment il fonctionne.</p></div>
     <div class="tour-tabs" role="tablist" aria-label="Espaces de ShenPulse">${PRODUCT_TOUR.map((item, index) => `<button type="button" role="tab" id="tour-${item.id}" data-tour-tab="${item.id}" aria-controls="product-tour-panel" aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}">${escapeHtml(item.title)}${item.premium ? '<span class="badge-pro">PREMIUM</span>' : item.pro ? '<span class="badge-pro">PRO</span>' : ''}</button>`).join('')}</div>
     <div class="tour-panel" id="product-tour-panel" role="tabpanel" tabindex="0" aria-labelledby="tour-${PRODUCT_TOUR[0].id}">${tourPanel(PRODUCT_TOUR[0])}</div>
     <p class="tour-footnote">PRO : accès Pro ou Premium actif requis. PREMIUM : accès Premium actif requis. Certains jeux nécessitent aussi un achat. Prix et droits disponibles dans l’application.</p>
@@ -28,7 +27,7 @@ function tourPanel(item) {
 }
 
 export function screenshotDialog() {
-  return `<dialog class="screenshot-dialog" aria-labelledby="screenshot-dialog-title"><div class="screenshot-dialog__header"><p id="screenshot-dialog-title">Aperçu ShenPulse</p><button type="button" data-screenshot-close aria-label="Fermer l’aperçu">Fermer ×</button></div><img alt=""><p class="screenshot-dialog__caption">Capture du rendu de ShenPulse ${CLIENT_RELEASE.version} avec données de démonstration.</p></dialog>`
+  return `<dialog class="screenshot-dialog" aria-labelledby="screenshot-dialog-title"><div class="screenshot-dialog__header"><p id="screenshot-dialog-title">Aperçu ShenPulse</p><button type="button" data-screenshot-close aria-label="Fermer l’aperçu">Fermer ×</button></div><img alt=""><p class="screenshot-dialog__caption">Aperçu de l’interface ShenPulse avec données de démonstration.</p></dialog>`
 }
 
 /** L'AbortSignal du routeur nettoie les événements lors d'un changement de page. */

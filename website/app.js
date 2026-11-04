@@ -25,7 +25,7 @@ const HOME_FAQ = [
   ['Quelles fonctions nécessitent Pro ?', 'Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Machines IRL est réservé à Premium. Certains modules de jeux demandent aussi un achat supplémentaire. Les prix et droits de ton compte sont présentés dans l’application.'],
   ['Mes profils sont-ils conservés ?', 'Oui, les profils et leurs réglages sont rattachés à ton compte sur ce PC, avec sauvegarde et restauration à la reconnexion. Cela ne constitue pas une synchronisation entre ordinateurs : conserve aussi tes exports.'],
   ['Dois-je configurer Backblaze pour importer un son ?', 'Non. Le stockage média est géré par ShenPulse pour tous les comptes connectés, sans clé Backblaze personnelle. Tu peux importer les formats autorisés depuis l’application, dans la limite indiquée au moment de l’import.'],
-  ['Les commandes répondent-elles dans le chat ?', 'L’onglet Commandes reçoit des messages commençant par ! et exécute l’effet configuré : musique, action ou overlay. Il n’envoie pas de réponse textuelle automatique au chat.'],
+  ['Les commandes répondent-elles dans le chat ?', 'Les commandes peuvent piloter une musique, une action ou un overlay. Les réponses écrites et les messages programmés nécessitent une connexion autorisant leur publication. Le bot commun TikTok reste à connecter avant son activation.'],
   ['Quels jeux sont présentés ?', `Les ${GAMES.length} fiches du catalogue public de l’application. Les fiches de référence sont distinguées des intégrations exécutables ; une fiche seule ne garantit pas qu’un mod tiers est installé ou compatible.`]
 ]
 
@@ -169,7 +169,7 @@ function homePage() {
         </div>
         <div class="hero-visual">
           <span class="visual-label">Aperçu de l’application</span>
-          ${screenshot('/screenshots/home-public.png', 'L’accueil de ShenPulse 2.0.2', true)}
+          ${screenshot('/screenshots/home-public.png', 'L’accueil de ShenPulse', true)}
         </div>
       </section>
 

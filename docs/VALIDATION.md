@@ -37,6 +37,12 @@ Farming Simulator 25 : les effets Steam et Game Pass ont leurs résultats préc�
 
 ## Publication
 
-Soumission publique 15 : 1152921505702316401. Notes françaises, description, confidentialité, classification, diffusion publique détectable et 240 marchés contrôlés. Publication automatique après certification sélectionnée. Le statut externe final est consigné après l’envoi ; un import de paquet ne vaut pas publication.
+Soumission publique 15 : 1152921505702316401. Notes françaises, description, confidentialité, classification, diffusion publique détectable et 240 marchés contrôlés. Publication automatique après certification sélectionnée. Envoi confirmé dans Partner Center le 4 novembre 2026 : « Mise à jour en cours de certification », étape 2 sur 4, prétraitement en cours. La diffusion publique 2.1.3 attend la certification Microsoft ; aucun vol privé créé.
 
 Les preuves et journaux détaillés sont conservés hors Git sous .artifacts/release-2.1.3/ ; les distribuables restent sous dist/. Aucun secret, certificat privé, donnée utilisateur ou distribuable n’est ajouté au dépôt.
+
+- Commit de release `0f1a850`, tag annoté `v2.1.3` et branche main poussés sur origin.
+- Site public et installateur 2.1.3 publiés. Téléchargement HTTP complet contrôlé : 797 380 472 octets, SHA-256 identique à l’EXE qualifié. Anciennes versions conservées.
+- Hosting overlays : version `c6f0a8460031d530`, runtime `2.1.3-overlay1`, ressources préexistantes conservées.
+- Contrôle final de la vitrine : 34 vues sans échec. Les légendes des captures décrivent des aperçus, sans leur attribuer une version récente artificielle ; FAQ des réponses du chat alignée sur ses prérequis.
+- Discord explicitement reporté par le propriétaire : aucune annonce publiée pendant cette release.

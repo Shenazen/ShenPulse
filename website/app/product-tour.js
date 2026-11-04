@@ -1,4 +1,4 @@
-/** Parcours public : uniquement des écrans et usages présents dans ShenPulse 2.0.2. */
+/** Parcours public des principaux espaces de l’application. */
 export const PRODUCT_TOUR = [
   { id: 'dashboard', title: 'Tableau de bord', image: 'app-overview-public.png',
     heading: 'Le direct en un coup d’œil.',
