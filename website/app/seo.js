@@ -466,25 +466,12 @@ export function pageGraph(page) {
         item: SITE_ORIGIN + item.path,
       })),
     })
-  if (page.path === '/')
-    graph.push({
-      '@type': 'SoftwareApplication',
-      name: 'ShenPulse',
-      operatingSystem: 'Windows 10, Windows 11',
-      applicationCategory: 'MultimediaApplication',
-      softwareVersion: CLIENT_RELEASE.version,
-      inLanguage: 'fr',
-      url: SITE_ORIGIN + '/',
-      downloadUrl: 'https://apps.microsoft.com/detail/9NDR71Z41ZJG',
-      description: page.description,
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'EUR',
-        description:
-          'Téléchargement gratuit ; fonctions Pro, Premium et certains modules payants.',
-      },
-    })
+  // Le résultat enrichi SoftwareApplication exige un avis ou une note vérifiée.
+  // Ne pas émettre un balisage inéligible ni inventer des évaluations.
+  if (['guide', 'release'].includes(page.pageClass)) Object.assign(webpage, {
+    headline: page.title, author: { '@id': organisation['@id'] },
+    image: SITE_ORIGIN + '/og.png?v=2',
+  })
   if (page.path === '/jeux')
     graph.push({
       '@type': 'ItemList',
