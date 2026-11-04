@@ -1,6 +1,7 @@
-import { PRODUCT_TOUR } from '/app/product-tour.js?v=20261104-release213'
-import { SCREENSHOTS } from '/app/screenshots.js?v=20261104-release213'
-import { escapeHtml } from '/app/html.js?v=20261104-release213'
+import { IMAGES } from '../image-assets.js?v=20261104-seo1'
+import { PRODUCT_TOUR } from './product-tour.js?v=20261104-seo1'
+import { SCREENSHOTS } from './screenshots.js?v=20261104-seo1'
+import { escapeHtml } from './html.js?v=20261104-seo1'
 
 const SCREENSHOT_VERSION = '20261015-2.0.2'
 
@@ -10,7 +11,9 @@ export function screenshot(src, alt, priority = false) {
   if (!metadata) throw new Error(`Dimensions de capture absentes : ${src}`)
   const loading = priority ? 'eager' : 'lazy'
   const fetchPriority = priority ? ' fetchpriority="high"' : ''
-  return `<figure class="app-shot"><button type="button" class="shot-zoom" data-screenshot-open aria-label="Agrandir : ${escapeHtml(alt)}"><img src="${src}?v=${SCREENSHOT_VERSION}" alt="${escapeHtml(alt)}" width="${metadata.width}" height="${metadata.height}" loading="${loading}" decoding="async"${fetchPriority}></button><figcaption>${escapeHtml(alt)} · aperçu de l’interface · données de démonstration.</figcaption></figure>`
+  const optimized = IMAGES[src]
+  const picture = optimized ? '<source type="image/webp" srcset="' + optimized.small + ' 720w, ' + optimized.large + ' 1440w" sizes="(max-width: 767px) 92vw, (max-width: 1100px) 85vw, 660px">' : ''
+  return `<figure class="app-shot"><a class="shot-zoom" href="${src}?v=${SCREENSHOT_VERSION}" data-screenshot-open role="button" aria-label="Agrandir : ${escapeHtml(alt)}"><picture>${picture}<img src="${src}?v=${SCREENSHOT_VERSION}" alt="${escapeHtml(alt)}" width="${metadata.width}" height="${metadata.height}" loading="${loading}" decoding="async"${fetchPriority}></picture></a><figcaption>${escapeHtml(alt)} · aperçu de l’interface · données de démonstration.</figcaption></figure>`
 }
 
 export function productTour() {
@@ -35,12 +38,19 @@ export function bindVisuals(root, signal) {
   const dialog = root.querySelector('.screenshot-dialog')
   const preview = dialog.querySelector('img')
   let opener = null
+  root.addEventListener('keydown', (event) => {
+    if (event.key === ' ' && event.target.matches('a[data-screenshot-open]')) {
+      event.preventDefault()
+      event.target.click()
+    }
+  }, { signal })
   root.addEventListener('click', (event) => {
     const button = event.target.closest('[data-screenshot-open]')
     if (!button) return
+    event.preventDefault()
     const original = button.querySelector('img')
     opener = button
-    preview.src = original.currentSrc || original.src
+    preview.src = original.src
     preview.alt = original.alt
     preview.setAttribute('width', original.getAttribute('width'))
     preview.setAttribute('height', original.getAttribute('height'))

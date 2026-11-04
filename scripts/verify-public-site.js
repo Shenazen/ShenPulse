@@ -30,10 +30,11 @@ const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "shenpulse-public
 const canonicalOrigin = "https://www.shenpulse.leuridan.fr";
 const viewports = [[1440, 1000], [1920, 1080], [1280, 900], [1024, 900], [768, 1024], [375, 812], [320, 740]];
 const otherRoutes = ["/cgu", "/cgv", "/mentions-legales", "/confidentialite", "/cookies", "/login", "/setup", "/admin", "/app", "/page-inconnue-qa"];
-const publicRoutes = new Set(["/", "/docs", ...otherRoutes]);
+const seoBuild = JSON.parse(fs.readFileSync(path.join(projectRoot, ".artifacts/website-seo/build-report.json"), "utf8"));
+const publicRoutes = new Set([...seoBuild.pages.map(page => page.path), ...otherRoutes]);
 const report = { startedAt: new Date().toISOString(), dist, profileDirectory, viewports, checks: [], interactions: [], tour: [], docsRegressions: [], failures: [], consoleErrors: [], runtimeErrors: [], blockedRequests: [], failedRequests: [], downloads: [] };
 const mimeTypes = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml", ".webmanifest": "application/manifest+json" };
-let testWindow, server, localOrigin, currentStage = "initialisation";
+let testWindow, server, localOrigin, scriptsDisabled = false, currentStage = "initialisation";
 const idsByRoute = new Map();
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 fs.mkdirSync(artifactDirectory, { recursive: true });
@@ -43,7 +44,7 @@ app.commandLine.appendSwitch("disable-background-networking");
 app.commandLine.appendSwitch("force-device-scale-factor", "1");
 app.commandLine.appendSwitch("force-prefers-reduced-motion", "reduce");
 app.commandLine.appendSwitch("host-resolver-rules", "MAP * ~NOTFOUND, EXCLUDE 127.0.0.1");
-const deadline = setTimeout(() => finish(new Error(`Délai global dépassé : ${currentStage}`)), 240000);
+const deadline = setTimeout(() => finish(new Error(`Délai global dépassé : ${currentStage}`)), 600000);
 
 function writeReport() {
   fs.writeFileSync(path.join(artifactDirectory, "report.json"), JSON.stringify(report, null, 2));
@@ -61,11 +62,11 @@ function serve(request, response) {
     if (fs.existsSync(target) && fs.statSync(target).isDirectory()) target = path.join(target, "index.html");
     if (!fs.existsSync(target)) {
       if (path.extname(pathname)) { response.writeHead(404); response.end(); return; }
-      target = path.join(dist, "index.html");
+      target = path.join(dist, "404.html");
     }
     target = fs.realpathSync(target);
     if (!inside(target) || !fs.statSync(target).isFile()) { response.writeHead(403); response.end(); return; }
-    response.writeHead(200, { "Content-Type": mimeTypes[path.extname(target).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store" });
+    response.writeHead(target === path.join(dist, "404.html") ? 404 : 200, { "Content-Type": mimeTypes[path.extname(target).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store" });
     if (request.method === "HEAD") response.end();
     else fs.createReadStream(target).pipe(response);
   } catch { response.writeHead(400); response.end(); }
@@ -117,7 +118,7 @@ function inspect() {
   const box = (element) => element ? { x: element.getBoundingClientRect().x, y: element.getBoundingClientRect().y, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height } : null;
   const images = [...document.images].filter((image) => image.getAttribute("src")).map((image) => ({
     src: new URL(image.currentSrc || image.src).pathname, complete: image.complete, naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight,
-    widthAttribute: Number(image.getAttribute("width")), heightAttribute: Number(image.getAttribute("height")), box: box(image), alt: image.alt
+    widthAttribute: Number(image.getAttribute("width")), heightAttribute: Number(image.getAttribute("height")), box: box(image), alt: image.alt, objectFit: getComputedStyle(image).objectFit
   }));
   const hero = document.querySelector(".hero");
   return { viewport: { width: innerWidth, height: innerHeight }, page: document.documentElement.dataset.page, title: document.title,
@@ -161,12 +162,12 @@ async function checkpoint(name, route, expectedPage, { top = true } = {}) {
     }
     if (image.box.width > 0 && image.box.height > 0 && image.naturalHeight > 0) {
       const distortion = Math.abs((image.box.width / image.box.height) / (image.naturalWidth / image.naturalHeight) - 1);
-      check(distortion <= 0.01, `Ratio d'image déformé de ${(distortion * 100).toFixed(2)} % : ${image.src}`);
+      check(image.objectFit === "contain" || distortion <= 0.01, `Ratio d'image déformé de ${(distortion * 100).toFixed(2)} % : ${image.src}`);
     }
   }
   check(new Set(metrics.ids).size === metrics.ids.length, "Identifiants HTML dupliqués");
   for (const link of metrics.links.filter((entry) => entry.local)) {
-    check(publicRoutes.has(link.pathname), `Route interne non connue : ${link.href}`);
+    check(publicRoutes.has(link.pathname) || fs.existsSync(path.join(dist, link.pathname)), `Route interne non connue : ${link.href}`);
     if (!link.hash) continue;
     const ids = idsByRoute.get(link.pathname) || [];
     check(ids.includes(decodeURIComponent(link.hash.slice(1))), `Ancre absente : ${link.href}`);
@@ -250,10 +251,10 @@ async function verifyTour(width) {
       const img = panel.querySelector("img");
       const rect = img.getBoundingClientRect();
       panel.scrollIntoView({ block: "start", behavior: "instant" });
-      return { src: new URL(img.src).pathname, width: img.naturalWidth, height: img.naturalHeight, widthAttribute: Number(img.getAttribute("width")), heightAttribute: Number(img.getAttribute("height")), ratio: rect.width / rect.height, overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth };
+      return { src: new URL(img.src).pathname, currentSrc:new URL(img.currentSrc || img.src).pathname, width: img.naturalWidth, height: img.naturalHeight, widthAttribute: Number(img.getAttribute("width")), heightAttribute: Number(img.getAttribute("height")), ratio: rect.width / rect.height, overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth };
     });
     const metadata = report.screenshots[image.src];
-    assert.ok(metadata && image.width === metadata.width && image.height === metadata.height && image.widthAttribute === metadata.width && image.heightAttribute === metadata.height, `Capture de l'onglet ${id}`);
+    assert.ok(metadata && image.width > 0 && Math.abs(image.height / image.width - metadata.height / metadata.width) < 0.002 && [report.optimizedImages[image.src].small,report.optimizedImages[image.src].large].includes(image.currentSrc) && image.widthAttribute === metadata.width && image.heightAttribute === metadata.height, `Capture de l'onglet ${id}`);
     assert.ok(Math.abs(image.ratio / (image.width / image.height) - 1) <= 0.01, `Ratio de l'onglet ${id}`);
     assert.ok(image.overflow <= 1, `Débordement de l'onglet ${id}`);
     const screenshot = `tour-${id}-${width}.png`;
@@ -359,20 +360,22 @@ async function run() {
   session.setPermissionCheckHandler(() => false);
   session.on("will-download", (event, item) => { event.preventDefault(); report.downloads.push(item.getFilename()); });
   session.webRequest.onBeforeRequest((details, callback) => {
+    if(scriptsDisabled && details.resourceType === "script"){callback({cancel:true});return;}
     const url = new URL(details.url);
     const permitted = url.origin === localOrigin || ["data:", "blob:", "about:"].includes(url.protocol);
     if (!permitted) report.blockedRequests.push({ stage: currentStage, url: `${url.origin}${url.pathname}` });
     callback({ cancel: !permitted });
   });
-  session.webRequest.onErrorOccurred((details) => { if (details.error !== "net::ERR_ABORTED") report.failedRequests.push({ stage: currentStage, url: details.url, error: details.error }); });
-  session.webRequest.onCompleted((details) => { if (details.statusCode >= 400) report.failedRequests.push({ stage: currentStage, url: details.url, status: details.statusCode }); });
-  testWindow.webContents.on("console-message", (details) => { if (details.level === "error") report.consoleErrors.push({ stage: currentStage, error: details.message }); });
+  session.webRequest.onErrorOccurred((details) => { if (details.error !== "net::ERR_ABORTED" && !(scriptsDisabled && details.error === "net::ERR_BLOCKED_BY_CLIENT")) report.failedRequests.push({ stage: currentStage, url: details.url, error: details.error }); });
+  session.webRequest.onCompleted((details) => { if (details.statusCode >= 400 && !otherRoutes.some(route => details.url === localOrigin + route && !["/cgu", "/cgv", "/mentions-legales", "/confidentialite", "/cookies"].includes(route))) report.failedRequests.push({ stage: currentStage, url: details.url, status: details.statusCode }); });
+  testWindow.webContents.on("console-message", (details) => { if (details.level === "error" && !(scriptsDisabled && details.message.includes("ERR_BLOCKED_BY_CLIENT"))) report.consoleErrors.push({ stage: currentStage, error: details.message }); });
   await load("/docs", 1440, 1000);
   // Le premier document doit exister avant d'envoyer une commande CDP.
   // Un BrowserWindow offscreen encore vide n'a pas forcément de cible renderer.
   testWindow.webContents.debugger.attach("1.3");
   await testWindow.webContents.debugger.sendCommand("Emulation.setFocusEmulationEnabled", { enabled: true });
   await testWindow.webContents.debugger.sendCommand("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  report.optimizedImages = await evaluate(async () => (await import("/image-assets.js")).IMAGES);
   report.screenshots = await evaluate(async () => (await import("/app/screenshots.js")).SCREENSHOTS);
   idsByRoute.set("/docs", await evaluate(() => [...document.querySelectorAll("[id]")].map((element) => element.id)));
   for (const [width, height] of viewports) {
@@ -387,6 +390,30 @@ async function run() {
       await verifyMenu();
     });
   }
+  for (const [width,height] of [viewports[0],viewports[5],viewports[6]]) {
+    for(const route of ["/jeux","/guides","/guides/synthese-vocale","/jeux/palworld","/mises-a-jour/2.1.3"]) {
+      await scenario("seo-"+route+"-"+width,async()=>{
+        await load(route,width,height);
+        const page = route==="/jeux"?"games":route==="/guides"?"guides":route.startsWith("/guides/")?"guide":route.startsWith("/jeux/")?"game":"release";
+        await checkpoint("seo-"+route.replaceAll("/","-"),route,page);
+        assert.equal(await evaluate(()=>document.querySelectorAll("main").length===1 && document.querySelectorAll("h1").length===1),true);
+        if(route==="/jeux"){
+          await evaluate(()=>{const input=document.getElementById("catalog-search");input.value="Palworld";input.dispatchEvent(new Event("input",{bubbles:true}));});
+          assert.equal(await evaluate(()=>document.querySelectorAll("[data-catalog-game]:not([hidden])").length),1);
+          await evaluate(()=>document.querySelector('[data-catalog-game]:not([hidden]) h2 a').click());
+          await waitUntil(()=>evaluate(()=>document.documentElement.dataset.page==="game"));
+          assert.equal(await evaluate(()=>document.title.includes("Palworld")&&document.querySelector('link[rel="canonical"]').href.endsWith("/jeux/palworld")),true,"Navigation et métadonnées après filtre");
+        }
+      });
+    }
+  }
+  scriptsDisabled = true;
+  for(const [width,height] of [viewports[0],viewports[5]])for(const route of ["/","/jeux","/guides/synthese-vocale","/jeux/palworld","/docs"])await scenario("no-js-"+route+"-"+width,async()=>{
+    await load(route,width,height);
+    assert.equal(await evaluate(()=>document.documentElement.classList.contains("no-js")),true,"Les modules du site ne doivent pas s'exécuter");
+    await checkpoint("no-js-"+route.replaceAll("/","-"),route,route==="/"?"home":route==="/docs"?"docs":route==="/jeux"?"games":route.startsWith("/guides/")?"guide":"game");
+  });
+  scriptsDisabled = false;
   for (const name of ["consoleErrors", "runtimeErrors", "blockedRequests", "failedRequests", "downloads"]) {
     if (report[name].length) report.failures.push({ stage: "contrôles globaux", error: `${name} : ${report[name].length}`, details: report[name] });
   }

@@ -1,5 +1,7 @@
 export const CLIENT_RELEASE = {
   version: '2.1.3',
+  publishedAt: '2026-11-04',
+  displayDate: '4 novembre 2026',
   title: 'Tes jeux, tes actions, ton ambiance.',
   summary: 'Crée tes packs de raccourcis, combine plusieurs effets et personnalise les alertes de tes viewers. De nouvelles voix, le pack Dragon et un meilleur contrôle audio complètent cette mise à jour.',
   highlights: [

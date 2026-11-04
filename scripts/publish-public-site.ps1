@@ -39,7 +39,7 @@ if ([IO.Path]::GetFileName($InstallerPath) -ne $installerName) { throw "L'instal
 if (-not (Test-Path -LiteralPath $InstallerPath -PathType Leaf)) { throw 'Installateur absent.' }
 if ((Get-Item -LiteralPath $SiteDirectory).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Le site doit être un dossier réel, pas un lien.' }
 
-$requiredFiles = @('index.html', '404.html', 'app.js', 'app/legal-pages.js', 'content.js', 'game-catalog.js', 'styles.css')
+$requiredFiles = @('index.html', '404.html', 'app.js', 'app/pages.js', 'app/seo.js', 'app/legal-pages.js', 'content.js', 'game-catalog.js', 'image-assets.js', 'sitemap.xml', 'styles.css')
 $allowedExtensions = @('.html', '.css', '.js', '.xml', '.txt', '.webmanifest', '.png', '.webp', '.jpg', '.jpeg', '.svg', '.gif', '.ico', '.woff', '.woff2')
 $publicFiles = @(Get-ChildItem -LiteralPath $SiteDirectory -File -Recurse | ForEach-Object {
   if ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Lien refusé : $($_.Name)" }
@@ -59,7 +59,7 @@ foreach ($required in $requiredFiles) {
   if ($publicFiles.Path -notcontains $required) { throw "Site incomplet : $required" }
 }
 $expectedDownload = "/downloads/$installerName"
-foreach ($file in @('app.js', 'index.html')) {
+foreach ($file in @('app/pages.js', 'index.html')) {
   if (-not [IO.File]::ReadAllText((Join-Path $SiteDirectory $file)).Contains($expectedDownload)) {
     throw "Le fichier $file ne référence pas l'installateur $Version. Reconstruire et valider le site après les builds."
   }

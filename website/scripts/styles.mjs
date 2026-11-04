@@ -3,7 +3,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-export const sections = ["base", "accueil", "documentation", "jeux", "legal", "responsive"]
+export const sections = ["base", "accueil", "documentation", "jeux", "legal", "seo", "responsive"]
 
 /** Une seule feuille livrée ; ordre de cascade conservé, sources organisées par page. */
 export async function buildStyles({ write = true } = {}) {
