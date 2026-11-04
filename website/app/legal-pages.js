@@ -136,6 +136,11 @@ export const LEGAL_PAGES = {
         'Lorsqu’un utilisateur connecté importe un son, une image, un GIF ou une vidéo, le fichier est transféré vers le stockage média Backblaze B2 géré par ShenPulse, au moyen de son API authentifiée. Une clé de stockage personnelle n’est pas demandée à l’utilisateur.',
         'La bibliothèque locale conserve les informations nécessaires pour retrouver et lire le média. Les sources de diffusion peuvent charger ce média distant. L’utilisateur doit vérifier les droits sur le fichier et éviter d’y inclure des données confidentielles.'
       ]],
+      ['Voix et messages du chat', [
+        'Avec une voix naturelle en ligne, le commentaire autorisé et filtré est transmis au service vocal Microsoft. Le catalogue est actualisé automatiquement, avec un miroir Backblaze et une liste embarquée. Les voix Windows locales servent de secours. Le service vocal ShenPulse ne sauvegarde pas les commentaires dans un fichier ; le journal d’événements conserve son fonctionnement habituel.',
+        'Les alertes viewer peuvent afficher le pseudonyme, la photo publique et les variables choisies dans les sources Media. Gardez leurs URL privées.',
+        'Les réponses et rappels exigent une connexion autorisant l’envoi. Le bot commun TikTok, lorsqu’il est configuré et autorisé, utilise le serveur ShenPulse pour vérifier les droits et publier le texte dans le salon choisi. Il reste inactif tant qu’aucun compte bot n’est connecté.'
+      ]],
       ['Annuaire des créateurs en LIVE', [
         'À partir du 21 octobre 2026, la publication dans l’annuaire public est activée par défaut pour les comptes connectés, y compris lors de la mise à jour des anciennes installations. Elle peut être désactivée dans le menu du compte ; ce choix est ensuite conservé. Les informations publiques du LIVE telles que le pseudonyme, la photo publique, la plateforme et l’audience disponible peuvent apparaître sur l’accueil de ShenPulse lorsque ce partage est actif.',
         'L’annuaire ne publie pas les profils de configuration, les secrets locaux ou l’adresse e-mail du compte ShenPulse.'

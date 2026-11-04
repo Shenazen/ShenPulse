@@ -164,6 +164,23 @@ test("le flux Studio ne reçoit que les trois sorties Match et se ferme après r
   } finally { await reader?.cancel(); await h.server.stop(); }
 });
 
+test("une source Studio ouverte pendant la lecture reçoit le volume courant puis chaque ajustement", { timeout: 10000 }, async () => {
+  const h = await fixture(); let reader;
+  try {
+    h.state.settings.audioMixer = { master: .35, matches: .2 };
+    const response = await fetch(`${h.bridge}/events`); reader = response.body.getReader();
+    let text = "";
+    while (!text.includes("event: audio-control")) text += new TextDecoder().decode((await reader.read()).value);
+    const data = text.split("event: audio-control\ndata: ")[1].split("\n")[0];
+    assert.equal(JSON.parse(data).payload.settings.master, .35);
+    assert.equal(JSON.parse(data).payload.settings.matches, .2);
+    h.server.publish("audio-control", { settings: { master: 0 } });
+    const update = new TextDecoder().decode((await reader.read()).value);
+    assert.match(update, /event: audio-control/); assert.match(update, /"master":0/);
+    assert.doesNotMatch(update, /private|studio-local-account/);
+  } finally { await reader?.cancel(); await h.server.stop(); }
+});
+
 test("un changement de profil ou de LIVE invalide les tickets et le flux déjà ouverts", { timeout: 10000 }, async () => {
   const h = await fixture();
   let reader;

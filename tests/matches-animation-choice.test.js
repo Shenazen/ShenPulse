@@ -64,9 +64,9 @@ test("animation choices: every moment exposes only its own asset and available p
   for (const moment of f.w.ShenPulseMatches.MATCH_MOMENTS) {
     f.w.content.innerHTML = f.w.creatorMatchesAnimationSelect(null, moment.id);
     const options = [...f.w.content.querySelectorAll("option")];
-    const packs = mapping[moment.id] ? mapping[moment.id] === "cofre" ? ["tikcontrol", "gladiador"] : ["tikcontrol", "gladiador", "cyber"] : [];
+    const packs = mapping[moment.id] ? mapping[moment.id] === "cofre" ? ["tikcontrol", "gladiador"] : ["tikcontrol", "gladiador", "cyber", "dragon"] : [];
     assert.deepEqual(options.map(row => row.value), ["", ...packs.map(pack => `${mapping[moment.id]}:${pack}`)]);
-    assert.deepEqual(options.map(row => row.textContent), ["Aucun", ...packs.map(pack => ({ tikcontrol: "TikControl", gladiador: "Gladiator", cyber: "Cyber" })[pack])]);
+    assert.deepEqual(options.map(row => row.textContent), ["Aucun", ...packs.map(pack => ({ tikcontrol: "TikControl", gladiador: "Gladiator", cyber: "Cyber", dragon: "Dragon" })[pack])]);
     assert.equal(f.w.content.querySelector("iframe, video, audio"), null);
   }
   assert.deepEqual(f.calls, []);
@@ -157,7 +157,7 @@ test("legacy removal: advanced remove button changes only the draft until Submit
 
 test("advanced editor: only the current moment's packs are offered, switching moments resets the model and x3 previews never become x2", (context) => {
   const f = fixture(context); f.w.openCreatorMatchesAutomationEditor(f.entry("multiplierX2", { type: "animation", match: "x2", variant: "cyber" }));
-  assert.deepEqual([...f.w.dialog.querySelector('[name="matchVariant"]').options].map(row => row.textContent), ["Aucun", "TikControl", "Gladiator", "Cyber"]);
+  assert.deepEqual([...f.w.dialog.querySelector('[name="matchVariant"]').options].map(row => row.textContent), ["Aucun", "TikControl", "Gladiator", "Cyber", "Dragon"]);
   assert.equal(f.w.dialog.querySelector('[name="matchAnimation"]').type, "hidden");
   assert.equal(f.w.dialog.querySelector("iframe"), null);
   f.change("moment", "multiplierX3"); assert.equal(f.w.dialog.querySelector('[name="matchVariant"]').value, "");
@@ -238,4 +238,26 @@ test("animation save: a late response cannot open preview for another account/pr
     assert.equal(f.w.dialog.querySelector("iframe"), null);
     assert.equal(f.calls.some(row => row.method === "testAutomation"), false);
   }
+});
+
+test("Dragon: selecting the new pack preserves the moment, sound and action, and previews only locally", async (context) => {
+  const f = fixture(context);
+  const sound = { type: "sound", url: "https://fixture.invalid/keep.mp3", outputMode: "local", volume: 0.3 };
+  const action = { type: "action", actionId: "keep-existing-action" };
+  const old = f.entry("multiplierX3", { type: "bundle", reactions: [f.entry().reaction, sound, action] });
+  f.state.settings.matches.automations.push(old);
+  const before = JSON.stringify(old);
+  await f.click("matches-automation-animation", { id: old.id, value: "x3:dragon" });
+  const saved = f.calls.find(row => row.method === "saveAutomation").args[0];
+  assert.equal(saved.id, old.id);
+  assert.equal(saved.moment, "multiplierX3");
+  assert.deepEqual(saved.reaction.reactions.filter(row => row.type !== "animation"), [sound, action]);
+  assert.equal(saved.reaction.reactions.find(row => row.type === "animation").variant, "dragon");
+  assert.equal(saved.reaction.reactions.find(row => row.type === "animation").match, "x3");
+  const preview = new URL(f.w.dialog.querySelector("iframe").src);
+  assert.equal(preview.hostname, "127.0.0.1");
+  assert.equal(preview.searchParams.get("variant"), "dragon");
+  assert.equal(preview.searchParams.get("soundEnabled"), "false");
+  assert.equal(f.calls.some(row => row.method === "testAutomation"), false);
+  assert.equal(JSON.stringify(old), before);
 });

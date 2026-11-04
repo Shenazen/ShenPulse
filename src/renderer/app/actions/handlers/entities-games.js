@@ -375,6 +375,7 @@ async function handleEntityAndGameRuntimeAction({ action, target, id }) {
         await api.selectGame(packId);
         snapshot = await api.getSnapshot();
       }
+      if(pack.customGame) await prepareCustomGameManualTest(pack,pack.effects.find(effect=>effect.id===id));
       return api.triggerEffect(id, {});
     }, "Effet déclenché");
   }

@@ -86,12 +86,12 @@ async function handleContentAndCommerceAction({ action, target, id }) {
       id,
       target.dataset.index
     );
-    return row?.action.type === "tts.speak"
+    return row?.rule.actions?.length === 1 && row?.action.type === "tts.speak"
       ? openTtsEditor(row)
       : openActionEditor(row);
   }
   if (action === "test-action") {
-    const row = findActionRow(target.dataset.rule, id, target.dataset.index);
+    const row = target.dataset.soundEntry ? findSoundActionRow(target.dataset.rule, id, target.dataset.index) : findActionRow(target.dataset.rule, id, target.dataset.index);
     return perform(
       () => testActionRow(row),
       (result) => {
@@ -110,6 +110,8 @@ async function handleContentAndCommerceAction({ action, target, id }) {
       }
     );
   }
+  if (action === "duplicate-scenario") return perform(() => duplicateActionScenario(snapshot.state.rules.find(rule => rule.id === id)), "Action dupliquée");
+  if (action === "delete-scenario") return deleteActionScenario(snapshot.state.rules.find(rule => rule.id === id));
   if (action === "duplicate-action") {
     const row = findActionRow(target.dataset.rule, id, target.dataset.index);
     return perform(() => duplicateActionRow(row), "Action dupliquée");
@@ -151,13 +153,13 @@ async function handleContentAndCommerceAction({ action, target, id }) {
   }
   if (action === "edit-sound") {
     return openSoundEditor(
-      findActionRow(target.dataset.rule, id, target.dataset.index)
+      findSoundActionRow(target.dataset.rule, id, target.dataset.index)
     );
   }
   if (action === "set-sound-volume") {
     return perform(() =>
       setSoundVolume(
-        findActionRow(target.dataset.rule, id, target.dataset.index),
+        findSoundActionRow(target.dataset.rule, id, target.dataset.index),
         target.value
       )
     );

@@ -1,0 +1,22 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+
+const base=process.argv[2]||'.artifacts/tiktok-bot-20261102/baseline';
+const stage=process.argv[3]||'.artifacts/tiktok-bot-20261102/stage';
+const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
+let index=fs.readFileSync(path.join(base,'index.js'),'utf8'),payments=fs.readFileSync(path.join(base,'payments.js'),'utf8');
+if(index.includes('handleSharedTikTokBotRoute'))throw Error('Intégration déjà présente.');
+const baseline={index:hash(index),payments:hash(payments)};
+index="import { handleSharedTikTokBotRoute } from './chatbot-tiktok/service.mjs'\nimport { sharedTikTokBotService } from './payments.js'\n"+index;
+const anchor='    const url = requestUrl(request)';
+if(index.split(anchor).length!==2)throw Error('Ancrage serveur ambigu.');
+index=index.replace(anchor,anchor+"\n    if (url.pathname.startsWith('/api/chatbot/tiktok/')) {\n      sendJson(response, await handleSharedTikTokBotRoute(sharedTikTokBotService, request, url, readJsonBody))\n      return\n    }");
+payments="import { createSharedTikTokBotService } from './chatbot-tiktok/service.mjs'\nimport botDelivery from './chatbot-tiktok/euler-delivery.cjs'\n"+payments;
+payments+="\nexport const sharedTikTokBotService = createSharedTikTokBotService({authenticate:requireAuthenticatedUser, entitlements:publicEntitlementPayload, DeliveryClass:botDelivery.EulerOAuthChatDelivery})\n";
+fs.mkdirSync(path.join(stage,'chatbot-tiktok'),{recursive:true});
+fs.writeFileSync(path.join(stage,'index.js'),index);fs.writeFileSync(path.join(stage,'payments.js'),payments);
+fs.copyFileSync(new URL('service.mjs',import.meta.url),path.join(stage,'chatbot-tiktok/service.mjs'));
+fs.copyFileSync('src/main/sources/euler-oauth-chat-delivery.js',path.join(stage,'chatbot-tiktok/euler-delivery.cjs'));
+fs.writeFileSync(path.join(stage,'baseline.json'),JSON.stringify(baseline,null,2));
+console.log('Service bot préparé, sans identifiants TikTok ni envoi.');

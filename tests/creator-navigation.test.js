@@ -321,7 +321,7 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     assert.equal(canNavigateToLive, true);
     dom.window.eval('currentPage = "rules"; render();');
     assert.equal(dom.window.eval("currentPage"), "actions");
-    assert.ok(dom.window.document.querySelector('[data-automation-table="advanced-rules"]'), "Les automatisations avancées restent disponibles dans Actions.");
+    assert.ok(dom.window.document.querySelector('[data-action="add-trigger"]'), "Les liens vers les actions existantes restent disponibles dans Actions.");
     dom.window.eval('actionsSection = "actions";');
     homeNavigation.click();
     await waitUntil(() => dom.window.document.querySelector(".creator-home-page"), "Le retour à l’accueil échoue.");
@@ -515,16 +515,9 @@ test("une session authentifiée navigue dans tous les espaces créateurs et gard
     actionsTable.querySelector("[data-automation-select-all]").click();
     assert.equal(actionsTable.querySelectorAll("[data-automation-select]:checked").length, 3);
     assert.equal(entityRequests.length, 1, "Même la sélection globale ne modifie aucun statut.");
-    dom.window.document.querySelector('[data-action="set-actions-section"][data-value="advanced"]').click();
-    await waitUntil(() => dom.window.document.querySelector('[data-automation-table="advanced-rules"]'), "La table des automatisations avancées ne s’ouvre pas.");
-    const advancedTable = dom.window.document.querySelector('[data-automation-table="advanced-rules"]');
-    assert.ok(advancedTable, "Les automatisations avancées réutilisent le même composant.");
-    assert.equal(advancedTable.querySelectorAll("thead th").length, 7);
-    for (const action of ["run-rule", "edit-rule", "delete-entity", "toggle-rule"]) {
-      assert.equal(advancedTable.querySelector(`[data-action="${action}"]`).dataset.id, "table_z");
-    }
-    advancedTable.querySelector('[data-automation-sort="name"]').click();
-    assert.deepEqual([...advancedTable.tBodies[0].rows].map((row) => row.dataset.automationName), ["Alpha", "Musique", "Zèbre"]);
+    assert.equal(dom.window.document.querySelector('[data-action="set-actions-section"][data-value="advanced"]'), null);
+    assert.ok(dom.window.document.querySelector('[data-action="add-trigger"]'), 'Les scénarios liés restent accessibles depuis Actions.');
+    for (const operation of ['run-rule','edit-action','duplicate-scenario','delete-scenario']) assert.ok(selectedRow.querySelector('[data-action="'+operation+'"]'));
     assert.equal(entityRequests.length, 1);
     navigation.querySelector('[data-navigate="music"]').click();
     await waitUntil(() => dom.window.document.querySelector('[data-automation-table="music-rules"]'), "Les règles Spotify n’utilisent pas le tableau partagé.");

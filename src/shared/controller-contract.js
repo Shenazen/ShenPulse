@@ -25,7 +25,8 @@
   }
 
   function controllerActionTargets(state = {}) {
-    return (state.rules || []).flatMap((rule) => (rule.actions || [])
+    const profile = (state.profiles || []).find(entry => entry.id === state.session?.profileId);
+    return (state.rules || []).filter(rule => !profile?.enabledRuleIds || profile.enabledRuleIds.includes(rule.id)).flatMap((rule) => (rule.actions || [])
       .filter((action) => action.id && action.type !== "action.group")
       .map((action, index) => ({
         id: String(action.id),

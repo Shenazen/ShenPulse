@@ -21,12 +21,26 @@ const { GameTransports } = require("./game-hub/transports");
 const { httpBridgeFor } = require("./game-hub/http-bridges");
 const { assertProFeatureAccess, createProFeatureGuard } = require("./pro-feature-access");
 const visibility = require("../shared/visibility-catalog");
+const NO_CUSTOM_PACKS = Object.freeze([]);
 const APP_VERSION = require("../../package.json").version;
 const { ADMIN_OWNER_EMAIL } = require("./account-access");
 const { waitForGameConnection } = require("./game-hub/connection-ready");
 
 /** Façade compatible des jeux : accès, catalogue, connexions, exécution et événements. */
 class GameHub extends EventEmitter {
+  // Rebuild only when the active workspace definitions change. Core snapshots cache this identity.
+  get packs() {
+    const scope = this.store.state || {};
+    const definitions = Array.isArray(scope.game?.customPacks) ? scope.game.customPacks : NO_CUSTOM_PACKS;
+    const signature = JSON.stringify([scope.settings?.account?.uid, scope.session?.profileId]);
+    if (this.customDefinitions !== definitions || this.customCatalogSignature !== signature || this.customCatalogBase !== this.catalogPacks) {
+      this.customDefinitions = definitions;
+      this.customCatalogSignature = signature; this.customCatalogBase = this.catalogPacks;
+      this.customCatalog = [...(this.catalogPacks || []), ...definitions.map(require('./custom-games').packFor)];
+    }
+    return this.customCatalog;
+  }
+  set packs(value) { this.catalogPacks = value; this.customCatalogSignature = null; }
   constructor({
     store,
     appVersion = APP_VERSION,
@@ -78,8 +92,9 @@ class GameHub extends EventEmitter {
   loadPacks() {
     const catalogPacks = loadShenazenGameCatalog(this.resourcesDirectory);
     for (const pack of catalogPacks) validatePack(pack);
+    catalogPacks.push(require('./custom-games').builderPack());
     this.packs = catalogPacks.sort((first, second) =>
-      first.name.localeCompare(second.name)
+      Number(!!second.pinned) - Number(!!first.pinned) || first.name.localeCompare(second.name)
     );
     const activePackId = readState(this.store, ["session.activeGamePackId"]).session.activeGamePackId;
     if (!this.packs.some((pack) => pack.id === activePackId)) {
@@ -131,6 +146,7 @@ class GameHub extends EventEmitter {
   async testConnection(packId) {
     const pack = this.assertAccess(packId);
     const connector = this.#connector(pack);
+    if (connector.type === "custom-keyboard") return this.windowsInputService.status(connector.processName);
     if (connector.type === "demo") {
       return {
         ok: true,
@@ -202,6 +218,10 @@ class GameHub extends EventEmitter {
   async prepareConnection(packId) {
     const pack = this.assertAccess(packId);
     const connector = this.#connector(pack);
+    if (pack.customGame) {
+      await this.windowsInputService.status(connector.processName);
+      for (const rule of readState(this.store,["game.interactionRulesByPack"]).game.interactionRulesByPack?.[packId] || []) if (rule.enabled !== false) require("../shared/custom-game-shortcuts").assertRule(pack,rule);
+    }
     if (!["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod", "shen-native"].includes(connector.type)) {
       return { ok: true, listening: false, type: connector.type };
     }
@@ -239,8 +259,12 @@ class GameHub extends EventEmitter {
   async trigger(effectId, context = {}, options = {}) {
     const packId = options.packId || readState(this.store, ["session.activeGamePackId"]).session.activeGamePackId;
     const pack = this.assertAccess(packId);
+    const initialSession = pack.customGame ? readState(this.store,['session.game']).session.game : null;
     const assertAccess = createProFeatureGuard(this.store, "games", {
-      shouldExecute: context.shouldExecute, assertAdditional: () => this.assertAccess(packId)
+      shouldExecute: context.shouldExecute, assertAdditional: () => {
+        this.assertAccess(packId);
+        if(pack.customGame && initialSession?.running){const current=readState(this.store,['session.game']).session.game;if(!current?.running||current.packId!==initialSession.packId||current.startedAt!==initialSession.startedAt)throw Error('La session du jeu est arrêtée.');}
+      }
     });
     const effect = pack.effects.find((item) => item.id === effectId);
     if (!effect) throw new Error(`Effet introuvable : ${effectId}`);
@@ -261,9 +285,15 @@ class GameHub extends EventEmitter {
     }
     assertAccess();
     const nativeHttpBridge = httpBridgeFor(this, connector.type);
-    if(connector.type==="shen-native")payload.effect.avatarUrl=String(context.user?.avatarUrl||"").slice(0,2048);
+    if(connector.type==="shen-native"||connector.viewerIdentity)payload.effect.avatarUrl=String(context.user?.avatarUrl||"").slice(0,2048);
     let result;
-    if (connector.type === "demo") {
+    if (connector.type === "custom-keyboard") {
+      if (!pack.customGame) throw Error('Créez un pack personnel avant de le tester.');
+      if (effect.customShortcut) {
+        const sequence = require('../shared/custom-game-shortcuts').compile(payload.effect.parameters);
+        result = {status:'success', ...(await this.windowsInputService.play(connector.processName, sequence, 'wasd', 'scan-code', {assertAccess, foregroundOnly:true, activateBeforePlay:true}))};
+      } else result = {status:'success', message:'Carte affichée sans raccourci clavier.'};
+    } else if (connector.type === "demo") {
       result = { status: "success", message: "Effet simulé." };
     } else if (["tcp-server", "websocket-server", "balatro-gamepass", "shop-mod", "shen-native"].includes(connector.type)) {
       result = await this.#sendTcpServer(pack, connector, payload, { assertAccess });
@@ -360,6 +390,7 @@ class GameHub extends EventEmitter {
 
   #connector(pack) {
     if (["shop-mod","shen-native"].includes(pack.connector?.type)) return { ...pack.connector };
+    if (/^final-fantasy-[1-5]-pixel-remaster$/.test(pack.id) || ["frog-sqwad", "the-sims-4"].includes(pack.id)) return { ...pack.connector };
     // Ce plugin natif est livré pour un endpoint local fixe. Les anciennes
     // valeurs sauvegardées (notamment 51337) ne doivent pas le détourner.
     if (["euro-truck-simulator-2", "blue-prince", "resident-evil-3", "cult-of-the-lamb", "stardew-valley", "terraria", "escape-from-duckov", "dredge", "egging-on", "fallout-4", "gtav-montchiliad", "gtav-koth-enhanced", "gtav-hiking-enhanced", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)) return { ...pack.connector };

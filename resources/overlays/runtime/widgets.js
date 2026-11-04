@@ -690,10 +690,11 @@ function spinWheel(payload) {
   );
   wheel.style.animationDelay = "0s";
   let tickTimer = null;
-  let audioContext = null;
+  let audioContext = null, mixedAudio = null;
   const startSpinSound = () => {
     try {
       audioContext = new AudioContext();
+      mixedAudio = globalThis.ShenPulseAudio?.runtime.gain(audioContext, "overlays", {}, () => typeof overlaySoundEnabled === "undefined" || overlaySoundEnabled ? (typeof overlaySoundVolume === "undefined" ? 1 : overlaySoundVolume) : 0);
       tickTimer = setInterval(() => {
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
@@ -703,7 +704,7 @@ function spinWheel(payload) {
           0.001,
           audioContext.currentTime + 0.035
         );
-        oscillator.connect(gain).connect(audioContext.destination);
+        oscillator.connect(gain).connect(mixedAudio?.node || audioContext.destination);
         oscillator.start();
         oscillator.stop(audioContext.currentTime + 0.04);
       }, 125);
@@ -719,6 +720,7 @@ function spinWheel(payload) {
       clearInterval(tickTimer);
       tickTimer = null;
     }
+    mixedAudio?.release(); mixedAudio = null;
     audioContext?.close().catch(() => {});
     audioContext = null;
   };

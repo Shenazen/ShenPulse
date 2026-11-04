@@ -26,10 +26,25 @@ function flattenActions() {
 }
 
 function soundActionRows() {
-  return flattenActions().filter(({ action }) =>
-    canAccessActionType(action.type) &&
-    ["audio.play", "tts.speak"].includes(action.type)
-  );
+  const rows = flattenActions(), actions = rows.map(item => item.action);
+  return rows.flatMap(row => {
+    if (!canAccessActionType(row.action.type)) return [];
+    if (row.action.type === "tts.speak") return [row];
+    if (row.action.type === "audio.play") {
+      if (!row.action.config?.soundActionId) return [row];
+      const linked = ShenPulseActionAudio.resolve(row.action, actions);
+      return [{ ...row, action: { ...row.action, config: { ...row.action.config, url: linked?.url || "", soundName: linked?.name || "Son lié indisponible" } } }];
+    }
+    if (!["overlay.media", "overlay.alert"].includes(row.action.type)) return [];
+    const sound = ShenPulseActionAudio.resolve(row.action, actions);
+    if (!sound && !row.action.config?.soundActionId) return [];
+    return [{ ...row, sourceAction: row.action, action: { ...row.action, type: "audio.play", embeddedMediaSound: true,
+      config: { ...row.action.config, url: sound?.url || "", soundName: sound?.name || row.action.config?.soundName || "Son lié indisponible", outputMode: "live", liveScreen: row.action.config?.screen || 1 } } }];
+  });
+}
+
+function findSoundActionRow(ruleId, actionId, actionIndex) {
+  return soundActionRows().find(row => row.rule.id === ruleId && (actionId ? row.action.id === actionId : row.actionIndex === Number(actionIndex)));
 }
 
 function scheduledTimers() {
@@ -56,7 +71,7 @@ function triggerLabel(rule) {
   const trigger = rule.trigger || {};
   const threshold = Number(trigger.threshold || 1);
   const type = trigger.type || "*";
-  const giftName = type === "gift" ? ruleGiftName(rule) : "";
+  const giftName = type === "gift" ? giftSelectionLabel(rule.conditions) : "";
   const giftValue = type === "gift" ? ruleGiftValueLabel(rule) : "";
   return `${EVENT_LABELS[type] || type}${giftName ? ` · ${giftName}` : ""}${giftValue ? ` · ${giftValue}` : ""}${threshold > 1 ? ` ×${threshold}` : ""}`;
 }
@@ -89,8 +104,10 @@ function actionDescription(action) {
         mediaLibraryEntry(config.mediaUrl)?.name ||
         config.mediaName ||
         config.mediaUrl ||
-        "Média à choisir"
+        (config.alert?.enabled === true ? config.alert.message || "Nom du viewer" : "Média à choisir")
       );
+    case "overlay.text":
+      return config.alert?.message || "Nom du viewer";
     case "tts.speak":
       return config.text || "Texte lu à voix haute";
     case "audio.play":
@@ -194,10 +211,10 @@ function mediaScreenUsage(rows) {
   for (const { action } of rows) {
     const type = canonicalActionType(action.type);
     let screen = 0;
-    if (type === "overlay.media") {
+    if (type === "overlay.media" || type === "overlay.text") {
       screen = Math.min(
         8,
-        Math.max(1, Math.round(Number(action.config?.screen) || 1))
+        Math.max(1, Math.round(Number(type === "overlay.text" ? action.config?.alert?.screen : action.config?.screen) || 1))
       );
     } else if (
       ["audio.play", "tts.speak"].includes(type) &&
@@ -381,8 +398,7 @@ function renderActionWorkflows(groups) {
     status: renderAutomationStatus(rule),
     date: rule.createdAt || "",
     detail: rows.length > 1 ? `${rows.length} actions dans ce scénario` : "",
-    commands: rows.length === 1 ? automationActionCommands(rule, rows[0].action, rows[0].actionIndex)
-      : `<details class="automation-row-settings automation-scenario-tools"><summary>${automationTableIcon("play")} Outils des ${rows.length} actions</summary><div class="automation-row-settings-body">${rows.map(({ action, actionIndex }) => `<div class="automation-scenario-action"><strong data-studio-user-content>${escapeHtml(actionTypeLabel(action.type))}</strong><div class="automation-row-controls">${automationActionCommands(rule, action, actionIndex)}</div></div>`).join("")}</div></details>`
+    commands: `${renderAutomationIconButton({ action: "run-rule", label: "Tester toutes les actions", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "play", tone: "play" })}${renderAutomationIconButton({ action: "edit-action", label: "Modifier l’action", attributes: `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(rows[0].action.id)}" data-index="${rows[0].actionIndex}"`, icon: "edit" })}${renderAutomationIconButton({ action: "duplicate-scenario", label: "Dupliquer l’action", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "copy", tone: "copy" })}${renderAutomationIconButton({ action: "delete-scenario", label: "Supprimer l’action", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "trash", tone: "danger" })}`
   })) });
 }
 
@@ -407,12 +423,21 @@ function renderTriggersPanel() {
   </section>`;
 }
 
+function renderLinkedActionScenarios(rules) {
+  if (!rules.length) return "";
+  return renderAutomationTable({ key: "linked-actions", label: "Scénarios liés", rows: rules.map(rule => ({
+    id: rule.id, name: rule.name, trigger: triggerPill(rule, { compact: true }), effects: renderTriggerActionChips(rule),
+    detail: triggerExecutionLabel(rule), status: renderAutomationStatus(rule), date: rule.createdAt || "",
+    commands: `${renderAutomationIconButton({ action: "run-rule", label: "Tester le scénario", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "play" })}${renderAutomationIconButton({ action: "edit-trigger", label: "Modifier les actions liées", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "edit" })}${renderAutomationIconButton({ action: "duplicate-scenario", label: "Dupliquer le scénario", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "copy", tone: "copy" })}${renderAutomationIconButton({ action: "delete-scenario", label: "Supprimer le scénario", attributes: `data-id="${escapeHtml(rule.id)}"`, icon: "trash", tone: "danger" })}`
+  })) });
+}
+
 function renderActions() {
-  if (!["actions", "triggers", "timers", "advanced"].includes(actionsSection)) actionsSection = "actions";
+  if (!["actions", "timers"].includes(actionsSection)) actionsSection = "actions";
   const allRows = flattenActions();
   const rows = allRows.filter(
-    ({ action }) =>
-      !["audio.play", "tts.speak"].includes(action.type) &&
+    ({ action, rule }) =>
+      !rule.actionSelection && !ShenPulseActionAudio.isAudioOnly(rule) &&
       canAccessActionType(action.type)
   );
   const query = actionsSearch.trim().toLowerCase();
@@ -426,11 +451,11 @@ function renderActions() {
     ].join(" ").toLowerCase().includes(query);
   });
   const groupedRows = groupActionRows(filteredRows);
+  const linkedRules = snapshot.state.rules.filter(rule => rule.actionSelection && (!onlyEnabledActions || rule.enabled) &&
+    (!query || `${rule.name} ${triggerLabel(rule)}`.toLowerCase().includes(query)));
   const tabs = [
-    ["actions", "Actions", rows.length],
-    ["triggers", "Déclencheurs", automaticTriggerRules().length],
-    ["timers", "Timers", scheduledTimers().length],
-    ["advanced", "Automatisations avancées", snapshot.state.rules.length]
+    ["actions", "Actions", groupActionRows(rows).length + snapshot.state.rules.filter(rule => rule.actionSelection).length],
+    ["timers", "Timers", scheduledTimers().length]
   ];
   return `
     <div class="reference-page actions-workspace">
@@ -443,18 +468,18 @@ function renderActions() {
         <section class="studio-panel panel-violet">
           <header class="studio-panel-heading">
             <div><span class="panel-accent"></span><div><h3>Actions</h3><p>Médias, overlays, intégrations et commandes de jeu exécutés par le moteur local.</p></div></div>
-            <span class="count-pill">${filteredRows.length}</span>
+            <span class="count-pill">${groupedRows.length}</span>
           </header>
           <div class="catalog-toolbar">
             <button class="button primary" data-action="add-action">＋ Créer une action</button>
+            <button class="button" data-action="add-trigger" ${allRows.length ? "" : "disabled"}>Lier des actions existantes</button>
             <label class="filter-check"><input type="checkbox" data-action="filter-enabled-actions" ${onlyEnabledActions ? "checked" : ""}><span>Actives uniquement</span></label>
             <label class="search-control"><span>⌕</span><input data-search="actions" type="search" value="${escapeHtml(actionsSearch)}" placeholder="Rechercher une action, un déclencheur…"></label>
           </div>
           ${renderActionWorkflows(groupedRows)}
+          ${renderLinkedActionScenarios(linkedRules)}
         </section>
         ${renderMediaScreensPanel(allRows)}` : ""}
-      ${actionsSection === "triggers" ? renderTriggersPanel() : ""}
       ${actionsSection === "timers" ? renderTimersPanel() : ""}
-      ${actionsSection === "advanced" ? `<p class="automation-advanced-note">Les automatisations avancées combinent plusieurs conditions et actions. Elles complètent les interactions IRL, qui pilotent vos appareils connectés.</p>${renderRules()}` : ""}
     </div>`;
 }

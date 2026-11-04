@@ -48,3 +48,4 @@ html,body{margin:0;overflow:hidden;background:transparent;font-family:Arial,sans
 :root[data-wins-mode=round-timer] .hud-round-timer small{font-size:35px}
 :root[data-wins-mode=round-timer] .hud-round-timer time{font-size:100px}
 :root[data-wins-mode=round-timer] .hud-round-timer em{font-size:23px}
+.hud-gift-column[style]{display:flex;flex-direction:column;overflow:hidden}.hud-gift-column[style] .hud-gift{flex-shrink:1;min-height:30px}.hud-gift-column[style] .hud-gift img{max-height:65%;object-fit:contain}

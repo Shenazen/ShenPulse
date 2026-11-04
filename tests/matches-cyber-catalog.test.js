@@ -44,7 +44,7 @@ test("Cyber conserve son identité du contrat à la lecture, sans conversion sil
     assert.equal(playback.variant, "cyber");
     assert.equal(relayed.payload.variant, "cyber");
     assert.deepEqual(normalizePlayback(relayed.payload), {
-      requestId: playback.requestId, match, variant: "cyber", fit: "cover"
+      requestId: playback.requestId, match, variant: "cyber", fit: "cover", volume: 1
     });
   }
 });

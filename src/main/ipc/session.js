@@ -8,6 +8,7 @@ const { sanitizeEntity } = require("./sanitizers");
 const { assertProFeatureAccess } = require("../pro-feature-access");
 
 function registerSessionIpc({ handle, core, store }) {
+  handle("tts:voices", () => core.actionRunner.voiceService.listVoices());
   handle("session:start", () => core.startSession());
   
   handle("session:stop", () => core.stopSession());
@@ -27,6 +28,7 @@ function registerSessionIpc({ handle, core, store }) {
     const allowed = new Set([
       "overlay.alert",
       "overlay.media",
+      "overlay.text",
       "tts.speak",
       "audio.play",
       "goal.add",

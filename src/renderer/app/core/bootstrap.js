@@ -266,6 +266,7 @@ const SUBSCRIPTION_PLANS = [
 
 const ACTION_TYPE_LABELS = {
   "overlay.media": "Media",
+  "overlay.text": "Viewer et/ou texte",
   "tts.speak": "Synthèse vocale",
   "audio.play": "Son",
   "goal.add": "Objectif",
@@ -288,6 +289,7 @@ const ACTION_TYPE_LABELS = {
 
 const ACTION_TYPE_ICONS = {
   "overlay.media": "🎬",
+  "overlay.text": "💬",
   "tts.speak": "🗣️",
   "audio.play": "🔊",
   "goal.add": "🎯",

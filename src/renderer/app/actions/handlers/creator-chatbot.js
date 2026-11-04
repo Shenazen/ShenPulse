@@ -1,7 +1,7 @@
 "use strict";
 
 /** CRUD des commandes explicite et borné au compte et au profil de départ. */
-const CREATOR_CHATBOT_ACTIONS = new Set(["chatbot-add", "chatbot-edit", "chatbot-toggle", "chatbot-delete", "chatbot-preview"]);
+const CREATOR_CHATBOT_ACTIONS = new Set(["chatbot-tab", "chatbot-template", "chatbot-add", "chatbot-edit", "chatbot-toggle", "chatbot-delete", "chatbot-preview"]);
 const creatorChatbotPending = new Set();
 
 async function creatorChatbotMutation(work, message, owner) {
@@ -20,6 +20,11 @@ async function handleCreatorChatbotAction({ action, target, id }) {
   if (!CREATOR_CHATBOT_ACTIONS.has(action)) return ACTION_NOT_HANDLED;
   const owner = creatorChatbotCaptureOwner();
   assertCreatorChatbotOwner(owner);
+  if (action === "chatbot-tab") {
+    if (["commands", "replies", "timers"].includes(target.dataset.value)) { creatorChatbotTab = target.dataset.value; render(); }
+    return;
+  }
+  if (action === "chatbot-template") return openCreatorConversationEditor(null, "auto-reply", target.dataset.value);
   if (action === "chatbot-add") return openCreatorChatbotEditor(null, target.dataset.kind);
   const entry = (snapshot.state.commands || []).find((item) => String(item.id) === String(id));
   if (!entry) throw new Error("Cette commande n’existe plus dans le profil actif.");

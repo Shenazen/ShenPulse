@@ -625,7 +625,7 @@ test("chaque temps fort propose uniquement Aucun et les packs réellement livré
   for (const select of window.content.querySelectorAll('[data-action="matches-automation-animation"]')) {
     const match = matches[select.dataset.moment];
     const expected = match ? [["", "Aucun"], [`${match}:tikcontrol`, "TikControl"], [`${match}:gladiador`, "Gladiator"],
-      ...(match === "cofre" ? [] : [[`${match}:cyber`, "Cyber"]])] : [["", "Aucun"]];
+      ...(match === "cofre" ? [] : [[`${match}:cyber`, "Cyber"], [`${match}:dragon`, "Dragon"]])] : [["", "Aucun"]];
     assert.deepEqual([...select.options].map((option) => [option.value, option.textContent]), expected);
     assert.equal(select.value, "", "aucun clip n’est présélectionné au rendu d’un moment vide");
     assert.equal(select.querySelector('option[value="cofre:cyber"], option[value="enigma:cyber"]'), null);
@@ -675,7 +675,7 @@ test("l’éditeur avancé suit le moment sélectionné sans choix de modèle ar
   for (const [value, match] of [["multiplierX3", "x3"], ["card", "guantes"], ["likeRush", "taptap"], ["snipe", "snipe"], ["multiplierX2", "x2"]]) {
     change(value);
     assert.equal(animation.value, match);
-    assert.deepEqual(versions(), ["", "tikcontrol", "gladiador", "cyber"]);
+    assert.deepEqual(versions(), ["", "tikcontrol", "gladiador", "cyber", "dragon"]);
     assert.equal(variant.value, "", "un nouveau moment ne choisit pas automatiquement Cyber ni un autre pack");
   }
   change("battleStart");
@@ -802,7 +802,7 @@ test("l’éditeur réutilise les bibliothèques, enregistre un effet sans test 
   assert.equal(window.dialogForm.querySelector('[name="matchAnimation"]').type, "hidden");
   assert.equal(window.dialogForm.querySelector('[name="matchAnimation"]').value, "taptap");
   assert.equal(window.dialogForm.querySelector('[name="matchVariant"]').value, "");
-  assert.deepEqual([...window.dialogForm.querySelector('[name="matchVariant"]').options].map((option) => option.value), ["", "tikcontrol", "gladiador", "cyber"]);
+  assert.deepEqual([...window.dialogForm.querySelector('[name="matchVariant"]').options].map((option) => option.value), ["", "tikcontrol", "gladiador", "cyber", "dragon"]);
   assert.deepEqual(mediaFields.map((entry) => entry.kind), ["visual", "sound", "sound"]);
   window.dialogForm.querySelector('[name="reactionType"]').value = "sound";
   window.dialogForm.querySelector('[name="matchSoundUrl"]').value = "https://example.test/alert.mp3";

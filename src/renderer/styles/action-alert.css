@@ -1,0 +1,18 @@
+.action-alert-editor {
+  padding: 18px;
+  border: 1px solid rgba(34, 211, 238, .25);
+  border-radius: 16px;
+  background: linear-gradient(125deg, rgba(34, 211, 238, .07), rgba(168, 85, 247, .06));
+}
+.action-alert-enable { display: flex; gap: 14px; align-items: center; cursor: pointer; }
+.action-alert-enable strong, .action-alert-enable small { display: block; }
+.action-alert-enable small, .action-alert-help { color: var(--muted, #a8adc1); font-size: 13px; line-height: 1.5; }
+.action-alert-options { min-width: 0; margin: 18px 0 0; padding: 18px 0 0; border: 0; border-top: 1px solid rgba(168, 85, 247, .18); }
+.action-alert-options[hidden] { display: none; }
+.action-alert-user { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-weight: 650; }
+.action-alert-variables { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 18px; }
+.action-alert-variables button { padding: 5px 9px; border: 1px solid rgba(168, 85, 247, .35); border-radius: 7px; color: #dbbdff; background: rgba(168, 85, 247, .08); font: 12px monospace; cursor: pointer; }
+.action-alert-variables button:hover { background: rgba(168, 85, 247, .22); }
+.action-alert-timing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.action-alert-help { margin: 10px 0 0; }
+@media (max-width: 600px) { .action-alert-timing { grid-template-columns: minmax(0, 1fr); } }

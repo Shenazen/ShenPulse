@@ -270,6 +270,7 @@ test("un cadeau TCG traverse le moteur de règles jusqu'au module avec le nom du
     const effect = pack.effects.find(effect => effect.code === code);
     const mapping = pack.defaultMappings.find(mapping => mapping.effectId === effect.id);
     const rule = defaultGameInteractionRule(pack, effect, { ...mapping, triggerEnabled: true }, pack.interactionCatalogVersion);
+    rule.trigger.repeatGiftCombos = true;
     rule.conditions = [{ field: "data.giftName", operator: "equals", value: index ? "Cœur sur moi" : "Rose", giftId: index ? "7934" : "5655" }];
     return rule;
   });

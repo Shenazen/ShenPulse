@@ -7,6 +7,28 @@ const {
   SimpleTcpServerBridge
 } = require("../src/main/simple-tcp-server-bridge");
 
+test("l’identité Final Fantasy transporte la photo HTTPS du viewer et conserve un repli sans photo", async t => {
+  const bridge = new SimpleTcpServerBridge({ port: 0, timeoutMs: 1500 });
+  const address = await bridge.start();
+  const client = net.createConnection({ host: "127.0.0.1", port: address.port });
+  t.after(async () => { client.destroy(); await bridge.close(); });
+  await new Promise((resolve, reject) => { client.once("connect", resolve); client.once("error", reject); });
+  const requests = []; let buffer = "";
+  client.on("data", chunk => {
+    buffer += chunk.toString(); let ending;
+    while ((ending = buffer.indexOf("\0")) >= 0) {
+      const request = JSON.parse(buffer.slice(0, ending)); buffer = buffer.slice(ending + 1);
+      requests.push(request); client.write(JSON.stringify({ id: request.id, status: 0 }) + "\0");
+    }
+  });
+  await bridge.send("viewerbattle", { viewer: "Léa", viewerIdentity: true, avatarUrl: "https://example.com/lea.png" });
+  await bridge.send("viewerbattle", { viewer: "Sam", viewerIdentity: true, avatarUrl: "file:///private.png" });
+  await bridge.send("other", { viewer: "Nova", avatarUrl: "https://example.com/nova.png" });
+  assert.deepEqual(requests[0].viewers, [{ name: "Léa", avatar: "https://example.com/lea.png" }]);
+  assert.deepEqual(requests[1].viewers, [{ name: "Sam" }]);
+  assert.equal(requests[2].viewers, undefined);
+});
+
 test("accepte les statuts camelCase du mod Blue Prince et conserve les refus temporaires", async t => {
   const bridge = new SimpleTcpServerBridge({ port: 0, timeoutMs: 1500 });
   const status = await bridge.start();

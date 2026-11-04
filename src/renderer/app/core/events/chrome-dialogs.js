@@ -415,6 +415,7 @@ dialog.addEventListener("click", (event) => {
 });
 
 dialog.addEventListener("click", (event) => {
+  if (handleGiftTriggerSelectionClick(event)) return;
   const openLibrary = event.target.closest("[data-open-media-library]");
   if (openLibrary) {
     globalMediaLibrary.open(openLibrary);

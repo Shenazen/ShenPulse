@@ -11,6 +11,7 @@ const { sanitizeEntity, sanitizeGameConfiguration, sanitizeDealOrNoDealHostState
 const { notify } = require("./notifications");
 
 function registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog, requireGameAccess, requireGameSessionAvailability }) {
+  require('./custom-games').registerCustomGamesIpc({handle,core,store,requireGameAccess});
   require("./game-wins").registerGameWinsIpc({handle,core,store,requireGameAccess});
   require("./game-interaction-order").registerGameInteractionOrderIpc({handle,core,store,requireGameAccess});
   handle("game:select", (_event, packId) => {
@@ -108,6 +109,7 @@ function registerGamesIpc({ handle, core, store, gameRuntime, getWindow, dialog,
           "Cette interaction est verrouillée et ne peut pas être utilisée."
       );
     }
+    if (pack?.customGame) require('../../shared/custom-game-shortcuts').assertRule(pack,rule);
     require('../../shared/game-interaction-validation').assertGameInteractionActivation(rule);
     store.upsertGameInteraction(targetId, rule);
     const nextSnapshot = core.snapshot();

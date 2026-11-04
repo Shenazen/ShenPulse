@@ -1,16 +1,30 @@
 "use strict";
 (()=>{
- const query=new URLSearchParams(location.search),packId=query.get('jeu')||'',profile=query.get('profile')||'',preview=query.get('preview')==='1',root=document.getElementById('wins-hud');let source,poll,retry,documentValue={},current=null,signature='',reactionTimer,lastBatch='',initialized=false;const demoEnds=Date.now()+300000;
+ const query=new URLSearchParams(location.search),packId=query.get('jeu')||'',profile=query.get('profile')||'',preview=query.get('preview')==='1',root=document.getElementById('wins-hud');let source,poll,retry,documentValue={},current=null,signature='',reactionTimer,lastBatch='',initialized=false;const demoEnds=Date.now()+300000;let customLayout=null;
+ const editorPreview=window.ShenPulseGamePackLayout.createPreviewReceiver({query,packId,profile,onChange:state=>render(state)});
  const mode=['counter','multiplier','round-timer','mute'].includes(query.get('mode'))?query.get('mode'):'full';document.documentElement.dataset.winsMode=mode;
  const scale=()=>{
   const single=['counter','multiplier','round-timer'].includes(mode),width=mode==='counter'?720:single?900:1080,height=mode==='counter'?520:single?360:1920;
   root.style.width=width+'px';root.style.height=height+'px';
   // Full HUD content ends before y=1280; the remaining portrait area is transparent.
   // Fit both axes when a studio supplies a shorter browser viewport.
-  const factor=mode==='mute'||preview&&!single?innerWidth/width:Math.min(innerWidth/width,innerHeight/(single?height:1280));
+  const factor=mode==='mute'||preview&&!single&&!customLayout?innerWidth/width:Math.min(innerWidth/width,innerHeight/(single?height:customLayout?1920:1280));
   root.style.transform='scale('+factor+')';
   if(!single){root.style.left=Math.max(0,(innerWidth-width*factor)/2)+'px';root.style.top='0px';}
  };
+ function placeLayout(){
+  if(!customLayout||mode!=='full')return;
+  const area=window.ShenPulseGamePackLayout.geometry(customLayout),g=area.game,c=area.camera;
+  const place=(selector,box)=>{const node=root.querySelector(selector);if(node)Object.assign(node.style,{left:box.x+'px',top:box.y+'px',width:box.width+'px',height:box.height+'px',right:'auto',bottom:'auto',transform:'none'});};
+  const railY=g.y+(area.side?990:60),railHeight=Math.max(170,g.y+g.height-railY-10);
+  place('.positive',{x:10,y:railY,width:145,height:railHeight});place('.negative',{x:925,y:railY,width:145,height:railHeight});
+  place('.hud-special-bar',{x:170,y:area.side?g.y+g.height-85:g.y+8,width:740,height:70});
+  place('.hud-superfan',{x:245,y:area.side?g.y+g.height-42:g.y+82,width:590,height:45});
+  place('.hud-counter, .hud-illustrated-counter',{x:740,y:area.flipped?c.y+12:c.y+c.height-100,width:330,height:95});
+  place('.hud-multiplier, .hud-illustrated-multiplier',{x:10,y:area.flipped?c.y+12:c.y+c.height-100,width:300,height:95});
+  place('.hud-round-timer, .hud-illustrated-roundTimer',{x:390,y:area.flipped?c.y+10:c.y+c.height-130,width:300,height:120});
+  root.querySelectorAll('.hud-gift-column').forEach(node=>{node.style.gap='6px';node.querySelectorAll('.hud-gift').forEach(card=>{card.style.height=Math.max(35,Math.min(150,(railHeight-60)/Math.max(1,node.querySelectorAll('.hud-gift').length)))+'px';});});
+ }
  function image(url,alt){const img=document.createElement('img');img.alt=alt||'';img.src=url||'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><g fill="none" stroke="#ffe678" stroke-width="5" stroke-linejoin="round"><path d="M10 28h44v28H10zM6 18h52v12H6zM32 18v38"/><path d="M32 18C8 18 16-6 32 18c16-24 24 0 0 0z"/></g></svg>');return img;}
  function badge(item,kind,title){const node=document.createElement('div');node.className='hud-special hud-'+kind;node.dataset.rule=item.id;node.append(image(item.giftImageUrl,item.giftName));const text=document.createElement('span');text.textContent=title;node.append(text);return node;}
  function column(items,kind,footer){const list=document.createElement('div');list.className='hud-gift-column '+kind;const title=document.createElement('small');title.className='hud-column-title';title.textContent=kind==='positive'?'+ WINS':'− WINS';list.append(title);for(const item of items||[]){const card=document.createElement('div');card.className='hud-gift';card.dataset.rule=item.id;card.title=item.giftName;card.append(image(item.giftImageUrl,item.giftName));const value=document.createElement('strong');value.textContent=(item.amount>0?'+':'−')+Math.abs(item.amount);card.append(value);list.append(card);}if(footer)list.append(badge(footer,'invert','INVERSER'));return list;}
@@ -40,8 +54,8 @@
   else {node.hidden=!timer.visible;if(node.dataset.factor!==String(timer.factor)){send('configuration',{multiplier:timer.factor});node.dataset.factor=String(timer.factor);}send('multiplier-timer',{operation:'set',remainingSeconds:Math.max(0,Math.ceil((timer.endsAt-Date.now())/1000)),endsAt:timer.endsAt,multiplier:timer.factor});}
  }
 
- function render(frame){const state=frame?.packs?.[packId]||frame;if(!state||!state.enabled||state.packId!==packId||profile&&state.profileId!==profile||!state.wins){current=null;signature='';root.replaceChildren();return;}current=state.wins;
-  const next=JSON.stringify({...current,current:undefined,multiplier:undefined,multiplierEndsAt:undefined,muteTimer:{...current.muteTimer,endsAt:undefined},roundTimer:current.roundTimer?{...current.roundTimer,endsAt:undefined}:undefined});
+ function render(frame){const state=editorPreview.apply(frame?.packs?.[packId]||frame);if(!state||!state.enabled||state.packId!==packId||profile&&state.profileId!==profile||!state.wins){current=null;signature='';root.replaceChildren();return;}customLayout=Number(state.presentation?.model||1)===1?window.ShenPulseGamePackLayout?.normalize(state.presentation,packId):null;current=state.wins;
+  const next=JSON.stringify({customLayout,...current,current:undefined,multiplier:undefined,multiplierEndsAt:undefined,muteTimer:{...current.muteTimer,endsAt:undefined},roundTimer:current.roundTimer?{...current.roundTimer,endsAt:undefined}:undefined});
   if(next===signature){tick();return;}signature=next;const nodes=[],muteOnly=mode==='mute',single=['counter','multiplier','round-timer'].includes(mode);root.dataset.roundTimer=String(current.roundTimer?.enabled!==false&&!!current.roundTimer);
   if(!muteOnly){
    if((!single||mode==='counter')&&current.showCounter){if(current.presentation?.counterModel===2)nodes.push(illustrated('counter'));else{const counter=document.createElement('div');counter.className='hud-counter';nodes.push(counter);}}
@@ -57,7 +71,7 @@
    const timer=document.createElement('div');timer.className='hud-mute-timer';timer.style.color=current.muteTimer?.color||'#ff2aa1';timer.style.fontFamily=current.muteTimer?.font==='Orbitron'?'GameWinsOrbitron,Arial,sans-serif':current.muteTimer?.font||'Arial';nodes.push(timer);
    const viewer=document.createElement('div');viewer.className='hud-viewer';viewer.hidden=true;nodes.push(viewer);
   }
-  root.replaceChildren(...nodes);scale();tick();
+  root.replaceChildren(...nodes);placeLayout();scale();tick();
  }
 
  function tick(){if(!current)return;
@@ -71,5 +85,5 @@ const node=root.querySelector('.hud-multiplier');if(node){const active=current.m
  function mutate(path,data,patch){const parts=String(path||'/').split('/').filter(Boolean);if(!parts.length){documentValue=patch?{...documentValue,...data}:data||{};return;}let cursor=documentValue;for(const key of parts.slice(0,-1)){cursor[key]||={};cursor=cursor[key];}const key=parts.at(-1);if(data===null)delete cursor[key];else cursor[key]=patch?{...cursor[key],...data}:data;}
  function publicConnect(){source=new EventSource('https://shenazenoverlay-default-rtdb.firebaseio.com/publicOverlayRelay/'+encodeURIComponent(query.get('channel'))+'.json');const receive=(event,patch)=>{try{const change=JSON.parse(event.data);mutate(change.path,change.data,patch);if(documentValue.presence?.connected===false){render(null);return;}render(documentValue.state?.gamePacks);const batch=documentValue.lastBatch;if(initialized&&batch?.id&&batch.id!==lastBatch)for(const frame of Object.values(batch.messages||{}))if(frame.channel==='game-pack-trigger')reaction(frame.payload||{});lastBatch=batch?.id||'';initialized=true;}catch{/* Partial updates retain the last valid state. */}};source.addEventListener('put',event=>receive(event,false));source.addEventListener('patch',event=>receive(event,true));source.addEventListener('error',()=>{source.close();initialized=false;retry=setTimeout(publicConnect,3000);});}
  function localConnect(){const params=new URLSearchParams({token:query.get('token')||'',view:'game-pack'}),refresh=async()=>{try{const response=await fetch('/api/game-pack?'+params,{cache:'no-store'});render(response.ok?await response.json():null);}catch{render(null);}};refresh();poll=setInterval(refresh,1000);source=new EventSource('/events?'+params);source.addEventListener('bootstrap',event=>{try{render(JSON.parse(event.data).payload?.gamePacks);}catch{}});source.addEventListener('game-pack-trigger',event=>{try{reaction(JSON.parse(event.data).payload||{});}catch{}});}
- const clock=setInterval(tick,1000);addEventListener('resize',scale);addEventListener('pagehide',()=>{source?.close();clearInterval(poll);clearInterval(clock);clearTimeout(retry);clearTimeout(reactionTimer);});window.ShenPulseGameWins={render,reaction};scale();if(query.get('channel'))publicConnect();else if(query.get('token'))localConnect();
+ const clock=setInterval(tick,1000);addEventListener('resize',scale);addEventListener('pagehide',()=>{editorPreview.dispose();source?.close();clearInterval(poll);clearInterval(clock);clearTimeout(retry);clearTimeout(reactionTimer);});window.ShenPulseGameWins={render,reaction};scale();if(query.get('channel'))publicConnect();else if(query.get('token'))localConnect();
 })();

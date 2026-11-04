@@ -19,8 +19,7 @@ const { ViewerService } = require("./viewer-service");
 const { createCoreRuntimeSnapshot } = require("./core/runtime-snapshot");
 const path = require("node:path");
 const { shell } = require("electron");
-const { KickService } = require("./kick-service");const { ControllerService } = require("./controller-service");
-const { hasAuthenticatedAccount } = require("./account-access");
+const { KickService } = require("./kick-service");const { hasAuthenticatedAccount } = require("./account-access");
 const { ActionRunner } = require("./action-runner");
 const { ActionTimerScheduler } = require("./action-timer-scheduler");
 const { GameHub } = require("./game-hub");
@@ -65,7 +64,10 @@ class ShenPulseCore extends EventEmitter {  constructor({ store, resourcesDirect
     super();
     this.store = store;
     this.notifyRenderer = (channel, value) => {
-      if (channel === "state-changed") this.publicOverlayRelay?.publishState();
+      if (channel === "state-changed") {
+        require("./audio-control").synchronizeAudioControl(this, value?.state);
+        this.publicOverlayRelay?.publishState();
+      }
       notifyRenderer(channel, value); };
     this.appVersion = String(appVersion || "");
     this.giftCatalog = new GiftCatalog(resourcesDirectory);
@@ -82,7 +84,7 @@ class ShenPulseCore extends EventEmitter {  constructor({ store, resourcesDirect
       giftCatalog: this.giftCatalog
     });
     this.kickService = new KickService({ store, openExternal: (url) => shell.openExternal(url) });
-    this.sourceHub = new SourceHub({ store, kickService: this.kickService });
+    this.sourceHub = new SourceHub({ store, kickService: this.kickService, chatbotIdentityProvider: liveDirectoryIdentityProvider });
     this.obsClient = new ObsClient({ store });
     this.soundCatalog = SOUND_CATALOG;
     this.mediaCatalog = createMediaCatalog(resourcesDirectory);
@@ -182,24 +184,8 @@ class ShenPulseCore extends EventEmitter {  constructor({ store, resourcesDirect
       actionRunner: this.actionRunner
     });
     this.commandCooldowns = new Map();
-    this.controllerService = new ControllerService({
-      store,
-      pluginDirectory: path.join(resourcesDirectory, "controllers", "com.shenpulse.control.sdPlugin"),
-      executeAction: async (actionId) => {
-        const row = readState(store, ["rules"]).rules.flatMap((rule) => (rule.actions || []).map((action) => ({ rule, action })))
-          .find(({ action }) => action.id === actionId);
-        if (!row || !row.rule.enabled || row.action.enabled === false) throw new Error("Cette action est désactivée ou introuvable.");
-        return this.previewAction(row.action, { username: "ShenPulse", nickname: "Contrôleur" });
-      },
-      selectProfile: async (profileId) => {
-        this.liveEventActions?.chatbot.reset();
-        await this.stopGameSession({ notify: false });
-        store.selectProfile(profileId);
-        this.ruleEngine.resetProfileState();
-        this.liveEventActions?.chatbot.syncTimers();
-        this.notifyRenderer("state-changed", this.snapshot());
-      }
-    });
+    this.controllerCommands = new (require("./controller-commands").ControllerCommands)(this);
+    this.controllerService = this.controllerCommands.createService(path.join(resourcesDirectory, "controllers", "com.shenpulse.control.sdPlugin"));
     this.cachedCatalogSource = null;
     this.cachedCatalogPacks = null;
     this.gameCounterCursors = new Map();
@@ -666,6 +652,7 @@ class ShenPulseCore extends EventEmitter {  constructor({ store, resourcesDirect
   }
 
   async shutdown() {
+    this.actionRunner.voiceService?.close?.();
     await this.gameMuteService.dispose();
     this.matches.reset();
     this.liveEventActions.chatbot.reset();
@@ -687,7 +674,6 @@ class ShenPulseCore extends EventEmitter {  constructor({ store, resourcesDirect
     }, true);
     this.store.flush();
   }
-
   #wireEvents() {
     bindCoreEvents({
       minecraftRoundTimer: this.minecraftRoundTimer,

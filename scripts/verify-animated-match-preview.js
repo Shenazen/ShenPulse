@@ -73,6 +73,7 @@ function inspectPreview() {
     ticketSource: Boolean(source && new URL(source, location.href).origin === location.origin &&
       /^\/match-media\/[A-Za-z0-9_-]{32}$/.test(new URL(source, location.href).pathname)),
     poster: video.poster ? new URL(video.poster).pathname.split("/posters/")[1] || "" : "",
+    previewSource: video.dataset.previewSource || "",
     status: video.dataset.matchPreviewStatus || "", hidden: document.documentElement.hidden, frame };
 }
 
@@ -137,7 +138,7 @@ async function run() {
       preview: mode, autoplay: "true", loop: "true", token: state.settings.overlayToken })}`);
   };
   const results = [];
-  for (const variant of ["tikcontrol", "cyber"]) {
+  for (const variant of ["tikcontrol", "cyber", "dragon"]) {
     const previousTickets = requests.tickets;
     await load(variant);
     await previewWindow.webContents.executeJavaScript(`(() => {
@@ -156,6 +157,7 @@ async function run() {
     assert.ok(last.presentedFrames > first.presentedFrames + 8);
     assert.ok(new Set(samples.map((value) => value.frameHash)).size > 1, "les vraies images changent");
     assert.ok(samples.every((value) => value.autoplay && value.loop && value.muted && !value.paused && value.ticketSource && !value.hidden));
+    assert.ok(samples.every((value) => value.poster === `x2-${variant}.webp` && value.previewSource === `x2:${variant}`), "le pack demandé ne doit pas être remplacé par un ancien modèle en cache");
     assert.equal(requests.tickets, previousTickets + 1);
     assert.equal(ticketStatuses.at(-1), 200);
     assert.equal(overlayServer.sseClients.size, 0);

@@ -260,6 +260,21 @@ function giftConditionMatches(condition = {}, event = {}, gifts = []) {
   return sameGiftIdentity(expected, actual);
 }
 
+function isGiftSelectionCondition(condition) {
+  return condition?.field === "data.giftName" &&
+    ["equals", "notEquals"].includes(condition.operator || "equals");
+}
+
+/** Les cadeaux autorisés sont des alternatives ; une exclusion reste prioritaire.
+ * Sans cadeau autorisé, tout cadeau non exclu peut déclencher la règle.
+ */
+function giftSelectionMatches(conditions = [], event = {}, gifts = []) {
+  const selections = conditions.filter(isGiftSelectionCondition);
+  const allowed = selections.filter(condition => condition.operator !== "notEquals");
+  return !selections.some(condition => condition.operator === "notEquals" && giftConditionMatches(condition, event, gifts)) &&
+    (!allowed.length || allowed.some(condition => giftConditionMatches(condition, event, gifts)));
+}
+
 function enrichGiftEvent(event = {}, gifts = []) {
   if (event?.type !== "gift") return event;
   const data = event.data || {};
@@ -298,6 +313,8 @@ return Object.freeze({
   enrichGiftEvent,
   findCatalogGift,
   giftConditionMatches,
+  giftSelectionMatches,
+  isGiftSelectionCondition,
   giftFamily,
   giftIdentity,
   isCommunityHeartGiftId,

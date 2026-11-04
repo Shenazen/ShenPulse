@@ -106,6 +106,14 @@ class SimpleTcpServerBridge extends EventEmitter {
         ? options.parameterOrder.map(key => (options.parameters || {})[key])
         : { ...(options.parameters || {}) }
     };
+    if (options.viewerIdentity) {
+      let avatar = "";
+      try {
+        const parsed = new URL(String(options.avatarUrl || "").slice(0, 2048));
+        if (parsed.protocol === "https:" && !parsed.username && !parsed.password) avatar = parsed.href;
+      } catch { /* A viewer without an avatar uses the game’s bundled fallback. */ }
+      payload.viewers = [{ name: payload.viewer, ...(avatar ? { avatar } : {}) }];
+    }
     const reservedFields = new Set([
       "id",
       "type",

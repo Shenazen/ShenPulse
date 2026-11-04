@@ -15,6 +15,7 @@ function openEditor({
   pendingLabel = "Enregistrement…",
   successMessage = "Configuration enregistrée",
   onSubmit,
+  onTest,
   variant = "standard"
 }) {
   dialogSessionId += 1;
@@ -33,6 +34,26 @@ function openEditor({
   dialog.dataset.successMessage = successMessage;
   clearDialogError();
   dialogSubmitHandler = onSubmit;
+  dialogForm.querySelector("[data-dialog-test]")?.remove();
+  if (typeof onTest === "function") {
+    const testButton = document.createElement("button");
+    testButton.type = "button";
+    testButton.className = "button";
+    testButton.dataset.dialogTest = "true";
+    testButton.textContent = "▶ Tester";
+    testButton.title = "Envoyer le test sur les écrans Media configurés, sans enregistrer";
+    const sessionId = dialogSessionId;
+    testButton.addEventListener("click", async () => {
+      if (testButton.disabled || dialogForm.getAttribute("aria-busy") === "true") return;
+      clearDialogError();
+      testButton.disabled = true;
+      testButton.textContent = "Chargement…";
+      try { await onTest(); }
+      catch (error) { if (sessionId === dialogSessionId) showDialogError(error.message || String(error)); }
+      finally { if (sessionId === dialogSessionId) { testButton.disabled = false; testButton.textContent = "▶ Tester"; } }
+    });
+    dialogSubmitButton.before(testButton);
+  }
   dialog.scrollTop = 0;
   dialogForm.scrollTop = 0;
   dialogBody.scrollTop = 0;
@@ -95,10 +116,11 @@ function ttsVoiceOptions(currentVoice = "") {
   const available = readTtsVoices();
   if (available.length) ttsVoices = available;
   const selectedVoice = String(currentVoice || "");
+  const natural = typeof ShenPulseTtsVoices !== "undefined" ? ShenPulseTtsVoices.NATURAL_VOICES : [];
   const voices = [...ttsVoices];
   if (
     selectedVoice &&
-    !voices.some((voice) => voice.name === selectedVoice)
+    !voices.some((voice) => voice.name === selectedVoice) && !natural.some((voice) => voice.id === selectedVoice) && selectedVoice !== "random:fr"
   ) {
     voices.unshift({
       name: selectedVoice,
@@ -108,15 +130,32 @@ function ttsVoiceOptions(currentVoice = "") {
   }
   return [
     `<option value="" ${selectedVoice ? "" : "selected"}>Voix Windows par défaut</option>`,
+    `<optgroup label="Voix naturelles · Internet">${natural.map((voice) => `<option value="${voice.id}" ${voice.id === selectedVoice ? "selected" : ""}>${escapeHtml(voice.label)}</option>`).join("")}<option value="random:fr" ${selectedVoice === "random:fr" ? "selected" : ""}>Une voix française par viewer</option></optgroup>`,
+    '<optgroup label="Voix Windows · sur cet ordinateur">',
     ...voices.map(
       (voice) =>
         `<option value="${escapeHtml(voice.name)}" ${voice.name === selectedVoice ? "selected" : ""}>${escapeHtml(`${voice.name}${voice.lang ? ` · ${voice.lang}` : voice.legacy ? " · ancienne configuration" : ""}`)}</option>`
-    )
+    ), '</optgroup>'
   ].join("");
 }
 
 function ttsVoiceField(name, currentVoice = "", extraClass = "") {
-  return `<label class="field ${extraClass}"><span>Voix</span><select name="${escapeHtml(name)}" data-tts-voice-select>${ttsVoiceOptions(currentVoice)}</select><small>Voix de synthèse installées dans Windows.</small></label>`;
+  return `<div class="field tts-voice-field ${extraClass}"><label for="tts-select-${escapeHtml(name)}">Voix <small data-tts-voice-count>${typeof ShenPulseTtsVoices !== "undefined" ? ShenPulseTtsVoices.NATURAL_VOICES.length : 0} voix naturelles</small></label><div class="tts-voice-controls"><select id="tts-select-${escapeHtml(name)}" name="${escapeHtml(name)}" data-tts-voice-select>${ttsVoiceOptions(currentVoice)}</select><button type="button" class="button tts-voice-test" data-action="tts-voice-preview" data-voice-field="${escapeHtml(name)}" aria-label="Tester la voix sélectionnée">▶ Tester</button></div><small>Voix naturelles en ligne ou voix Windows locales. Secours Windows si le service est indisponible.</small><small role="status" aria-live="polite" data-voice-preview-status></small></div>`;
+}
+
+function ttsSlider(name, label, value, min, max, step) {
+  return `<label class="field tts-slider"><span>${label} <output data-voice-output="${name}">${value}</output></span><input type="range" name="${name}" min="${min}" max="${max}" step="${step}" value="${value}"></label>`;
+}
+
+let ttsCatalogRefreshPending = null;
+function refreshNaturalTtsVoices() {
+  if (typeof api.ttsVoices !== "function" || ttsCatalogRefreshPending) return ttsCatalogRefreshPending;
+  ttsCatalogRefreshPending = api.ttsVoices().then((entries) => {
+    ShenPulseTtsVoices.installCatalog(entries);
+    refreshTtsVoiceSelects();
+    document.querySelectorAll("[data-tts-voice-count]").forEach((node) => { node.textContent = `${ShenPulseTtsVoices.NATURAL_VOICES.length} voix naturelles`; });
+  }).catch(() => {}).finally(() => { ttsCatalogRefreshPending = null; });
+  return ttsCatalogRefreshPending;
 }
 
 function refreshTtsVoiceSelects() {
@@ -137,7 +176,7 @@ function ttsCommentFilterFields(config = {}) {
     <div class="tts-comment-filters">
     ${checkRow(
       "Lire les emojis",
-      "Windows prononcera le nom des emojis présents dans le commentaire.",
+      "Désactivé : aucun emoji du téléphone ou de TikTok n’est lu.",
       "ttsReadEmojis",
       config.readEmojis === true
     )}
@@ -209,7 +248,9 @@ function triggerTypeOptions(currentType = "gift") {
 
 function syncActionEditorVisibility() {
   const actionType = dialogBody.querySelector("[name='actionType']")?.value;
-  if (actionType) {
+  const components = dialogBody.querySelector("[data-action-components-editor]");
+  if (components) syncActionComponentsEditor();
+  else if (actionType) {
     dialogBody.querySelectorAll("[data-action-types]").forEach((element) => {
       const types = String(element.dataset.actionTypes || "").split(/\s+/);
       setEditorConditionalVisibility(
@@ -240,24 +281,27 @@ function syncActionEditorVisibility() {
       );
     });
   }
-  syncActionGroupEditor();
+  if (!components) {
+    syncActionGroupEditor();
+    if (typeof syncActionAlertDisplay === "function") syncActionAlertDisplay();
+  }
 }
 
-function syncActionGroupEditor() {
+function syncActionGroupEditor(scope = dialogBody) {
   const active =
-    dialogBody.querySelector("[name='actionType']")?.value === "action.group";
-  const mode = dialogBody.querySelector(
+    scope.querySelector("[name='actionType']")?.value === "action.group";
+  const mode = scope.querySelector(
     '[name="actionGroupMode"]'
   )?.value;
   if (!mode) return;
-  const randomCountField = dialogBody.querySelector(
+  const randomCountField = scope.querySelector(
     "[data-action-group-random-count]"
   );
   setEditorConditionalVisibility(
     randomCountField,
     active && mode === "random"
   );
-  const selectedCount = dialogBody.querySelectorAll(
+  const selectedCount = scope.querySelectorAll(
     '[name="groupActionIds"]:checked'
   ).length;
   const randomCountInput = randomCountField?.querySelector(
@@ -340,6 +384,28 @@ function conditionValue(conditions, fieldName, operator) {
   );
 }
 
+function collectGiftTriggerConditions(existing, data, {
+  giftName = "giftNameCondition", modeName = "giftTriggerMode",
+  operatorName = "giftValueOperator", amountName = "giftValueAmount"
+} = {}) {
+  const all = name => typeof data.getAll === "function" ? data.getAll(name) : [data.get(name)];
+  if (data.get(modeName) === "value") {
+    const value = Number(data.get(amountName));
+    if (!Number.isFinite(value) || value <= 0) return [];
+    const operator = GIFT_VALUE_OPERATOR_OPTIONS.some(([option]) => option === data.get(operatorName)) ? data.get(operatorName) : "greaterOrEqual";
+    return [{ field: "data.value", operator, value }];
+  }
+  const ids = all(`${giftName}GiftId`), operators = all(`${giftName}Operator`);
+  return all(giftName).flatMap((value, index) => {
+    const name = String(value || "").trim(), giftId = String(ids[index] || "").trim();
+    if (!name && !giftId) return [];
+    const previous = (existing || []).find(condition => condition.field === "data.giftName" &&
+      (giftId ? String(condition.giftId || "") === giftId : normalizeGiftName(condition.value) === normalizeGiftName(name))) || {};
+    return [{ ...giftReferenceForSave(name, giftId, previous), field: "data.giftName",
+      operator: operators[index] === "notEquals" ? "notEquals" : "equals", value: name }];
+  });
+}
+
 function buildTriggerConditions(existing, data) {
   const managedFields = new Set([
     "data.giftName",
@@ -350,47 +416,11 @@ function buildTriggerConditions(existing, data) {
   const conditions = (existing || []).filter(
     (condition) => !managedFields.has(condition.field)
   );
-  const giftTriggerMode = data.get("giftTriggerMode") === "value"
-    ? "value"
-    : "specific";
-  const giftName = String(data.get("giftNameCondition") || "").trim();
-  const giftId = String(data.get("giftNameConditionGiftId") || "").trim();
-  const giftValueAmount = String(data.get("giftValueAmount") || "").trim();
-  const giftValueOperator = String(
-    data.get("giftValueOperator") || "greaterOrEqual"
-  );
   const username = String(data.get("usernameCondition") || "")
     .trim()
     .replace(/^@+/, "");
   const message = String(data.get("messageCondition") || "").trim();
-  if (giftTriggerMode === "specific" && giftName) {
-    const previous = (existing || []).find((condition) => condition.field === "data.giftName" && String(condition.operator || "equals") === "equals") || {};
-    const selectedGift = giftReferenceForSave(giftName, giftId, previous);
-    const condition = {
-      ...selectedGift,
-      field: "data.giftName",
-      operator: "equals",
-      value: giftName
-    };
-    conditions.push(condition);
-  }
-  if (
-    giftTriggerMode === "value" &&
-    giftValueAmount &&
-    Number.isFinite(Number(giftValueAmount)) &&
-    Number(giftValueAmount) > 0
-  ) {
-    const supportedOperator = GIFT_VALUE_OPERATOR_OPTIONS.some(
-      ([operator]) => operator === giftValueOperator
-    )
-      ? giftValueOperator
-      : "greaterOrEqual";
-    conditions.push({
-      field: "data.value",
-      operator: supportedOperator,
-      value: Number(giftValueAmount)
-    });
-  }
+  conditions.push(...collectGiftTriggerConditions(existing, data));
   if (username) {
     conditions.push({ field: "user.name", operator: "equals", value: username });
   }

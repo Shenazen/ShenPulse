@@ -72,6 +72,20 @@ test("Matchs publics : sept sources HTTPS stables, sans jeton local et avec un c
   assert.ok(h.requests.some((row) => row.method === "DELETE"));
 });
 
+test("le contrôle du volume rejoint les sources ordinaires et Matchs, y compris après réouverture", async t => {
+  const h = harness(); t.after(() => h.relay.stop());
+  h.state.settings.audioMixer = { master: .25, matches: .5 };
+  await h.relay.start();
+  assert.equal(h.matchWrites().at(-1).body.state.audioControl.settings.master, .25);
+  h.relay.publish("audio-control", { settings: h.state.settings.audioMixer, actions: { "sound-fixture": 0 } });
+  await pause();
+  const generic = h.genericWrites().flatMap(row => Object.values(row.body.lastBatch?.messages || {})).find(row => row.channel === "audio-control");
+  const match = h.matchWrites().flatMap(row => Object.values(row.body.lastBatch?.messages || {})).find(row => row.channel === "audio-control");
+  assert.equal(generic.payload.actions["sound-fixture"], 0);
+  assert.equal(match.payload.actions["sound-fixture"], 0);
+  assert.equal(match.payload.settings.master, .25);
+});
+
 test("Matchs publics : les droits réels limitent les URL et includeRestricted ne publie aucune donnée", async (t) => {
   const h = harness();
   t.after(() => h.relay.stop());

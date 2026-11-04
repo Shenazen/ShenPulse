@@ -97,7 +97,7 @@ test("a legacy action without an ID retains its exact index as deletion fallback
   assertDirectCommands(context.page, rule, rule.actions[0], 7);
 });
 
-test("multi-action scenarios keep one direct delete per action and preserve their own targets", (t) => {
+test("multi-action scenarios expose one set of tools for the whole scenario", (t) => {
   const context = actionContext(t);
   const rule = sampleRule([
     { id: 'first_"<&', type: "delay", config: { durationMs: 1000 } },
@@ -106,10 +106,10 @@ test("multi-action scenarios keep one direct delete per action and preserve thei
   const rows = rule.actions.map((action, actionIndex) => ({ rule, action, actionIndex }));
   const before = JSON.stringify(rule);
   context.page.innerHTML = context.renderActionWorkflows([{ rule, rows }]);
-  assert.equal(context.page.querySelectorAll(".automation-scenario-tools").length, 1, "The existing grouped scenario disclosure remains available.");
-  const controls = [...context.page.querySelectorAll(".automation-scenario-action .automation-row-controls")];
-  assert.equal(controls.length, 2);
-  controls.forEach((control, index) => assertDirectCommands(control, rule, rule.actions[index], index));
+  for (const operation of ["run-rule", "edit-action", "duplicate-scenario", "delete-scenario"]) assert.equal(context.page.querySelectorAll(`[data-action="${operation}"]`).length, 1);
+  assert.equal(context.page.querySelector('[data-action="run-rule"]').dataset.id, rule.id);
+  assert.equal(context.page.querySelector('[data-action="edit-action"]').dataset.id, rule.actions[0].id);
+  assert.equal(context.page.querySelectorAll(".automation-effect-chip").length, 2);
   assert.equal(context.page.querySelectorAll(".compact-context-menu").length, 0);
   assert.equal(JSON.stringify(rule), before);
   assert.deepEqual(context.calls, []);

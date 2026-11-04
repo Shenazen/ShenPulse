@@ -62,7 +62,7 @@ function openRuleEditor(rule) {
         <div class="trigger-editor-source-note full"><span>◎</span><div><strong>Toutes les sources</strong><small>Les événements LIVE et les tests sont toujours pris en compte automatiquement.</small></div></div>
         <label class="field"><span>Type de déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(current.trigger.type)}</select></label>
         ${field("threshold", "Seuil / quantité", current.trigger.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(current.conditions)}</div>
+        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(current.conditions, { repeatGiftCombos: current.trigger?.repeatGiftCombos })}</div>
         <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Message contient (optionnel)", conditionValue(current.conditions, "data.message", "contains"), "text", "full")}</div>
         ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(current.conditions, "user.name", "equals"), "text", "full")}
         ${field("globalCooldown", "Cooldown global (ms)", current.cooldown?.globalMs || 0, "number", 'min="0"')}
@@ -109,6 +109,7 @@ function openRuleEditor(rule) {
         enabled: data.get("enabled") === "true",
         trigger: {
           ...current.trigger,
+          repeatGiftCombos: data.has("repeatGiftCombos"),
           enabled: true,
           type: data.get("triggerType"),
           source: "*",

@@ -9,6 +9,7 @@ const { wheelGiftTriggerMatches } = require("./trigger-policy");
 const { giftEventCount, giftExecutionEvent } = require("../rule-engine");
 const { ChatbotService } = require("../chatbot-service");
 const { CommandExecutor } = require("../commands/executor");
+const { GiftComboPolicy } = require("../gift-combo-policy");
 
 class LiveEventActionService {
   constructor({ store, sourceHub, overlayServer, actionRunner, giftCatalog, commandCooldowns, gameCounterCursors, onActivity, onChanged }) {
@@ -22,7 +23,8 @@ class LiveEventActionService {
     this.onActivity = onActivity;
     this.onChanged = onChanged;
     this.commandExecutor = new CommandExecutor({ store, actionRunner });
-    this.chatbot = new ChatbotService({ store, sourceHub, overlayServer, commandExecutor: this.commandExecutor, functionalOnly: true,
+    this.wheelGiftCombos = new GiftComboPolicy();
+    this.chatbot = new ChatbotService({ store, sourceHub, overlayServer, commandExecutor: this.commandExecutor, requireConversationOptIn: true,
       cooldowns: commandCooldowns, onActivity, onChanged });
   }
 
@@ -85,8 +87,8 @@ class LiveEventActionService {
 
   async handleWheelGiftTriggers(event) {
     if (event.type !== "gift") return;
-    const wheelConfig =
-      readState(this.store, ["settings.overlayConfigs.wheel"]).settings?.overlayConfigs?.wheel || {};
+    const state = readState(this.store, ["session.profileId", "settings.overlayConfigs.wheel"]);
+    const wheelConfig = state.settings?.overlayConfigs?.wheel || {};
     const wheels = Array.isArray(wheelConfig.wheels)
       ? wheelConfig.wheels
       : [];
@@ -97,27 +99,13 @@ class LiveEventActionService {
         this.giftCatalog.gifts
       );
     });
-    const deliveryCount = giftEventCount(event);
-    for (let index = 0; index < deliveryCount; index += 1) {
-      const deliveryEvent = giftExecutionEvent(
-        event,
-        index,
-        deliveryCount,
-        1
-      );
-      await Promise.all(
-        matchingWheels.map((wheel) =>
-          this.actionRunner.run(
-            {
-              id: `wheel_trigger_${wheel.id}`,
-              type: "wheel.spin",
-              config: { wheelId: wheel.id }
-            },
-            deliveryEvent
-          )
-        )
-      );
-    }
+    await Promise.all(matchingWheels.map(async wheel => {
+      const deliveryCount = this.wheelGiftCombos.count(event, state.session?.profileId+":"+wheel.id, wheel.repeatGiftCombos, giftEventCount(event));
+      for (let index = 0; index < deliveryCount; index += 1) {
+        const deliveryEvent = giftExecutionEvent(event, index, deliveryCount, 1);
+        await this.actionRunner.run({ id: `wheel_trigger_${wheel.id}`, type: "wheel.spin", config: { wheelId: wheel.id } }, deliveryEvent);
+      }
+    }));
   }
 
 }

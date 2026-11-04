@@ -178,7 +178,7 @@ test("les actions Match transmettent une lecture sérialisable au lecteur unique
     requestId: "match-request",
     match: "cofre",
     variant: "gladiador",
-    fit: "cover"
+    fit: "cover", volume: 1, originActionId: undefined
   });
   assert.equal(published[0].event, "match");
 });
@@ -724,7 +724,7 @@ test("les actions Media ciblent une file d'ecran et conservent l'ancien alias", 
     {
       id: "media-screen-4",
       type: "overlay.media",
-      config: { title: "Video", screen: 4 }
+      config: { title: "Video", screen: 4, mediaUrl: "https://example.test/video.webm" }
     },
     {}
   );
@@ -732,7 +732,7 @@ test("les actions Media ciblent une file d'ecran et conservent l'ancien alias", 
     {
       id: "legacy-alert",
       type: "overlay.alert",
-      config: { title: "Ancienne alerte" }
+      config: { title: "Ancienne alerte", mediaUrl: "https://example.test/legacy.png" }
     },
     {}
   );
@@ -740,7 +740,7 @@ test("les actions Media ciblent une file d'ecran et conservent l'ancien alias", 
     {
       id: "media-screen-clamped",
       type: "overlay.media",
-      config: { title: "Ecran maximal", screen: 99 }
+      config: { title: "Ecran maximal", screen: 99, mediaUrl: "https://example.test/max.png" }
     },
     {}
   );

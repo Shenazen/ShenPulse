@@ -181,7 +181,7 @@ test("chaque profil retrouve sa voix complète et ses règles musicales sans dé
   store.set("settings.tts", voiceB);
   store.set("settings.spotify.songRequests", songsB);
   store.selectProfile(firstId);
-  assert.deepEqual(store.state.settings.tts, voiceA);
+  assert.deepEqual(store.state.settings.tts, { ...voiceA, assignments: { roles: {}, viewers: [] } });
   assert.deepEqual(store.state.settings.spotify.songRequests, songsA);
   assert.equal(store.state.settings.spotify.accessTokenSecretId, "fixture-spotify-access");
   assert.equal(store.state.settings.spotify.refreshTokenSecretId, "fixture-spotify-refresh");
@@ -195,14 +195,14 @@ test("chaque profil retrouve sa voix complète et ses règles musicales sans dé
   }
   store.flush();
   const reopened = open();
-  assert.deepEqual(reopened.state.settings.tts, voiceA);
+  assert.deepEqual(reopened.state.settings.tts, { ...voiceA, assignments: { roles: {}, viewers: [] } });
   assert.deepEqual(reopened.state.settings.spotify.songRequests, songsA);
   reopened.selectProfile("profile-beta");
-  assert.deepEqual(reopened.state.settings.tts, voiceB);
+  assert.deepEqual(reopened.state.settings.tts, { ...voiceB, assignments: { roles: {}, viewers: [] } });
   assert.deepEqual(reopened.state.settings.spotify.songRequests, songsB);
   reopened.deactivateAccount();
   identify(reopened, "alpha");
-  assert.deepEqual(reopened.state.settings.tts, voiceB);
+  assert.deepEqual(reopened.state.settings.tts, { ...voiceB, assignments: { roles: {}, viewers: [] } });
   assert.deepEqual(reopened.state.settings.spotify.songRequests, songsB);
 });
 

@@ -301,6 +301,13 @@ function ruleGiftName(rule) {
   return ruleGiftCondition(rule)?.value || "";
 }
 
+function giftSelectionLabel(conditions = []) {
+  const selected = conditions.filter(condition => condition.field === "data.giftName" && ["equals", "notEquals"].includes(condition.operator || "equals"));
+  const names = operator => selected.filter(condition => (condition.operator || "equals") === operator).map(condition => condition.value || "Cadeau");
+  const allowed = names("equals"), excluded = names("notEquals");
+  return `${allowed.join(" ou ") || (excluded.length ? "Tous les cadeaux" : "")}${excluded.length ? ` sauf ${excluded.join(", ")}` : ""}`;
+}
+
 const GIFT_VALUE_OPERATOR_OPTIONS = [
   ["less", "< · Moins de"],
   ["lessOrEqual", "≤ · Inférieur ou égal"],
@@ -363,9 +370,9 @@ function triggerPill(rule, { compact = false } = {}) {
   const gift = giftForSavedReference(giftName, giftCondition?.giftId, giftCondition);
   const threshold = Number(rule.trigger?.threshold || 1);
   const cost = Number(gift?.cost ?? giftCondition?.giftCost ?? 0);
-  const compactLabel = compact ? type === "gift" ? giftName || EVENT_LABELS.gift || "Cadeau" : EVENT_LABELS[type] || type : "";
+  const compactLabel = compact ? type === "gift" ? giftSelectionLabel(rule.conditions) || EVENT_LABELS.gift || "Cadeau" : EVENT_LABELS[type] || type : "";
   const valueFilter = compact && type === "gift" ? ruleGiftValueLabel(rule) : "";
-  return `<span class="trigger-pill${compact ? " automation-trigger-compact" : ""}" data-trigger-type="${escapeHtml(type)}">${eventIconMarkup(type, {
+  return `<span class="trigger-pill${compact ? " automation-trigger-compact" : ""}" data-trigger-type="${escapeHtml(type)}" title="${escapeHtml(type === "gift" ? giftSelectionLabel(rule.conditions) : "")}">${eventIconMarkup(type, {
     ...giftCondition,
     giftId: giftCondition?.giftId,
     giftName,
@@ -553,6 +560,7 @@ function acceptSnapshot(value) {
   if (previousUid !== nextUid ||
       snapshot?.state?.session?.profileId !== value?.state?.session?.profileId) {
     if (typeof stopRendererAudioPlayback === "function") stopRendererAudioPlayback();
+    if (typeof stopLocalTtsPlayback === "function") stopLocalTtsPlayback();
   }
   if (previousUid !== nextUid) {
     // Les aperçus importés ne doivent jamais survivre au changement de compte.
@@ -560,6 +568,7 @@ function acceptSnapshot(value) {
     if (typeof globalMediaLibrary !== "undefined") globalMediaLibrary.close();
   }
   snapshot = value;
+  if (typeof ShenPulseAudio !== "undefined") ShenPulseAudio.runtime.update(ShenPulseAudio.stateControl(value?.state));
   if (typeof synchronizeGiftPickerCatalog === "function") synchronizeGiftPickerCatalog();
   if (value?.state?.settings?.siteVisibility) {
     siteVisibility = value.state.settings.siteVisibility;

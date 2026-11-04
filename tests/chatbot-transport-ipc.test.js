@@ -121,3 +121,25 @@ test("échec de seconde écriture ne remplace aucun ancien identifiant ni config
   assert.equal(f.store.getSecret(previous.accessTokenSecretId), "private-oauth-token");
   assert.equal([...f.secrets.values()].includes("new-key"), false);
 });
+
+
+test("bot commun par défaut : aucune clé personnelle et aucune fausse disponibilité", () => {
+  const f = fixture();
+  f.core.sourceHub.sharedChatBot = { status: () => ({ canSend: false, reason: "bot-configuration-required" }) };
+  f.core.sourceHub.getChatCapabilities = () => ({ canSend: false, transport: "shenpulse-bot", reason: "bot-configuration-required" });
+  const initial = chatbotTransportStatus(f.core, f.store);
+  assert.equal(initial.configuration.provider, "shenpulse-bot");
+  assert.equal(initial.configuration.automatic, true);
+  assert.equal(initial.configuration.serviceReady, false);
+  assert.equal(initial.connections[0].canSend, false);
+  f.configure(valid());
+  const previous = { ...f.state.settings.tiktok.chat };
+  const selected = f.configure({ provider: "shenpulse-bot" });
+  assert.equal(selected.configuration.provider, "shenpulse-bot");
+  assert.equal(f.state.settings.tiktok.chat.automatic, true);
+  assert.equal(f.secrets.get(previous.apiKeySecretId), "");
+  assert.equal(f.secrets.get(previous.accessTokenSecretId), "");
+  assert.equal(f.secrets.get("account-refresh"), "private-account-token");
+  const disabled = f.configure({ provider: "none" });
+  assert.equal(disabled.configuration.automatic, false);
+});

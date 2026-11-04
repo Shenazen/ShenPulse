@@ -9,17 +9,20 @@ const { LocalWebSocketServer } = require("./local-websocket");
 const { MatchSourceService } = require("./match-source-service");
 const { readState } = require("./state-projection");
 const { assertProFeatureAccess } = require("./pro-feature-access");
+const { versionLocalMatchDocument } = require("./overlay-code-version");
 const { MATCH_OVERLAY_STATE_PATHS, projectMatchesOverlayState, projectMatchesOverlayPayload } = require("./matches-overlay-state");
 const { safeString, timingSafeToken } = require("./utils");
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
 const sceneLayout = require("../../resources/overlays/scene-layout");
+const { readAudioControl } = require("./audio-control");
+const { volume } = require("../../resources/overlays/audio-control");
 
 const { STATE_PATHS: GAME_PACK_STATE_PATHS, createGamePackOverlays, publicGamePackAssets } = require("../shared/game-pack-overlay");
 
 const PRO_ACCESS_STATE_PATHS = ["commerce.subscription"];
 const OVERLAY_BOOTSTRAP_STATE_PATHS = [
   "goals", "session", "overlaySession", "statistics",
-  "settings.overlayScene", "settings.overlayConfigs", "commerce.subscription"
+  "settings.overlayScene", "settings.overlayConfigs", "settings.audioMixer", "commerce.subscription"
 ];
 const MATCH_WIDGET_URL_KEYS = ["matchesWins", "matchesStarDonor", "matchesTopDonor", "matchesDonors", "matchesTimer", "matchesVictory", "matchesScoreboard"];
 const isMatchWidgetView = (view) => String(view || "").trim().toLowerCase() === "match-widget";
@@ -33,6 +36,7 @@ function overlayViewAcceptsChannel(
   leaderboardKind = "",
   matchName = ""
 ) {
+  if (channel === "audio-control") return true;
   return overlayCatalog.acceptsChannel({
     view,
     channel,
@@ -62,7 +66,9 @@ function normalizeMatchPlaybackRequest(incoming = {}) {
     requestId: randomUUID(),
     match,
     variant,
-    fit: incoming.fit === "cover" ? "cover" : "contain"
+    fit: incoming.fit === "cover" ? "cover" : "contain",
+    ...(incoming.volume !== undefined ? { volume: volume(incoming.volume) } : {}),
+    ...(incoming.originActionId ? { originActionId: safeString(incoming.originActionId, 160) } : {})
   };
 }
 
@@ -251,7 +257,7 @@ class OverlayServer {
     for (const client of this.sseClients) {
       // Le lecteur Studio à capacité publique ne reçoit jamais les sons,
       // configurations et événements génériques des autres sources.
-      if (client.matchBridgeAccess && !["match", "match-media", "match-audio"].includes(channel)) continue;
+      if (client.matchBridgeAccess && !["match", "match-media", "match-audio", "audio-control"].includes(channel)) continue;
       if (client.view === "scene" && !sceneLayout.acceptsSceneChannel(
         channel, hasProAccess
       )) continue;
@@ -328,6 +334,7 @@ class OverlayServer {
             if (!matchesAccess) return response.end();
             client.matchesIdentity = matchWidgetIdentity(matchesAccess);
           }
+          client.response.write(`event: audio-control\ndata: ${JSON.stringify({ channel: "audio-control", payload: readAudioControl(this.store) })}\n\n`);
           this.sseClients.add(client);
           request.on("close", () => this.sseClients.delete(client));
         }
@@ -341,6 +348,7 @@ class OverlayServer {
         request,
         response,
         registerEventClient: (client) => {
+          client.response.write(`event: audio-control\ndata: ${JSON.stringify({ channel: "audio-control", payload: readAudioControl(this.store) })}\n\n`);
           this.sseClients.add(client);
           request.on("close", () => this.sseClients.delete(client));
         }
@@ -368,7 +376,9 @@ class OverlayServer {
       ) {
         return this.#overlayAccessDenied(response);
       }
-      return this.#serveStatic(url.pathname, request, response);
+      return this.#serveStatic(url.pathname, request, response, {
+        versionMatchDocument: url.searchParams.get("view") === "match"
+      });
     }
     if (url.pathname.startsWith('/overlay/media/game-art/')) {
       const file = publicGamePackAssets().get(url.pathname.slice('/overlay'.length));
@@ -464,6 +474,7 @@ class OverlayServer {
       const client = { response, view, screen, leaderboardKind,
         sceneProAccess: hasProOverlayAccess(state),
         ...(matchesAccess ? { matchesIdentity: matchWidgetIdentity(matchesAccess) } : {}) };
+      response.write(`event: audio-control\ndata: ${JSON.stringify({ channel: "audio-control", payload: readAudioControl(this.store) })}\n\n`);
       this.sseClients.add(client);
       request.on("close", () => this.sseClients.delete(client));
       return;
@@ -550,7 +561,7 @@ class OverlayServer {
     });
   }
 
-  #serveStatic(requestPath, request, response) {
+  #serveStatic(requestPath, request, response, { versionMatchDocument = false } = {}) {
     const relative =
       requestPath === "/" || requestPath === "/overlay/" || requestPath === "/overlay"
         ? "index.html"
@@ -597,6 +608,15 @@ class OverlayServer {
       response.writeHead(304, headers);
       response.end();
       return;
+    }
+    if (isOverlayDocument && versionMatchDocument) {
+      // Un aperçu local peut partager le cache d’une ancienne construction.
+      // Même empreinte que le lecteur Studio, sans modifier les autres vues.
+      const document = versionLocalMatchDocument(fs.readFileSync(target, "utf8")
+        .replace(/<script\s+data-overlay-base-path>[\s\S]*?<\/script>/i, "")
+        .replace("<head>", '<head>\n    <base href="/overlay/" />'), this.staticDirectory);
+      response.writeHead(200, headers);
+      return response.end(request.method === "HEAD" ? undefined : document);
     }
     response.writeHead(200, headers);
     fs.createReadStream(target).pipe(response);

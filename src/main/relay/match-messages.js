@@ -5,13 +5,14 @@
  * ni URL locales/secrets. Seuls les médias HTTPS publics déjà choisis dans
  * la bibliothèque/configuration sont transportés ; aucun fichier n'est uploadé.
  */
+const { normalizeControl, volume } = require("../../../resources/overlays/audio-control");
 const { isIP } = require("node:net");
 const { DEFAULT_PUBLIC_OVERLAY_BASE_URL, publicMediaUrl, createRelayMessage } = require("../../shared/public-overlay-protocol");
 const { matches, normalizeAnimationVariant } = require("../../../resources/overlays/overlay-catalog");
 const { normalizeMatchAutomation } = require("../../shared/matches-contract");
 const { CommandExecutor } = require("../commands/executor");
 
-const MATCH_MESSAGE_CHANNELS = new Set(["match", "match-media", "match-audio"]);
+const MATCH_MESSAGE_CHANNELS = new Set(["match", "match-media", "match-audio", "audio-control"]);
 const MATCH_MESSAGE_TTL_MS = 15_000;
 const animationNames = new Set(matches.map((item) => item.match));
 const identifier = (value) => /^[A-Za-z0-9_-]{1,160}$/.test(String(value || "")) ? String(value) : "";
@@ -88,6 +89,9 @@ function createMatchRelayMessage(channel, input = {}, options = {}) {
   const baseUrl = options.baseUrl || DEFAULT_PUBLIC_OVERLAY_BASE_URL;
   if (!MATCH_MESSAGE_CHANNELS.has(channel) || !input || typeof input !== "object") return null;
   let payload;
+  if (channel === "audio-control") {
+    return createRelayMessage(channel, { ...normalizeControl(input), requestId: input.requestId }, { baseUrl });
+  }
   if (channel === "match") {
     const match = String(input.match || "").toLowerCase();
     const requestId = identifier(input.requestId);
@@ -95,7 +99,8 @@ function createMatchRelayMessage(channel, input = {}, options = {}) {
     const variant = normalizeAnimationVariant(match, input.variant);
     if (!variant) return null;
     payload = { requestId, match, variant,
-      fit: input.fit === "cover" ? "cover" : "contain" };
+      fit: input.fit === "cover" ? "cover" : "contain", volume: volume(input.volume),
+      ...(identifier(input.originActionId) ? { originActionId: identifier(input.originActionId) } : {}) };
   } else {
     const playbackId = identifier(input.playbackId);
     const url = matchPublicMediaUrl(channel === "match-media" ? input.mediaUrl : input.url, { ...options, baseUrl });
@@ -104,8 +109,9 @@ function createMatchRelayMessage(channel, input = {}, options = {}) {
     if (input.soundUrl && !soundUrl) return null;
     payload = channel === "match-media"
       ? { playbackId, mediaUrl: url, durationMs: Math.min(300_000, Math.max(500, Number(input.durationMs) || 5000)),
-          ...(soundUrl ? { soundUrl } : {}) }
-      : { playbackId, url, volume: Number.isFinite(Number(input.volume ?? 1)) ? Math.min(1, Math.max(0, Number(input.volume ?? 1))) : 1 };
+          ...(soundUrl ? { soundUrl } : {}), volume: volume(input.volume),
+          ...(identifier(input.originActionId) ? { originActionId: identifier(input.originActionId) } : {}) }
+      : { playbackId, url, ...(identifier(input.originActionId) ? { originActionId: identifier(input.originActionId) } : {}), volume: Number.isFinite(Number(input.volume ?? 1)) ? Math.min(1, Math.max(0, Number(input.volume ?? 1))) : 1 };
   }
   return createRelayMessage(channel, payload, { baseUrl });
 }

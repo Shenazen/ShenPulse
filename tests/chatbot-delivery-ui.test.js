@@ -51,37 +51,34 @@ test("configuration ne préremplit jamais de clé ou jeton et demande un consent
   const { w, editor } = context(t, { configuration: { provider: "euler-oauth", hasApiKey: true, hasAccessToken: true,
     expiresAt: "2030-01-01T00:00:00Z", botUsername: "bot.owner" } });
   await w.openCreatorChatbotDeliveryEditor();
-  assert.match(editor().body, /Autoriser l'envoi des actions/);
+  assert.match(editor().body, /Autoriser l'envoi avec mon autorisation personnelle/);
   assert.match(editor().body, /sans supprimer vos commandes/);
   assert.match(editor().body, /value=""/);
   assert.doesNotMatch(editor().body, /apiKeySecretId|accessTokenSecretId/);
 });
 
-test("Commandes ne consulte ni n'affiche la configuration des messages retirés", async (t) => {
+test("les réglages d’envoi sont accessibles depuis le chatbot et restent privés", async (t) => {
   const { w, calls, editor } = context(t, { connections: [] });
   w.currentPage = "commands";
   await w.refreshCreatorChatbotDelivery(true);
-  assert.equal(w.renderCreatorChatbotDelivery(), "");
-  assert.equal(w.syncCreatorChatbotDelivery(), false);
+  assert.match(w.renderCreatorChatbotDelivery(), /data-chatbot-delivery/);
   await w.openCreatorChatbotDeliveryEditor();
-  assert.equal(calls(), 0);
-  assert.equal(editor(), undefined);
+  assert.ok(calls() >= 2);
+  assert.match(editor().body, /Configuration avancée/);
+  w.currentPage = "games";
+  assert.equal(w.renderCreatorChatbotDelivery(), "");
 });
 
-test("le gestionnaire d'envoi est enregistré pour Connexions, jamais pour Commandes", async (t) => {
+test("le gestionnaire d’envoi reste délégué pour Connexions et Commandes", async (t) => {
   const { w, calls, editor, run } = context(t, { connections: [] });
-  for (const file of ["actions/handlers/contracts.js", "actions/handlers/connections-messages.js"]) {
-    run(fs.readFileSync(path.join(__dirname, "../src/renderer/app", file), "utf8"));
-  }
-  w.currentPage = "commands";
-  assert.equal(await w.handleCreatorChatbotDeliveryAction({ action: "chatbot-delivery-configure" }),
-    run("ACTION_NOT_HANDLED"));
-  assert.equal(calls(), 0);
-  w.currentPage = "connections";
+  for (const file of ["actions/handlers/contracts.js", "actions/handlers/connections-messages.js"]) run(fs.readFileSync(path.join(__dirname, "../src/renderer/app", file), "utf8"));
   const handler = run("ACTION_HANDLERS.find(handler => handler === handleCreatorChatbotDeliveryAction)");
-  await handler({ action: "chatbot-delivery-configure" });
-  assert.equal(calls(), 1);
-  assert.ok(editor());
+  for (const page of ["commands", "connections"]) {
+    w.currentPage = page;
+    await handler({ action: "chatbot-delivery-configure" });
+    assert.ok(editor());
+  }
+  assert.equal(calls(), 2);
 });
 
 test("une expiration passée ne reste pas présentée comme une source prête", async (t) => {

@@ -317,7 +317,7 @@ test("le test manuel affiche les éventuelles sous-actions en erreur", () => {
 
 test("l’éditeur expose le groupe d’actions et ses deux modes", () => {
   const renderer = readRendererSource();
-  const editorStart = renderer.indexOf("function openActionEditor(row)");
+  const editorStart = renderer.indexOf("function actionEditorConfigFields(");
   const editorEnd = renderer.indexOf("function openTtsEditor", editorStart);
   const editor = renderer.slice(editorStart, editorEnd);
 
@@ -329,5 +329,5 @@ test("l’éditeur expose le groupe d’actions et ses deux modes", () => {
   assert.match(editor, /Toutes les actions sélectionnées/);
   assert.match(editor, /Un nombre obligatoire au hasard/);
   assert.match(editor, /Les actions sélectionnées démarrent ensemble/);
-  assert.match(renderer, /function syncActionGroupEditor\(\)/);
+  assert.match(renderer, /function syncActionGroupEditor\(scope = dialogBody\)/);
 });

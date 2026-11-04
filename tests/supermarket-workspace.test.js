@@ -10,7 +10,7 @@ function fixture(){
  const gifts=[{id:'5655',name:'Rose',cost:1,alternateIds:['rose'],imageUrl:'https://example.test/rose.png'},{id:'6104',name:'Cap',cost:99,imageUrl:'https://example.test/cap.png'},{id:'6267',name:'Corgi',cost:299,imageUrl:'https://example.test/corgi.png'},{id:'9999',name:'Rare',cost:1000,imageUrl:'https://example.test/rare.png'}];
  const dialog=dom.window.document.querySelector('dialog'),dialogBody=dom.window.document.querySelector('#dialog-body');dialog.close=()=>dialog.removeAttribute('open');
  const state={session:{profileId:'profile-a'},game:{installations:{[pack.id]:{platform:'xbox',path:'C:/XboxGames/Supermarket/Content',installerVersion:pack.installerVersion}},interactionRulesByPack:{[pack.id]:rules}},settings:{}};
- const ctx=vm.createContext({console,structuredClone,URL,Set,Map,ShenPulseGameInteractionTitles:require("../src/shared/game-interaction-titles"),ShenPulseMinecraftRoundSettings:require('../src/shared/minecraft-round-settings'),dialog,dialogBody,dialogSessionId:0,content:dom.window.document.querySelector('main'),snapshot:{state,packs:[pack]},gameInstallBusyId:'',gameLaunchBusyId:'',cryptoId:()=>String(++sequence),
+ const ctx=vm.createContext({console,structuredClone,URL,Set,Map,ShenPulseGameWorkspacePolicy:require('../src/shared/game-workspace-policy'),ShenPulseGameInteractionTitles:require("../src/shared/game-interaction-titles"),ShenPulseMinecraftRoundSettings:require('../src/shared/minecraft-round-settings'),dialog,dialogBody,dialogSessionId:0,content:dom.window.document.querySelector('main'),snapshot:{state,packs:[pack]},gameInstallBusyId:'',gameLaunchBusyId:'',cryptoId:()=>String(++sequence),
   escapeHtml:value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;'),isGameUnlocked:()=>true,requireGameAccess:()=>true,activeGameSession:()=>null,gameArtwork:()=> 'assets/games/catalog/supermarket-simulator.jpg',gameInstallationPlatformLabel:i=>i?.platform==='xbox'?'Xbox / Game Pass':'Steam',
   triggerLabel:r=>r.trigger.type,normalizeGiftName:value=>String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),giftPickerSearchText:g=>(g.name+' '+g.id+' '+g.cost).toLowerCase(),giftPickerCatalogContext:()=>({username:'fixture'}),giftPickerRoomMatches:()=>false,preloadGiftPickerCatalog:async()=>({gifts}),giftPickerDisplayGroups:list=>list.map(gift=>({gift,variants:[gift]})),giftForSavedReference:(name,id,saved)=>gifts.find(g=>g.id===id)||{id,name,cost:saved.giftCost||0,imageUrl:saved.giftImageUrl},giftReferenceForSave:(name,id,previous)=>({...((previous.giftId===id)?previous:{}),giftId:id,giftCost:gifts.find(g=>g.id===id)?.cost||0,giftImageUrl:gifts.find(g=>g.id===id)?.imageUrl||'',giftIds:gifts.find(g=>g.id===id)?.alternateIds||[]}),
   triggerPill:r=>'<span>'+r.conditions[0]?.value+'</span>',hasAutomaticTrigger:r=>r.trigger?.enabled!==false,eventIconMarkup:()=>'<svg></svg>',ruleGiftCondition:r=>r.conditions[0],ruleGiftName:r=>r.conditions[0]?.value||'',
@@ -20,6 +20,9 @@ function fixture(){
  });
  const interactions=fs.readFileSync(path.join(root,'src/renderer/app/features/games/interactions.js'),'utf8');
  vm.runInContext(interactions.slice(interactions.indexOf('function gameInteractionRules('),interactions.indexOf('function gameInteractionReadinessIssues('))+interactions.slice(interactions.indexOf('function findGameInteractionRow(')),ctx);
+ vm.runInContext(fs.readFileSync(path.join(root,'src/renderer/app/features/media/gift-picker.js'),'utf8').split('function giftPickerField(')[0],ctx);
+ const giftLabels=fs.readFileSync(path.join(root,'src/renderer/app/core/ui-foundations.js'),'utf8');
+ vm.runInContext(giftLabels.slice(giftLabels.indexOf('function ruleGiftCondition('),giftLabels.indexOf('const GIFT_VALUE_OPERATOR_OPTIONS')),ctx);
  for(const file of ["workspace/core.js","workspace/interactions.js","workspace/free-events.js","workspace/catalog.js","workspace/preview.js","workspace/updates.js","workspace/sections.js","workspace/dialogs.js","workspace/wins.js","supermarket-workspace.js","supermarket-free-events.js","supermarket-controls.js","supermarket-gifts.js"])vm.runInContext(fs.readFileSync(path.join(root,'src/renderer/app/features/games',file),'utf8'),ctx);
  return {ctx,dom,saved,previews,handlers,rules,editor:()=>editor,render:()=>{ctx.content.innerHTML=ctx.renderSupermarketWorkspace(pack);return ctx.content;}};
 }
@@ -253,4 +256,28 @@ test('une réponse régionale tardive actualise le popup ouvert sans effacer rec
  f.ctx.giftPickerRoomMatches=()=>true;f.ctx.preloadGiftPickerCatalog=async()=>result;f.ctx.cachedGiftPickerCatalog=()=>result;await f.ctx.addSupermarketInteraction('gift','help');const search=f.ctx.dialogBody.querySelector('[data-market-gift-search]');search.value='Local';search.dispatchEvent(new f.dom.window.Event('input',{bubbles:true}));
  result={gifts:[a,b],room:{available:true},roomGifts:[b]};f.ctx.refreshSupermarketGiftCatalog();const grid=f.ctx.dialogBody.querySelector('[data-market-gift-results]');assert.equal(f.ctx.dialogBody.querySelector('[data-market-gift-search]'),search);assert.equal(search.value,'Local');assert.equal(grid.querySelector('[data-market-gift-choice="901"]'),null);assert.ok(grid.querySelector('[data-market-gift-choice="902"]'));
  const before=grid.innerHTML;f.ctx.snapshot.state.settings.account={uid:'other'};result.roomGifts=[a];f.ctx.refreshSupermarketGiftCatalog();assert.equal(grid.innerHTML,before,'Un ancien compte ne peut remplacer le sélecteur courant.');assert.equal(f.saved.length,0);
+});
+
+
+test('le popup de cadeau mémorise la répétition sans changer cadeau, actions ou filtres',async()=>{
+ const f=fixture();f.render();const row=f.ctx.supermarketRows(pack)[0],reference={ruleId:row.rule.id,actionId:row.action.id,index:row.actionIndex};const original=structuredClone(row.rule);
+ await f.ctx.openSupermarketGifts(reference);const input=f.dom.window.document.querySelector('[data-market-gift-combos]');assert.equal(input.checked,false);
+ input.checked=true;input.dispatchEvent(new f.dom.window.Event('change',{bubbles:true}));await new Promise(setImmediate);
+ assert.equal(f.saved.at(-1).trigger.repeatGiftCombos,true);assert.deepEqual(f.saved.at(-1).actions,original.actions);assert.deepEqual(f.saved.at(-1).conditions,original.conditions);
+ await f.ctx.chooseSupermarketGift('6267');assert.equal(f.saved.at(-1).trigger.repeatGiftCombos,true);assert.equal(f.saved.at(-1).conditions[0].giftId,'6267');
+});
+
+test('une nouvelle carte reste sans répétition, et son choix est enregistré avec le cadeau',async()=>{
+ const f=fixture();f.render();await f.ctx.addSupermarketInteraction('gift','help');const input=f.dom.window.document.querySelector('[data-market-gift-combos]');assert.equal(input.checked,false);input.checked=true;input.dispatchEvent(new f.dom.window.Event('change',{bubbles:true}));await new Promise(setImmediate);assert.equal(f.saved.length,0);
+ await f.ctx.chooseSupermarketGift('5655');assert.equal(f.saved.length,1);assert.equal(f.saved[0].trigger.repeatGiftCombos,true);
+});
+
+test('le choix rapide garde les autres cadeaux et les exclusions ; la configuration multiple réutilise l’éditeur',async()=>{
+ const f=fixture(),rule=f.rules[0];rule.conditions.push({field:'data.giftName',operator:'equals',value:'Autre cadeau',giftId:'other'},{field:'data.giftName',operator:'notEquals',value:'Exclu',giftId:'excluded'});
+ const row=f.ctx.supermarketRows(pack)[0],reference={ruleId:row.rule.id,actionId:row.action.id,index:row.actionIndex};
+ await f.ctx.openSupermarketGifts(reference);await f.ctx.chooseSupermarketGift('6267');
+ assert.deepEqual(f.saved.at(-1).conditions.map(c=>[c.giftId,c.operator]),[['6267','equals'],['other','equals'],['excluded','notEquals']]);
+ let editor;f.ctx.openGameInteractionEditor=(pack,effect,row)=>{editor={pack,effect,row};};
+ await f.ctx.openSupermarketGifts(reference);f.ctx.dialogBody.querySelector('[data-market-gift-conditions]').click();await new Promise(setImmediate);
+ assert.equal(editor.row.rule.id,rule.id);assert.equal(editor.row.rule.conditions.length,3);
 });

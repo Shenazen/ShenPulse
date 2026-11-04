@@ -618,21 +618,11 @@ api.on("game-effect", (payload) => {
 });
 
 api.on("playback", async (payload) => {
-  if (payload.type === "tts" && "speechSynthesis" in window) {
-    const utterance = new SpeechSynthesisUtterance(payload.text);
-    utterance.rate = Number(payload.rate || 1);
-    utterance.pitch = Number(payload.pitch || 1);
-    utterance.volume = Number(payload.volume ?? 1);
-    let selectedVoice = null;
-    if (payload.voice) {
-      selectedVoice = window.speechSynthesis
-        .getVoices()
-        .find((entry) => entry.name === payload.voice);
-      if (selectedVoice) utterance.voice = selectedVoice;
-    }
-    utterance.lang = selectedVoice?.lang || payload.language || "fr-FR";
-    window.speechSynthesis.speak(utterance);
+  if (payload.type === "tts") {
+    queueLocalTtsPlayback(payload);
   } else if (payload.type === "audio") {
-    await playRendererAudio(payload);
+    await queueRendererAudioPlayback(payload);
   }
 });
+
+dialog.addEventListener("close", () => stopLocalTtsPlayback(true));

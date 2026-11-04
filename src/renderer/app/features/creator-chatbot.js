@@ -39,7 +39,7 @@ function creatorChatbotHeading() {
   return ["Vos commandes", "Un ! dans le chat pour contrôler la musique, lancer vos actions et faire vivre vos overlays.", "Nouvelle commande"];
 }
 
-function creatorChatbotEntryTitle(entry) { return String(entry.command || "!"); }
+function creatorChatbotEntryTitle(entry) { return String(entry.kind === "timer" ? entry.name || "Message programmé" : entry.kind === "auto-reply" ? (entry.keywords || [entry.matchText]).join(", ") : entry.command || "!"); }
 function creatorChatbotEntryMeta(entry) {
   const aliases = ShenPulseChatbotCommand.chatbotAliases(entry.aliases);
   return aliases.length ? `${aliases.length} alias` : "Commande du chat";
@@ -67,6 +67,7 @@ function creatorChatbotEntryRow(entry) {
 }
 
 function creatorChatbotPanelMarkup() {
+  if (creatorChatbotTab !== "commands") return creatorConversationPanelMarkup();
   const rows = creatorChatbotRows();
   const [title, description, addLabel] = creatorChatbotHeading();
   const table = rows.length ? renderCompactResourceTable({
@@ -79,7 +80,7 @@ function creatorChatbotPanelMarkup() {
 
 function creatorChatbotRecentActivity() {
   const profileId = String(snapshot?.state?.session?.profileId || "");
-  return (snapshot?.state?.activity || []).filter((entry) => entry.category === "chatbot" && ["music", "action", "overlay"].includes(entry.executionType) && (!entry.profileId || String(entry.profileId) === profileId)).slice(0, 6);
+  return (snapshot?.state?.activity || []).filter((entry) => entry.category === "chatbot" && (["music", "action", "overlay"].includes(entry.executionType) || (snapshot.state.commands || []).some((item) => item.id === entry.commandId && creatorConversationalEntry(item))) && (!entry.profileId || String(entry.profileId) === profileId)).slice(0, 6);
 }
 
 function creatorChatbotActivitySignature() {
@@ -99,7 +100,8 @@ function creatorChatbotActivityMarkup() {
 
 function renderCreatorChatbot() {
   if (!isAccountAuthenticated()) return renderPrivateDataPlaceholder("Vos Commandes", "Connectez votre compte ShenPulse pour retrouver les commandes de votre profil.");
-  return `<div class="reference-page creator-chatbot-page"><div class="chatbot-hero">${renderStudioHero("chatbot", "Commandes", "Votre chat prend les commandes du LIVE")}<button type="button" class="button primary chatbot-hero-action" data-action="chatbot-add">${creatorChatbotIcon("plus")}Nouvelle commande</button></div>
+  if (creatorChatbotTab !== "commands") return renderCreatorConversationWorkspace();
+  return `<div class="reference-page creator-chatbot-page">${creatorChatbotTabsMarkup()}<div class="chatbot-hero">${renderStudioHero("chatbot", "Commandes", "Votre chat prend les commandes du LIVE")}<button type="button" class="button primary chatbot-hero-action" data-action="chatbot-add">${creatorChatbotIcon("plus")}Nouvelle commande</button></div>
     <div class="chatbot-functional-intro"><span>${creatorChatbotIcon("command")}</span><div><strong>Un message. Une commande. Un effet.</strong><p>Recevez les commandes ! directement depuis le chat TikTok, Kick ou Twitch. Musique, actions et overlays fonctionnent sans publier de réponse dans le chat.</p></div><code>!skip</code><code>!song titre</code><code>!roue</code></div>
     <div id="creator-chatbot-panel" data-creator-chatbot-panel>${creatorChatbotPanelMarkup()}</div><div data-creator-chatbot-activity data-chatbot-activity-state="${escapeHtml(creatorChatbotActivitySignature())}">${creatorChatbotActivityMarkup()}</div>
     <p class="chatbot-safety-note">Les aperçus restent locaux : aucun message n’est envoyé et aucune interaction du LIVE n’est déclenchée.</p>

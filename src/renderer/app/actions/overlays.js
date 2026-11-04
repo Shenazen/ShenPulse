@@ -40,6 +40,33 @@ async function duplicateActionRow(row) {
   render();
 }
 
+async function duplicateActionScenario(rule) {
+  if (!rule) throw new Error("Action introuvable.");
+  const next = structuredClone(rule), ids = new Map();
+  next.id = `rule_${cryptoId()}`;
+  next.name = `${rule.name} (copie)`;
+  next.createdAt = new Date().toISOString();
+  for (const [index, action] of next.actions.entries()) {
+    const id = `action_${cryptoId()}_${index}`;
+    ids.set(action.id, id); action.id = id;
+  }
+  for (const action of next.actions) {
+    if (action.config?.soundActionId) action.config.soundActionId = ids.get(action.config.soundActionId) || action.config.soundActionId;
+    if (Array.isArray(action.config?.actionIds)) action.config.actionIds = action.config.actionIds.map(id => ids.get(id) || id);
+  }
+  if (Array.isArray(next.actionSelection?.actionIds)) next.actionSelection.actionIds = next.actionSelection.actionIds.map(id => ids.get(id) || id);
+  await api.upsert("rules", next);
+  await ensureRuleInActiveProfile(next.id);
+  snapshot = await api.getSnapshot(); render();
+}
+
+async function deleteActionScenario(rule) {
+  if (!rule) throw new Error("Action introuvable.");
+  if (!await confirmAction(`Supprimer « ${rule.name} » et ses ${rule.actions?.length || 0} effets ?`, { title: "Supprimer cette action", confirmLabel: "Supprimer" })) return;
+  await api.remove("rules", rule.id);
+  snapshot = await api.getSnapshot(); render();
+}
+
 async function deleteActionRow(row) {
   if (!row) throw new Error("Action introuvable.");
   if (
@@ -86,8 +113,8 @@ async function setSoundVolume(row, volume) {
   if (!row) throw new Error("Son introuvable.");
   const actions = [...(row.rule.actions || [])];
   actions[row.actionIndex] = {
-    ...row.action,
-    config: { ...(row.action.config || {}), volume: Number(volume) }
+    ...(row.sourceAction || row.action),
+    config: { ...((row.sourceAction || row.action).config || {}), volume: Number(volume) }
   };
   await api.upsert("rules", { ...row.rule, actions });
   snapshot = await api.getSnapshot();

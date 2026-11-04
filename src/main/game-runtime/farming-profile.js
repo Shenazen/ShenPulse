@@ -22,8 +22,8 @@ async function farmingProfile(targetPath, { documentsPath, localAppDataPath = pr
     directory = path.join(documentsPath, "My Games", "FarmingSimulator2025");
   }
   const settings = await fs.readFile(path.join(directory, "gameSettings.xml"), "utf8").catch(() => "");
-  const override = !/<!DOCTYPE|<!ENTITY/i.test(settings) && settings.match(/<modsDirectoryOverride\b[^>]*\bactive="true"[^>]*>/i)?.[0];
-  const custom = override && override.match(/\bdirectory="([^"]+)"/)?.[1];
+  const override = !/<!DOCTYPE|<!ENTITY/i.test(settings) && settings.match(/<modsDirectoryOverride\b[^>]*>/i)?.[0];
+  const custom = override && /\bactive="true"/i.test(override) && override.match(/\bdirectory="([^"]+)"/i)?.[1]?.replace(/&(amp|lt|gt|quot|apos);/g, (_match, entity) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }[entity]));
   const modsDirectory = custom && path.isAbsolute(custom) ? custom : path.join(directory, "mods");
   return { directory, modsDirectory, platform: xbox ? "xbox" : "steam" };
 }

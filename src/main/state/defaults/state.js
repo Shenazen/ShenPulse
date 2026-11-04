@@ -27,6 +27,7 @@ function createEmptyProfileWorkspace() {
     overlayConfigs: createDefaultOverlayConfigs(),
     overlayScene: sceneLayout.createDefaultScene(),
     game: {
+      customPacks: [],
       connectorOverrides: {},
       interactionCatalogVersions: {},
       interactionRulesByPack: {},
@@ -188,6 +189,7 @@ function createDefaultState() {
     commands: [],
     timers: [],
     game: {
+      customPacks: [],
       connectorOverrides: {},
       interactionCatalogVersions: {},
       interactionRulesByPack: {},

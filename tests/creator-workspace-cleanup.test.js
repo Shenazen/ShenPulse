@@ -83,7 +83,8 @@ test("l’ancienne route Studio se replie vers Jeux sans changer les droits ni l
 test("Overlays n’appelle plus le compositeur et Actions ne contient plus de second simulateur", () => {
   assert.doesNotMatch(read("features/overlays/editor.js"), /renderSceneComposer\(/);
   assert.doesNotMatch(read("features/actions.js"), /id="simulator-form"|\["simulator", "Simulateur"/);
-  assert.match(read("features/actions.js"), /Les automatisations avancées combinent plusieurs conditions et actions/);
+  assert.match(read("features/actions.js"), /Lier des actions existantes/);
+  assert.doesNotMatch(read("features/actions.js"), /\["triggers",|\["rules",/);
   assert.match(read("features/dashboard.js"), /id="simulator-form"/);
   assert.match(read("features/dashboard.js"), /"gift", "like", "follow", "chat", "share", "subscribe", "join"/);
 });

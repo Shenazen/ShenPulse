@@ -131,6 +131,7 @@ function dispatchSceneMessage(channel, payload = {}) {
     payload = { ...payload, config: sceneConfigurations[key] || payload.config };
   }
   if (channel === "session-state") sceneBootstrap.overlaySession = payload;
+  if (channel === "audio-control") sceneBootstrap.audioControl = payload;
   for (const record of sceneFrames.values()) deliverSceneMessage(record, channel, payload);
 }
 

@@ -44,9 +44,9 @@ const MATCH_SOURCE_PATHS = [
 const RELAY_STATE_PATHS = [
   "session.game", "game.roundSettingsByPack", "settings.overlayConfigs.timer",
   "goals", "session.running", "session.startedAt", "session.profileId", "overlaySession",
-  "game.interactionRulesByPack", "settings.overlayConfigs.gameInteractionOverlays",
+  "game.interactionRulesByPack", "game.customPacks", "settings.overlayConfigs.gameInteractionOverlays",
   "settings.overlayConfigs.winCounter", "settings.overlayConfigs.multiplierTimer", "settings.overlayConfigs.gameWinsFeatures",
-  "settings.overlayScene", "commerce.subscription",
+  "settings.overlayScene", "settings.audioMixer", "commerce.subscription",
   ...["sessionEvents", "sessionActions", "sessionLikes", "sessionUniqueViewers",
     "lifetimeEvents", "likes", "gifts", "follows", "subscribers"]
     .map((key) => `statistics.${key}`)
@@ -201,7 +201,7 @@ class PublicOverlayRelay extends EventEmitter {
     if (config.enabled === false) return;
     if (MATCH_MESSAGE_CHANNELS.has(channel)) {
       this.matchPublisher.publish(channel, payload);
-      return;
+      if (channel !== "audio-control") return;
     }
     this.eventQueue.push(
       createRelayMessage(channel, payload, {

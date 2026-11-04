@@ -6,7 +6,6 @@ const { EVENTS: TIKTOK_MATCH_EVENTS, DECODED: TIKTOK_MATCH_DECODED, normalizeTik
 const { TikTokMatchClock } = require("./matches/tiktok-clock");
 const { normalizeTikTokGiftBonus } = require("./matches/tiktok-gift-bonus");
 const { tiktokMatchOwnerMetadata, reconcileTikTokOwnerMetadata } = require("./matches/tiktok-match-owner");
-const { hasAuthenticatedAccount } = require("./account-access");
 const tls = require("node:tls");
 const {
   ControlEvent,
@@ -38,16 +37,17 @@ const {
 } = require("./sources/tiktok-protocol");
 const { parseTwitchLine } = require("./sources/twitch-protocol");
 const { RelayChatDelivery } = require("./sources/relay-chat-delivery");
-const { EulerOAuthChatDelivery } = require("./sources/euler-oauth-chat-delivery");
+const { SharedTikTokBotDelivery, usesAutomaticChatBot, createAutomaticChatDelivery, personalTikTokChatSession } = require("./sources/shared-tiktok-bot-delivery");
 const { TikTokGiftDelivery } = require("./sources/tiktok-gift-delivery");
 
 class SourceHub extends EventEmitter {
-  constructor({ store, kickService = null, fetchFn = globalThis.fetch }) {
+  constructor({ store, kickService = null, fetchFn = globalThis.fetch, chatbotIdentityProvider = null }) {
     super();
     this.store = store;
     this.runtimes = new Map();
     this.kickService = kickService;
     this.fetchFn = fetchFn;
+    this.sharedChatBot = new SharedTikTokBotDelivery({store,identityProvider:chatbotIdentityProvider,fetchFn,onChanged:()=>this.refreshChatCapabilities()});
     kickService?.on("event", (event) => this.emit("event", event));
     kickService?.on("diagnostic", (entry) => this.emit("diagnostic", entry));
     kickService?.on("live-status", ({ connectionId, live, viewers }) => {
@@ -148,6 +148,7 @@ class SourceHub extends EventEmitter {
     const connection = readState(this.store, ["connections"]).connections.find((entry) => entry.id === connectionId);
     const runtime = this.runtimes.get(connectionId);
     if (!connection || connection.enabled !== true || !runtime || runtime.closed) return { canSend: false, transport: "none", reason: "disconnected", confirmation: "none", requiresAuthorization: false };
+    if (["tiktok-direct", "tiktok-relay"].includes(connection.type) && !runtime.chatDelivery) return { canSend: false, transport: "none", reason: "disconnected", confirmation: "none", requiresAuthorization: false };
     if (connection.type === "tiktok-direct") {
       const capability = runtime.chatDelivery.status();
       if (!runtime.connector || runtime.connecting || connection.status !== "connected") return { ...capability, canSend: false, reason: "not-live" };
@@ -178,18 +179,12 @@ class SourceHub extends EventEmitter {
   /** Annule les envois en attente sans arrêter la réception du LIVE. */
   resetChatDelivery(connectionId = "source_tiktok") {
     this.runtimes.get(connectionId)?.chatDelivery?.reset();
+    this.sharedChatBot.reset();
   }
 
-  #tiktokChatSession() {
-    const state = readState(this.store, ["settings.tiktok.chat", "settings.account"]);
-    const config = state.settings?.tiktok?.chat || { provider: "none" };
-    const accountUid = state.settings?.account?.uid || "";
-    const authenticated = hasAuthenticatedAccount(this.store);
-    const ownCredentials = authenticated && config.provider === "euler-oauth" && config.accountUid === accountUid;
-    return { config, accountUid, authenticated,
-      apiKey: ownCredentials && config.apiKeySecretId ? this.store.getSecret(config.apiKeySecretId) : "",
-      accessToken: ownCredentials && config.accessTokenSecretId ? this.store.getSecret(config.accessTokenSecretId) : "" };
-  }
+  refreshAutomaticChatBot(force = false) { return this.usesAutomaticChatBot() ? this.sharedChatBot.refresh(force) : Promise.resolve(null); }
+
+  usesAutomaticChatBot() { return usesAutomaticChatBot(this.store); }
 
   #startDemo(connection) {
     const runtime = { closed: false };
@@ -232,7 +227,8 @@ class SourceHub extends EventEmitter {
         await connector?.disconnect?.().catch(() => {});
       }
     };
-    runtime.chatDelivery = new EulerOAuthChatDelivery({ getSession: () => this.#tiktokChatSession(), fetchFn: this.fetchFn });
+    runtime.chatDelivery = createAutomaticChatDelivery({getSession:()=>personalTikTokChatSession(this.store),getAutomatic:()=>this.usesAutomaticChatBot(),shared:this.sharedChatBot,fetchFn:this.fetchFn});
+    if(this.usesAutomaticChatBot())void this.sharedChatBot.refresh().then(()=>{if(!runtime.closed)this.refreshChatCapabilities(connection.id);}).catch(()=>{});
     runtime.send = (payload, { shouldSend = () => true } = {}) => {
       const connector = runtime.connector;
       const roomId = String(runtime.roomId || connector?.roomId || "");

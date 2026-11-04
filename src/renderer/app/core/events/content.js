@@ -279,7 +279,7 @@ dialogBody.addEventListener("input", (event) => {
   }
   if (event.target.matches("[data-action-group-search]")) {
     const query = event.target.value.trim().toLowerCase();
-    dialogBody
+    (event.target.closest("[data-action-component]") || dialogBody)
       .querySelectorAll("[data-action-group-option]")
       .forEach((item) => {
         item.hidden =
@@ -291,7 +291,7 @@ dialogBody.addEventListener("input", (event) => {
     syncTriggerSelectionEditor();
   }
   if (event.target.matches('[name="actionGroupRandomCount"]')) {
-    syncActionGroupEditor();
+    syncActionGroupEditor(event.target.closest("[data-action-component]") || dialogBody);
   }
   if (event.target.closest("[data-overlay-config-editor]")) {
     if (event.target.matches("[data-overlay-size]")) {
@@ -310,6 +310,10 @@ document.addEventListener("focusin", (event) => {
 });
 
 dialogBody.addEventListener("change", (event) => {
+  if (event.target.matches("[data-programmed-sound-picker]")) {
+    selectProgrammedSound(event.target);
+    return;
+  }
   if (
     event.target.matches(
       "[data-admin-trial-game-option], [data-admin-trial-games-toggle], [data-admin-trial-subscription-tier]"
@@ -328,7 +332,7 @@ dialogBody.addEventListener("change", (event) => {
     event.target.matches('[name="groupActionIds"]') ||
     event.target.matches("[data-action-group-mode]")
   ) {
-    syncActionGroupEditor();
+    syncActionGroupEditor(event.target.closest("[data-action-component]") || dialogBody);
   }
   if (event.target.matches("[data-gift-trigger-mode]")) {
     syncGiftTriggerCondition(
@@ -339,7 +343,7 @@ dialogBody.addEventListener("change", (event) => {
     syncActiveAudioScreenDialog();
   }
   if (event.target.matches("[data-action-match-name]")) {
-    syncActionMatchVariants();
+    syncActionMatchVariants(event.target.closest("[data-action-component]") || dialogBody);
   }
   if (
     event.target.matches('[name="wheelSegmentActionId"]') &&
@@ -384,13 +388,14 @@ dialogBody.addEventListener("change", (event) => {
   }
   if (
     event.target.matches("[data-editor-action-type]") ||
+    event.target.matches("[data-action-alert-enabled]") ||
     event.target.matches("[data-editor-trigger-type]") ||
     event.target.matches("[data-editor-trigger-enabled]")
   ) {
     syncActionEditorVisibility();
   }
   if (event.target.matches('[name="gamePackId"]')) {
-    const effectSelect = dialogBody.querySelector('[name="effectId"]');
+    const effectSelect = (event.target.closest("[data-action-component]") || dialogBody).querySelector('[name="effectId"]');
     const pack = snapshot.packs.find(
       (entry) => entry.id === event.target.value
     );

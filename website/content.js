@@ -1,11 +1,11 @@
 export const CLIENT_RELEASE = {
-  version: '2.1.2',
-  title: 'Cinq nouveaux jeux, des interactions plus fiables.',
-  summary: 'BALL x PIT, Brotato, CloverPit, Fallout: New Vegas et Escape the Backrooms rejoignent les jeux compatibles Xbox / PC Game Pass. Profite aussi des corrections GTA Enhanced et du paiement par carte bancaire.',
+  version: '2.1.3',
+  title: 'Tes jeux, tes actions, ton ambiance.',
+  summary: 'Crée tes packs de raccourcis, combine plusieurs effets et personnalise les alertes de tes viewers. De nouvelles voix, le pack Dragon et un meilleur contrôle audio complètent cette mise à jour.',
   highlights: [
-    ['Prépare tes nouveaux jeux', 'Installe automatiquement les packs des cinq nouveaux jeux, choisis les cadeaux et lance ta partie depuis ShenPulse. Les effets temporaires, ressources et choix d’interactions gagnent en fiabilité.'],
-    ['Retrouve GTA Enhanced', 'KOTH et Hiking préparent la sauvegarde Histoire et le départ du parcours. Le lancement Epic Games, la rampe et ses conteneurs sont corrigés ; les cartes Hiking sont plus nettes dans le studio.'],
-    ['Choisis ton paiement', 'La carte bancaire et les portefeuilles compatibles complètent PayPal pour les abonnements et achats de jeux. Les abonnements existants conservent leur tarif contractuel.']
+    ['Personnalise tes jeux', 'Associe cadeaux et touches du clavier dans tes propres packs. Combine médias, sons et alertes viewer dans une même action ; choisis les cadeaux autorisés ou exclus et la répétition des combos.'],
+    ['Fais entendre ton LIVE', 'Le catalogue embarqué propose 322 voix naturelles, dont 13 francophones, avec actualisation automatique et secours Windows. Pilote le volume général et ceux des sons, voix, animations et overlays. Les voix naturelles nécessitent Internet.'],
+    ['Soigne ta diffusion', 'Ajoute le pack Dragon à tes animations Cyber, règle photo, texte, police et contour des alertes viewer, puis utilise les huit écrans Media. Les liens des cadeaux bénéficient d’un cadrage plus net et l’installation OBS propose la destination de diffusion.']
   ]
 }
 
@@ -57,7 +57,9 @@ export const APP_TABS = [
     summary: 'Une action décrit ce que ShenPulse doit faire. Un déclencheur précise quand elle se lance.',
     parts: [
       ['Sous-onglet Actions', 'Crée, modifie, duplique, teste ou supprime les actions du profil.'],
-      ['Sous-onglet Déclencheurs', 'Associe les événements du live à une ou plusieurs actions existantes.'],
+      ['Déclencheur de l’action', 'Choisis un ou plusieurs cadeaux autorisés ou exclus. La répétition des combos est désactivée par défaut : un combo déclenche une seule exécution.'],
+      ['Plusieurs effets', 'Ajoute des types d’actions avec +, puis déplie leurs réglages. Les groupes et le lien vers des actions existantes restent disponibles.'],
+      ['Viewer et texte', 'Affiche la photo et les variables du viewer. Règle police, taille, couleur, contour et position. Tester envoie le brouillon vers l’écran Media choisi sans enregistrer.'],
       ['Sous-onglet Timers', 'Planifie une ou plusieurs actions à intervalle régulier, avec une fréquence et des répétitions configurables.'],
       ['Simulateur du tableau de bord', 'Les événements fictifs se testent dans le tableau de bord ; les Actions conservent leurs tests manuels.'],
       ['Écrans Media', 'Fournit huit files indépendantes et huit URL de sources navigateur pour afficher images, GIF ou vidéos.']
@@ -72,13 +74,15 @@ export const APP_TABS = [
     parts: [
       ['Bibliothèque', 'Recherche les sons inclus, écoute un aperçu local et sélectionne une piste. Les sons importés peuvent être retirés de ta bibliothèque avec confirmation, sans effacer leurs usages existants ni le fichier distant.'],
       ['Alertes sonores', 'Associe un son, un volume et un déclencheur à une règle.'],
-      ['Synthèse vocale', 'Choisit une voix, une vitesse, une hauteur et un volume.'],
-      ['Filtres TTS', 'Autorise ou bloque emojis, mentions, commandes et liens avant lecture.'],
+      ['Synthèse vocale', 'Choisis une voix, une vitesse, une hauteur et un volume, puis utilise Tester à côté de la voix. Les commentaires sont traités sans attendre les réponses conversationnelles ; une lecture déjà en cours reste prioritaire.'],
+      ['Volumes audio', 'Règle le volume général et les niveaux sons, TTS, animations de match et autres overlays. Les lecteurs en cours suivent les changements sur le PC et dans le LIVE.'],
+      ['Sons liés', 'Les sons créés dans une action apparaissent aussi dans la bibliothèque avec leur lien. Un même déclenchement ne les joue qu’une fois.'],
+      ['Filtres TTS', 'Autorise ou bloque emojis, mentions, commandes et liens avant lecture. Désactiver les emojis retire aussi les émoticônes TikTok.'],
       ['Importer un son', 'Ajoute ton fichier depuis le PC. Le stockage Backblaze est géré par ShenPulse pour tous les comptes connectés, sans clé personnelle à renseigner.'],
       ['Diffusion LIVE', 'Choisis une sortie locale ou un écran audio du LIVE, puis utilise l’URL correspondante dans ton logiciel de diffusion.'],
       ['Actions de ligne', 'Teste, modifie, duplique ou supprime une alerte avec les boutons directs. Une confirmation précède la suppression.']
     ],
-    tips: ['Les voix proposées dépendent de celles disponibles dans Windows.', 'La préécoute reste locale. Une règle « Moi uniquement » ne transmet rien à l’URL audio ; « Tout le monde » ajoute la diffusion sur l’écran choisi.', 'Une capture séparée du son du bureau peut aussi transmettre le retour local : évite les doublons dans ton logiciel de diffusion.', 'La voix par défaut suit le profil actif ; une règle peut définir ses propres paramètres.']
+    tips: ['Le catalogue embarqué propose 322 voix naturelles en ligne, dont 13 francophones, avec actualisation automatique. Les voix Windows locales servent de secours.', 'La préécoute reste locale. Une règle « Moi uniquement » ne transmet rien à l’URL audio ; « Tout le monde » ajoute la diffusion sur l’écran choisi.', 'Une capture séparée du son du bureau peut aussi transmettre le retour local : évite les doublons dans ton logiciel de diffusion.', 'La voix par défaut suit le profil actif ; une règle peut définir ses propres paramètres.']
   },
   {
     id: 'musique',
@@ -117,11 +121,12 @@ export const APP_TABS = [
     summary: 'La galerie rassemble uniquement les jeux actuellement publiés dans l’application.',
     parts: [
       ['Recherche et filtres', 'Trouve un jeu, un connecteur ou un effet, puis filtre par niveau d’accès.'],
+      ['Personnalise tes jeux', 'Crée un pack de raccourcis, sélectionne la fenêtre du jeu et saisis les touches. Règle maintien, répétitions et intervalles ; teste la compatibilité du jeu avec les entrées simulées.'],
       ['Fiche du jeu', 'Affiche le type d’intégration, le nombre d’interactions, les prérequis et les avertissements.'],
       ['Installation', 'Selon le jeu, suis l’assistant de détection et de téléchargement, ou les étapes manuelles indiquées sur sa fiche. Les jeux externes peuvent nécessiter une installation ou une licence séparée.'],
       ['Configuration', 'Associe cadeaux, coûts, durées, multiplicateurs et paramètres propres au jeu.'],
       ['Interactions', 'Active, teste et ordonne les effets disponibles.'],
-      ['Overlays liés', 'Prépare l’image d’interactions et les compteurs utiles au gameplay.'],
+      ['Overlays liés', 'Prépare les cadeaux et compteurs. Copier l’URL utilise un cadrage adapté aux cartes ; recopie le lien depuis la version à jour pour remplacer une ancienne source trop petite. Installer sur le studio propose notamment OBS, SE.Live et les destinations de canevas compatibles.'],
       ['Session de jeu', 'Lance le jeu ou sa passerelle avec les boutons de sa fiche, puis arrête la session avant d’en ouvrir une autre.']
     ],
     tips: ['Un accès ShenPulse Pro ou Premium actif est requis ; certains modules nécessitent aussi leur achat.', 'Ferme toujours le jeu avant une installation ou une réparation.', 'Teste plusieurs effets sur une sauvegarde non critique.']
@@ -151,7 +156,7 @@ export const APP_TABS = [
       ['Cooldowns', 'Configure les pauses globales et par viewer pour éviter les répétitions.'],
       ['Gestion et aperçu', 'Active, modifie ou supprime une commande. L’aperçu reste local ; les résultats d’exécution apparaissent dans l’historique récent.']
     ],
-    tips: ['Un accès Pro ou Premium actif est requis.', 'Les nouvelles commandes sont réservées par défaut aux modérateurs et au créateur du LIVE. Un viewer ordinaire ne les déclenche pas tant que l’accès n’est pas ouvert.', 'Il ne s’agit pas d’un chatbot de réponses texte : aucun service d’envoi n’est nécessaire.', 'L’aperçu est une explication locale, pas un test réel du LIVE, des connexions ou des cooldowns.']
+    tips: ['Un accès Pro ou Premium actif est requis.', 'Les nouvelles commandes sont réservées par défaut aux modérateurs et au créateur du LIVE. Un viewer ordinaire ne les déclenche pas tant que l’accès n’est pas ouvert.', 'Les commandes d’actions ne nécessitent pas de permission d’envoi. Réponses du chat et Messages programmés exigent une connexion autorisant la publication ; le bot commun TikTok reste à connecter avant son activation.', 'L’aperçu est une explication locale, pas un test réel du LIVE, des connexions ou des cooldowns.']
   },
   {
     id: 'matchs',
@@ -162,7 +167,7 @@ export const APP_TABS = [
       ['Tableau de bord', 'Détecte les manches à partir des événements de bataille TikTok reçus. Retrouve participants, scores, résultats, contributeurs et historique ; un score absent n’est pas présenté comme zéro.'],
       ['Widgets', 'Prépare compteur de manches, dernier donateur, plus gros donateur, classement des donateurs, chronomètre, animation de victoire et scores du match.'],
       ['Automatisations', 'Choisis un temps fort : début, bonus ×2/×3, reprise de tête, remontée, égalité finale, Tap Tap, dernières secondes, victoire ou défaite. Ajoute une animation, une vidéo, un son ou une action et active la règle.'],
-      ['Pack Cyber', 'Six animations : Gant de boxe, x2, x3, Tap Tap, Merci pour ton cœur et Snipe. Aucun Coffre Cyber n’est proposé.'],
+      ['Packs Cyber et Dragon', 'Deux styles au choix pour Gant de boxe, ×2, ×3, Tap Tap, Merci pour ton cœur et Snipe. Dragon complète Cyber sans le remplacer.'],
       ['Source Studio', 'Dans Widgets, copie la source destinée à TikTok Studio pour les animations, vidéos et sons LIVE. ShenPulse et le logiciel de diffusion doivent rester ouverts sur le même PC. Les vidéos du catalogue sont chiffrées et lues en mémoire, sans bouton d’export.'],
       ['Audio', 'Le son intégré des vidéos est activé pendant leur lecture sur la source de diffusion ; les aperçus restent muets.'],
       ['Lecture visuelle locale', 'Option Windows désactivée par défaut : choisis une fenêtre montrant le bandeau actif et ton @, puis délimite les deux zones. Les images restent en mémoire sur le PC, sans cloud ni enregistrement. Ce mode ne lit pas un téléphone et exige que la fenêtre soit visible et lisible.']

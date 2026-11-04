@@ -112,6 +112,17 @@ test("Studio ne conserve pas le moteur Match périmé après une relance sur le 
       assert.ok(version);
       assert.ok(loader);
       documents.push({ html, version, loader });
+      for (const preview of ["animated", "static"]) {
+        const previewResponse = await fetch(`${active.base}/overlay/?view=match&match=x2&variant=dragon&preview=${preview}&token=fixture-overlay-token`, { headers: { Connection: "close" } });
+        assert.equal(previewResponse.status, 200);
+        assert.equal(previewResponse.headers.get("cache-control"), "no-store");
+        const previewHtml = await previewResponse.text();
+        assert.equal(/name="shenpulse-overlay-version"\s+content="([^"]+)"/.exec(previewHtml)?.[1], version,
+          "l’aperçu doit charger le catalogue du paquet actuel, même si l’ancien modèle est déjà en cache");
+        assert.ok(previewHtml.includes(loader));
+        assert.ok(previewHtml.includes('<base href="/overlay/" />'));
+        assert.doesNotMatch(previewHtml, /<script\s+data-overlay-base-path>/);
+      }
       const servedLoader = await browserRead(new URL(loader, `${active.base}/overlay/`).href);
       const urls = await collectLoaderUrls(version, servedLoader);
       const module = urls.find((url) => url.startsWith("runtime/widgets/match.js?"));

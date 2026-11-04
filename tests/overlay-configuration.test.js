@@ -537,7 +537,7 @@ test("le cadeau déclencheur d'une roue est exécuté par le moteur", () => {
   assert.match(core, /wheel\?\.enabled === false/);
   assert.match(core, /wheel\?\.giftValueFilter/);
   assert.match(core, /type:\s*"wheel\.spin"/);
-  assert.match(core, /const deliveryCount = giftEventCount\(event\)/);
+  assert.match(core, /this\.wheelGiftCombos\.count\(event,[^;]+wheel\.repeatGiftCombos,[^;]+giftEventCount\(event\)/);
   assert.match(core, /index < deliveryCount/);
   assert.match(runner, /const enabledWheels = configuredWheels\.filter/);
   assert.match(runner, /Aucune roue active/);

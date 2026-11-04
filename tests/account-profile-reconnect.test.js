@@ -113,12 +113,12 @@ test("AccountService et le vrai StateStore restaurent deux profils après reconn
   const verifyAlpha = (store) => {
     assert.deepEqual(store.state.profiles.map((profile) => [profile.id, profile.name]), [[firstProfileId, "A1"], ["profile-a2", "A2"]]);
     assert.equal(store.state.session.profileId, "profile-a2");
-    assert.deepEqual(store.state.settings.tts, voiceA2);
+    assert.deepEqual(store.state.settings.tts, { ...voiceA2, assignments: { roles: {}, viewers: [] } });
     assert.deepEqual(store.state.settings.spotify.songRequests, musicA2);
     assert.equal(store.state.rules[0].id, "rule-a2");
     assert.deepEqual(store.state.customSounds, [sound]);
     store.selectProfile(firstProfileId);
-    assert.deepEqual(store.state.settings.tts, voiceA1);
+    assert.deepEqual(store.state.settings.tts, { ...voiceA1, assignments: { roles: {}, viewers: [] } });
     assert.deepEqual(store.state.settings.spotify.songRequests, musicA1);
     assert.equal(store.state.rules[0].id, "rule-a1");
     store.selectProfile("profile-a2");

@@ -1,4 +1,4 @@
-# Médias Matchs protégés et pack Cyber
+# Médias Matchs protégés : packs Cyber et Dragon
 
 ## Objectif et limite de protection
 
@@ -15,8 +15,8 @@ Il ne faut donc jamais promettre une impossibilité absolue de copie.
 
 ## Import des six vidéos Cyber
 
-Le catalogue contient désormais **21 vidéos réelles** : les 15 vidéos historiques
-et les six sources Cyber fournies. Les nouvelles sources sont importées sans
+Le catalogue contient désormais **27 vidéos réelles** : les 15 vidéos historiques,
+les six sources Cyber et les six sources Dragon. Les sources sont importées sans
 recompression ; leurs empreintes SHA-256 sont vérifiées par le test dédié.
 
 | Source fournie | Ressource de développement | Sélection affichée |
@@ -36,6 +36,31 @@ Les six vidéos utilisent VP9 avec alpha, 720 × 1280 pixels, 30 images/seconde,
 une durée d'environ 12,066 secondes et une piste Opus stéréo. Les aperçus WebP
 transparents de 540 × 960 pixels proviennent de vraies images des vidéos.
 Un test uniquement visuel doit conserver la vidéo muette.
+
+## Ajout du pack Dragon — 2 novembre 2026
+
+Dragon s'ajoute à Cyber, TikControl et Gladiador sans remplacer leurs fichiers,
+leurs options par défaut ni les automatisations enregistrées. Les six médias
+correspondent à Gant de boxe, ×2, ×3, Tap Tap, Merci pour ton cœur et Snipe.
+Le cœur et le gant utilisent leur version française. Aucun Coffre ou Enigma
+Dragon n'est proposé et une demande explicite absente est refusée.
+
+Les originaux sont en VP9 alpha, 720 × 1280, 30 images/seconde, environ
+12 secondes, avec son Opus stéréo. Les six films ont été décodés intégralement,
+leurs images contrôlées et leurs posters transparents générés en 540 × 960.
+Les vidéos restent chiffrées dans le paquet et ne sont pas publiées sur Hosting.
+Seuls le catalogue et les six posters publics sont actualisés en ligne.
+Le HTML public et son chargeur reçoivent un nouveau numéro de cache.
+Les aperçus locaux utilisent désormais l'empreinte du code réellement installé,
+comme la source Studio : un ancien catalogue en cache ne peut plus remplacer
+Dragon par TikControl. Cette correction concerne uniquement les documents Matchs.
+
+`tests/matches-dragon.test.js` contrôle les empreintes originales, les posters,
+les variantes disponibles et l'identité de Dragon entre configuration, relais
+et lecteur. Les tests Cyber restent inchangés et protègent leurs empreintes.
+`electron scripts/verify-match-video-audio.js --pack=dragon` vérifie les six
+lectures protégées et leur son natif dans un lecteur isolé, sortie matérielle
+muette. `verify-animated-match-preview.js` couvre aussi l'aperçu animé Dragon.
 
 ## Génération et distribution
 
@@ -65,7 +90,7 @@ ces commandes doit préparer et vérifier les ressources protégées au préalab
 
 Avant installation, `node scripts/verify-protected-match-package.js <win-unpacked>`
 contrôle le paquet complet : absence de vidéos brutes, ressources privées
-dans ASAR, concordance des sources et identité des 21 vidéos après déchiffrement
+dans ASAR, concordance des sources et identité des vidéos après déchiffrement
 en mémoire. L'audit ne journalise aucune clé et n'écrit aucune vidéo.
 
 ## Lecture en mémoire et contrôle d'accès

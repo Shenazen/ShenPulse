@@ -22,7 +22,7 @@ function audioOutputSwitchMarkup(rule, action, actionIndex) {
 }
 
 function soundRowAttributes(rule, action, actionIndex) {
-  return `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}"`;
+  return `data-rule="${escapeHtml(rule.id)}" data-id="${escapeHtml(action.id || "")}" data-index="${actionIndex}" data-sound-entry="true"`;
 }
 
 function soundVolumeControl(rule, action, actionIndex) {
@@ -36,8 +36,9 @@ function soundTableCommands(rule, action, actionIndex, editorAction) {
   const testLabel = `${action.type === "tts.speak" ? "Tester la voix" : "Écouter le son"} uniquement sur cet ordinateur`;
   return `${renderAutomationIconButton({ action: "test-action", label: testLabel, attributes, icon: "play", tone: "success" })}
     ${renderAutomationIconButton({ action: editorAction, label: "Modifier", attributes, icon: "edit" })}
+    ${action.embeddedMediaSound ? "" : `
     ${renderAutomationIconButton({ action: "duplicate-action", label: "Dupliquer", attributes, icon: "copy" })}
-    ${renderAutomationIconButton({ action: "delete-action", label: "Supprimer", attributes, icon: "trash", tone: "danger" })}`;
+    ${renderAutomationIconButton({ action: "delete-action", label: "Supprimer", attributes, icon: "trash", tone: "danger" })}`}`;
 }
 
 /** Les réglages restent à portée de clic sans agrandir toutes les lignes. */
@@ -47,7 +48,7 @@ function soundTableSettings(rule, action, actionIndex, { voice = false } = {}) {
   const voiceLabel = config.voice || snapshot.state.settings.tts?.voice || "Voix Windows par défaut";
   return `<details class="automation-row-settings audio-row-settings"><summary>Diffusion & réglages</summary><div class="automation-row-settings-body">
     ${voice ? `<div class="tts-voice-summary"><small>VOIX</small><strong>${escapeHtml(voiceLabel)}</strong><span>${volume} %</span></div>` : soundVolumeControl(rule, action, actionIndex)}
-    ${audioOutputSwitchMarkup(rule, action, actionIndex)}
+    ${action.embeddedMediaSound ? `<p>Diffusé avec le média · Écran ${normalizedLiveScreen(action.config)}</p>` : audioOutputSwitchMarkup(rule, action, actionIndex)}
   </div></details>`;
 }
 
@@ -66,7 +67,8 @@ function renderAudioAlerts(rows) {
       rows: rows.map(({ rule, action, actionIndex }) => ({
         id: action.id || `${rule.id}_${actionIndex}`,
         className: "audio-rule-card audio-alert-card",
-        name: rule.name,
+        name: action.embeddedMediaSound ? action.config.soundName || "Son du média" : rule.name,
+        detail: action.embeddedMediaSound || !ShenPulseActionAudio.isAudioOnly(rule) ? `Lié à l’action « ${escapeHtml(rule.name)} »` : "",
         trigger: triggerPill(rule, { compact: true }),
         effects: `<div class="automation-effect-chips">${renderAutomationEffectChip({ label: `Play ${actionDescription(action)}`, kind: "sound", tone: "amber", icon: "sound" })}</div>${soundTableSettings(rule, action, actionIndex)}`,
         status: renderAutomationStatus(rule),

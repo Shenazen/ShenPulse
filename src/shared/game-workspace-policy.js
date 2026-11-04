@@ -3,6 +3,10 @@
 (function(root,factory){const policy=factory(typeof module!=='undefined'&&module.exports?require('./game-categories'):root.ShenPulseGameCategories);if(typeof module!=='undefined'&&module.exports)module.exports=policy;else root.ShenPulseGameWorkspacePolicy=policy;})(globalThis,categories=>{
  const WITHOUT_OVERLAY_SECTION=new Set(['demonologist','escape-from-duckov','euro-truck-simulator-2','find-the-needle-demo','fortnite','pokemon-red-blue','resident-evil-3','rocket-league','super-mario-kart']);
  const ROUND_TIMER_GAMES=new Set(['minecraft-bedrock-box','minecraft-sandbox-3','gtav-koth-enhanced','gtav-hiking-enhanced']);
+ // These two existing sources have already been calibrated and validated in studios.
+ // Other shared game pages use a dedicated gift panel, separate from the wins HUD.
+ const PRESERVED_INTERACTION_CANVASES=new Set(['cult-of-the-lamb','euro-truck-simulator-2']);
+ function compactInteractionOverlay(pack){const id=typeof pack==='string'?pack:pack?.id;return !!id&&!PRESERVED_INTERACTION_CANVASES.has(id);}
  function hasRoundTimer(pack){return ROUND_TIMER_GAMES.has(pack?.id);}
  function hasIntegratedWinModels(pack){return ['gtav-montchiliad','gtav-koth-enhanced','minecraft-lavarise','minecraft-diamond-rush','minecraft-box-cyber'].includes(pack?.id)||hasRoundTimer(pack);}
  function showOverlaySection(pack){return !WITHOUT_OVERLAY_SECTION.has(pack?.id);}
@@ -28,5 +32,5 @@
   const icon=/money|argent|prix|cash|jackpot/i.test(label)?'$':/heal|sant|soin|vie|heart/i.test(label)?'♥':/time|temps|speed|vitesse/i.test(label)?'◷':/client|customer|joueur|player/i.test(label)?'♟':/camera|view|fov/i.test(label)?'◉':/minecraft|block|cube|rayon|shelf|box|carton/i.test(pack.id+' '+label)?'▦':effect.icon||'✦';
   return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240" data-effect="'+escape(effect.id)+'"><defs><linearGradient id="b" x2="1" y2="1"><stop stop-color="hsl('+hue+',55%,22%)"/><stop offset="1" stop-color="hsl('+other+',65%,9%)"/></linearGradient></defs><rect width="320" height="240" rx="22" fill="url(#b)"/><path d="M0 180 320 30M0 220 320 70" stroke="white" opacity=".06" stroke-width="20"/><circle cx="160" cy="88" r="53" fill="none" stroke="hsl('+hue+',90%,70%)" stroke-width="3"/><text x="160" y="112" text-anchor="middle" font-size="70" font-family="Arial,sans-serif" fill="hsl('+hue+',90%,80%)">'+escape(icon)+'</text>'+lines.slice(0,3).map((line,i)=>'<text x="160" y="'+(163+i*22)+'" text-anchor="middle" font-size="17" font-weight="700" font-family="Arial,sans-serif" fill="white">'+escape(line)+'</text>').join('')+'<text x="160" y="229" text-anchor="middle" font-size="9" font-family="Arial,sans-serif" fill="#b5b8d1">'+escape(pack.name).slice(0,65)+'</text></svg>');
  }
- return {eligible,column,artworkPack,showOverlaySection,hasRoundTimer,hasIntegratedWinModels};
+ return {eligible,column,artworkPack,showOverlaySection,hasRoundTimer,hasIntegratedWinModels,compactInteractionOverlay};
 });

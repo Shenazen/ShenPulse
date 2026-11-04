@@ -83,7 +83,9 @@ function normalizedMatchPlayback(payload = {}) {
     requestId: String(payload.requestId || "").trim(),
     match: requestedMatch,
     variant,
-    fit: payload.fit === "cover" ? "cover" : "contain"
+    fit: payload.fit === "cover" ? "cover" : "contain",
+    ...(payload.volume !== undefined ? { volume: payload.volume } : {}),
+    ...(payload.originActionId ? { originActionId: payload.originActionId } : {})
   };
 }
 
@@ -295,7 +297,7 @@ async function startQueuedMatchPlayback(payload = {}) {
         },
         onStall: failPlayback
       });
-      playMatchVideo(video, { isCurrent: () => video.dataset.matchPlaybackId === playbackId,
+      playMatchVideo(video, { volume: request.volume, originActionId: request.originActionId, isCurrent: () => video.dataset.matchPlaybackId === playbackId,
         onFailure: failPlayback });
     } catch {
       failPlayback("media-unavailable");

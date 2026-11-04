@@ -1,4 +1,5 @@
 function openTtsEditor(row) {
+  refreshNaturalTtsVoices();
   const settings = snapshot.state.settings.tts || {};
   const currentRule = row?.rule || {
     id: "",
@@ -32,15 +33,15 @@ function openTtsEditor(row) {
     title: row ? "Modifier la règle TTS" : "Ajouter une règle TTS",
     kicker: "SYNTHÈSE VOCALE GLOBALE",
     variant: "wide",
-    body: `<div class="action-editor">
+    body: `<div class="action-editor tts-rule-editor" data-tts-rule-editor>
       ${dialogSection(
         "Lecture des commentaires",
         "Choisissez la voix et son rendu. Le texte lu sera toujours le commentaire reçu.",
         `${field("name", "Nom de la règle", currentRule.name, "text", "required full")}
-        ${ttsVoiceField("voice", config.voice || settings.voice || "")}
-        ${field("rate", "Vitesse", config.rate ?? settings.rate ?? 1, "number", 'min="0.5" max="2" step="0.1"')}
-        ${field("pitch", "Hauteur", config.pitch ?? settings.pitch ?? 1, "number", 'min="0" max="2" step="0.1"')}
-        ${field("volume", "Volume", config.volume ?? settings.volume ?? 0.9, "number", 'min="0" max="1" step="0.05"')}`,
+        ${ttsVoiceField("voice", config.voice || settings.voice || "", "full")}
+        <div class="tts-render-sliders full">${ttsSlider("rate", "Vitesse", config.rate ?? settings.rate ?? 1, .5, 2, .05)}
+        ${ttsSlider("pitch", "Hauteur", config.pitch ?? settings.pitch ?? 1, 0, 2, .05)}
+        ${ttsSlider("volume", "Volume", config.volume ?? settings.volume ?? .9, 0, 1, .05)}</div>`,
         "dialog-section-accent"
       )}
       ${dialogSection(
@@ -97,6 +98,7 @@ function openTtsEditor(row) {
 }
 
 function openSoundEditor(row, preferredSoundId = "") {
+  if (row && (row.sourceAction || !ShenPulseActionAudio.isAudioOnly(row.rule))) return openLinkedSoundEditor(row);
   const preferred = SOUND_LIBRARY.find((sound) => sound.id === preferredSoundId);
   const currentRule = row?.rule || {
     id: "",
@@ -125,6 +127,7 @@ function openSoundEditor(row, preferredSoundId = "") {
         "Recherchez, écoutez puis choisissez un son.",
         `${field("name", "Nom de l’alerte", currentRule.name, "text", "required full")}
         ${soundPickerField("soundUrl", config.url || "", {
+          selectedActionId: config.soundActionId || "", excludeActionId: currentAction.id,
           selectedName: config.soundName || ""
         })}
         ${field("volume", "Volume", config.volume ?? 0.9, "number", 'min="0" max="1" step="0.05"')}`,
@@ -135,7 +138,7 @@ function openSoundEditor(row, preferredSoundId = "") {
         "Associez le son à une interaction du LIVE.",
         `<label class="field"><span>Déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(currentRule.trigger?.type)}</select></label>
         ${field("threshold", "Seuil", currentRule.trigger?.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions)}</div>
+        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions, { repeatGiftCombos: currentRule.trigger?.repeatGiftCombos })}</div>
         ${field("cooldown", "Cooldown (ms)", currentRule.cooldown?.globalMs || 1000, "number", 'min="0"')}`
       )}
     </div>`,
@@ -147,6 +150,7 @@ function openSoundEditor(row, preferredSoundId = "") {
         config: {
           ...config,
           url: data.get("soundUrl"),
+          soundActionId: readProgrammedSoundReference(data, "soundUrl", currentAction),
           soundName: data.get("soundUrlName"),
           volume: Number(data.get("volume"))
         }
@@ -162,6 +166,7 @@ function openSoundEditor(row, preferredSoundId = "") {
         enabled: true,
         trigger: {
           ...(currentRule.trigger || {}),
+          repeatGiftCombos: data.has("repeatGiftCombos"),
           type: data.get("triggerType"),
           source: "*",
           threshold: Number(data.get("threshold"))

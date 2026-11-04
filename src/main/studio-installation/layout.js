@@ -1,5 +1,8 @@
 "use strict";
 const crypto = require("node:crypto"), fs = require("node:fs"), path = require("node:path");
+const gamePackLayout = require("../../../resources/overlays/game-pack-layout");
+function customLayout(plan={}) { return plan.packId===gamePackLayout.PACK_ID && Number(plan.presentation?.model||1)===1; }
+function sourceViewport(plan,kind) { return customLayout(plan) ? {width:1080,height:1920} : kind==='wins'?WINS_VIEWPORT:OVERLAY_RENDER_SIZE; }
 function stableId(value) { const h = crypto.createHash("sha256").update(String(value)).digest("hex").slice(0,32); return [h.slice(0,8),h.slice(8,12),"4"+h.slice(13,16),"a"+h.slice(17,20),h.slice(20)].join("-"); }
 // Values captured from the approved TikTok scene. The native rendered size differs
 // slightly from the requested browser viewport; keep both instead of fitting to full width.
@@ -26,7 +29,12 @@ function tiktokOverlayTransform(width=675,height=1200) {
   const scale=referenceScale(width,height),offset=(width-REFERENCE_CANVAS.width*scale)/2;
   return {translateX:offset+OVERLAY_REFERENCE.x*scale,translateY:OVERLAY_REFERENCE.y*scale,rotateAngle:0,scaleX:OVERLAY_REFERENCE.scaleX*scale,scaleY:OVERLAY_REFERENCE.scaleY*scale,flipH:false,flipV:false,size:{cx:OVERLAY_RENDER_SIZE.width,cy:OVERLAY_RENDER_SIZE.height},preview_cx:width,preview_cy:height,fixed_edge:1};
 }
-function layout(width = 1080, height = 1920) {
+function layout(width = 1080, height = 1920, plan = {}) {
+  if(customLayout(plan)){
+    const geometry=gamePackLayout.geometry(plan.presentation),scale=Math.min(width/1080,height/1920),offset=(width-1080*scale)/2;
+    const box=value=>({x:offset+value.x*scale,y:value.y*scale,width:value.width*scale,height:value.height*scale});
+    return {width,height,camera:box(geometry.camera),game:box(geometry.game),overlay:box({x:0,y:0,width:1080,height:1920}),wins:box({x:0,y:0,width:1080,height:1920})};
+  }
   const scale = referenceScale(width,height), x = (width - REFERENCE_CANVAS.width * scale) / 2;
   const game={x,y:384*scale,width:675*scale,height:379.6875*scale};
   const overlay={x:x+OVERLAY_REFERENCE.x*scale,y:OVERLAY_REFERENCE.y*scale,width:OVERLAY_RENDER_SIZE.width*OVERLAY_REFERENCE.scaleX*scale,height:OVERLAY_RENDER_SIZE.height*OVERLAY_REFERENCE.scaleY*scale};
@@ -39,4 +47,4 @@ function writeJson(file, value) {
   if (fs.existsSync(file)) fs.copyFileSync(file, file + ".shenpulse-" + Date.now() + ".bak");
   try { fs.writeFileSync(temporary, JSON.stringify(value, null, 2), { mode: 0o600, flag: "wx" }); fs.renameSync(temporary, file); } finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
 }
-module.exports = { stableId, layout, winsArea, overlayUrl, OVERLAY_VIEWPORT, OVERLAY_RENDER_SIZE, WINS_VIEWPORT, tiktokOverlayTransform, readJson, writeJson };
+module.exports = { stableId, layout, customLayout, sourceViewport, winsArea, overlayUrl, OVERLAY_VIEWPORT, OVERLAY_RENDER_SIZE, WINS_VIEWPORT, tiktokOverlayTransform, readJson, writeJson };

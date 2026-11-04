@@ -58,7 +58,7 @@
       if (!ANIMATIONS.includes(input.match)) throw new Error("Animation de match invalide.");
       const variant = getMatchCatalog().normalizeAnimationVariant(input.match, input.variant);
       if (!variant) throw new Error("Cette variante d’animation n’est pas disponible pour ce match.");
-      return { type, match: input.match, variant, fit: input.fit === "cover" ? "cover" : "contain" };
+      return { type, match: input.match, variant, fit: input.fit === "cover" ? "cover" : "contain", ...(input.volume !== undefined ? { volume: number(input.volume, 1, 0, 1) } : {}) };
     }
     if (type === "sound") {
       const url = mediaUrl(input.url); if (!url) throw new Error("Choisissez un son valide.");
@@ -66,7 +66,7 @@
     }
     if (type === "media") {
       const url = mediaUrl(input.mediaUrl); if (!url) throw new Error("Choisissez un média valide.");
-      return { type, mediaUrl: url, soundUrl: mediaUrl(input.soundUrl), durationMs: Math.round(number(input.durationMs, 5000, 500, 60000)), screen: Math.round(number(input.screen, 1, 1, 8)) };
+      return { type, mediaUrl: url, soundUrl: mediaUrl(input.soundUrl), ...(input.volume !== undefined ? { volume: number(input.volume, 1, 0, 1) } : {}), durationMs: Math.round(number(input.durationMs, 5000, 500, 60000)), screen: Math.round(number(input.screen, 1, 1, 8)) };
     }
     throw new Error("Réaction de match invalide.");
   }

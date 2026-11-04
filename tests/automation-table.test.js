@@ -15,7 +15,7 @@ const escape = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</
 function tableContext(t) {
   const dom = new JSDOM('<main id="content"></main>');
   t.after(() => dom.window.close());
-  const context = vm.createContext({
+  const context = vm.createContext({ShenPulseActionAudio: require("../src/shared/action-audio"),
     window: dom.window,
     document: dom.window.document,
     content: dom.window.document.getElementById("content"),
@@ -242,7 +242,7 @@ function actionTableContext(t, { hiddenTypes = [] } = {}) {
   return context;
 }
 
-test("les scénarios restent groupés et chaque action conserve ses propres outils et identifiants", (t) => {
+test("les scénarios restent groupés avec un seul jeu d’outils et leurs références complètes", (t) => {
   const context = actionTableContext(t);
   const group = {
     id: 'rule_"group', name: 'Scénario <script>bad()</script>', enabled: true,
@@ -261,16 +261,9 @@ test("les scénarios restent groupés et chaque action conserve ses propres outi
   assert.match(table.textContent, /2 actions dans ce scénario/);
   assert.equal(table.querySelector('.automation-column-trigger > div').title, "Cooldown · 5s");
   assert.equal(table.querySelectorAll(".automation-effect-chip").length, 2);
-  for (const [index, action] of group.actions.entries()) {
-    for (const operation of ["test-action", "edit-action", "duplicate-action", "delete-action"]) {
-      const buttons = [...table.querySelectorAll(`[data-action="${operation}"]`)].filter((button) => button.dataset.id === action.id);
-      assert.ok(buttons.length, `${operation} pour ${action.id}`);
-      for (const button of buttons) {
-        assert.equal(button.dataset.rule, group.id);
-        assert.equal(button.dataset.index, String(index));
-      }
-    }
-  }
+  for (const operation of ['run-rule','edit-action','duplicate-scenario','delete-scenario']) assert.equal(table.querySelectorAll('[data-action="'+operation+'"]').length,1);
+  assert.equal(table.querySelector('[data-action="edit-action"]').dataset.id,group.actions[0].id);
+  assert.equal(table.querySelector('[data-action="run-rule"]').dataset.id,group.id);
   assert.equal(table.querySelector(".trigger-pill img").getAttribute("src"), "selected.webp");
   assert.equal(table.querySelector(".automation-gift-price").textContent, "1");
   assert.equal(table.querySelector('img[src="wrong.webp"]'), null, "Le cadeau homonyme n’est jamais choisi à la place de l’ID sauvegardé.");
@@ -318,15 +311,15 @@ test("les déclencheurs gardent le mode aléatoire, les références manquantes 
     actionSelection: { mode: "random", randomCount: 3, actionIds: ["wheel", "delay", "absent", "wheel"] }
   };
   context.snapshot.state.rules = [owner, trigger];
-  context.actionsSection = "triggers";
+  context.actionsSection = "actions";
   const before = JSON.stringify(context.snapshot.state);
   const page = context.renderPage();
-  const table = page.querySelector('[data-automation-table="triggers"]');
+  const table = page.querySelector('[data-automation-table="linked-actions"]');
   assert.equal(table.tBodies[0].rows.length, 1);
   assert.match(table.textContent, /3 au hasard sur 3/);
   assert.match(table.textContent, /1 action manquante/);
-  assert.match(table.textContent, /3s de cooldown/);
-  for (const operation of ["run-rule", "edit-trigger", "delete-trigger", "toggle-rule"]) {
+  assert.equal(trigger.cooldown.globalMs, 3000);
+  for (const operation of ["run-rule", "edit-trigger", "delete-scenario", "toggle-rule"]) {
     assert.equal(table.querySelector(`[data-action="${operation}"]`).dataset.id, trigger.id);
   }
   assert.equal(table.querySelector('[data-action="toggle-rule"]').checked, false);

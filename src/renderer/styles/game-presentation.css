@@ -1,0 +1,21 @@
+.game-pack-customize-button{width:var(--game-pack-phone-width,320px);max-width:100%;justify-self:end;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px;border:1px solid #a85bdb80;background:linear-gradient(120deg,#502174,#27213d);box-shadow:0 8px 28px #08081544}
+.game-pack-customize-button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8}
+#editor-dialog[data-variant="game-presentation"]{width:min(1120px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px)}
+.game-presentation-editor{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.78fr);gap:30px;align-items:start}
+.game-presentation-editor .game-pack-preview-settings{width:100%;max-width:none;margin:0;padding:20px;box-sizing:border-box;box-shadow:none}
+.game-presentation-editor .game-pack-preview-settings>header{gap:10px}
+.game-presentation-editor .game-pack-preview-settings h3{font-size:18px}
+.game-presentation-editor .game-pack-settings-live{font-size:11px;white-space:nowrap}
+.game-presentation-editor [data-game-presentation-preview]{position:sticky;top:0;min-width:0;--game-pack-phone-width:min(310px,calc((100dvh - 280px)*.53))}
+.game-presentation-editor .game-pack-preview-area{display:grid;justify-items:center;width:100%;gap:12px}
+.game-presentation-editor .game-pack-preview-scene{margin:0;width:100%;display:flex;justify-content:center}
+.game-presentation-editor .game-pack-phone{width:var(--game-pack-phone-width);max-width:100%;margin:0;flex:none}
+.game-presentation-editor .game-pack-preview-guides{display:none}
+.game-presentation-editor .game-pack-preview-caption{max-width:330px;margin:0;text-align:center;font-size:12px;line-height:1.6;color:#bdb1cf}
+.game-presentation-editor .game-pack-layout-field{margin-top:20px}
+.game-presentation-editor .game-pack-layout-note{font-size:12px;line-height:1.6}
+@media(max-width:760px){.game-presentation-editor{grid-template-columns:1fr;gap:20px}.game-presentation-editor [data-game-presentation-preview]{position:static;grid-row:1;--game-pack-phone-width:220px}.game-presentation-editor .game-pack-preview-settings{padding:16px}.game-presentation-editor .game-pack-settings-live{display:none}.game-presentation-editor .game-pack-preview-controls{max-width:100%}}
+.game-presentation-editor .game-pack-preview-scene::before{inset:0}
+#editor-dialog[data-variant="game-presentation"] .dialog-body{overflow-x:hidden}
+.game-presentation-editor .game-pack-preview-area{justify-content:center;padding:0;border:0}
+.game-presentation-editor .game-pack-preview-scene{justify-self:center}

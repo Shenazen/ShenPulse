@@ -1,6 +1,8 @@
 /* Point d'entrée CSS. L'ordre des imports préserve explicitement la cascade. */
 @import url("styles/foundation.css");
 @import url("styles/dialogs.css");
+@import url("styles/action-alert.css");
+@import url("styles/action-components.css");
 @import url("styles/creator-pages.css");
 @import url("styles/overlay-catalog.css");
 @import url("styles/compact-overlay-editor.css");
@@ -40,5 +42,6 @@
 @import url("styles/compact-resource-table.css");
 
 @import url("styles/game-workspace.css");
+@import url("styles/game-presentation.css");
 
 @import url("styles/agencies.css");

@@ -148,7 +148,7 @@ test("les sons et le TTS restent uniquement dans leur atelier dédié", () => {
 
   assert.match(
     actionsPage,
-    /!\["audio\.play", "tts\.speak"\]\.includes\(action\.type\)/
+    /!ShenPulseActionAudio\.isAudioOnly\(rule\)/
   );
   assert.doesNotMatch(
     actionsPage,
@@ -261,18 +261,20 @@ test("l'éditeur d'action reste progressif et parle de déclencheurs", () => {
   assert.match(editor, /data-trigger-enabled/);
   assert.match(editor, /const triggerEnabled = data\.get\("triggerEnabled"\) === "true"/);
   assert.match(editor, /enabled: triggerEnabled/);
-  assert.match(editor, /data-editor-action-type/);
+  assert.match(app, /data-editor-action-type/);
   assert.match(editor, /data-trigger-types="gift"/);
-  assert.match(editor, /const rawUrl = String\(libraryUrl/);
-  assert.match(editor, /Choisissez un son à jouer/);
+  assert.match(app, /const rawUrl = String\(libraryUrl/);
+  assert.match(app, /Choisissez un son à jouer/);
   assert.match(app, /function syncActionEditorVisibility/);
   assert.match(app, /function giftTriggerConditionFields/);
   assert.match(app, /name="\$\{escapeHtml\(modeName\)\}" value="specific"/);
   assert.match(app, /name="\$\{escapeHtml\(modeName\)\}" value="value"/);
   assert.match(app, /data-gift-trigger-mode/);
   assert.match(app, /function syncGiftTriggerCondition/);
-  assert.match(app, /giftTriggerMode === "specific" && giftName/);
-  assert.match(app, /giftTriggerMode === "value" &&/);
+  assert.match(app, /function collectGiftTriggerConditions/);
+  assert.match(app, /data\.get\(modeName\) === "value"/);
+  assert.match(app, /data-gift-trigger-add/);
+  assert.match(app, /data-gift-trigger-remove/);
   assert.match(app, /operatorName = "giftValueOperator"/);
   assert.match(app, /amountName = "giftValueAmount"/);
   assert.match(app, /\["less", "< · Moins de"\]/);
@@ -295,7 +297,7 @@ test("l'éditeur d'action reste progressif et parle de déclencheurs", () => {
   assert.match(styles, /\.dialog-error/);
 });
 
-test("la page Actions possède un mini-onglet de déclencheurs groupés ou aléatoires", () => {
+test("Actions conserve les scénarios liés sans les onglets redondants", () => {
   const rendererDirectory = path.join(__dirname, "..", "src", "renderer");
   const app = readRendererSource();
   const styles = readRendererStyles();
@@ -310,12 +312,9 @@ test("la page Actions possède un mini-onglet de déclencheurs groupés ou aléa
   assert.doesNotMatch(actionsPage, /renderTikTokReadiness/);
   assert.doesNotMatch(actionsPage, /\["events", "Déclencheurs"/);
   assert.doesNotMatch(actionsPage, /actionsSection === "events"/);
-  assert.match(
-    actionsPage,
-    /\["triggers", "Déclencheurs", automaticTriggerRules\(\)\.length\]/
-  );
-  assert.match(actionsPage, /actionsSection === "triggers" \? renderTriggersPanel\(\)/);
-  assert.match(app, /function renderTriggersPanel\(\)/);
+  assert.doesNotMatch(actionsPage, /\["triggers", "Déclencheurs"|\["advanced", "Automatisations avancées"/);
+  assert.match(actionsPage, /Lier des actions existantes/);
+  assert.match(actionsPage, /renderLinkedActionScenarios\(linkedRules\)/);
   assert.match(app, /data-action="add-trigger"/);
   assert.match(editor, /2\. Actions existantes/);
   assert.match(editor, /name="actionIds"/);

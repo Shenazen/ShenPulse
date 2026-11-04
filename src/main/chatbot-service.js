@@ -61,7 +61,7 @@ function assertChatbotAccess(store) {
 }
 
 class ChatbotService {
-  constructor({ store, sourceHub, overlayServer, commandExecutor = null, functionalOnly = false, cooldowns = new Map(), onActivity = () => {}, onChanged = () => {},
+  constructor({ store, sourceHub, overlayServer, commandExecutor = null, functionalOnly = false, requireConversationOptIn = false, cooldowns = new Map(), onActivity = () => {}, onChanged = () => {},
     now = Date.now, setIntervalFn = setInterval, clearIntervalFn = clearInterval }) {
     this.store = store;
     this.sourceHub = sourceHub;
@@ -70,6 +70,7 @@ class ChatbotService {
     // Le service de production n'exécute plus les anciens messages. L'option
     // false conserve un moteur compatible pour les données/tests historiques.
     this.functionalOnly = functionalOnly;
+    this.requireConversationOptIn = requireConversationOptIn;
     this.cooldowns = cooldowns;
     this.onActivity = onActivity;
     this.onChanged = onChanged;
@@ -91,7 +92,8 @@ class ChatbotService {
 
   state() { return readState(this.store, STATE_PATHS); }
   currentScope() { return this.scope(readState(this.store, SCOPE_PATHS)); }
-  activeCommands(state) { return this.functionalOnly ? (state.commands || []).filter(functionalCommand) : state.commands; }
+  entryAllowed(item) { return functionalCommand(item) || (!this.functionalOnly && (!this.requireConversationOptIn || item?.conversationVersion === 1)); }
+  activeCommands(state) { return (state.commands || []).filter((item) => this.entryAllowed(item)); }
 
   scope(state) {
     return JSON.stringify([state.settings?.account?.uid || "", state.session?.profileId || "", state.session?.startedAt || ""]);
@@ -146,7 +148,7 @@ class ChatbotService {
       return String(event.user?.id || "") === String(state.settings.kick.account.id);
     }
     const ownName = connection.type === "twitch-irc" ? connection.config?.username : connection.type === "tiktok-direct" ?
-      state.settings?.tiktok?.chat?.botUsername || connection.config?.botUsername : connection.config?.botUsername;
+      this.sourceHub.getChatCapabilities?.(connection.id)?.botUsername || state.settings?.tiktok?.chat?.botUsername || connection.config?.botUsername : connection.config?.botUsername;
     return Boolean(ownName && String(event.user?.name || "").toLowerCase() === String(ownName).replace(/^@/, "").toLowerCase());
   }
 
@@ -273,7 +275,7 @@ class ChatbotService {
     const { timer = false, generation = this.generation } = options;
     const fresh = this.state();
     const connection = (fresh.connections || []).find((entry) => entry.id === event.source);
-    const currentItem = (fresh.commands || []).find((entry) => entry.id === item.id && entry.enabled !== false);
+    const currentItem = this.activeCommands(fresh).find((entry) => entry.id === item.id && entry.enabled !== false);
     const currentPreview = currentItem && !timer ? previewChatbotResponse(currentItem, event) : null;
     const timerMessage = currentItem && timer ? chatbotTimerMessages(currentItem)[options.timerMessageIndex || 0] : "";
     if (generation !== this.generation || this.scope(state) !== this.scope(fresh) ||
@@ -376,7 +378,7 @@ class ChatbotService {
     this.timerScope = scope;
     const eligible = (state.connections || []).filter((connection) => this.connectionIsLive(connection, state) && this.connectionCanSend(connection));
     const nextKeys = new Set();
-    for (const item of state.commands || []) {
+    for (const item of this.activeCommands(state)) {
       if (item.kind !== "timer" || item.enabled === false || !String(item.response || "").trim()) continue;
       const intervalMs = Number(item.intervalMs);
       if (!Number.isFinite(intervalMs) || intervalMs < MIN_INTERVAL_MS || intervalMs > MAX_COOLDOWN_MS) continue;

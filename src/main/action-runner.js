@@ -9,7 +9,11 @@ const { readState } = require("./state-projection");
 const { assertCommandContext } = require("./commands/context-guard");
 const { filterTtsChatComment, isTtsUserAllowed, claimTtsChatComment } = require("./actions/tts-policy");
 const { runActionGroup } = require("./actions/groups");
+const { actionAlertDisplay } = require("./actions/alert-display");
+const { LinkedActionAudio } = require("./actions/linked-audio");
 const { WheelActionController } = require("./actions/wheel");
+const { resolveVoice, naturalVoice } = require("../shared/tts-voices");
+const { NaturalVoiceService } = require("./natural-voice-service");
 const { runHttpAction, runSpotifyAction, sendKeyAction, openUrlAction } = require("./actions/network-system");
 const {
   MAX_TIMER_SECONDS,
@@ -30,7 +34,8 @@ class ActionRunner {
     onOverlayOperation = () => {},
     setTimeoutImpl = setTimeout,
     nowImpl = Date.now,
-    randomImpl = Math.random
+    randomImpl = Math.random,
+    voiceService = new NaturalVoiceService()
   }) {
     this.store = store;
     this.overlayServer = overlayServer;
@@ -45,8 +50,12 @@ class ActionRunner {
     this.setTimeoutImpl = setTimeoutImpl;
     this.nowImpl = nowImpl;
     this.randomImpl = randomImpl;
+    this.voiceService = voiceService;
     this.wheelActions = new WheelActionController({ store, overlayServer, setTimeoutImpl, runAction: (entry, context) => this.run(entry, context) });
     this.ttsReadMessages = new Map();
+    this.linkedAudio = new LinkedActionAudio(store, nowImpl);
+    this.ttsPlaybackTail = Promise.resolve();
+    this.ttsPlaybackPending = 0;
   }
 
   #applyOverlayOperation(channel, payload, metadata = {}) {
@@ -79,6 +88,39 @@ class ActionRunner {
   }
 
   async run(action, context = {}) {
+    const alertScope = action.config?.alert?.enabled === true ? this.#alertScope() : null;
+    const result = await this.#runAction(action, context);
+    // Les médias composent déjà leur alerte. Les autres actions peuvent afficher
+    // le même texte sur un écran Media sans modifier leur sortie principale.
+    if ((!['overlay.media', 'overlay.alert', 'overlay.text'].includes(action.type) || context.overlayTarget === "match" && action.type !== "overlay.text") &&
+        !result?.skipped && !result?.cancelled && result?.ok !== false) {
+      const alert = this.#actionAlert(action, context);
+      if (!alert) return result;
+      let current = true;
+      try { assertCommandContext(context.shouldExecute); context.assertActionAllowed?.(action, context); } catch { current = false; }
+      if (alert && current && alertScope === this.#alertScope()) {
+        this.#publishMediaAlert({ id: action.id, displayMode: "media-only", alert,
+          screen: alert.screen, durationMs: alert.durationMs });
+      }
+    }
+    return result;
+  }
+
+  #alertScope() {
+    return JSON.stringify(readState(this.store, ["settings.account.uid", "session.profileId"]));
+  }
+
+  #actionAlert(action, context) {
+    if (action.config?.alert?.enabled !== true) return null;
+    return actionAlertDisplay(action.config, context, readState(this.store, ["statistics"]).statistics || {});
+  }
+
+  #publishMediaAlert(payload) {
+    this.overlayServer.publish("alert", payload);
+    this.notifyRenderer("playback", { type: "alert", ...payload });
+  }
+
+  async #runAction(action, context = {}) {
     // Garde injecté par les commandes ; les chemins historiques restent
     // inchangés. Les groupes et roues transmettent ce contexte à leurs enfants.
     assertCommandContext(context.shouldExecute);
@@ -92,23 +134,39 @@ class ActionRunner {
       catch { return false; }
     } : undefined;
     switch (action.type) {
+      case "overlay.text": {
+        if (config.embeddedInMedia) return { displayed: true, embedded: true };
+        const alert = this.#actionAlert(action, context);
+        if (!alert) return { skipped: true, reason: "empty-text" };
+        this.#publishMediaAlert({ id: action.id, displayMode: "media-only", alert,
+          screen: alert.screen, durationMs: alert.durationMs });
+        return { displayed: true };
+      }
       case "overlay.alert":
       case "overlay.media": {
+        const alert = this.#actionAlert(action, context);
+        const mediaUrl = this.#localMediaUrl(config.mediaUrl);
+        if (!mediaUrl && !alert) return { skipped: true, reason: "empty-media" };
+        const sound = this.linkedAudio.resolve(action);
+        const soundUrl = sound && this.linkedAudio.claim(sound, context) ? sound.url : "";
         const payload = {
           id: action.id,
           // « overlay.alert » reste l’identifiant historique de l’action Media.
-          // Les deux chemins affichent seulement le média choisi, sans ancienne
-          // carte d’alerte, texte ou barre de progression.
+          // Le nom et le texte sont une option explicite, indépendante des
+          // anciens champs title/message des actions historiques.
           displayMode: "media-only",
-          mediaUrl: this.#localMediaUrl(config.mediaUrl),
-          soundUrl: this.#localMediaUrl(config.soundUrl),
+          mediaUrl,
+          ...(alert ? { alert } : {}),
+          soundUrl: this.#localMediaUrl(soundUrl),
+          volume: config.volume ?? 1, originActionId: action.id || "",
           durationMs: clamp(config.durationMs || 5000, 500, 60000),
           ...(context.overlayTarget === "match" ? { playbackId: randomUUID() } : {}),
           screen: clamp(Math.round(Number(config.screen) || 1), 1, 8),
           user: context.user
         };
-        this.overlayServer.publish(context.overlayTarget === "match" ? "match-media" : "alert", payload);
-        if (context.overlayTarget !== "match") this.notifyRenderer("playback", { type: "alert", ...payload });
+        if (context.overlayTarget === "match") {
+          if (mediaUrl) this.overlayServer.publish("match-media", payload);
+        } else this.#publishMediaAlert(payload);
         return { displayed: true };
       }
       case "tts.speak": {
@@ -123,11 +181,13 @@ class ActionRunner {
         }
         const text = filterTtsChatComment(
           context.event?.data?.message,
-          config
+          config,
+          context.event?.data?.raw
         );
         if (!text) return { skipped: true };
         if (
           isChatComment &&
+          context.source !== "manual-preview" &&
           !claimTtsChatComment(this.ttsReadMessages, context.event, text, this.nowImpl())
         ) {
           return { skipped: true, reason: "duplicate" };
@@ -137,11 +197,40 @@ class ActionRunner {
           ...config,
           text,
           playbackId: randomUUID(),
+          originActionId: action.id || "",
           screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };
-        return this.#queueAudioPlayback("tts", payload, config, context);
+        payload.voice = resolveVoice(tts, config, context.source === "manual-preview" ? {} : context.event?.user);
+        const scope = () => JSON.stringify(readState(this.store, ["settings.account.uid", "session.profileId", "session.startedAt", "session.running"]));
+        const initialScope = scope();
+        const current = () => scope() === initialScope && readState(this.store, ["settings.tts.enabled"]).settings?.tts?.enabled !== false &&
+          (!context.shouldExecute || context.shouldExecute());
+        if (this.ttsPlaybackPending >= 20) return { skipped: true, reason: "voice-queue-full" };
+        this.ttsPlaybackPending++;
+        const job = this.ttsPlaybackTail.then(async () => {
+          let voiceEngine = "windows";
+          if (naturalVoice(payload.voice)) {
+            payload.language = naturalVoice(payload.voice).lang;
+            const result = await this.voiceService.synthesize(payload, { shouldExecute: current });
+            if (result?.cancelled || !current()) return { skipped: true, reason: "context-changed" };
+            if (result?.audioUrl) { Object.assign(payload, result); voiceEngine = "natural"; }
+            else { payload.voice = ""; payload.voiceFallback = true; }
+          }
+          if (!current()) return { skipped: true, reason: "context-changed" };
+          return { ...this.#queueAudioPlayback("tts", payload, config, context), ...(voiceEngine === "natural" ? { voiceEngine } : {}), ...(payload.voiceFallback ? { voiceFallback: true } : {}) };
+        });
+        this.ttsPlaybackTail = job.catch(() => {});
+        try { return await job; } finally { this.ttsPlaybackPending--; }
       }
       case "audio.play": {
+        const sound = this.linkedAudio.resolve(action);
+        const live = config.outputMode === "live" && !config.previewScope && context.source !== "manual-preview";
+        const local = !live || context.overlayTarget !== "match";
+        const targets = {
+          local: local && (!sound || this.linkedAudio.claim(sound, context, "local")),
+          live: live && (!sound || this.linkedAudio.claim(sound, context, "live"))
+        };
+        if (!targets.local && !targets.live) return { skipped: true, reason: "linked-sound-already-played" };
         const packId = safeString(config.packId || "", 160);
         const outputDeviceId = safeString(
           config.outputDeviceId ||
@@ -151,14 +240,15 @@ class ActionRunner {
           512
         );
         const payload = {
-          url: this.#localMediaUrl(config.url),
+          url: this.#localMediaUrl(sound?.url || config.url),
           volume: clamp(config.volume ?? 1, 0, 1),
           previewScope: safeString(config.previewScope || "", 40),
           outputDeviceId,
           playbackId: randomUUID(),
+          originActionId: action.id || "",
           screen: clamp(Math.round(Number(config.liveScreen) || 1), 1, 8)
         };
-        return this.#queueAudioPlayback("audio", payload, config, context);
+        return this.#queueAudioPlayback("audio", payload, config, context, targets);
       }
       case "goal.add": {
         const amount = Number(config.amount || 1);
@@ -262,7 +352,8 @@ class ActionRunner {
         return this.overlayServer.playMatch({
           match: safeString(config.match, 40),
           variant: safeString(config.variant || "tikcontrol", 40),
-          fit: config.fit === "cover" ? "cover" : "contain"
+            fit: config.fit === "cover" ? "cover" : "contain",
+            volume: config.volume ?? 1, originActionId: action.id
         });
       case "game.effect":
         return this.gameHub.trigger(
@@ -444,10 +535,11 @@ class ActionRunner {
    * sans retirer le retour local. Les Matchs gardent leur source dédiée pour
    * ne pas doubler le son de leurs vidéos ; les aperçus ne sont jamais diffusés.
    */
-  #queueAudioPlayback(type, payload, config, context) {
+  #queueAudioPlayback(type, payload, config, context, targets = {}) {
+    payload.audioKind = context.overlayTarget === "match" ? "matches" : type === "tts" ? "tts" : "sounds";
     const preview = Boolean(config.previewScope) || context.source === "manual-preview";
-    const live = config.outputMode === "live" && !preview;
-    if (!live || context.overlayTarget !== "match") {
+    const live = config.outputMode === "live" && !preview && targets.live !== false;
+    if (targets.local !== false && (!live || context.overlayTarget !== "match")) {
       this.notifyRenderer("playback", { type, ...payload });
     }
     if (!live) return { queued: true };

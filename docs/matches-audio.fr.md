@@ -2,7 +2,7 @@
 
 ## Cause du silence
 
-Les 21 vidéos du catalogue possèdent une piste Opus. Leur chiffrement et le
+Les 27 vidéos du catalogue possèdent une piste Opus. Leur chiffrement et le
 service de tickets conservent les octets originaux, y compris le son. Le silence
 provenait du lecteur : les animations et les vidéos personnelles étaient
 systématiquement mises en sourdine pour privilégier leur démarrage automatique.
@@ -22,6 +22,21 @@ Un son de bibliothèque optionnel ne remplace pas la piste intégrée à la vid�
   `soundVolume` compris entre 0 et 100. Ces paramètres n'accordent aucun accès
   supplémentaire aux vidéos : compte, droits Pro, visibilité et tickets
   demeurent nécessaires selon le type de source.
+
+## Volumes unifiés (2.1.3)
+
+Dans **Voix & sons** et **Matchs**, le panneau **Volumes audio** propose un
+volume général et quatre réglages : alertes sonores, TTS, animations de match
+et autres overlays. Les niveaux s'appliquent aux lectures nouvelles et en
+cours sur le PC et dans les sources navigateur LIVE ; 0 % coupe le son.
+Le volume propre à l'action et celui de la source navigateur restent pris en
+compte : niveau final = général × catégorie × action × source.
+
+Les animations et médias des automatisations Matchs disposent aussi d'un
+volume individuel. Le calcul commun est dans `resources/overlays/audio-control.js` ;
+les événements `audio-control` actualisent les lecteurs sans rejouer les clips.
+Le contrôle isolé `scripts/verify-match-video-audio.js --volumes` vérifie
+25 %, 0 %, 10 % et 100 % sur une animation déjà en cours, sortie matérielle coupée.
 
 ## Refus d'autoplay sonore
 

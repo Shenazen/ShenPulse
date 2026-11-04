@@ -23,6 +23,16 @@ const { app, BrowserWindow } = require("electron");
 const { OverlayServer } = require("../src/main/overlay-server");
 const { matchAccountNumber } = require("../src/main/match-access");
 const { selectStatePaths } = require("../src/main/state-projection");
+const catalog = require("../resources/overlays/overlay-catalog");
+const pack = process.argv.find((entry) => entry.startsWith("--pack="))?.slice(7);
+const checkVolumes = process.argv.includes("--volumes");
+const selectedAnimations = pack ? catalog.matches.filter((entry) =>
+  catalog.animationVariants(entry.match).some(([variant]) => variant === pack))
+  .map(({ match, name }) => ({ match, variant: pack, label: `${name} - ${pack}` })) : [
+    { match: "x2", variant: "cyber", label: "x2 - Cyber" },
+    { match: "cofre", variant: "gladiador", label: "Coffre - Gladiador" }
+  ];
+if (!selectedAnimations.length) throw new Error("Pack de contrôle audio inconnu.");
 
 const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "shenpulse-match-audio-"));
 app.setPath("userData", path.join(temporaryDirectory, "chromium"));
@@ -141,7 +151,7 @@ async function samplePlayback() {
 
 async function verifyNativeAudio({ match, variant, label }) {
   stage(`lecture protégée et audio natif : ${label}`);
-  const request = overlayServer.playMatch({ match, variant });
+  const request = overlayServer.playMatch({ match, variant, ...(checkVolumes ? { originActionId: "volume-smoke" } : {}) });
   await waitUntil(async () => {
     const sample = await samplePlayback();
     return sample.playbackId === request.requestId && !sample.paused &&
@@ -169,8 +179,24 @@ async function verifyNativeAudio({ match, variant, label }) {
     throw new Error(`Le son ou le lecteur de ${label} est coupé, remplacé ou en erreur.`);
   }
   if (!playerWindow.webContents.isAudioMuted()) throw new Error("La sortie matérielle du smoke n'est plus coupée.");
+  const volumeChecks = [];
+  if (checkVolumes) {
+    for (const [settings, actions, expected] of [
+      [{ master: .5, matches: .5 }, {}, .25], [{ master: 0 }, {}, 0],
+      [{ matches: .5 }, { "volume-smoke": .2 }, .1], [{}, { "volume-smoke": 1 }, 1]
+    ]) {
+      overlayServer.publish("audio-control", { settings, actions });
+      await waitUntil(async () => Math.abs((await samplePlayback()).volume - expected) < 1e-9);
+      const sample = await samplePlayback();
+      if (sample.playbackId !== request.requestId || sample.paused || sample.currentTime < last.currentTime) {
+        throw new Error("Le changement de volume a interrompu ou relancé l'animation.");
+      }
+      volumeChecks.push({ expected, actual: sample.volume, currentTime: sample.currentTime });
+    }
+  }
   return {
     match, variant, label, audibleSamples, distinctFrames,
+    ...(checkVolumes ? { volumeChecks } : {}),
     peakRms: Math.max(...samples.map((sample) => sample.rms)),
     peakAmplitude: Math.max(...samples.map((sample) => sample.peak)),
     first, last
@@ -257,9 +283,8 @@ async function run() {
   await playerWindow.webContents.executeJavaScript(`(${installAudioMeasurement.toString()})()`);
   // Deux événements synthétiques sur le serveur artificiel, pas sur le LIVE réel.
   const playbacks = [];
-  playbacks.push(await verifyNativeAudio({ match: "x2", variant: "cyber", label: "x2 - Cyber" }));
-  playbacks.push(await verifyNativeAudio({ match: "cofre", variant: "gladiador", label: "Coffre - Gladiador" }));
-  if (requests.tickets !== 2 || requests.video < 2 || requests.externalBlocked ||
+  for (const animation of selectedAnimations) playbacks.push(await verifyNativeAudio(animation));
+  if (requests.tickets !== selectedAnimations.length || requests.video < selectedAnimations.length || requests.externalBlocked ||
       requests.directVideoBlocked || requests.privateAssetBlocked || consoleErrors.length) {
     throw new Error(`Transport ou console inattendu : ${JSON.stringify({ requests, consoleErrors })}.`);
   }

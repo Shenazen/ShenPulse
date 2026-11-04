@@ -56,7 +56,7 @@ function chatbotContext(t, { commands = [], authenticated = true } = {}) {
   const run = (code) => vm.runInContext(code, dom.getInternalVMContext());
   for (const file of ["core/components.js", "core/account-operation-guard.js", "features/studio-design.js", "features/chatbot/execution.js", "features/creator-chatbot.js", "features/chatbot/delivery.js"]) run(read(file));
   window.field = window.inputFieldMarkup;
-  for (const file of ["features/chatbot/editor.js", "actions/handlers/creator-chatbot.js"]) run(read(file));
+  for (const file of ["features/chatbot/editor.js", "features/chatbot/conversation.js", "actions/handlers/creator-chatbot.js"]) run(read(file));
   window.render();
   const action = (name, target = window.document.createElement("button"), id) => window.handleCreatorChatbotAction({ action: name, target, id });
   return { window, state, calls, run, action, editor: () => activeEditor, confirmation: (next) => { confirmation = next; } };
@@ -169,8 +169,10 @@ test("les handlers et éditeurs refusent les anciennes entrées cachées, même 
   for (const operation of ["chatbot-edit", "chatbot-preview", "chatbot-delete", "chatbot-toggle"]) await assert.rejects(action(operation, window.document.createElement("button"), "old"), /ne correspond pas/);
   assert.throws(() => window.openCreatorChatbotEditor(old), /ne correspond pas/);
   assert.throws(() => window.openCreatorChatbotPreview(old), /ne correspond pas/);
-  assert.throws(() => window.openCreatorChatbotEditor(null, "auto-reply"), /Seules les commandes/);
-  assert.throws(() => window.openCreatorChatbotEditor(null, "timer"), /Seules les commandes/);
+  window.openCreatorChatbotEditor(null, "auto-reply");
+  assert.ok(window.dialog.querySelector("[data-conversation-editor]"));
+  window.openCreatorChatbotEditor(null, "timer");
+  assert.ok(window.dialog.querySelector("[name=intervalMinutes]"));
   assert.equal(JSON.stringify(state.commands), before);
   assert.equal(calls.length, 0);
 });
@@ -504,4 +506,33 @@ test("le formulaire explique les droits par défaut et affiche un refus d'enregi
     return true;
   });
   assert.equal(window.dialogForm.elements.namedItem("command").value, "!skip");
+});
+
+
+test("parcours simple : modèles inactifs, aperçu pur et trois types créés sans envoyer de message", async (t) => {
+  const f = chatbotContext(t);
+  f.run('creatorChatbotTab = "replies"'); f.window.render();
+  assert.equal(f.window.content.querySelectorAll("[data-action=chatbot-template]").length, 2);
+  f.window.openCreatorConversationEditor(null, "auto-reply", "bonjour");
+  let form = f.window.dialogForm;
+  assert.equal(form.elements.namedItem("enabled").checked, false);
+  assert.match(f.window.dialog.textContent, /Bienvenue Viewer exemple/);
+  await f.editor().onSubmit(new f.window.FormData(form));
+  assert.equal(f.state.commands.length, 1);
+  assert.equal(f.state.commands[0].kind, "auto-reply");
+  assert.equal(f.state.commands[0].conversationVersion, 1);
+  assert.equal(f.state.commands[0].enabled, false);
+  f.window.openCreatorConversationEditor(null, "timer", "reminder");
+  form = f.window.dialogForm;
+  form.elements.namedItem("response").value = "Un rappel\nUn deuxième";
+  await f.editor().onSubmit(new f.window.FormData(form));
+  assert.deepEqual(Array.from(f.state.commands[1].messages), ["Un rappel", "Un deuxième"]);
+  assert.equal(f.state.commands[1].intervalMs, 300000);
+  f.window.openCreatorConversationEditor(null, "reply-command", "discord");
+  form = f.window.dialogForm;
+  await assert.rejects(f.editor().onSubmit(new f.window.FormData(form)), /véritable invitation/);
+  form.elements.namedItem("response").value = "Notre Discord : https://discord.gg/test";
+  await f.editor().onSubmit(new f.window.FormData(form));
+  assert.equal(f.state.commands[2].command, "!discord");
+  assert.ok(f.calls.every(call => ["upsert", "snapshot", "accept"].includes(call[0])));
 });

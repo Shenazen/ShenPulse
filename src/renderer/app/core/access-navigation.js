@@ -64,17 +64,32 @@ function minecraftLauncherPack(modePacks) {
   };
 }
 
+function gameModeLauncherId(packId) {
+  if (MINECRAFT_MODE_IDS.includes(packId)) return MINECRAFT_LAUNCHER_ID;
+  if (GTA_MODE_IDS.includes(packId)) return GTA_LAUNCHER_ID;
+  return /^final-fantasy-[1-5]-pixel-remaster$/.test(packId) ? "final-fantasy-pixel-remaster" : "";
+}
+
 function gameModeLauncherPack(modePacks, launcherId) {
   if (launcherId === MINECRAFT_LAUNCHER_ID) return minecraftLauncherPack(modePacks);
+  if (launcherId === "final-fantasy-pixel-remaster") {
+    const episodes = [...modePacks].sort((a, b) => Number(a.id.split("-")[2]) - Number(b.id.split("-")[2]));
+    return {
+      ...minecraftLauncherPack(episodes), id: launcherId, name: "Final Fantasy — Pixel Remaster",
+      source: "Final Fantasy", artwork: episodes[0]?.artwork || "",
+      artworkPanels: episodes.map(pack => pack.artwork),
+      description: `Choisissez votre épisode : ${episodes.map(pack => pack.name).join(", ")}. Chaque jeu conserve son installation, ses réglages et ses interactions.`,
+      tags: ["abonnement requis", "inclus", `${episodes.length} épisode${episodes.length > 1 ? "s" : ""}`]
+    };
+  }
   return {...minecraftLauncherPack(modePacks),id:GTA_LAUNCHER_ID,name:'GTA Enhanced/Amélioré',source:'GTA V Enhanced',artwork:'catalog/gta-enhanced.jpg',description:'Choisissez le mod Chiliad, KOTH ou Hiking pour GTA V Enhanced. Chaque mod garde ses interactions et réglages.',storefronts:['rockstar-games','steam','epic-games']};
 }
 function visibleGamePacks() {
-  const visible=(snapshot?.packs||[]).filter(canAccessGame),emitted=new Set();
+  const visible=(snapshot?.packs||[]).filter(pack=>!pack.customGame&&canAccessGame(pack)),emitted=new Set();
   return visible.flatMap(pack=>{
-    const launcher=MINECRAFT_MODE_IDS.includes(pack.id)?MINECRAFT_LAUNCHER_ID:GTA_MODE_IDS.includes(pack.id)?GTA_LAUNCHER_ID:'';
+    const launcher=gameModeLauncherId(pack.id);
     if(!launcher)return [pack];if(emitted.has(launcher))return [];emitted.add(launcher);
-    const ids=launcher===MINECRAFT_LAUNCHER_ID?MINECRAFT_MODE_IDS:GTA_MODE_IDS;
-    return [gameModeLauncherPack(visible.filter(mode=>ids.includes(mode.id)),launcher)];
+    return [gameModeLauncherPack(visible.filter(mode=>gameModeLauncherId(mode.id)===launcher),launcher)];
   });
 }
 

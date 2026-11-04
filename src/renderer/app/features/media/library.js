@@ -7,7 +7,9 @@ function soundPickerField(
   {
     label = "Son à jouer",
     selectedName = "",
-    optional = false
+    optional = false,
+    selectedActionId = "",
+    excludeActionId = ""
   } = {}
 ) {
   const selected =
@@ -43,6 +45,7 @@ function soundPickerField(
         <button type="button" class="button small" data-open-media-library data-kind="sound" data-input="${escapeHtml(name)}" data-optional="${optional ? "true" : "false"}">Ouvrir la bibliothèque</button>
       </div>
     </div>
+    ${typeof programmedSoundPickerField === "function" ? programmedSoundPickerField(name, selectedActionId, excludeActionId) : ""}
     <small>Catalogue web MyInstants, aperçu immédiat et import hébergé par ShenPulse.</small>
   </div>`;
 }
@@ -558,6 +561,10 @@ function updateCompactMediaPicker(root, item) {
   const optional = root.dataset.pickerOptional === "true";
   valueInput.value = item?.url || "";
   nameInput.value = item?.name || "";
+  const linked = root.querySelector("[data-media-linked-action]");
+  if (linked) linked.value = item?.actionId || "";
+  const programmed = root.querySelector("[data-programmed-sound-picker]");
+  if (programmed) programmed.value = item?.actionId || "";
   const previewButton =
     kind === "sound" && item?.url
       ? `<button type="button" class="sound-preview-button" data-media-preview-url="${escapeHtml(item.url)}" title="Écouter">▶</button>`

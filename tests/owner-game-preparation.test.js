@@ -10,9 +10,9 @@ const packs=catalog.filter(p=>p.ownerPreparation);
 const requested=require("../scripts/integration-preparation/requested-games.json").games;
 const records=require("../resources/catalogs/owner-game-preparation.json").games;
 const {ownerGameListed}=require("../src/shared/owner-game-catalog-policy");
-test("les nouvelles fiches sont privées, sans Roblox et sans déclaration d’essai en partie",()=>{
+test("les nouvelles fiches gardent leurs restrictions et les cinq Final Fantasy vérifiés ouvrent en 2.1.3",()=>{
  const ready=records.filter(game=>ownerGameListed(game)&&modules[game.id]);assert.equal(packs.length,ready.length);assert.equal(packs.length,27);assert.equal(new Set(catalog.map(p=>p.id)).size,catalog.length);
- for(const pack of packs){assert.equal(pack.ownerOnly,true,pack.id);assert.equal(pack.workspaceLayout,"shared");assert.equal(pack.ownerPreparation.inGameValidation,modules[pack.id].inGameValidation||"pending");assert.equal(visibility.canAccessGame({},pack,false,"2.1.1"),false,pack.id);assert.equal(visibility.canAccessGame({},pack,true,"2.1.1"),true,pack.id);assert.doesNotMatch(JSON.stringify([pack.name,pack.description,pack.guide]),/crowd\s*control|synclive|streamtoearn|tik360/i);}
+ for(const pack of packs){const released=/^final-fantasy-[1-5]-pixel-remaster$/.test(pack.id);assert.equal(pack.ownerOnly===true,!released,pack.id);assert.equal(pack.workspaceLayout,"shared");assert.equal(pack.ownerPreparation.inGameValidation,modules[pack.id].inGameValidation||"pending");assert.equal(visibility.canAccessGame({},pack,false,"2.1.1"),false,pack.id);assert.equal(visibility.canAccessGame({},pack,true,"2.1.1"),!released,pack.id);assert.equal(visibility.canAccessGame({},pack,false,"2.1.3"),released,pack.id);assert.doesNotMatch(JSON.stringify([pack.name,pack.description,pack.guide]),/crowd\s*control|synclive|streamtoearn|tik360/i);}
  assert.ok(!packs.some(p=>p.id.startsWith("roblox")));
 });
 test("les quinze nouveaux packs incomplets sont retirés du catalogue et de leurs entrées d’installation",t=>{

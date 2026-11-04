@@ -10,7 +10,10 @@
     <title>ShenPulse</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="styles/matches-vision.css" />
-  </head>
+    <link rel="stylesheet" href="styles/custom-games.css" />
+    <link rel="stylesheet" href="styles/voice-chatbot.css" />
+    <link rel="stylesheet" href="styles/audio-mixer.css">
+</head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
@@ -274,6 +277,9 @@
     <script src="../shared/gift-display.js"></script>
     <script src="../shared/command-execution.js"></script>
     <script src="../shared/chatbot-command.js"></script>
+    <script src="../shared/tts-voice-catalog.js"></script>
+    <script src="../shared/tts-voices.js"></script>
+    <script src="../shared/action-audio.js"></script>
     <script src="../shared/spotify-capabilities.js"></script>
     <script src="../../resources/overlays/catalog/shared.js"></script>
     <script src="../../resources/overlays/catalog/my-actions.js"></script>
@@ -289,6 +295,7 @@
     <script src="../../resources/overlays/catalog/matches.js"></script>
     <script src="../../resources/overlays/overlay-catalog.js"></script>
     <script src="../../resources/overlays/scene-layout.js"></script>
+    <script src="../../resources/overlays/game-pack-layout.js"></script>
     <script src="vendor/lottie-player.js"></script>
     <script src="game-overlay-generator.js"></script>
     <script src="app/core/bootstrap.js"></script>
@@ -301,7 +308,10 @@
     <script src="app/features/media/library.js"></script>
     <script src="app/core/access-navigation.js"></script>
     <script src="app/core/account-operation-guard.js"></script>
+    <script src="../../resources/overlays/audio-control.js"></script>
     <script src="app/core/audio-playback.js"></script>
+    <script src="app/features/audio-mixer.js"></script>
+    <script src="app/core/tts-playback.js"></script>
     <script src="app/features/media/spotify.js"></script>
     <script src="app/features/dashboard.js"></script>
     <script src="app/features/actions.js"></script>
@@ -321,6 +331,7 @@
     <script src="app/features/overlays/coin-jar-editor.js"></script>
     <script src="app/features/overlays/scene.js"></script>
     <script src="app/features/audio.js"></script>
+    <script src="app/features/action-sounds.js"></script>
     <script src="app/features/games/control-bindings.js"></script>
     <script src="app/features/games/conditions.js"></script>
     <script src="app/features/games/access.js"></script>
@@ -371,6 +382,7 @@
     <script src="app/features/creator-chatbot.js"></script>
     <script src="app/features/chatbot/delivery.js"></script>
     <script src="app/features/chatbot/editor.js"></script>
+    <script src="app/features/chatbot/conversation.js"></script>
     <script src="app/features/creator-performance.js"></script>
     <script src="app/features/creator-topbar.js"></script>
     <script src="app/features/creator-sidebar.js"></script>
@@ -381,6 +393,10 @@
     <script src="app/features/admin/account.js"></script>
     <script src="app/editors/core.js"></script>
     <script src="app/editors/game-interactions.js"></script>
+    <script src="app/editors/alert-display.js"></script>
+    <script src="app/editors/action-config-fields.js"></script>
+    <script src="app/editors/action-config-save.js"></script>
+    <script src="app/editors/action-components.js"></script>
     <script src="app/editors/action-core.js"></script>
     <script src="app/editors/media-timer.js"></script>
     <script src="app/editors/rules-profiles.js"></script>
@@ -391,10 +407,16 @@
     <script src="app/actions/handlers/creator-matches.js"></script>
     <script src="app/actions/handlers/creator-music.js"></script>
     <script src="app/actions/handlers/creator-chatbot.js"></script>
+    <script src="app/features/tts-preview.js"></script>
+    <script src="app/features/voice-preferences.js"></script>
     <script src="app/actions/scene.js"></script>
     <script src="app/actions/handlers/controllers.js"></script>
     <script src="app/actions/handlers/admin-irl.js"></script>
     <script src="app/actions/handlers/navigation-games.js"></script>
+    <script src="../shared/custom-game-shortcuts.js"></script>
+    <script src="app/features/games/shortcut-input.js"></script>
+    <script src="app/features/games/custom-games.js"></script>
+    <script src="app/features/games/game-presentation-editor.js"></script>
     <script src="app/features/games/supermarket-controls.js"></script>
     <script src="app/features/games/wins-controls.js"></script>
     <script src="app/features/games/supermarket-gifts.js"></script>

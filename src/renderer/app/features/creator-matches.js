@@ -179,7 +179,7 @@ function creatorMatchesStructureSignature(config, capabilities) {
 function renderCreatorMatches() {
   if (!isAccountAuthenticated()) return renderPrivateDataPlaceholder("Vos matchs TikTok", "Connectez votre compte ShenPulse pour retrouver les matchs et les réglages de votre profil.");
   const { config, capabilities } = creatorMatchesModel();
-  return `<div class="reference-page creator-matches-page">${creatorMatchesHeroMarkup()}<div class="matches-navigation">${creatorMatchesTabsMarkup()}<button type="button" class="button small ghost matches-refresh" data-action="matches-refresh" aria-label="Actualiser les matchs">${creatorMatchesIcon("refresh")}Actualiser</button></div><div id="creator-matches-panel" data-creator-matches-panel data-matches-owner="${escapeHtml(creatorMatchesOwnerKey())}" data-matches-structure="${escapeHtml(creatorMatchesStructureSignature(config, capabilities))}">${creatorMatchesPanelMarkup()}</div></div>`;
+  return `<div class="reference-page creator-matches-page">${creatorMatchesHeroMarkup()}${typeof renderAudioMixer === "function" ? renderAudioMixer() : ""}<div class="matches-navigation">${creatorMatchesTabsMarkup()}<button type="button" class="button small ghost matches-refresh" data-action="matches-refresh" aria-label="Actualiser les matchs">${creatorMatchesIcon("refresh")}Actualiser</button></div><div id="creator-matches-panel" data-creator-matches-panel data-matches-owner="${escapeHtml(creatorMatchesOwnerKey())}" data-matches-structure="${escapeHtml(creatorMatchesStructureSignature(config, capabilities))}">${creatorMatchesPanelMarkup()}</div></div>`;
 }
 
 function creatorMatchesPatchCurrent(current, next) {

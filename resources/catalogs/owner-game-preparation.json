@@ -12,11 +12,11 @@
       "categories": [
         "sandbox"
       ],
-      "artwork": "catalog/owner/minecraft-diamond-rush.webp",
+      "artwork": "covers/minecraft-diamond-rush.png",
       "ownerOnly": true,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "tested-java-1.20.4-2026-11-03",
       "effects": [
         {
           "id": "minecraft-diamond-rush-diamonds-add",
@@ -429,7 +429,10 @@
             "operation": "multiplier"
           }
         }
-      ]
+      ],
+      "coverArtwork": "covers/minecraft-diamond-rush.png",
+      "compatibilityNote": "Interactions ShenPulse pour Minecraft Java 1.20.4, avec serveur local installé automatiquement. Aucun mod client nécessaire.",
+      "interactionCatalogVersion": 2026110301
     },
     {
       "id": "minecraft-box-cyber",
@@ -440,11 +443,11 @@
       "categories": [
         "sandbox"
       ],
-      "artwork": "catalog/owner/minecraft-box-cyber.webp",
+      "artwork": "covers/minecraft-box-cyber.png",
       "ownerOnly": true,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "tested-java-1.20.4-2026-11-03",
       "effects": [
         {
           "id": "minecraft-box-cyber-step2",
@@ -632,16 +635,27 @@
           "name": "Fusée destructrice",
           "column": "trap",
           "category": "Piège",
-          "description": "Lance la fusée et retire la couche supérieure de la box.",
-          "command": "/shenpulse_box fusee {{viewer}}",
+          "description": "Propulse le joueur pendant la durée choisie, retire un bloc de la box puis le ramène automatiquement dans son arène.",
+          "command": "/shenpulse_box fusee {{seconds}} {{viewer}}",
           "commands": [
-            "/shenpulse_box fusee {{viewer}}"
+            "/shenpulse_box fusee {{seconds}} {{viewer}}"
           ],
-          "parameters": [],
+          "parameters": [
+            {
+              "id": "seconds",
+              "label": "Durée de la fusée (secondes)",
+              "type": "number",
+              "defaultValue": 8,
+              "min": 1,
+              "max": 30,
+              "step": 1
+            }
+          ],
           "service": "native",
-          "duration": 0,
+          "duration": 8,
           "quantity": 1,
-          "available": true
+          "available": true,
+          "durationParameter": "seconds"
         },
         {
           "id": "minecraft-box-cyber-win-add",
@@ -715,7 +729,10 @@
             "operation": "multiplier"
           }
         }
-      ]
+      ],
+      "coverArtwork": "covers/minecraft-box-cyber.png",
+      "compatibilityNote": "Interactions ShenPulse pour Minecraft Java 1.20.4, avec serveur local installé automatiquement. Aucun mod client nécessaire.",
+      "interactionCatalogVersion": 2026110301
     },
     {
       "id": "gtav-train",
@@ -29276,10 +29293,10 @@
         "adventure"
       ],
       "artwork": "catalog/owner/final-fantasy-1-pixel-remaster.jpg",
-      "ownerOnly": true,
+      "ownerOnly": false,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "gamepass-2026-11-02",
       "installer": {
         "steamAppIds": [
           "1173770"
@@ -30638,7 +30655,9 @@
           "duration": 0,
           "sortOrder": 111
         }
-      ]
+      ],
+      "compatibilityNote": "Interactions vérifiées sur Xbox / Game Pass. La première ouverture prépare le module local ; attendez la fin du chargement avant de lancer une partie.",
+      "minAppVersion": "2.1.3"
     },
     {
       "id": "final-fantasy-2-pixel-remaster",
@@ -30650,10 +30669,10 @@
         "adventure"
       ],
       "artwork": "catalog/owner/final-fantasy-2-pixel-remaster.jpg",
-      "ownerOnly": true,
+      "ownerOnly": false,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "gamepass-2026-11-02",
       "installer": {
         "steamAppIds": [
           "1173780"
@@ -31714,7 +31733,7 @@
         },
         {
           "id": "final-fantasy-2-pixel-remaster-giveitem-phoeni-down-8",
-          "code": "giveitem_Phoeni+Down_8",
+          "code": "giveitem_Phoenix+Down_8",
           "name": "Phoenix Down",
           "description": "Phoenix Down",
           "category": "Objets",
@@ -31964,7 +31983,9 @@
           "duration": 0,
           "sortOrder": 107
         }
-      ]
+      ],
+      "compatibilityNote": "Interactions vérifiées sur Xbox / Game Pass. La première ouverture prépare le module local ; attendez la fin du chargement avant de lancer une partie.",
+      "minAppVersion": "2.1.3"
     },
     {
       "id": "final-fantasy-3-pixel-remaster",
@@ -31976,10 +31997,10 @@
         "adventure"
       ],
       "artwork": "catalog/owner/final-fantasy-3-pixel-remaster.jpg",
-      "ownerOnly": true,
+      "ownerOnly": false,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "gamepass-2026-11-02",
       "installer": {
         "steamAppIds": [
           "1173790"
@@ -33194,7 +33215,9 @@
           "duration": 0,
           "sortOrder": 99
         }
-      ]
+      ],
+      "compatibilityNote": "Interactions vérifiées sur Xbox / Game Pass. La première ouverture prépare le module local ; attendez la fin du chargement avant de lancer une partie.",
+      "minAppVersion": "2.1.3"
     },
     {
       "id": "final-fantasy-4-pixel-remaster",
@@ -33206,10 +33229,10 @@
         "adventure"
       ],
       "artwork": "catalog/owner/final-fantasy-4-pixel-remaster.jpg",
-      "ownerOnly": true,
+      "ownerOnly": false,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "gamepass-2026-11-02",
       "installer": {
         "steamAppIds": [
           "1173800"
@@ -34604,7 +34627,9 @@
           "duration": 0,
           "sortOrder": 114
         }
-      ]
+      ],
+      "compatibilityNote": "Interactions vérifiées sur Xbox / Game Pass. La première ouverture prépare le module local ; attendez la fin du chargement avant de lancer une partie.",
+      "minAppVersion": "2.1.3"
     },
     {
       "id": "final-fantasy-5-pixel-remaster",
@@ -34616,10 +34641,10 @@
         "adventure"
       ],
       "artwork": "catalog/owner/final-fantasy-5-pixel-remaster.jpg",
-      "ownerOnly": true,
+      "ownerOnly": false,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "gamepass-2026-11-02",
       "installer": {
         "steamAppIds": [
           "1173810"
@@ -35870,7 +35895,9 @@
           "duration": 0,
           "sortOrder": 102
         }
-      ]
+      ],
+      "compatibilityNote": "Interactions vérifiées sur Xbox / Game Pass. La première ouverture prépare le module local ; attendez la fin du chargement avant de lancer une partie.",
+      "minAppVersion": "2.1.3"
     },
     {
       "id": "frog-sqwad",
@@ -35885,7 +35912,7 @@
       "ownerOnly": true,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "pending",
+      "inGameValidation": "tested-gamepass-solo-multiplayer-pending-2026-11-02",
       "installer": {
         "steamAppIds": [
           "3989960"
@@ -37069,7 +37096,8 @@
           "duration": 0,
           "sortOrder": 78
         }
-      ]
+      ],
+      "compatibilityNote": "Module ShenPulse vérifié en solo sur Frog Sqwad Xbox / Game Pass 2.0.7633. Les effets de coopération nécessitent plusieurs joueurs et restent à confirmer avec un second joueur."
     },
     {
       "id": "halo-combat-evolved",
@@ -56851,6 +56879,7 @@
       "id": "farming-simulator-25",
       "name": "Farming Simulator 25",
       "platforms": [
+        "steam",
         "game-pass"
       ],
       "categories": [
@@ -56860,7 +56889,7 @@
       "ownerOnly": true,
       "parameterOrderByCode": {},
       "stage": "prepared",
-      "inGameValidation": "tested-gamepass-2026-10-30",
+      "inGameValidation": "tested-steam-2026-11-03-gamepass-2026-10-30",
       "effects": [
         {
           "id": "farming-simulator-25-money1k",
@@ -57379,7 +57408,7 @@
           "available": true
         }
       ],
-      "compatibilityNote": "41 interactions vérifiées dans une partie solo Farming Simulator 25 sur Xbox / Game Pass 1.25. Activez Interactions ShenPulse dans les mods de la sauvegarde. Les remplissages demandent une remorque ou un réservoir compatible ; la croissance est traitée progressivement par le jeu."
+      "compatibilityNote": "41 interactions vérifiées dans des parties solo Farming Simulator 25 1.25 sur Steam et Xbox / Game Pass. Choisissez votre édition à l’installation, puis activez Interactions ShenPulse dans les mods de la sauvegarde. Les remplissages demandent une remorque ou un réservoir compatible ; la croissance est traitée progressivement par le jeu."
     },
     {
       "id": "snowrunner",

@@ -39,8 +39,11 @@ async function main() {
   await fs.promises.mkdir(cache, { recursive: true });
   const results = [];
   const requested = process.argv.filter(argument => argument.startsWith("--game=")).map(argument => argument.slice(7));
+  const version = process.argv.find(argument => argument.startsWith("--version="))?.slice(10);
   for (const gameId of requested) if (!manifest.assets.some(asset => asset.gameId === gameId)) throw new Error(`Jeu absent du registre de publication : ${gameId}`);
-  for (const asset of manifest.assets.filter(asset => !requested.length || requested.includes(asset.gameId))) {
+  const selected = manifest.assets.filter(asset => (!requested.length || requested.includes(asset.gameId)) && (!version || asset.version === version));
+  if (!selected.length) throw new Error("Aucun pack ne correspond à la sélection de publication");
+  for (const asset of selected) {
     process.stdout.write(`${asset.gameId}/${asset.id} : `);
     let uploaded = false;
     if (!await verifyRemote(asset)) {

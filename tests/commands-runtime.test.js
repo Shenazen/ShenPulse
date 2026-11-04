@@ -92,7 +92,7 @@ test("le service LIVE de production ignore les anciens messages conservés et ne
   const live = new LiveEventActionService({ store: f.store, sourceHub: f.sourceHub, actionRunner: f.actionRunner,
     overlayServer: { publish: (...args) => f.published.push(args) }, commandCooldowns: new Map(),
     onActivity: (...args) => f.activity.push(args), onChanged() {} });
-  assert.equal(live.chatbot.functionalOnly, true);
+  assert.equal(live.chatbot.requireConversationOptIn, true);
   live.chatbot.setIntervalFn = () => { throw new Error("Aucun scheduler de messages en production."); };
   live.chatbot.syncTimers(); await live.chatbot.tick();
   assert.equal(live.handleCommand(f.event()) instanceof Promise, true);

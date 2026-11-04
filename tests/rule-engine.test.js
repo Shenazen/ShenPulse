@@ -279,7 +279,7 @@ test("exécute chaque cadeau d'un lot comme une interaction distincte", async ()
     enabled: true,
     priority: 10,
     chance: 1,
-    trigger: { type: "gift", source: "*", threshold: 1 },
+    trigger: { type: "gift", repeatGiftCombos: true, source: "*", threshold: 1 },
     conditions: [
       { field: "data.giftName", operator: "equals", value: "Rose" }
     ],
@@ -323,7 +323,7 @@ test("conserve le reste d'un lot lorsque le seuil cadeau dépasse un", async () 
     name: "Deux Roses",
     enabled: true,
     chance: 1,
-    trigger: { type: "gift", source: "*", threshold: 2 },
+    trigger: { type: "gift", repeatGiftCombos: true, source: "*", threshold: 2 },
     conditions: [],
     cooldown: {},
     actions: [{ id: "pair_action", type: "test", config: {} }]
@@ -708,7 +708,7 @@ test("exécute les interactions du seul jeu dont la session est active", async (
     id: "game_rule",
     name: "Interaction du jeu",
     enabled: true,
-    trigger: { enabled: true, type: "gift", threshold: 1 },
+    trigger: { enabled: true, type: "gift", repeatGiftCombos: true, threshold: 1 },
     conditions: [],
     cooldown: {},
     chance: 1,

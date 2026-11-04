@@ -15,7 +15,7 @@
     const enabled = typeof overlaySoundEnabled === "undefined" || overlaySoundEnabled;
     const rawVolume = typeof parameters !== "undefined" ? parameters.get("soundVolume") : null;
     const parsed = rawVolume === null || String(rawVolume).trim() === "" ? 1 : Number(rawVolume) / 100;
-    const volume = Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 1;
+    const volume = typeof overlaySoundVolume !== "undefined" && typeof parameters !== "undefined" && parameters.has("soundVolume") ? overlaySoundVolume : Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 1;
     const muted = Boolean(preview || !enabled);
     return { muted, volume, audible: !muted && volume > 0 };
   }
@@ -32,6 +32,7 @@
   }
 
   function removeState(state) {
+    state.releaseAudio?.();
     state.active = false;
     state.attempt += 1;
     if (activeVideos.get(state.video) !== state) return;
@@ -87,7 +88,9 @@
     const settings = soundSettings();
     const muted = forceMuted || settings.muted;
     const attempt = ++state.attempt;
+    state.releaseAudio?.();
     state.video.volume = settings.volume;
+    state.releaseAudio = globalScope.ShenPulseAudio?.runtime.media(state.video, "matches", state.payload, () => soundSettings().muted ? 0 : soundSettings().volume);
     state.video.defaultMuted = muted;
     if (muted) state.video.setAttribute("muted", "");
     else state.video.removeAttribute("muted");
@@ -131,11 +134,11 @@
     updateNotice();
   }
 
-  function playMatchVideo(video, { isCurrent = () => true, onFailure = () => {} } = {}) {
+  function playMatchVideo(video, { isCurrent = () => true, onFailure = () => {}, volume = 1, originActionId = "" } = {}) {
     stopMatchVideoAudio(video);
     const source = sourceOf(video);
     if (!video || !source || video.isConnected === false) return Promise.resolve(false);
-    const state = { video, source, isCurrent, onFailure, active: true, blocked: false, attempt: 0 };
+    const state = { video, source, isCurrent, onFailure, payload: { volume, originActionId }, active: true, blocked: false, attempt: 0 };
     activeVideos.set(video, state);
     return attemptPlay(state, false);
   }

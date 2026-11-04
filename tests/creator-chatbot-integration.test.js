@@ -142,7 +142,7 @@ function assertSafeFixture(fixture) {
 }
 
 
-test("l’index réel expose uniquement Commandes après Interactions IRL, sans options de réponse ou de timer", async (t) => {
+test("l’index réel garde les commandes d’actions et ajoute les onglets conversationnels séparés", async (t) => {
   const fixture = await rendererFixture(t);
   const { window, state } = fixture;
   const before = JSON.stringify(state.commands);
@@ -164,7 +164,7 @@ test("l’index réel expose uniquement Commandes après Interactions IRL, sans 
   assert.equal(page.querySelectorAll(".chatbot-entry").length, 1);
   assert.equal(page.querySelector(".chatbot-tab"), null);
   assert.equal(page.querySelector(".chatbot-delivery"), null);
-  assert.doesNotMatch(page.textContent, /Auto-réponses|Messages programmés|ancien fonctionnement|Texte de réponse ancien/iu);
+  assert.doesNotMatch(page.textContent, /ancien fonctionnement|Texte de réponse ancien/iu);
   page.querySelector(".chatbot-hero-action").click();
   await until(() => document.querySelector('#editor-dialog[open] [data-chatbot-editor="command"]'), "L'éditeur de commandes manque.");
   fixture.flushFrames();

@@ -99,12 +99,8 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
   if (action === "open-game") {
     if (showProNavigationOffers("games")) return;
     if (!canNavigateTo("games")) return toast("Jeu indisponible", "Cette page est masquée par la configuration ShenPulse.", true);
-    const pack =
-      [MINECRAFT_LAUNCHER_ID,GTA_LAUNCHER_ID].includes(id)
-        ? visibleGamePacks().find(
-            (item) => item.id === id
-          )
-        : snapshot.packs.find((item) => item.id === id);
+    const pack = visibleGamePacks().find(item => item.id === id && item.modeSelector) ||
+      snapshot.packs.find(item => item.id === id);
     if (!pack) throw new Error("Jeu introuvable.");
     if (!pack.modeSelector && !canAccessGame(pack)) {
       return toast(
@@ -119,7 +115,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     ) {
       return openGamePurchaseDialog(pack);
     }
-    if (showActiveGameConflict(pack)) return;
+    if (!pack.customGameBuilder && showActiveGameConflict(pack)) return;
     if (!requireGameAccess(pack)) return;
     if (pack.modeSelector) return openMinecraftModeSelector(pack);
     currentPage = "games";
@@ -130,7 +126,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
     if (showProNavigationOffers("games")) return;
     if (!canNavigateTo("games")) return toast("Jeu indisponible", "Cette page est masquée par la configuration ShenPulse.", true);
     const pack = snapshot.packs.find(
-      (item) => item.id === id && [...MINECRAFT_MODE_IDS,...GTA_MODE_IDS].includes(item.id)
+      (item) => item.id === id && gameModeLauncherId(item.id)
     );
     if (!pack || !canAccessGame(pack)) {
       return toast(
@@ -722,7 +718,7 @@ async function handleNavigationAndGameEditorAction({ action, target, id }) {
       target.dataset.index
     );
     return perform(
-      () => testActionRow(row),
+      async () => { if(pack.customGame) await prepareCustomGameManualTest(pack,pack.effects.find(effect=>effect.id===row?.action.config.effectId)); return testActionRow(row); },
       "Interaction de jeu testée"
     );
   }

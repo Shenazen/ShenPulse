@@ -2,13 +2,15 @@
 (() => {
   const query = new URLSearchParams(location.search);
   const profile = query.get("profile") || "", packId = query.get("jeu") || "supermarket-simulator";
-  const compact = query.get("layout") === "compact";
+  const compact = query.get("layout") === "compact", fitCards = compact && query.get("fit") === "cards";
   let fixed = query.get("motion") === "fixed" || (!query.has("motion") && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
   const root = document.getElementById("pack"), cardsRoot = document.getElementById("cards"), reaction = document.getElementById("reaction");
   document.body.className = (compact ? "compact " : "") + (fixed ? "fixed" : "animated");
   const PAGE_SIZE = 6, PAGE_DURATION_MS = 8000;
+  let customLayout=null, layoutArea=null, pageCapacity=PAGE_SIZE;
   let pageIndex = 0, pageCount = 0, pageTimer = null, renderRevision=0, model=1;
   let currentProfileId = "", current = null, signature = "", source = null, retry = null, poll = null, documentValue = {}, initialized = false, lastBatch = "", reactionTimer;
+  const editorPreview = window.ShenPulseGamePackLayout.createPreviewReceiver({query,packId,profile,onChange: state => render(state)});
   const renderStatus = document.getElementById("render-status") || document.body.appendChild(document.createElement("div"));
   renderStatus.id = "render-status"; renderStatus.className = "pack-render-status";
   renderStatus.setAttribute("role", "status"); renderStatus.setAttribute("aria-live", "polite");
@@ -24,11 +26,33 @@
   function applyPresentation() {
     document.body.className = (compact ? "compact " : "") + (fixed ? "fixed" : "animated") + (model === 1 ? "" : " legacy model-" + model);
     root.dataset.model = String(model);
+    document.body.classList.toggle('custom-layout',!!customLayout);
+    document.body.classList.toggle('cards-sides',customLayout?.cardPlacement==='sides');
+    document.body.classList.toggle('traps-first',customLayout?.rowOrder==='trap-first');
+    reaction.style.removeProperty('top');
+    if(customLayout){
+      if (fitCards) { reaction.style.top = (layoutArea.gifts.y + layoutArea.gifts.height / 2) + 'px'; }
+      const b=layoutArea.gifts;Object.assign(cardsRoot.style,{left:b.x+'px',top:b.y+'px',width:b.width+'px',height:b.height+'px',right:'auto',bottom:'auto'});
+      root.style.setProperty('--card-scale',customLayout.cardSize/100);
+      root.style.setProperty('--cards-per-page',pageCapacity);
+    }else{cardsRoot.removeAttribute('style');root.style.removeProperty('--card-scale');}
+
   }
   setRenderStatus("loading");
   function resize() {
-    const height = compact ? Math.max(650, (cardsRoot.scrollHeight || 610) + 40) : Math.max(1920, (cardsRoot.scrollHeight || 0) + 140);
+    const height = customLayout ? 1920 : compact ? Math.max(650, (cardsRoot.scrollHeight || 610) + 40) : Math.max(1920, (cardsRoot.scrollHeight || 0) + 140);
     root.style.height = height + "px";
+    if (fitCards && customLayout && cardsRoot.querySelector('.pack-pages')) {
+      const pages = cardsRoot.querySelector('.pack-pages'), area = layoutArea.gifts;
+      // Retire l’espace réservé à la caméra/au jeu et les marges vides des colonnes.
+      // offsetTop/offsetHeight restent en pixels de dessin, quelle que soit la taille du studio.
+      const panel = { x: area.x, y: area.y + pages.offsetTop - 14, width: area.width, height: pages.offsetHeight + 28 };
+      const factor = Math.min(innerWidth / panel.width, innerHeight / panel.height);
+      root.style.transform = "scale(" + factor + ")";
+      root.style.left = ((innerWidth - panel.width * factor) / 2 - panel.x * factor) + "px";
+      root.style.top = ((innerHeight - panel.height * factor) / 2 - panel.y * factor) + "px";
+      return;
+    }
     const scale = Math.min(innerWidth / 1080, innerHeight / height);
     root.style.transform = "scale(" + scale + ")";
     root.style.left = (innerWidth - 1080 * scale) / 2 + "px";
@@ -87,14 +111,16 @@
     face.append(rays, foil, category, stars, art, title, detail); item.append(face); return item;
   }
   function render(state) {
-    state = state?.packs?.[packId] || state;
+    state = editorPreview.apply(state?.packs?.[packId] || state);
     const previousProfile = currentProfileId;
     current = valid(state) ? state : null;
     currentProfileId = current?.profileId || "";
     const presentation=current?.presentation||{};
     model=[1,2,3].includes(Number(presentation.model))?Number(presentation.model):1;
     fixed=model!==1||(presentation.configured===true?presentation.motion==="fixed":query.get("motion")==="fixed"||(!query.has("motion")&&window.matchMedia?.("(prefers-reduced-motion: reduce)").matches));
-    const next = JSON.stringify([current?.profileId || "", current?.cards || [],model,presentation.backgroundColor||""]);
+    customLayout=model===1?window.ShenPulseGamePackLayout?.normalize(presentation,packId):null;
+    layoutArea=customLayout?window.ShenPulseGamePackLayout.geometry(customLayout):null;pageCapacity=layoutArea?.capacity||PAGE_SIZE;
+    const next = JSON.stringify([customLayout,current?.profileId || "", current?.cards || [],model,presentation.backgroundColor||""]);
     if (next === signature) { if (root.getAttribute("aria-busy") !== "true") applyPresentation(); return; }
     signature = next; const revision = ++renderRevision;
     reaction.classList.remove("visible");
@@ -121,7 +147,7 @@
     applyPresentation();setRenderStatus("ready");
     const top = (current?.cards || []).filter(card => card.column === "help");
     const bottom = (current?.cards || []).filter(card => card.column === "trap" || card.column === "neutral");
-    pageCount = Math.max(Math.ceil(top.length / PAGE_SIZE), Math.ceil(bottom.length / PAGE_SIZE));
+    pageCount = Math.max(Math.ceil(top.length / pageCapacity), Math.ceil(bottom.length / pageCapacity));
     pageIndex = previousProfile !== current?.profileId ? 0 : Math.min(pageIndex, Math.max(0, pageCount - 1));
     cardsRoot.dataset.pages = String(pageCount);
     if (!pageCount) { cardsRoot.replaceChildren(); cardsRoot.dataset.page = "0"; syncPagination(); resize(); return; }
@@ -132,7 +158,7 @@
       for (const [rowName, entries] of [["help", top], ["trap", bottom]]) {
         const row = document.createElement("section"); row.className = "pack-row " + rowName;
         row.setAttribute("aria-label", rowName === "help" ? "Aides" : "Pièges et neutres");
-        entries.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE).forEach((card, slot) => row.append(createCard(card, slot, rowName)));
+        entries.slice(index * pageCapacity, (index + 1) * pageCapacity).forEach((card, slot) => row.append(createCard(card, slot, rowName)));
         page.append(row);
       }
       pages.append(page);
@@ -189,7 +215,7 @@
     source.addEventListener("game-pack-trigger", (event) => { try { message(JSON.parse(event.data)); } catch { /* Invalid event. */ } });
   }
   addEventListener("resize", resize);
-  addEventListener("pagehide", () => { source?.close(); clearTimeout(retry); clearInterval(poll); clearInterval(pageTimer); clearTimeout(reactionTimer); });
+  addEventListener("pagehide", () => { editorPreview.dispose(); source?.close(); clearTimeout(retry); clearInterval(poll); clearInterval(pageTimer); clearTimeout(reactionTimer); });
   // Read-only browser source: it never dispatches game effects or starts a LIVE.
   window.ShenPulseGamePack = { render, trigger };
   resize(); if (query.get("channel")) connectPublic(); else if (query.get("token")) connectLocal();

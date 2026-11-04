@@ -140,7 +140,7 @@
 
   /** Chaque jeu/mode visible compte une fois, même s’il possède plusieurs catégories. */
   function countGames(packs = [], category = "all") {
-    return packs.reduce((total, pack) => total + (pack.modeSelector && Array.isArray(pack.modes)
+    return packs.reduce((total, pack) => total + (pack.customGameBuilder ? 0 : pack.modeSelector && Array.isArray(pack.modes)
       ? countGames(pack.modes, category) : Number(matchesCategory(pack, category))), 0);
   }
 

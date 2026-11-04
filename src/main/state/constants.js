@@ -36,6 +36,7 @@ const ACCOUNT_SETTING_KEYS = [
   "liveDirectory",
   "irl",
   "tts",
+  "audioMixer",
   "obs",
   "spotify",
   "kick",

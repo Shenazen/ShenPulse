@@ -227,6 +227,7 @@ class WorkspaceManager {
     this.state.matchSession = createMatchSession(workspace.matchSession, { disconnected: true });
     this.state.settings.overlayConfigs = clone(workspace.overlayConfigs);
     this.state.settings.overlayScene = sceneLayout.normalizeScene(workspace.overlayScene);
+    this.state.game.customPacks = clone(workspace.game.customPacks || []);
     this.state.game.connectorOverrides = clone(
       workspace.game.connectorOverrides
     );

@@ -4,6 +4,7 @@
  * Les URL locales, les secrets et le canal des autres overlays restent exclus.
  * Ce module ne modifie ni le compte, ni les réglages, ni les compteurs LIVE.
  */
+const { stateControl } = require("../../../resources/overlays/audio-control");
 const { hasAuthenticatedAccount } = require("../account-access");
 const { PRO_ACCESS_PATHS, proFeatureAllowed } = require("../pro-feature-access");
 const { MATCH_OVERLAY_STATE_PATHS, projectMatchesOverlayState } = require("../matches-overlay-state");
@@ -16,7 +17,7 @@ const MATCH_WIDGET_URL_KEYS = Object.freeze({
   scoreboard: "matchesScoreboard"
 });
 const MATCH_WIDGET_CONTEXT_PATHS = Object.freeze([...new Set([
-  "settings.publicOverlayRelay", "settings.overlayPort", "settings.tiktok.roomId",
+  "settings.audioMixer", "settings.publicOverlayRelay", "settings.overlayPort", "settings.tiktok.roomId",
   ...PRO_ACCESS_PATHS, ...MATCH_OVERLAY_STATE_PATHS
 ])]);
 
@@ -32,7 +33,7 @@ function addPublicMatchWidgetUrls(urls, { store, state, includeRestricted = fals
 }
 
 function publicMatchWidgetState(state, allowed) {
-  return { matches: allowed ? projectMatchesOverlayState(state) : null };
+  return { matches: allowed ? projectMatchesOverlayState(state) : null, audioControl: stateControl(state) };
 }
 
 /** Identité de diffusion opaque : permet au lecteur de couper un ancien

@@ -90,6 +90,28 @@ test("WebSocket conserve le refus temporaire du jeu et expire les messages inval
   assert.equal(bridge.pending.size, 0);
 });
 
+test("WebSocket lit les enums natifs camelCase et ignore les notifications de durée portant le même ID", async (t) => {
+  const { bridge, client } = await connected(t);
+  client.once("message", data => {
+    const { id } = JSON.parse(data);
+    for (const packet of [
+      { id, type: "gameUpdate", status: "success" },
+      { id, type: "effectStatus", status: "success" },
+      { id, type: "effectRequest", status: "finished" },
+      { id, type: 0, status: 8 },
+      { id, type: "effectRequest", status: "unknown" },
+      { id, type: "effectRequest", status: "success", timeRemaining: 2000, message: "native acknowledgement" }
+    ]) client.send(JSON.stringify(packet));
+  });
+  assert.deepEqual(await bridge.send("fast_movement", { duration: 2000 }), {
+    ok: true, status: 0, requestId: 1, message: "native acknowledgement"
+  });
+  client.once("message", data => client.send(JSON.stringify({
+    id: JSON.parse(data).id, type: "effectRequest", status: "retry", message: "Installez un corps."
+  })));
+  await assert.rejects(bridge.send("fill_embalming_machine"), error => error.status === 3 && /corps/.test(error.message));
+});
+
 test("WebSocket refuse les pages Web et une configuration exposée au réseau", async (t) => {
   const { bridge } = await connected(t);
   const browser = new WebSocket(`ws://127.0.0.1:${bridge.port}/`, { origin: "https://example.test" });
@@ -136,6 +158,11 @@ test("le pack téléchargé est vérifié, extrait et déployé avec sauvegarde 
   assert.ok(!mod.includes(Buffer.from("crowdcontrol.live", "utf16le")));
   await assert.rejects(fs.access(path.join(stage, "Mods/CrowdControl.TheMortuaryAssistant.dll")));
   await fs.access(path.join(stage, "UserLibs/ConnectorLib.JSON.dll"));
+  const support = await fs.readFile(path.join(stage, "UserLibs/ShenPulse.Mortuary.Support.dll"));
+  assert.ok(support.includes(Buffer.from("TickPossession")));
+  assert.ok(support.includes(Buffer.from("TestFill")));
+  await assert.rejects(fs.access(path.join(stage, "Mods/ShenPulse.Mortuary.Qa.dll")));
+  assert.equal(manifest.version, "1.0.2");
   await fs.access(path.join(stage, "MelonLoader/net6/MelonLoader.dll"));
   const target = path.join(directory, "game");
   const backup = path.join(directory, "backup");

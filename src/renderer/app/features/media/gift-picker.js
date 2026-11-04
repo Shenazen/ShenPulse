@@ -1,3 +1,9 @@
+function giftComboRepeatField(repeat = false, name = "repeatGiftCombos", attributes = "") {
+  const label = "Répéter avec les combos de cadeaux ?";
+  const help = "Décoché : un combo de 20 roses déclenche une seule exécution. Coché : chaque rose déclenche une exécution, soit 5 exécutions pour 5 roses. Le seuil du déclencheur reste appliqué.";
+  return `<div class="gift-combo-option full"><label><input type="checkbox" name="${escapeHtml(name)}" value="true" ${repeat === true ? "checked" : ""} ${attributes}><span>${label}</span></label><span class="field-label-with-info"><button type="button" class="field-info-button" aria-label="Information : ${label}" title="${escapeHtml(help)}">i</button><span class="field-info-popover" role="tooltip">${help}</span></span></div>`;
+}
+
 function giftPickerField(
   name,
   label,
@@ -30,6 +36,47 @@ function giftPickerField(
   </div>`;
 }
 
+function giftTriggerSelectionRow({ giftName, giftLabel }, condition = {}, index = 0) {
+  const operator = condition.operator === "notEquals" ? "notEquals" : "equals";
+  return `<div class="gift-trigger-selection-row" data-gift-trigger-row>
+    ${giftPickerField(giftName, index ? `${giftLabel} ${index + 1}` : giftLabel, condition.value || "", "", "", condition.giftId || "", condition)}
+    <label class="field gift-trigger-selection-policy"><span>Ce cadeau</span><select name="${escapeHtml(giftName)}Operator" aria-label="Comportement du cadeau ${index + 1}">
+      <option value="equals" ${operator === "equals" ? "selected" : ""}>Déclenche</option>
+      <option value="notEquals" ${operator === "notEquals" ? "selected" : ""}>Ne déclenche pas</option>
+    </select></label>
+    <div class="gift-trigger-selection-buttons"><button type="button" class="button small" data-gift-trigger-add aria-label="Ajouter un autre cadeau" title="Ajouter un autre cadeau">+</button><button type="button" class="button small ghost" data-gift-trigger-remove aria-label="Retirer ce cadeau du déclencheur" title="Retirer ce cadeau du déclencheur">−</button></div>
+  </div>`;
+}
+
+function handleGiftTriggerSelectionClick(event) {
+  const button = event.target.closest("[data-gift-trigger-add], [data-gift-trigger-remove]");
+  if (!button || button.disabled) return false;
+  const root = button.closest("[data-gift-trigger-condition]"), row = button.closest("[data-gift-trigger-row]");
+  if (!root || !row) return false;
+  event.preventDefault();
+  const rows = root.querySelectorAll("[data-gift-trigger-row]");
+  if (button.hasAttribute("data-gift-trigger-remove")) {
+    if (rows.length > 1) row.remove();
+    else {
+      row.querySelectorAll("input").forEach(input => { input.value = ""; });
+      updateGiftPickerSelection(row.querySelector("[data-gift-picker-root]"));
+    }
+  } else {
+    const config = JSON.parse(root.dataset.giftTriggerConfig);
+    row.insertAdjacentHTML("afterend", giftTriggerSelectionRow(config, {}, rows.length));
+    const input = row.nextElementSibling?.querySelector("[data-gift-picker]");
+    Promise.resolve().then(() => { if (input?.isConnected) input.focus(); });
+  }
+  const config = JSON.parse(root.dataset.giftTriggerConfig);
+  root.querySelectorAll("[data-gift-trigger-row]").forEach((entry, index) => {
+    const label = entry.querySelector("[data-gift-picker-root] > span");
+    if (label) label.textContent = index ? `${config.giftLabel} ${index + 1}` : config.giftLabel;
+    entry.querySelector("select")?.setAttribute("aria-label", `Comportement du cadeau ${index + 1}`);
+  });
+  if (typeof scheduleOverlayLivePreview === "function" && root.closest("[data-overlay-config-editor]")) scheduleOverlayLivePreview();
+  return true;
+}
+
 function giftTriggerConditionFields(
   conditions = [],
   {
@@ -40,7 +87,9 @@ function giftTriggerConditionFields(
     giftValue,
     modeName = "giftTriggerMode",
     operatorName = "giftValueOperator",
-    amountName = "giftValueAmount"
+    amountName = "giftValueAmount",
+    repeatGiftCombos = false,
+    comboFieldName = "repeatGiftCombos"
   } = {}
 ) {
   const valueCondition = giftValueCondition(conditions);
@@ -48,13 +97,14 @@ function giftTriggerConditionFields(
   const selectedGiftValue = giftValue === undefined
     ? conditionValue(conditions, "data.giftName", "equals")
     : giftValue;
-  const selectedGiftCondition = (conditions || []).find(
+  const selectedGiftConditions = (conditions || []).filter(
     (condition) =>
       condition.field === "data.giftName" &&
-      String(condition.operator || "equals") === "equals"
+      ["equals", "notEquals"].includes(String(condition.operator || "equals"))
   );
+  if (!selectedGiftConditions.length) selectedGiftConditions.push({ ...savedReference, value: selectedGiftValue, giftId });
   const currentMode = valueCondition ? "value" : "specific";
-  return `<div class="gift-trigger-condition full" data-gift-trigger-condition>
+  return `<div class="gift-trigger-condition full" data-gift-trigger-condition data-gift-trigger-config="${escapeHtml(JSON.stringify({ giftName, giftLabel }))}">
     <div class="gift-trigger-mode-heading">
       <span>Méthode de déclenchement</span>
       <small>Choisissez une seule façon d’identifier les cadeaux concernés.</small>
@@ -63,7 +113,7 @@ function giftTriggerConditionFields(
       <label class="gift-trigger-mode-option">
         <input type="radio" name="${escapeHtml(modeName)}" value="specific" data-gift-trigger-mode ${currentMode === "specific" ? "checked" : ""}>
         <span class="gift-trigger-mode-icon" aria-hidden="true">🎁</span>
-        <span class="gift-trigger-mode-copy"><strong>Cadeau précis</strong><small>Choisir un cadeau dans le catalogue TikTok</small></span>
+        <span class="gift-trigger-mode-copy"><strong>Cadeaux au choix</strong><small>Autoriser ou exclure un ou plusieurs cadeaux</small></span>
         <span class="gift-trigger-mode-check" aria-hidden="true">✓</span>
       </label>
       <label class="gift-trigger-mode-option">
@@ -74,15 +124,8 @@ function giftTriggerConditionFields(
       </label>
     </div>
     <div class="gift-trigger-panel" data-gift-trigger-panel="specific" ${currentMode === "specific" ? "" : "hidden"}>
-      ${giftPickerField(
-        giftName,
-        giftLabel,
-        selectedGiftValue,
-        currentMode === "specific" ? "" : "disabled",
-        "",
-        giftId || selectedGiftCondition?.giftId || "",
-        savedReference || selectedGiftCondition || {}
-      )}
+      <div class="gift-trigger-selection-list">${selectedGiftConditions.map((condition, index) => giftTriggerSelectionRow({ giftName, giftLabel }, condition, index)).join("")}</div>
+      <small class="gift-trigger-selection-help">Plusieurs cadeaux « Déclenche » : l’un ou l’autre suffit. Un cadeau « Ne déclenche pas » est toujours exclu. Avec uniquement des exclusions, tous les autres cadeaux déclenchent l’action. Une ligne vide est ignorée.</small>
     </div>
     <div class="gift-trigger-panel gift-value-condition" data-gift-trigger-panel="value" ${currentMode === "value" ? "" : "hidden"}>
       <label class="field">
@@ -99,6 +142,7 @@ function giftTriggerConditionFields(
         <input name="${escapeHtml(amountName)}" type="number" min="1" step="1" value="${escapeHtml(valueCondition?.value ?? "")}" placeholder="500" ${currentMode === "value" ? "" : "disabled"}>
       </label>
     </div>
+    ${giftComboRepeatField(repeatGiftCombos, comboFieldName)}
     <small class="gift-trigger-condition-note">La méthode sélectionnée remplace l’autre : elles ne sont jamais cumulées.</small>
   </div>`;
 }

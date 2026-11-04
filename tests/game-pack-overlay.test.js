@@ -41,7 +41,7 @@ test("URL dédiée publique et locale, droits Pro et filtrage des canaux", () =>
   assert.equal(catalog.acceptsChannel({ view: "game-pack", channel: "configuration" }), false);
 });
 test("rendu navigateur: toutes les cartes, aucun HTML injecté, changement de profil masqué", () => {
-  const dom = new JSDOM(fs.readFileSync(path.join(__dirname, "../resources/overlays/game-pack.html"), "utf8"), { runScripts: "outside-only", url: "https://overlay.test/game-pack.html?profile=profile-a" });
+  const dom = new JSDOM(fs.readFileSync(path.join(__dirname, "../resources/overlays/game-pack.html"), "utf8"), { runScripts: "outside-only", beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); }, url: "https://overlay.test/game-pack.html?profile=profile-a" });
   dom.window.eval(fs.readFileSync(path.join(__dirname, "../resources/overlays/runtime/game-pack.js"), "utf8"));
   const { state } = fixture(), projection = createGamePackOverlay(state); projection.cards[0].title = '<img src=x onerror="evil()">';
   projection.cards.push({ ...projection.cards[0], id: "second", title: "Piège", column: "trap" });
@@ -100,7 +100,7 @@ test("le relais publie les changements de règles et de profil, puis les animati
 });
 
 test("les rayons, reflets, cadeaux flottants et le logo survivent aux mises à jour sans redémarrer à chaque sondage", () => {
-  const dom = new JSDOM(fs.readFileSync(path.join(__dirname, "../resources/overlays/game-pack.html"), "utf8"), { runScripts: "outside-only", url: "https://overlay.test/game-pack.html?profile=profile-a&motion=animated" });
+  const dom = new JSDOM(fs.readFileSync(path.join(__dirname, "../resources/overlays/game-pack.html"), "utf8"), { runScripts: "outside-only", beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); }, url: "https://overlay.test/game-pack.html?profile=profile-a&motion=animated" });
   dom.window.eval(fs.readFileSync(path.join(__dirname, "../resources/overlays/runtime/game-pack.js"), "utf8"));
   const { state } = fixture(), projection = createGamePackOverlay(state), runtime = dom.window.ShenPulseGamePack, doc = dom.window.document;
   runtime.render(projection); const node = doc.querySelector(".gift-card");
@@ -115,7 +115,7 @@ test("les rayons, reflets, cadeaux flottants et le logo survivent aux mises à j
 });
 test("le mode fixe garde logo, cartes et cadeaux sans mouvement ; le choix animé explicite prime sur la préférence système", () => {
   for (const mode of ["fixed", "animated"]) {
-    const dom = new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>', { runScripts: "outside-only", url: "https://overlay.test/game-pack.html?motion=" + mode });
+    const dom = new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>', { runScripts: "outside-only", beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); }, url: "https://overlay.test/game-pack.html?motion=" + mode });
     dom.window.matchMedia = () => ({ matches: true });
     dom.window.eval(fs.readFileSync(path.join(__dirname, "../resources/overlays/runtime/game-pack.js"), "utf8"));
     dom.window.ShenPulseGamePack.render(createGamePackOverlay(fixture().state));
@@ -124,7 +124,7 @@ test("le mode fixe garde logo, cartes et cadeaux sans mouvement ; le choix anim�
 });
 
 function paginationFixture({ top = 7, bottom = 8, neutral = 0, motion = "animated" } = {}) {
-  const dom = new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>', { runScripts: "outside-only", url: "https://overlay.test/game-pack.html?profile=profile-a&motion=" + motion });
+  const dom = new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>', { runScripts: "outside-only", beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); }, url: "https://overlay.test/game-pack.html?profile=profile-a&motion=" + motion });
   let now = 0, sequence = 0; const timers = new Map();
   dom.window.setInterval = (callback, interval) => { const id = ++sequence; timers.set(id, { callback, interval, next: now + interval }); return id; };
   dom.window.clearInterval = id => timers.delete(id);

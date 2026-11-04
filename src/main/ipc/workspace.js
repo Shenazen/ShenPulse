@@ -10,7 +10,7 @@ const { sanitizeEntity, cleanTikTokUsername } = require("./sanitizers");
 const { notify } = require("./notifications");
 const { readState } = require("../state-projection");
 const { normalizeChatbotCommand } = require("../../shared/chatbot-command");
-const { assertCommandsAccess } = require("../chatbot-service");
+const { assertCommandsAccess, assertChatbotAccess } = require("../chatbot-service");
 const { synchronizeGiftCatalogScope } = require("../core/gift-scope");
 
 /** Une transition de profil appartient à une connexion précise, pas seulement
@@ -54,16 +54,19 @@ function registerWorkspaceIpc({ handle, core, store, accountService = null }) {
     let entity = sanitizeEntity(item);
     if (collection === "commands") {
       assertCommandsAccess(store);
-      if ((entity.kind || "command") !== "command" || !entity.execution) {
-        throw new Error("Une commande doit commencer par ! et déclencher la musique, une action ou un overlay.");
+      const conversational = !entity.execution;
+      if (conversational) {
+        if (entity.conversationVersion !== 1) throw new Error("Choisissez une nouvelle réponse du chatbot pour déclencher un message. Les anciennes réponses restent inactives.");
+        assertChatbotAccess(store);
       }
       // Les anciens messages conservés sur disque sont inactifs et ne
       // réservent plus leur nom dans la nouvelle page Commandes.
       entity = normalizeChatbotCommand(entity, { commands: (readState(store, ["commands"]).commands || [])
-        .filter((entry) => (entry.kind || "command") === "command" && entry.execution) });
+        .filter((entry) => entry.execution || entry.conversationVersion === 1) });
+      if (conversational) entity.conversationVersion = 1;
       // Une cible indisponible peut être conservée dans une commande désactivée,
       // jamais activée implicitement ni remplacée par une autre action.
-      if (entity.enabled !== false) {
+      if (!conversational && entity.enabled !== false) {
         const executor = core.liveEventActions?.commandExecutor;
         if (!executor) throw new Error("Le moteur des commandes n’est pas disponible.");
         if (!songRequestCommandKey(entity)) executor.validateTargets(entity);

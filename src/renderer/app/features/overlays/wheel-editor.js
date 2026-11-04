@@ -34,6 +34,7 @@ function openWheelOverlayConfig(item, rawConfig = null) {
   </section>`;
   const advanced = `<details class="dialog-advanced"><summary>Réglages avancés</summary>
     ${dialogSection("Déclenchement", "Lancez cette roue manuellement, par une action ou par un cadeau TikTok.", giftTriggerConditionFields(wheelGiftValueConditions(wheel), {
+      repeatGiftCombos: wheel.repeatGiftCombos,
       giftName: "wheelTrigger", giftLabel: "Cadeau TikTok", giftValue: wheel.trigger,
       giftId: wheel.triggerGift?.giftId || "", savedReference: wheel.triggerGift,
       modeName: "wheelGiftTriggerMode", operatorName: "wheelGiftValueOperator", amountName: "wheelGiftValueAmount"

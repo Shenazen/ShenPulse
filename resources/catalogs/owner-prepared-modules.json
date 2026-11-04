@@ -84,7 +84,7 @@
     }
   },
   "final-fantasy-1-pixel-remaster": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "port": 58803,
     "durationMultiplier": 1000,
     "asset": {
@@ -93,14 +93,66 @@
       "fileName": "final-fantasy-1-pixel-remaster-shenpulse-1.0.0.zip",
       "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-1-pixel-remaster/1.0.0/final-fantasy-1-pixel-remaster-shenpulse-1.0.0.zip",
       "size": 34521193,
-      "sha256": "ad4bd7dc218b8cf65d473858443e6df8eeff70875b9b331fbaf702b9709af88f"
+      "sha256": "ad4bd7dc218b8cf65d473858443e6df8eeff70875b9b331fbaf702b9709af88f",
+      "platforms": [
+        "steam",
+        ""
+      ]
     },
     "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
     "moduleSha256": "16cffef82a2dc0ba5b0ad194f6c52950f076d94a06fa396b6c31d68b4719dd94",
-    "inGameValidation": "pending"
+    "inGameValidation": "gamepass-2026-11-02",
+    "additionalAssets": [
+      {
+        "id": "xbox-module",
+        "action": "extract",
+        "platforms": [
+          "xbox"
+        ],
+        "fileName": "final-fantasy-1-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+        "size": 35615916,
+        "sha256": "649a7f8ec8f139d0231e0a044eb3da79cbd84f437ea3208100211765523ab766",
+        "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-1-pixel-remaster/1.0.1/final-fantasy-1-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+      }
+    ],
+    "platformModules": {
+      "xbox": {
+        "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+        "moduleSha256": "12b816db9797459ff5caa07a75267ce6213c01f35fd3d43774e514e937c1601e",
+        "moduleDependencies": {
+          "BepInEx/plugins/CrowdControl/ShenPulse.FinalFantasy.Runtime.dll": "b3c2f0ff2ac4bd2c1bb217d3630156fdcf626600e9c07eef2738de7509f93a19",
+          "winhttp.dll": "d3b62f4c9c3e2196ef82603c52d6b98c043a0d6c125c081fd33d7ca3798b41b8",
+          "BepInEx/core/BepInEx.Unity.IL2CPP.dll": "d77b1d354f74db1602ed4dc10b4f0ec204387e483672cd5b66a65eda223930d1"
+        }
+      }
+    },
+    "installer": {
+      "steamAppIds": [
+        "1173770"
+      ],
+      "directoryNames": [
+        "Final Fantasy"
+      ],
+      "executables": [
+        "FINAL FANTASY.exe"
+      ],
+      "xboxDirectoryNames": [
+        "FINAL FANTASY"
+      ],
+      "xboxIdentity": "39EA002F.FF1DF",
+      "launchExecutables": [
+        "gamelaunchhelper.exe",
+        "FINAL FANTASY.exe"
+      ],
+      "singleInstanceProcesses": [
+        "FINAL FANTASY"
+      ],
+      "detectPlatform": true,
+      "requireLaunchExecutable": true
+    }
   },
   "final-fantasy-2-pixel-remaster": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "port": 58804,
     "durationMultiplier": 1000,
     "asset": {
@@ -109,14 +161,66 @@
       "fileName": "final-fantasy-2-pixel-remaster-shenpulse-1.0.0.zip",
       "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-2-pixel-remaster/1.0.0/final-fantasy-2-pixel-remaster-shenpulse-1.0.0.zip",
       "size": 34522249,
-      "sha256": "e92fea86e15aa5c030bd82f1f617357b5de509529086d38887c4d8802d4b2b24"
+      "sha256": "e92fea86e15aa5c030bd82f1f617357b5de509529086d38887c4d8802d4b2b24",
+      "platforms": [
+        "steam",
+        ""
+      ]
     },
     "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
     "moduleSha256": "e86fcab0c7c64717eb49e7735251891197b1e5043f2ce7a35a994137476a68cd",
-    "inGameValidation": "pending"
+    "inGameValidation": "gamepass-2026-11-02",
+    "additionalAssets": [
+      {
+        "id": "xbox-module",
+        "action": "extract",
+        "platforms": [
+          "xbox"
+        ],
+        "fileName": "final-fantasy-2-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+        "size": 35616969,
+        "sha256": "a8cf79c40cb6913ad606abf782c6cd7c8489eca3c04555071ec996a31b31a4fa",
+        "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-2-pixel-remaster/1.0.1/final-fantasy-2-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+      }
+    ],
+    "platformModules": {
+      "xbox": {
+        "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+        "moduleSha256": "e2a7bd392715ede8f921f9cf2d265adb13d3e0abecfc0614248b50b453232c3b",
+        "moduleDependencies": {
+          "BepInEx/plugins/CrowdControl/ShenPulse.FinalFantasy.Runtime.dll": "b3c2f0ff2ac4bd2c1bb217d3630156fdcf626600e9c07eef2738de7509f93a19",
+          "winhttp.dll": "d3b62f4c9c3e2196ef82603c52d6b98c043a0d6c125c081fd33d7ca3798b41b8",
+          "BepInEx/core/BepInEx.Unity.IL2CPP.dll": "d77b1d354f74db1602ed4dc10b4f0ec204387e483672cd5b66a65eda223930d1"
+        }
+      }
+    },
+    "installer": {
+      "steamAppIds": [
+        "1173780"
+      ],
+      "directoryNames": [
+        "Final Fantasy II"
+      ],
+      "executables": [
+        "FINAL FANTASY II.exe"
+      ],
+      "xboxDirectoryNames": [
+        "FINAL FANTASY II"
+      ],
+      "xboxIdentity": "39EA002F.FF2DF",
+      "launchExecutables": [
+        "gamelaunchhelper.exe",
+        "FINAL FANTASY II.exe"
+      ],
+      "singleInstanceProcesses": [
+        "FINAL FANTASY II"
+      ],
+      "detectPlatform": true,
+      "requireLaunchExecutable": true
+    }
   },
   "final-fantasy-3-pixel-remaster": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "port": 58805,
     "durationMultiplier": 1000,
     "asset": {
@@ -125,14 +229,66 @@
       "fileName": "final-fantasy-3-pixel-remaster-shenpulse-1.0.0.zip",
       "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-3-pixel-remaster/1.0.0/final-fantasy-3-pixel-remaster-shenpulse-1.0.0.zip",
       "size": 34520793,
-      "sha256": "67d2ef5e1aa54914b75a4b817440ecd218cce94d4baabb5a3dd3a242daefea9a"
+      "sha256": "67d2ef5e1aa54914b75a4b817440ecd218cce94d4baabb5a3dd3a242daefea9a",
+      "platforms": [
+        "steam",
+        ""
+      ]
     },
     "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
     "moduleSha256": "6fe80558e2bcde5a1ab15b3196b28cdcf3db4b6a2a94b467a8ede2c2c67fcb4b",
-    "inGameValidation": "pending"
+    "inGameValidation": "gamepass-2026-11-02",
+    "additionalAssets": [
+      {
+        "id": "xbox-module",
+        "action": "extract",
+        "platforms": [
+          "xbox"
+        ],
+        "fileName": "final-fantasy-3-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+        "size": 35615389,
+        "sha256": "2eaf0988c0ea520539515607e43e6b87f007e455d84d531d9f57445b3ac41672",
+        "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-3-pixel-remaster/1.0.1/final-fantasy-3-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+      }
+    ],
+    "platformModules": {
+      "xbox": {
+        "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+        "moduleSha256": "ff77601adc77cd247544e1d3903f8f2dfc0b7706ea1b9a40436a32c434150076",
+        "moduleDependencies": {
+          "BepInEx/plugins/CrowdControl/ShenPulse.FinalFantasy.Runtime.dll": "b3c2f0ff2ac4bd2c1bb217d3630156fdcf626600e9c07eef2738de7509f93a19",
+          "winhttp.dll": "d3b62f4c9c3e2196ef82603c52d6b98c043a0d6c125c081fd33d7ca3798b41b8",
+          "BepInEx/core/BepInEx.Unity.IL2CPP.dll": "d77b1d354f74db1602ed4dc10b4f0ec204387e483672cd5b66a65eda223930d1"
+        }
+      }
+    },
+    "installer": {
+      "steamAppIds": [
+        "1173790"
+      ],
+      "directoryNames": [
+        "Final Fantasy III"
+      ],
+      "executables": [
+        "FINAL FANTASY III.exe"
+      ],
+      "xboxDirectoryNames": [
+        "FINAL FANTASY III"
+      ],
+      "xboxIdentity": "39EA002F.FF3DF",
+      "launchExecutables": [
+        "gamelaunchhelper.exe",
+        "FINAL FANTASY III.exe"
+      ],
+      "singleInstanceProcesses": [
+        "FINAL FANTASY III"
+      ],
+      "detectPlatform": true,
+      "requireLaunchExecutable": true
+    }
   },
   "final-fantasy-4-pixel-remaster": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "port": 58806,
     "durationMultiplier": 1000,
     "asset": {
@@ -141,14 +297,66 @@
       "fileName": "final-fantasy-4-pixel-remaster-shenpulse-1.0.0.zip",
       "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-4-pixel-remaster/1.0.0/final-fantasy-4-pixel-remaster-shenpulse-1.0.0.zip",
       "size": 47612065,
-      "sha256": "bfdf7c9d04b048030efc89d78e4509fa6226ed627517a9a6380a899a0205e5b6"
+      "sha256": "bfdf7c9d04b048030efc89d78e4509fa6226ed627517a9a6380a899a0205e5b6",
+      "platforms": [
+        "steam",
+        ""
+      ]
     },
     "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
     "moduleSha256": "2f87d3e90b16f9b7d7823b27f62de71fd7a8dafd723999bf946e73086432077c",
-    "inGameValidation": "pending"
+    "inGameValidation": "gamepass-2026-11-02",
+    "additionalAssets": [
+      {
+        "id": "xbox-module",
+        "action": "extract",
+        "platforms": [
+          "xbox"
+        ],
+        "fileName": "final-fantasy-4-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+        "size": 36968884,
+        "sha256": "5efcf9975c44e11fd8f8e96e967adfbdb13fc387aa3aa896a48fd6d91847da3e",
+        "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-4-pixel-remaster/1.0.1/final-fantasy-4-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+      }
+    ],
+    "platformModules": {
+      "xbox": {
+        "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+        "moduleSha256": "40739d555cc0cfc409089fe37f147120c2f7ef4b078956f4ef5bcebffc246a32",
+        "moduleDependencies": {
+          "BepInEx/plugins/CrowdControl/ShenPulse.FinalFantasy.Runtime.dll": "b3c2f0ff2ac4bd2c1bb217d3630156fdcf626600e9c07eef2738de7509f93a19",
+          "winhttp.dll": "d3b62f4c9c3e2196ef82603c52d6b98c043a0d6c125c081fd33d7ca3798b41b8",
+          "BepInEx/core/BepInEx.Unity.IL2CPP.dll": "d77b1d354f74db1602ed4dc10b4f0ec204387e483672cd5b66a65eda223930d1"
+        }
+      }
+    },
+    "installer": {
+      "steamAppIds": [
+        "1173800"
+      ],
+      "directoryNames": [
+        "Final Fantasy IV"
+      ],
+      "executables": [
+        "FINAL FANTASY IV.exe"
+      ],
+      "xboxDirectoryNames": [
+        "FINAL FANTASY IV"
+      ],
+      "xboxIdentity": "39EA002F.FF4DF",
+      "launchExecutables": [
+        "gamelaunchhelper.exe",
+        "FINAL FANTASY IV.exe"
+      ],
+      "singleInstanceProcesses": [
+        "FINAL FANTASY IV"
+      ],
+      "detectPlatform": true,
+      "requireLaunchExecutable": true
+    }
   },
   "final-fantasy-5-pixel-remaster": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "port": 58807,
     "durationMultiplier": 1000,
     "asset": {
@@ -157,27 +365,104 @@
       "fileName": "final-fantasy-5-pixel-remaster-shenpulse-1.0.0.zip",
       "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-5-pixel-remaster/1.0.0/final-fantasy-5-pixel-remaster-shenpulse-1.0.0.zip",
       "size": 48294919,
-      "sha256": "69e0aadd772638b18f161bc1fd94afdd8dc3008a3b0f23876fa9d0dc8446372e"
+      "sha256": "69e0aadd772638b18f161bc1fd94afdd8dc3008a3b0f23876fa9d0dc8446372e",
+      "platforms": [
+        "steam",
+        ""
+      ]
     },
     "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
     "moduleSha256": "6b4f49c99855a1582ea1384d3ae61161328ee3cbf3ada6acb2d98606b5e9f6a9",
-    "inGameValidation": "pending"
+    "inGameValidation": "gamepass-2026-11-02",
+    "additionalAssets": [
+      {
+        "id": "xbox-module",
+        "action": "extract",
+        "platforms": [
+          "xbox"
+        ],
+        "fileName": "final-fantasy-5-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+        "size": 36973781,
+        "sha256": "f13a1ee00879d05a281c0b6aa488e025be26a879be1aceb40df2512dc43f5c23",
+        "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/final-fantasy-5-pixel-remaster/1.0.1/final-fantasy-5-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+      }
+    ],
+    "platformModules": {
+      "xbox": {
+        "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
+        "moduleSha256": "74a0a765027e1cf1f9bac857887dabd37697d0c551685cada4e1793c8eb3f059",
+        "moduleDependencies": {
+          "BepInEx/plugins/CrowdControl/ShenPulse.FinalFantasy.Runtime.dll": "b3c2f0ff2ac4bd2c1bb217d3630156fdcf626600e9c07eef2738de7509f93a19",
+          "winhttp.dll": "d3b62f4c9c3e2196ef82603c52d6b98c043a0d6c125c081fd33d7ca3798b41b8",
+          "BepInEx/core/BepInEx.Unity.IL2CPP.dll": "d77b1d354f74db1602ed4dc10b4f0ec204387e483672cd5b66a65eda223930d1"
+        }
+      }
+    },
+    "installer": {
+      "steamAppIds": [
+        "1173810"
+      ],
+      "directoryNames": [
+        "Final Fantasy V"
+      ],
+      "executables": [
+        "FINAL FANTASY V.exe"
+      ],
+      "xboxDirectoryNames": [
+        "FINAL FANTASY V"
+      ],
+      "xboxIdentity": "39EA002F.FF5DF",
+      "launchExecutables": [
+        "gamelaunchhelper.exe",
+        "FINAL FANTASY V.exe"
+      ],
+      "singleInstanceProcesses": [
+        "FINAL FANTASY V"
+      ],
+      "detectPlatform": true,
+      "requireLaunchExecutable": true
+    }
   },
   "frog-sqwad": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "port": 58808,
+    "installer": {
+      "directoryNames": [
+        "Frog Sqwad",
+        "FrogSqwad"
+      ],
+      "steamAppIds": [
+        "3989960"
+      ],
+      "executables": [
+        "FrogSqwad.exe",
+        "Frog Sqwad.exe"
+      ],
+      "launchExecutables": [
+        "gamelaunchhelper.exe",
+        "FrogSqwad.exe",
+        "Frog Sqwad.exe"
+      ],
+      "singleInstanceProcesses": [
+        "FrogSqwad",
+        "Frog Sqwad"
+      ]
+    },
     "durationMultiplier": 1000,
     "asset": {
       "id": "module",
       "action": "extract",
-      "fileName": "frog-sqwad-shenpulse-1.0.0.zip",
-      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/frog-sqwad/1.0.0/frog-sqwad-shenpulse-1.0.0.zip",
-      "size": 748182,
-      "sha256": "f6ecdb5e077701a2f46eaf8c95b8316cff79d4631946b32c90020af14d9eed16"
+      "fileName": "frog-sqwad-shenpulse-1.0.1.zip",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/frog-sqwad/1.0.1/frog-sqwad-shenpulse-1.0.1.zip",
+      "size": 764905,
+      "sha256": "f08729ec64b19dbaa8677336d5926b32b54a981a2b9685a2372fb20861b8a212"
     },
     "module": "BepInEx/plugins/CrowdControl/CrowdControl.dll",
-    "moduleSha256": "665b10f6c385bc977c7ca732f8d54191bd36bf685efb1dc063ca85f6666a1a72",
-    "inGameValidation": "pending"
+    "moduleSha256": "28057183fd4c9f01fc9d9f610665509b35f440812ee3e47c811497b7adee8c3d",
+    "inGameValidation": "tested-gamepass-solo-multiplayer-pending-2026-11-02",
+    "moduleDependencies": {
+      "BepInEx/plugins/CrowdControl/ShenPulse.Frog.Runtime.dll": "a444733f018d596c8fb04db8e44f657246b942dfbc987ae8690993b98ee248f8"
+    }
   },
   "resident-evil-2": {
     "version": "1.0.0",
@@ -455,20 +740,20 @@
     }
   },
   "farming-simulator-25": {
-    "version": "1.0.4",
+    "version": "1.0.5",
     "port": 58819,
     "durationMultiplier": 1000,
     "asset": {
       "id": "module",
       "action": "extract",
-      "fileName": "farming-simulator-25-shenpulse-1.0.4.zip",
-      "size": 264535,
-      "sha256": "6898049812a2986182f6f10f393739258b58d0315006fd226a98887d99ce237f",
-      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/farming-simulator-25/1.0.4/farming-simulator-25-shenpulse-1.0.4.zip"
+      "fileName": "farming-simulator-25-shenpulse-1.0.5.zip",
+      "size": 264483,
+      "sha256": "548fd2dd548eeee3d937c43e4161ff23a00e05f35ca0e579b540c2b1dd10fb85",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/farming-simulator-25/1.0.5/farming-simulator-25-shenpulse-1.0.5.zip"
     },
     "module": ".shenpulse-farming-mods/FS25_ShenPulse.zip",
-    "moduleSha256": "23663bdea059fe9b955dd447f5b26d0b6fb2d50744683261bd7a6a9b496d1fb8",
-    "inGameValidation": "tested-gamepass-2026-10-30",
+    "moduleSha256": "650228f99aeb267ea6a767c1b3bd70e4ac36b522a3abf4e80250d3f1114e7cd4",
+    "inGameValidation": "tested-steam-2026-11-03-gamepass-2026-10-30",
     "installer": {
       "fileGame": "fs25",
       "steamAppIds": [
@@ -479,6 +764,8 @@
         "Farming Simulator 25 (PC)",
         "FarmingSimulator2025"
       ],
+      "xboxIdentity": "GIANTSSoftware.FarmingSimulator25PC",
+      "detectPlatform": true,
       "executables": [
         "FarmingSimulator2025.exe",
         "x64/FarmingSimulator2025Game.exe"
@@ -492,9 +779,7 @@
         "FarmingSimulator2025Game",
         "FarmingSimulator2025"
       ],
-      "forceSteamLaunch": true,
-      "xboxIdentity": "GIANTSSoftware.FarmingSimulator25PC",
-      "detectPlatform": true
+      "forceSteamLaunch": true
     }
   },
   "sonic-robo-blast-2": {
@@ -1213,20 +1498,20 @@
     }
   },
   "minecraft-diamond-rush": {
-    "version": "1.0.1",
+    "version": "1.0.4",
     "port": 58834,
     "durationMultiplier": 1000,
     "asset": {
       "id": "module",
       "action": "extract",
-      "fileName": "minecraft-diamond-rush-shenpulse-1.0.1.zip",
-      "size": 26691,
-      "sha256": "cb438ea0bc8950d57e0323d9f13e820dd853512ddc9b5f00701be8e27d8f74c4",
-      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-diamond-rush/1.0.1/minecraft-diamond-rush-shenpulse-1.0.1.zip"
+      "fileName": "minecraft-diamond-rush-shenpulse-1.0.4.zip",
+      "size": 26200,
+      "sha256": "cfe0b1509090626ea5da0621105a53d47ba9d8a2c1963bb99d28ae1384bf40cc",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-diamond-rush/1.0.4/minecraft-diamond-rush-shenpulse-1.0.4.zip"
     },
     "module": "plugins/ShenPulse-DiamondRush.jar",
-    "moduleSha256": "c7f1459df9a3680fdaa499f5c877c237619df93212645ce7158549dcc386143a",
-    "inGameValidation": "pending",
+    "moduleSha256": "8aa029354dd7a6edcc4b792730e3697e6cd536793e08b7eb25b3ee46115bef74",
+    "inGameValidation": "tested-java-1.20.4-2026-11-03",
     "installer": {
       "managedTarget": true,
       "nativeWinCommand": "shenpulse_dr",
@@ -1265,20 +1550,20 @@
     ]
   },
   "minecraft-box-cyber": {
-    "version": "1.0.1",
+    "version": "1.0.4",
     "port": 58835,
     "durationMultiplier": 1000,
     "asset": {
       "id": "module",
       "action": "extract",
-      "fileName": "minecraft-box-cyber-shenpulse-1.0.1.zip",
-      "size": 35407,
-      "sha256": "ccfae3df54e6592200a8294a67e34ce90d6c6912f19b5fd520ec668b18350b99",
-      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-box-cyber/1.0.1/minecraft-box-cyber-shenpulse-1.0.1.zip"
+      "fileName": "minecraft-box-cyber-shenpulse-1.0.4.zip",
+      "size": 37687,
+      "sha256": "4b99d280f7b5282e986c06f4c20648429c0ea9e094645feb8bb2961d47356f7c",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/minecraft-box-cyber/1.0.4/minecraft-box-cyber-shenpulse-1.0.4.zip"
     },
     "module": "plugins/ShenPulse-BoxCyber.jar",
-    "moduleSha256": "f5f53e94517ac67e2c22bdf88af25ba9466721b6354ec37ddd2f18d4ab9fd676",
-    "inGameValidation": "pending",
+    "moduleSha256": "f3f9096128e9a3bd8cb58fc37cc2eede800e731d11b7b455b6808a1bd3727f28",
+    "inGameValidation": "tested-java-1.20.4-2026-11-03",
     "installer": {
       "managedTarget": true,
       "nativeWinCommand": "shenpulse_box",
@@ -1621,7 +1906,7 @@
         "steam"
       ],
       "unsupportedPlatformReasons": {
-        "steam": "Ce module est en cours de validation sur Xbox / Game Pass. L’édition Steam nécessite sa propre préparation."
+        "steam": "Ce module est en cours de validation sur Xbox / Game Pass. LÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©dition Steam nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©cessite sa propre prÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©paration."
       }
     },
     "moduleDependencies": {

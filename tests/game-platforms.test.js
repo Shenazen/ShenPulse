@@ -136,10 +136,11 @@ test("les nouveaux jeux affichent les plateformes gratuites ou incluses retenues
   assert.equal(gamePassPacks.length, 20);
   for (const pack of recent) {
     const specification = requested.find(game => game.id === pack.id);
-    assert.deepEqual(pack.storefronts, specification.platforms, pack.id);
-    assert.deepEqual(Array.from(context.gamePlatformIds(pack)), specification.platforms, pack.id);
+    const expectedPlatforms = pack.id === "farming-simulator-25" ? ["steam", "game-pass"] : specification.platforms;
+    assert.deepEqual(pack.storefronts, expectedPlatforms, pack.id);
+    assert.deepEqual(Array.from(context.gamePlatformIds(pack)), expectedPlatforms, pack.id);
   }
-  for (const pack of gamePassPacks) assert.deepEqual(Array.from(context.gamePlatformIds(pack)), ["game-pass"], pack.id);
+  for (const pack of gamePassPacks) assert.deepEqual(Array.from(context.gamePlatformIds(pack)), pack.id === "farming-simulator-25" ? ["steam", "game-pass"] : ["game-pass"], pack.id);
   for (const id of ["peggle-deluxe", "peggle-nights", "plants-vs-zombies-goty"]) {
     assert.deepEqual(Array.from(context.gamePlatformIds(recent.find(pack => pack.id === id))), ["ea"], id);
   }

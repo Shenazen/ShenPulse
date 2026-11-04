@@ -11,7 +11,7 @@ function assertCreatorChatbotOwner(owner) {
 }
 
 function assertCreatorChatbotEditable(entry) {
-  if (!creatorChatbotFunctionalEntry(entry)) throw new Error("Cette entrée ne correspond pas à une commande de musique, d'action ou d'overlay.");
+  if (!creatorChatbotFunctionalEntry(entry) && !creatorConversationalEntry(entry)) throw new Error("Cette entrée ne correspond pas à une commande de musique, d'action ou d'overlay.");
 }
 
 function creatorChatbotDataFromForm(data, current) {
@@ -52,6 +52,7 @@ function creatorChatbotPreviewMarkup(entry) {
 }
 
 function openCreatorChatbotEditor(entry, requestedKind = "command") {
+  if (creatorConversationalEntry(entry) || requestedKind !== "command") return openCreatorConversationEditor(entry, requestedKind);
   const owner = creatorChatbotCaptureOwner();
   assertCreatorChatbotOwner(owner);
   if (requestedKind && requestedKind !== "command") throw new Error("Seules les commandes de musique, d'action ou d'overlay sont disponibles.");
@@ -91,6 +92,7 @@ function openCreatorChatbotEditor(entry, requestedKind = "command") {
 function openCreatorChatbotPreview(entry) {
   assertCreatorChatbotOwner(creatorChatbotCaptureOwner());
   assertCreatorChatbotEditable(entry);
+  if (creatorConversationalEntry(entry)) return openEditor({ title: "Aperçu local", kicker: "AUCUN ENVOI", body: creatorConversationPreview(entry) });
   openEditor({ title: "Aperçu local", kicker: "COMMANDES · AUCUNE EXÉCUTION", body: creatorChatbotPreviewMarkup(entry) });
 }
 

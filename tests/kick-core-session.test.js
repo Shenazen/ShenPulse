@@ -49,7 +49,8 @@ test("Kick starts a real session, resets canonical counters once, and publishes 
   assert.equal(state.overlaySession.active, true);
   assert.equal(state.settings.kick.viewers, 35);
   assert.deepEqual(timers, ["kick-session-start"]);
-  assert.equal(published.at(-1).channel, "session-state");
+  assert.ok(published.some(entry => entry.channel === "session-state"));
+  assert.equal(published.at(-1).channel, "audio-control");
   assert.equal(notifications.at(-1).channel, "state-changed");
   state.statistics.sessionEvents = 3;
   state.overlaySession.timerSeconds = 900;

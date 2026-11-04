@@ -272,18 +272,20 @@ test("Stream Deck plugin has packaged assets and turns key presses into authenti
     constructor() { this.readyState = 1; }
     send(message) { sent.push(JSON.parse(message)); }
   }
-  const sandbox = vm.createContext({ window: {}, WebSocket: FakeWebSocket, URL, AbortSignal, fetch: async (url, options) => { requests.push({ url, options }); return new Response('{"ok":true}', { status: 200 }); } });
+  const sandbox = vm.createContext({ window: {}, WebSocket: FakeWebSocket, URL, AbortSignal, fetch: async (url, options) => { requests.push({ url, options }); return new Response(JSON.stringify(url.endsWith('/targets') ? { activeProfile: { id: 'p1' } } : { ok: true }), { status: 200 }); } });
   vm.runInContext(fs.readFileSync(path.join(directory, "plugin.js"), "utf8"), sandbox);
   sandbox.window.connectElgatoStreamDeckSocket(1234, "plugin", "registerPlugin");
-  await vm.runInContext("receiveStreamDeckEvent({event:'didReceiveGlobalSettings',payload:{settings:{endpoint:'http://127.0.0.1:21217',token:'paired-token'}}})", sandbox);
+  await vm.runInContext("integrationSettings={endpoint:'http://127.0.0.1:21217',token:'paired-token'}", sandbox);
   await vm.runInContext("receiveStreamDeckEvent({event:'willAppear',context:'key',action:'com.shenpulse.control.action',payload:{settings:{targetId:'sound_1'}}})", sandbox);
   await vm.runInContext("receiveStreamDeckEvent({event:'keyDown',context:'key'})", sandbox);
-  assert.equal(requests[0].url, "http://127.0.0.1:21217/execute");
+  assert.equal(requests[0].url, "http://127.0.0.1:21217/targets");
+  assert.equal(requests[1].url, "http://127.0.0.1:21217/execute");
   assert.equal(requests[0].options.headers.Authorization, "Bearer paired-token");
-  assert.deepEqual(JSON.parse(requests[0].options.body), { targetType: "action", targetId: "sound_1" });
+  assert.deepEqual(JSON.parse(requests[1].options.body), { targetType: "action", targetId: "sound_1", options: {}, expectedProfileId: "p1" });
   assert.equal(sent.at(-1).event, "showOk");
-  await vm.runInContext("receiveStreamDeckEvent({event:'didReceiveGlobalSettings',payload:{settings:{endpoint:'https://untrusted.example',token:'paired-token'}}})", sandbox);
+  await vm.runInContext("integrationSettings={endpoint:'https://untrusted.example',token:'paired-token'}", sandbox);
   await vm.runInContext("receiveStreamDeckEvent({event:'keyDown',context:'key'})", sandbox);
-  assert.equal(requests.length, 1);
-  assert.equal(sent.at(-1).event, "showAlert");
+  assert.equal(requests.length, 2);
+  assert.ok(sent.some(message => message.event === "showAlert"));
+  assert.match(sent.at(-1).payload.error, /ShenPulse est indisponible/);
 });

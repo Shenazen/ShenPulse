@@ -65,7 +65,7 @@ const INTERNAL_GAMES = [
     effects: THE_MORTUARY_ASSISTANT_EFFECTS,
     defaultMappings: THE_MORTUARY_ASSISTANT_DEFAULT_MAPPINGS,
     interactionCatalogVersion: THE_MORTUARY_ASSISTANT_INTERACTION_CATALOG_VERSION,
-    installerVersion: "1.0.0"
+    installerVersion: "1.0.2"
   }),
   game("find-the-needle-demo", "Find The Needle Demo", {
     included: true,

@@ -308,6 +308,19 @@ test("les emojis sont retirés ou conservés selon l'option", () => {
   );
 });
 
+test("aucun emoji TikTok textuel ou d’abonné ne peut être lu quand l’option est décochée", async () => {
+  assert.equal(filterTtsChatComment("Bonjour [smile][LaughWithTears] 😃 !"), "Bonjour !");
+  assert.equal(filterTtsChatComment("[smile] [cry] [happy] [loveface]"), "");
+  assert.equal(filterTtsChatComment("Bonjour [smile]", { readEmojis: true }), "Bonjour [smile]");
+  assert.equal(filterTtsChatComment("Texte [important]"), "Texte [important]", "Une annotation ordinaire n’est pas une émoticône.");
+  const published = [], runner = createRunner(published);
+  await runner.run({ type: "tts.speak", config: { readEmojis: false } }, { event: { type: "chat", data: {
+    message: "Merci [subscriber_123] [smile] 🙏",
+    raw: { emotes: [{ placeInComment: 6, emote: { emoteId: "subscriber_123" } }] }
+  } } });
+  assert.equal(published[0].payload.text, "Merci");
+});
+
 test("un même événement chat n'est mis en lecture qu'une seule fois", async () => {
   const published = [];
   const runner = createRunner(published);
@@ -383,5 +396,51 @@ test("deux viewers peuvent envoyer le même commentaire sans se bloquer", async 
     event: { ...baseEvent, id: "bob_message", user: { id: "bob" } }
   });
 
+  assert.equal(published.length, 2);
+});
+
+
+test("voix naturelle : même audio en retour local et en LIVE ; aperçu privé et secours unique", async () => {
+  const published = [];
+  const runner = createRunner(published, { voiceService: { synthesize: async () => ({ audioUrl: "data:audio/mpeg;base64,bXAz" }) } });
+  const action = { type: "tts.speak", config: { voice: "natural:fr-FR-DeniseNeural", outputMode: "live", liveScreen: 3 } };
+  const event = { type: "chat", id: "natural-1", data: { message: "Bonjour" }, user: { name: "alice" } };
+  const result = await runner.run(action, { event });
+  assert.equal(result.voiceEngine, "natural");
+  assert.equal(published.length, 2);
+  assert.equal(published[0].payload.audioUrl, published[1].payload.audioUrl);
+  published.length = 0;
+  runner.voiceService = { synthesize: async () => ({ fallback: true }) };
+  const fallback = await runner.run(action, { source: "manual-preview", event: { ...event, id: "natural-2", data: { message: "Autre" } } });
+  assert.equal(fallback.voiceFallback, true);
+  assert.equal(published.length, 1);
+  assert.equal(published[0].transport, "renderer");
+  assert.equal(published[0].payload.voice, "");
+});
+
+test("voix : une synthèse lente ne permute pas les commentaires suivants et respecte le changement de compte", async () => {
+  const published = [];
+  let release;
+  const state = { settings: { account: { uid: "first" }, tts: { enabled: true } }, session: { profileId: "one" } };
+  const runner = createRunner(published, { store: { getState: () => state }, voiceService: { synthesize: () => new Promise(resolve => { release = resolve; }) } });
+  const context = (id) => ({ event: { id, type: "chat", user: { id }, data: { message: id } } });
+  const first = runner.run({ type: "tts.speak", config: { voice: "natural:fr-FR-DeniseNeural" } }, context("first"));
+  const second = runner.run({ type: "tts.speak", config: { voice: "Windows" } }, context("second"));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(published.length, 0);
+  state.settings.account.uid = "another";
+  release({ audioUrl: "data:audio/mpeg;base64,bXAz" });
+  assert.equal((await first).reason, "context-changed");
+  assert.equal((await second).reason, "context-changed");
+  assert.equal(published.length, 0);
+});
+
+
+test("l’écoute locale permet de comparer plusieurs voix avec la même phrase sans déduplication LIVE", async () => {
+  const published = [], runner = createRunner(published);
+  const action = { type: "tts.speak", config: { previewScope: "editor-dialog" } };
+  const context = { source: "manual-preview", event: { type: "chat", id: "preview", data: { message: "Même phrase" } } };
+  assert.equal((await runner.run(action, context)).queued, true);
+  assert.equal((await runner.run(action, context)).queued, true);
   assert.equal(published.length, 2);
 });

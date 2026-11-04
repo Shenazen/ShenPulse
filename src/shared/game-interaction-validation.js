@@ -5,7 +5,7 @@ function activationError(rule) {
  const trigger=rule?.trigger||{};
  if(trigger.type==='gift'&&(!rule.conditions?.some(condition=>
   ['data.giftName','data.giftId'].includes(condition.field)&&
-  ['equals','in'].includes(condition.operator)&&
+  ['equals','notEquals','in'].includes(condition.operator)&&
   (String(condition.value??'').trim()||String(condition.giftId||'').trim()||condition.giftIds?.length))||trigger.enabled===false))
   return 'Activation impossible : choisissez obligatoirement un cadeau pour cette interaction avant de l’activer.';
  for(const action of rule?.actions||[]){

@@ -4,12 +4,29 @@ Le plugin Stream Deck utilise l’API WebSocket officielle Elgato (SDK 2).
 Dans ShenPulse → Contrôleurs, « Installer le plugin » copie le dossier du plugin
 dans le répertoire utilisateur Elgato. Relancer Stream Deck après l’installation.
 
-Créer un code d’appairage dans ShenPulse et saisir ce code dans l’inspecteur de la
-touche Stream Deck. Les codes sont à usage unique, expirent après deux minutes et
-autorisent au maximum six tentatives. Chaque appareil possède un jeton distinct,
-révocable depuis ShenPulse. Le jeton donne accès uniquement à la liste des actions
-et profils et au déclenchement de ces commandes. Les appels restent sur l’interface
-locale 127.0.0.1 (port 21217 par défaut).
+La connexion à ShenPulse ouvert sur le même PC est automatique. Aucun code ni
+jeton n’est à recopier dans une touche. Les identifiants restent dans le fichier
+local de connexion, révocable depuis ShenPulse → Contrôleurs. Les appels restent
+sur l’interface locale 127.0.0.1 (port 21217 par défaut), avec authentification et
+contrôle du compte, de l’abonnement et du profil actif. L’accès bêta aux contrôleurs
+reste réservé au compte administrateur.
+
+Le plugin propose neuf familles de touches : animations de match, compteur de wins,
+timer et bonus, musique Spotify, automatisations de match, roue, règles, actions et
+profils. Glissez une famille sur une touche libre puis sélectionnez sa commande.
+Les paramètres supplémentaires apparaissent selon la commande : pack visuel,
+affichage, nombre de wins, durée ou multiplicateur. « Tester » exécute réellement
+la commande. Les anciennes touches Actions et Profils restent compatibles.
+
+Les animations ×2, ×3, Gants, Snipe, Tap Tap et Cœur proposent notamment Cyber et
+Dragon. Coffre et Mystère ne proposent que les packs disponibles pour ces vidéos.
+Ces commandes utilisent la source navigateur Matchs déjà installée dans le studio.
+Déclencher une animation ne modifie ni les scores TikTok ni la détection du match.
+Le multiplicateur de wins et le timer multiplicateur sont des commandes distinctes.
+
+Après une mise à jour du plugin, relancez Stream Deck pour charger les nouvelles
+familles. Une indisponibilité de ShenPulse ou une commande refusée est signalée
+dans l’inspecteur et sur la touche, sans afficher un faux succès.
 
 Les entrées MIDI sont reçues par Web MIDI sans accès SysEx. Le contrat commun est
 dans `src/shared/controller-contract.js`. Les associations, seuils et délais sont

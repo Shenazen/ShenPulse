@@ -359,6 +359,7 @@ function normalizeWheelConfig(rawConfig = {}) {
 }
 
 function wheelTriggerSummary(wheel = {}) {
+  if (wheel.giftConditions?.length) return giftSelectionLabel(wheel.giftConditions);
   return (
     giftValueFilterLabel(wheel.giftValueFilter) ||
     String(wheel.trigger || "").trim() ||
@@ -370,7 +371,8 @@ function wheelGiftValueConditions(wheel = {}) {
   const filter = normalizeGiftValueFilterConfig(wheel.giftValueFilter);
   return filter
     ? [{ field: "data.value", operator: filter.operator, value: filter.value }]
-    : [];
+    : Array.isArray(wheel.giftConditions) ? wheel.giftConditions
+      : wheel.trigger ? [{ ...wheel.triggerGift, field: "data.giftName", operator: "equals", value: wheel.trigger }] : [];
 }
 
 function wheelDesignOption(value, label, detail, selected) {
@@ -443,17 +445,23 @@ function collectWheelEditorForm() {
   const data = new FormData(dialogForm);
   wheel.name = String(data.get("wheelName") || wheel.name).trim() || "Roue sans nom";
   wheel.enabled = data.get("wheelEnabled") === "true";
+  wheel.repeatGiftCombos = data.has("repeatGiftCombos");
   const triggerMode = data.get("wheelGiftTriggerMode") === "value"
     ? "value"
     : "specific";
+  wheel.giftConditions = collectGiftTriggerConditions(wheelGiftValueConditions(wheel), data, {
+    giftName: "wheelTrigger", modeName: "wheelGiftTriggerMode",
+    operatorName: "wheelGiftValueOperator", amountName: "wheelGiftValueAmount"
+  }).filter(condition => condition.field === "data.giftName");
+  const firstAllowedGift = wheel.giftConditions.find(condition => condition.operator === "equals");
   const previousTriggerGift = { ...wheel.triggerGift, value: wheel.trigger };
   wheel.trigger = triggerMode === "specific"
-    ? String(data.get("wheelTrigger") || "").trim()
+    ? String(firstAllowedGift?.value || "").trim()
     : "";
   const selectedTriggerGift = giftReferenceForSave(
     wheel.trigger,
-    data.get("wheelTriggerGiftId"),
-    previousTriggerGift
+    firstAllowedGift?.giftId,
+    firstAllowedGift || previousTriggerGift
   );
   wheel.triggerGift =
     triggerMode === "specific" && selectedTriggerGift

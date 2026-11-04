@@ -137,6 +137,19 @@ body,
   transform-origin: center;
 }
 
+/* Un média utilise le rectangle réel de la source, sans canevas 16:9 ni zoom
+ * hérité des alertes. Les autres widgets gardent leur mise en page native. */
+#alerts-view.active.media-only-view {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+
+#alerts-view.active.media-only-view > .media-only-stage {
+  transform: none;
+}
+
 /*
  * Like Goal est dessiné sur son canevas OBS natif. TikTok Studio, OBS et les
  * aperçus redimensionnent ensemble le cadre et ses zones de texte centrées.

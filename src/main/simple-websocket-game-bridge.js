@@ -3,6 +3,7 @@
 const http = require("node:http");
 const { EventEmitter } = require("node:events");
 const { WebSocketServer, WebSocket } = require("ws");
+const EFFECT_ACK_STATUSES = new Map([["success", 0], ["failure", 1], ["unavailable", 2], ["retry", 3]]);
 
 /** Serveur exclusivement local du protocole JSON du mod IL2CPP. */
 class SimpleWebSocketGameBridge extends EventEmitter {
@@ -121,15 +122,23 @@ class SimpleWebSocketGameBridge extends EventEmitter {
       if (!message || typeof message !== "object" || Array.isArray(message)) return;
       // Les états du jeu (253), le keepalive (255) et les mises à jour
       // d'effets temporisés (1) ne sont jamais des accusés de déclenchement.
-      if (message.type !== 0) {
+      if (message.type !== 0 && message.type !== "effectRequest") {
+        this.emit("message", message);
+        return;
+      }
+      // Native ConnectorLib versions serialize enums as camel-case names.
+      // A finished/paused notification can also carry type=effectRequest;
+      // only the initial success/refusal may settle the pending request.
+      const status = typeof message.status === "string" ? EFFECT_ACK_STATUSES.get(message.status) : message.status;
+      if (!Number.isInteger(status) || status < 0 || status > 3) {
         this.emit("message", message);
         return;
       }
       const pending = this.pending.get(message.id);
-      if (!pending || !Number.isInteger(message.status)) return;
+      if (!pending) return;
       clearTimeout(pending.timeout);
       this.pending.delete(message.id);
-      const result = { ok: message.status === 0, status: message.status, requestId: message.id, message: String(message.message || "") };
+      const result = { ok: status === 0, status, requestId: message.id, message: String(message.message || "") };
       if (result.ok) pending.resolve(result);
       else {
         const error = new Error(result.message || `${this.label} a refusé cette interaction.`);

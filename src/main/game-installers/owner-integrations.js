@@ -23,7 +23,7 @@ module.exports = Object.fromEntries(records.filter(record => ownerGameListed(rec
     requireLaunchExecutable: true,
     singleInstanceProcesses: executables.map(name => name.split("/").at(-1).replace(/\.exe$/i, "")),
     ...prepared.installer,
-    warning: "Fermez le jeu. ShenPulse télécharge le module vérifié depuis Backblaze et conserve les fichiers remplacés." + (prepared.inGameValidation && prepared.inGameValidation !== "pending" ? " Les essais de cette version ont été effectués sur Xbox / Game Pass." : " Ce pack privé n’a pas encore été vérifié en partie."),
+    warning: "Fermez le jeu. ShenPulse télécharge le module vérifié depuis Backblaze et conserve les fichiers remplacés." + (prepared.inGameValidation && prepared.inGameValidation !== "pending" ? record.id === "farming-simulator-25" ? " Éditions Steam et Xbox / Game Pass prises en charge. Activez Interactions ShenPulse dans les mods de votre sauvegarde." : " Les essais de cette version ont été effectués sur Xbox / Game Pass." : " Ce pack privé n’a pas encore été vérifié en partie."),
     assets: [...(prepared.additionalAssets || []), prepared.asset]
   }];
 }));

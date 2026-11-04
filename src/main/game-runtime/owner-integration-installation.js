@@ -12,7 +12,7 @@ async function verifyFile(file, expected) {
   }
 }
 
-async function assertOwnerIntegrationReady(gameId, targetPath, {documentsPath,programDataPath=process.env.ProgramData} = {}) {
+async function assertOwnerIntegrationReady(gameId, targetPath, {documentsPath,localAppDataPath,programDataPath=process.env.ProgramData} = {}) {
   let definition = modules[gameId];
   if (!definition) return;
   if(definition.platformModules){
@@ -28,7 +28,7 @@ async function assertOwnerIntegrationReady(gameId, targetPath, {documentsPath,pr
     const loader=await fs.readFile(path.join(targetPath,"ddraw.dll"));await verifyFile(path.join(programDataPath,"PopCap Games/Peggle/ddraw.dll"),createHash("sha256").update(loader).digest("hex"));
   }
   if (gameId === "farming-simulator-25" && documentsPath) {
-    const profile = await require("./farming-profile").farmingProfile(targetPath, { documentsPath });
+    const profile = await require("./farming-managed-profile").farmingRuntimeProfile(targetPath, { documentsPath, localAppDataPath });
     await verifyFile(path.join(profile.modsDirectory, "FS25_ShenPulse.zip"), definition.moduleSha256);
   }
   if (gameId === "the-sims-4" && documentsPath) {
@@ -51,10 +51,13 @@ function enableSimsScripts(source) {
   return text;
 }
 
-async function configureOwnerIntegration(gameId, {targetPath, documentsPath, backupRoot, assertAccess = () => {}}) {
+async function configureOwnerIntegration(gameId, {targetPath, documentsPath, localAppDataPath, backupRoot, assertAccess = () => {}}) {
   if (gameId === "farming-simulator-25") {
-    const profile = await require("./farming-profile").farmingProfile(targetPath, { documentsPath });
+    const profile = await require("./farming-managed-profile").prepareFarmingRuntimeProfile(targetPath, {
+      documentsPath, localAppDataPath, modulePath: path.join(targetPath, modules[gameId].module), moduleSha256: modules[gameId].moduleSha256, assertAccess
+    });
     const destination = path.join(profile.modsDirectory, "FS25_ShenPulse.zip");
+    if (profile.managed) return [{ root: "farming-managed-profile", path: destination, profileDirectory: profile.directory, importedFrom: profile.sourceDirectory }];
     await require("./deployments").copyWithBackup(path.join(targetPath, modules[gameId].module), destination,
       profile.modsDirectory, path.join(backupRoot, "farming-mods"), { assertAccess });
     return [{ root: "farming-mods", path: destination }];

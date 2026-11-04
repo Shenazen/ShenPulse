@@ -47,7 +47,10 @@ class GameSessionService {
         `${currentPack?.name || "Un autre jeu"} est déjà actif. Arrêtez-le avant d’ouvrir ${pack.name}.`
       );
     }
+    if(pack.customGameBuilder)throw Error("Créez un pack personnel avant d’activer une session.");
+    const customScope=pack.customGame?JSON.stringify(readState(this.store,["settings.account.uid","session.profileId"])):null;
     await this.gameHub.prepareConnection(targetId);
+    if(pack.customGame){if(customScope!==JSON.stringify(readState(this.store,["settings.account.uid","session.profileId"])))throw Error("Le profil a changé.");this.gameHub.assertAccess(targetId);}
     this.gameHub.initializeDefaultInteractions(targetId);
     this.store.mutate((state) => {
       state.session.activeGamePackId = targetId;

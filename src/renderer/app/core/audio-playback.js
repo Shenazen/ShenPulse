@@ -12,15 +12,48 @@ function rendererAudioOwner() {
   ]);
 }
 
+const rendererAudioQueue = [];
+let rendererAudioJob = null;
+
+function queueRendererAudioPlayback(payload = {}) {
+  if (payload.previewScope) return playRendererAudio(payload);
+  rendererAudioQueue.push({ payload, owner: rendererAudioOwner() });
+  void drainRendererAudioQueue();
+}
+
+async function drainRendererAudioQueue() {
+  if (rendererAudioJob) return;
+  const job = rendererAudioQueue.shift();
+  if (!job) return;
+  rendererAudioJob = job;
+  try {
+    if (job.owner !== rendererAudioOwner()) return;
+    await new Promise((resolve) => {
+      job.finish = resolve;
+      void playRendererAudio(job.payload, resolve).catch(resolve);
+    });
+  } finally {
+    rendererAudioJob = null;
+    void drainRendererAudioQueue();
+  }
+}
+
 function stopRendererAudioPlayback(audio = activePreviewAudio) {
+  if (!arguments.length) {
+    rendererAudioQueue.length = 0;
+    rendererAudioJob?.finish?.();
+  }
   if (!audio) return;
   if (activePreviewAudio === audio) {
     activePreviewAudio = null;
     activePreviewAudioScope = "";
   }
+  audio.shenPulseAudioRelease?.();
   audio.pause();
   audio.removeAttribute("src");
   audio.remove();
+  audio.shenPulsePlaybackComplete?.();
+  audio.shenPulsePlaybackComplete = null;
 }
 
 function rendererAudioErrorMessage(error, audio) {
@@ -33,23 +66,27 @@ function rendererAudioErrorMessage(error, audio) {
   return "Le fichier audio n’est pas accessible. Vérifiez votre connexion et réessayez.";
 }
 
-/** Remplace le son précédent et annule toute lecture asynchrone devenue obsolète.
+/** Les aperçus remplacent le son précédent. Les notifications automatiques
+ * attendent la fin du son courant pour rendre chaque répétition audible.
  * Les erreurs d'un ancien périphérique ne doivent pas interrompre un nouveau
  * son ; changer de compte, de profil ou fermer l'aperçu empêche aussi son départ.
  */
-async function playRendererAudio(payload = {}) {
+async function playRendererAudio(payload = {}, onComplete = null) {
   const scope = String(payload.previewScope || "");
   if (scope === "media-library" && (!mediaLibraryDialog.open || !mediaLibraryContext)) return;
   if (scope === "editor-dialog" && !dialog.open) return;
   const source = resolvedMediaUrl(String(payload.url || "").trim());
   if (!/^(?:https?:\/\/|data:audio\/|blob:)/i.test(source)) {
     toast("Lecture du son impossible", "L’adresse de ce son n’est pas prise en charge.", true);
+    onComplete?.();
     return;
   }
   const audioStage = document.getElementById("audio-stage");
-  if (!audioStage) return;
-  stopRendererAudioPlayback();
+  if (!audioStage) { onComplete?.(); return; }
+  if (onComplete) stopRendererAudioPlayback(activePreviewAudio);
+  else stopRendererAudioPlayback();
   const audio = document.createElement("audio");
+  audio.shenPulsePlaybackComplete = onComplete;
   const owner = rendererAudioOwner();
   const current = () => activePreviewAudio === audio && rendererAudioOwner() === owner;
   const fail = (title, detail) => {
@@ -63,6 +100,10 @@ async function playRendererAudio(payload = {}) {
   audio.muted = false;
   audio.defaultMuted = false;
   audio.volume = Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1;
+  if (typeof ShenPulseAudio !== "undefined") {
+    ShenPulseAudio.runtime.update(ShenPulseAudio.stateControl(snapshot?.state));
+    audio.shenPulseAudioRelease = ShenPulseAudio.runtime.media(audio, payload.audioKind || "sounds", payload);
+  }
   activePreviewAudio = audio;
   activePreviewAudioScope = scope;
   audioStage.replaceChildren(audio);

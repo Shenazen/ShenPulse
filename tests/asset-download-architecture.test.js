@@ -54,3 +54,52 @@ test("les URLs non autorisées sont refusées avant tout appel réseau", () => f
   await assert.rejects(downloadAsset({ progress() {} }, "game", { id: "asset", url: "https://untrusted.example/asset.zip" }, path.join(root, "asset.zip")), /non autorisé/);
   assert.equal(calls, 0);
 }));
+
+test("une coupure de flux reprend les octets réellement écrits et vérifie le fichier complet", () => fixture(async (root) => {
+  const data = Buffer.from("archive complète"), requests = [];
+  globalThis.fetch = async (_url, options) => {
+    requests.push(options.headers.Range || "");
+    if (requests.length === 1) return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(data.subarray(0, 4));
+        setTimeout(() => controller.error(Object.assign(new TypeError("terminated"), { cause: { code: "UND_ERR_SOCKET" } })), 30);
+      }
+    }), { headers: { "content-length": String(data.length) } });
+    const offset = Number(/^bytes=(\d+)-$/.exec(options.headers.Range)[1]);
+    return new Response(data.subarray(offset), { status: 206, headers: {
+      "content-length": String(data.length - offset), "content-range": `bytes ${offset}-${data.length - 1}/${data.length}`
+    } });
+  };
+  const destination = path.join(root, "resumed.zip");
+  await downloadAsset({ progress() {} }, "game", { id: "asset", url: "https://assets.backblazeb2.com/file/asset.zip", size: data.length, sha256: createHash("sha256").update(data).digest("hex") }, destination);
+  assert.deepEqual(requests, ["", "bytes=4-"]);
+  assert.deepEqual(await fs.readFile(destination), data);
+  await assert.rejects(fs.stat(destination + ".partial"), /ENOENT/);
+}));
+
+for (const rangeSupported of [false, true]) test(rangeSupported ? "une reprise avec un offset incorrect est refusée" : "un serveur sans Range recommence sans concaténer les archives", () => fixture(async root => {
+  const data = Buffer.from("complete"), destination = path.join(root, "asset.zip"); let calls = 0;
+  globalThis.fetch = async () => {
+    if (++calls === 1) return new Response(new ReadableStream({ start(controller) {
+      controller.enqueue(data.subarray(0, 3)); setTimeout(() => controller.error(new TypeError("terminated")), 30);
+    } }), { headers: { "content-length": String(data.length) } });
+    return rangeSupported
+      ? new Response(data, { status: 206, headers: { "content-length": String(data.length), "content-range": "bytes 0-7/8" } })
+      : new Response(data, { headers: { "content-length": String(data.length) } });
+  };
+  const promise = downloadAsset({ progress() {} }, "game", { id: "asset", url: "https://assets.backblazeb2.com/file/asset.zip", size: data.length }, destination);
+  if (rangeSupported) { await assert.rejects(promise, /reprise/); await assert.rejects(fs.stat(destination), /ENOENT/); }
+  else { await promise; assert.deepEqual(await fs.readFile(destination), data); }
+  await assert.rejects(fs.stat(destination + ".partial"), /ENOENT/);
+  assert.equal(calls, 2);
+}));
+
+test("les tentatives réseau sont bornées et aucun fichier incomplet n’est publié", () => fixture(async root => {
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new TypeError("fetch failed"); };
+  const destination = path.join(root, "failed.zip");
+  await assert.rejects(downloadAsset({ progress() {} }, "game", { id: "asset", url: "https://assets.backblazeb2.com/file/asset.zip" }, destination), /Impossible de contacter/);
+  assert.equal(calls, 4);
+  await assert.rejects(fs.stat(destination), /ENOENT/);
+  await assert.rejects(fs.stat(destination + ".partial"), /ENOENT/);
+}));

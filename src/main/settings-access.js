@@ -5,7 +5,7 @@ const { assertAdminAccount, assertAuthenticatedAccount } = require("./account-ac
 const { clone, safeString } = require("./utils");
 const { normalizeSongRequestSettings } = require("./spotify/song-request-settings");
 
-const CREATOR_SETTING_KEYS = new Set(["locale", "theme", "tts", "overlayConfigs", "overlayScene", "irl"]);
+const CREATOR_SETTING_KEYS = new Set(["locale", "theme", "tts", "audioMixer", "overlayConfigs", "overlayScene", "irl"]);
 const IMMUTABLE_SETTING_KEYS = new Set(["admin", "account", "siteVisibility", "matches", "kick", "controllers", "liveDirectory"]);
 const SERVICE_SETTING_KEYS = new Set(["tiktok", "spotify", "publicOverlayRelay", "matchAccess"]);
 

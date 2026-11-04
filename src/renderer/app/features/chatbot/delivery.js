@@ -12,7 +12,7 @@ function creatorChatbotDeliveryKey() {
 }
 
 async function refreshCreatorChatbotDelivery(force = false) {
-  if (currentPage !== "connections" || !isAccountAuthenticated() || !api.chatbot?.transportStatus) return;
+  if (!["connections", "commands"].includes(currentPage) || !isAccountAuthenticated() || !api.chatbot?.transportStatus) return;
   const signature = creatorChatbotDeliveryKey();
   if (!force && signature === creatorChatbotDeliverySignature) return;
   const owner = captureCreatorPrivateOperation();
@@ -38,6 +38,10 @@ async function refreshCreatorChatbotDelivery(force = false) {
 
 function creatorChatbotDeliveryReason(entry) {
   const reasons = {
+    "bot-checking": "Vérification du bot ShenPulse…",
+    "bot-configuration-required": "Le bot ShenPulse doit être connecté par l’administration. Aucun réglage personnel requis.",
+    "bot-authorization-required": "L’administration doit renouveler la connexion du bot ShenPulse.",
+    "bot-service-unavailable": "Le service du bot ShenPulse est indisponible. Aucun réglage personnel requis.",
     "not-configured": "Autorisation d'envoi non configurée",
     "credentials-missing": "Identifiants d'envoi manquants",
     "token-expired": "Autorisation expirée : renouvelez le jeton",
@@ -51,6 +55,7 @@ function creatorChatbotDeliveryReason(entry) {
     "kick-authorization-required": "Autorisez à nouveau le compte Kick"
   };
   if (!entry.canSend) return reasons[entry.reason] || "Envoi indisponible";
+  if (entry.transport === "shenpulse-bot") return `Bot ShenPulse connecté${entry.botUsername ? ` · @${entry.botUsername}` : ""}`;
   if (entry.authorization === "configured") return "Configuré · autorisation vérifiée par le fournisseur à chaque envoi";
   if (entry.confirmation === "socket") return "Transfert uniquement · aucune confirmation de publication";
   if (entry.confirmation === "relay") return "Envoi disponible · confirmation par le relais";
@@ -64,12 +69,12 @@ function creatorChatbotDeliveryMarkup() {
   const connections = (state?.connections || []).map((entry) => expired && entry.transport === "euler-oauth"
     ? { ...entry, canSend: false, reason: "token-expired" } : entry);
   const ready = connections.filter((entry) => entry.canSend && entry.confirmation !== "socket").length;
-  return `<aside class="chatbot-delivery"><span class="chatbot-delivery-icon">${creatorChatbotIcon("bot")}</span><div><strong>Envoi d'actions « Réponse chat » · facultatif</strong><p>Les commandes de musique, d'actions et d'overlays fonctionnent à la réception du chat, sans service d'envoi. Cette autorisation concerne uniquement les actions « Réponse chat ».</p><small>Un transfert au socket n'est pas une confirmation de publication.</small></div><span class="chatbot-local-badge ${ready ? "is-connected" : ""}">${ready ? `${ready} source(s) avec confirmation` : "Envoi à configurer"}</span></aside>
-    <section class="chatbot-section chatbot-transports"><header class="chatbot-section-heading"><div><h3>Envoi de messages</h3><p>${escapeHtml(state?.error || (creatorChatbotDeliveryPending || !state ? "Vérification des capacités…" : "Les droits sont contrôlés avant chaque envoi."))}</p></div><div class="button-row"><button class="button small" data-action="chatbot-delivery-refresh">Actualiser</button><button class="button small primary" data-action="chatbot-delivery-configure">Envoi TikTok</button></div></header><div class="chatbot-transport-list">${connections.map((entry) => `<article><strong data-studio-user-content>${escapeHtml(entry.name || entry.type)}</strong><span class="${entry.canSend ? "is-ready" : ""}">${escapeHtml(creatorChatbotDeliveryReason(entry))}</span></article>`).join("") || '<p>Aucune source disponible pour envoyer des réponses.</p>'}</div></section>`;
+  return `<aside class="chatbot-delivery"><span class="chatbot-delivery-icon">${creatorChatbotIcon("bot")}</span><div><strong>Envoi automatique avec le bot ShenPulse</strong><p>Le bot commun est sélectionné par défaut sur TikTok : aucune clé ni aucun jeton à saisir par les créateurs. Il envoie les réponses et les rappels que vous activez pendant votre LIVE. Les commandes d’actions restent indépendantes de ce service.</p><small>${state?.configuration?.automatic && !state.configuration.serviceReady ? escapeHtml(creatorChatbotDeliveryReason({canSend:false,reason:state.configuration.serviceReason})) : "Un transfert au socket n’est pas une confirmation de publication."}</small></div><span class="chatbot-local-badge ${ready ? "is-connected" : ""}">${ready ? `${ready} source(s) avec confirmation` : state?.configuration?.automatic ? "Service en attente" : "Envoi indisponible"}</span></aside>
+    <section class="chatbot-section chatbot-transports"><header class="chatbot-section-heading"><div><h3>Envoi de messages</h3><p>${escapeHtml(state?.error || (creatorChatbotDeliveryPending || !state ? "Vérification des capacités…" : "Les droits sont contrôlés avant chaque envoi."))}</p></div><div class="button-row"><button class="button small" data-action="chatbot-delivery-refresh">Actualiser</button><button class="button small" data-action="navigate" data-page="connections">Mes connexions</button><button class="button small" data-action="chatbot-delivery-configure">Réglages d’envoi TikTok</button></div></header><div class="chatbot-transport-list">${connections.map((entry) => `<article><strong data-studio-user-content>${escapeHtml(entry.name || entry.type)}</strong><span class="${entry.canSend ? "is-ready" : ""}">${escapeHtml(creatorChatbotDeliveryReason(entry))}</span></article>`).join("") || '<p>Aucune source disponible pour envoyer des réponses.</p>'}</div></section>`;
 }
 
 function syncCreatorChatbotDelivery() {
-  if (currentPage !== "connections" || !isAccountAuthenticated()) return false;
+  if (!["connections", "commands"].includes(currentPage) || !isAccountAuthenticated()) return false;
   const section = content.querySelector("[data-chatbot-delivery]");
   if (!section) return false;
   const signature = creatorChatbotDeliveryViewSignature();
@@ -88,13 +93,13 @@ function creatorChatbotDeliveryViewSignature() {
 }
 
 function renderCreatorChatbotDelivery() {
-  if (currentPage !== "connections") return "";
+  if (!["connections", "commands"].includes(currentPage)) return "";
   refreshCreatorChatbotDelivery();
   return `<div data-chatbot-delivery data-delivery-signature="${escapeHtml(creatorChatbotDeliveryViewSignature())}">${creatorChatbotDeliveryMarkup()}</div>`;
 }
 
 async function openCreatorChatbotDeliveryEditor() {
-  if (currentPage !== "connections") return;
+  if (!["connections", "commands"].includes(currentPage)) return;
   const owner = captureCreatorPrivateOperation();
   const status = await api.chatbot.transportStatus();
   assertCreatorPrivateOperation(owner);
@@ -102,16 +107,16 @@ async function openCreatorChatbotDeliveryEditor() {
   openEditor({
     title: "Autorisation d'envoi TikTok", kicker: "MESSAGES · COMPTE ACTIF", variant: "wide",
     successMessage: "Mode d'envoi TikTok enregistré",
-    body: `${dialogSection("Un envoi autorisé, sans cookies TikTok", "Euler Stream exige un accès compatible et un jeton OAuth valide. La saisie ci-dessous ne crée ni abonnement ni autorisation OAuth.",
-      `${selectFieldMarkup("provider", "Mode d'envoi", config.provider || "none", [["none", "Réception uniquement (sans envoi)"], ["euler-oauth", "Euler Stream · OAuth autorisé"]], { full: true })}
+    body: `<p>Le bot ShenPulse commun est utilisé automatiquement. Vous pouvez choisir la réception uniquement, ou utiliser votre propre autorisation avancée. Kick et Twitch conservent leurs connexions habituelles.</p><details><summary>Configuration avancée de l’envoi TikTok</summary>${dialogSection("Options d’envoi", "Le bot commun est géré par l’administration. Les identifiants ci-dessous concernent seulement une autorisation personnelle facultative.",
+      `${selectFieldMarkup("provider", "Mode d'envoi", config.provider || "shenpulse-bot", [["shenpulse-bot", "Automatique · Bot ShenPulse (par défaut)"], ["none", "Réception uniquement (sans envoi)"], ["euler-oauth", "Autorisation personnelle avancée"]], { full: true })}
       ${field("apiKey", "Clé API Euler (laisser vide pour conserver)", "", "password", 'maxlength="12000" autocomplete="off" full')}
       ${field("accessToken", "Jeton OAuth autorisé (laisser vide pour conserver)", "", "password", 'maxlength="12000" autocomplete="off" full')}
       ${field("expiresAt", "Expiration OAuth (ISO UTC)", config.expiresAt || "", "text", 'placeholder="2026-10-14T12:00:00Z" maxlength="40" full')}
       ${field("botUsername", "@ du compte qui enverra les messages", config.botUsername || "", "text", 'maxlength="80" spellcheck="false" full')}
       <label class="checkbox-label full"><input type="checkbox" name="scopeConfirmed"><span>Le jeton a bien la permission webcast:chat.</span></label>
-      <label class="checkbox-label full"><input type="checkbox" name="enableSend"><span>Autoriser l'envoi des actions « Réponse chat ».</span></label>
+      <label class="checkbox-label full"><input type="checkbox" name="enableSend"><span>Autoriser l'envoi avec mon autorisation personnelle (mode avancé seulement).</span></label>
       <p class="chatbot-editor-note full">Les secrets sont chiffrés sur cet appareil et ne sont jamais réaffichés. Le fournisseur valide l'autorisation à chaque envoi. Une expiration ou un refus reste visible dans le journal. Le mode réception uniquement efface les identifiants d'envoi enregistrés, sans supprimer vos commandes.</p>`)}
-      <p class="chatbot-safety-note">Vous n'avez pas cet accès ? Gardez la réception uniquement, ou utilisez un relais autorisé qui annonce ses capacités et confirme les envois. L'échange et le renouvellement OAuth nécessitent un serveur sécurisé ; aucun secret d'application ne doit être inclus dans l'EXE.</p>`,
+      <p class="chatbot-safety-note">Pour utiliser le service commun sans identifiants personnels, gardez le mode Automatique · Bot ShenPulse. Le mode avancé est facultatif. L'échange et le renouvellement OAuth nécessitent un serveur sécurisé ; aucun secret d'application ne doit être inclus dans l'EXE.</p></details>`,
     onSubmit: async (data) => {
       assertCreatorPrivateOperation(owner);
       const result = await api.chatbot.configureTransport({
@@ -134,7 +139,7 @@ async function openCreatorChatbotDeliveryEditor() {
 
 const CREATOR_CHATBOT_DELIVERY_ACTIONS = new Set(["chatbot-delivery-refresh", "chatbot-delivery-configure"]);
 async function handleCreatorChatbotDeliveryAction({ action }) {
-  if (currentPage !== "connections" || !CREATOR_CHATBOT_DELIVERY_ACTIONS.has(action)) return ACTION_NOT_HANDLED;
+  if (!["connections", "commands"].includes(currentPage) || !CREATOR_CHATBOT_DELIVERY_ACTIONS.has(action)) return ACTION_NOT_HANDLED;
   if (action === "chatbot-delivery-configure") return openCreatorChatbotDeliveryEditor();
   return refreshCreatorChatbotDelivery(true);
 }

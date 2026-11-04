@@ -41,10 +41,11 @@ function normalizeMapping(incoming = {}) {
 }
 
 class ControllerService {
-  constructor({ store, executeAction, selectProfile, pluginDirectory, pluginIconPath = "", localPluginDirectory = streamDeckPluginDestination(), authorize = () => assertAdminAccount(store) }) {
+  constructor({ store, executeAction, selectProfile, executeRule, executeCommand, getCommands = () => [], getAutomations = () => [], executeAutomation, pluginDirectory, pluginIconPath = "", localPluginDirectory = streamDeckPluginDestination(), authorize = () => assertAdminAccount(store) }) {
     this.store = store;
     this.executeAction = executeAction;
     this.selectProfile = selectProfile;
+    Object.assign(this, { executeRule, executeCommand, getCommands, getAutomations, executeAutomation });
     this.pluginDirectory = pluginDirectory;
     this.pluginIconPath = pluginIconPath;
     this.localPluginDirectory = localPluginDirectory;
@@ -186,15 +187,17 @@ class ControllerService {
 
   assertTarget({ targetType, targetId }) {
     const state = readState(this.store, ["rules", "profiles"]);
-    const targets = targetType === "profile" ? state.profiles || [] : controllerActionTargets(state);
+    const selected = state.profiles?.find(profile => profile.id === readState(this.store, ["session.profileId"]).session?.profileId);
+    const targets = targetType === "command" ? this.getCommands() : targetType === "automation" ? this.getAutomations() : targetType === "rule" ? (state.rules || []).filter(rule => !selected?.enabledRuleIds || selected.enabledRuleIds.includes(rule.id)) : targetType === "profile" ? state.profiles || [] : controllerActionTargets({ ...state, session: { profileId: selected?.id } });
     const target = targets.find((item) => item.id === targetId);
     if (!target) throw new Error("Cette action ou ce profil n’existe plus.");
     if (target.enabled === false) throw new Error("Cette action est désactivée.");
   }
 
-  async executeTarget({ targetType, targetId }) {
+  async executeTarget({ targetType, targetId, options = {}, expectedProfileId }) {
     this.authorize();
-    if (!["action", "profile"].includes(targetType)) throw new Error("Cible du contrôleur invalide.");
+    if (!["action", "profile", "rule", "command", "automation"].includes(targetType)) throw new Error("Cible du contrôleur invalide.");
+    if (expectedProfileId !== undefined && expectedProfileId !== readState(this.store, ["session.profileId"]).session?.profileId) throw Error("Le profil actif a changé. Actualisez la touche Stream Deck.");
     this.assertTarget({ targetType, targetId });
     if (this.inflight.size >= 8) throw new Error("Trop de commandes simultanées.");
     const key = `${targetType}:${targetId}`;
@@ -202,6 +205,9 @@ class ControllerService {
     this.inflight.add(key);
     try {
       if (targetType === "profile") await this.selectProfile(targetId);
+      else if (targetType === "command") await this.executeCommand(targetId, options);
+      else if (targetType === "rule") await this.executeRule(targetId);
+      else if (targetType === "automation") await this.executeAutomation(targetId);
       else await this.executeAction(targetId);
       return { ok: true };
     } finally {
@@ -293,14 +299,17 @@ class ControllerService {
     if (url.pathname === "/targets" && request.method === "GET") {
       const state = readState(this.store, ["rules", "profiles", "session.profileId"]);
       return jsonResponse(response, 200, {
+        protocolVersion: 2,
         activeProfile: (state.profiles || []).filter((profile) => profile.id === state.session?.profileId).map(({ id, name }) => ({ id, name }))[0] || null,
         actions: controllerActionTargets(state).filter((item) => item.enabled).map(({ id, name }) => ({ id, name })),
+        rules: (state.rules || []).filter(rule => rule.enabled !== false && (!state.profiles?.find(profile => profile.id === state.session?.profileId)?.enabledRuleIds || state.profiles.find(profile => profile.id === state.session.profileId).enabledRuleIds.includes(rule.id))).map(({ id, name }) => ({ id, name })),
+        commands: this.getCommands(), automations: this.getAutomations(),
         profiles: (state.profiles || []).map(({ id, name }) => ({ id, name }))
       });
     }
     if (url.pathname === "/execute" && request.method === "POST") {
       const payload = JSON.parse((await readRequestBody(request)).toString("utf8"));
-      return jsonResponse(response, 200, await this.executeTarget({ targetType: payload.targetType, targetId: safeString(payload.targetId, 160) }));
+      return jsonResponse(response, 200, await this.executeTarget({ targetType: payload.targetType, targetId: safeString(payload.targetId, 160), options: payload.options && typeof payload.options === "object" && !Array.isArray(payload.options) ? payload.options : {}, expectedProfileId: payload.expectedProfileId }));
     }
     return jsonResponse(response, 404, { error: "Commande inconnue." });
   }

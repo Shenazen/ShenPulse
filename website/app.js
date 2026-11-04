@@ -1,17 +1,17 @@
-import { LEGAL_PAGES } from '/app/legal-pages.js?v=20261029-payments1'
+import { LEGAL_PAGES } from '/app/legal-pages.js?v=20261104-release213'
 import {
   ACTION_TYPES,
   APP_TABS,
   CLIENT_RELEASE,
   OVERLAY_TYPES,
   POPUP_GROUPS
-} from '/content.js?v=20261029-payments1'
-import { GAMES } from '/game-catalog.js?v=20261029-payments1'
-import { productTour, screenshot, screenshotDialog, bindVisuals } from '/app/visual-tour.js?v=20261029-payments1'
-import { escapeHtml } from '/app/html.js?v=20261029-payments1'
+} from '/content.js?v=20261104-release213'
+import { GAMES } from '/game-catalog.js?v=20261104-release213'
+import { productTour, screenshot, screenshotDialog, bindVisuals } from '/app/visual-tour.js?v=20261104-release213'
+import { escapeHtml } from '/app/html.js?v=20261104-release213'
 
 const app = document.querySelector('#app')
-const DOWNLOAD_URL = '/downloads/ShenPulseSetup-2.1.2.exe'
+const DOWNLOAD_URL = '/downloads/ShenPulseSetup-2.1.3.exe'
 const SITE_ORIGIN = 'https://www.shenpulse.leuridan.fr'
 const RETIRED_ROUTES = ['/login', '/setup', '/admin', '/app']
 let pageController = null

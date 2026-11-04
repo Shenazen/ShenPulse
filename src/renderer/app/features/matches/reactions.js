@@ -27,7 +27,7 @@ function creatorMatchesMomentAnimation(moment) {
 function creatorMatchesAnimationChoices(moment) {
   const match = creatorMatchesMomentAnimation(moment);
   if (!match || !creatorMatchesAnimationRows().some((row) => row[2] === match)) return [];
-  return creatorMatchesVariantRows(match).filter(([id]) => ["tikcontrol", "gladiador", "cyber"].includes(id))
+  return creatorMatchesVariantRows(match)
     .map(([variant, label]) => [`${match}:${variant}`, variant === "gladiador" ? "Gladiator" : label]);
 }
 
@@ -47,8 +47,8 @@ function creatorMatchesAnimationLabel(match, variant, fallback = "Animation") {
   const row = creatorMatchesAnimationRows().find((entry) => entry[2] === match);
   const name = String(row?.[1] || fallback).replace(/^Match\s*/, "");
   const pack = creatorMatchesVariantRows(match).find(([id]) => id === variant)?.[1] || "Indisponible";
-  const cyberNames = { guantes: "Gant de boxe", taptap: "Tap Tap", quiereme: "Merci pour ton cœur" };
-  return variant === "cyber" ? `${cyberNames[match] || name} - ${pack}` : `${name} · ${pack}`;
+  const packNames = { guantes: "Gant de boxe", taptap: "Tap Tap", quiereme: "Merci pour ton cœur" };
+  return ["cyber", "dragon"].includes(variant) ? `${packNames[match] || name} - ${pack}` : `${name} · ${pack}`;
 }
 
 function creatorMatchesSyncVariantSelect(editor) {

@@ -15,7 +15,11 @@ function registerGamePackPresentationIpc({handle,core,store,requireGameAccess}) 
   if(Object.hasOwn(incoming,"model")){if(![1,2,3].includes(Number(incoming.model)))throw new Error("Modèle inconnu.");patch.model=Number(incoming.model);}
   if(Object.hasOwn(incoming,"motion")){if(!["animated","fixed"].includes(incoming.motion))throw new Error("Mode invalide.");patch.motion=incoming.motion;}
   if(Object.hasOwn(incoming,"backgroundColor")){if(!/^#[0-9a-f]{6}$/i.test(incoming.backgroundColor))throw new Error("Couleur invalide.");patch.backgroundColor=incoming.backgroundColor;}
-  const next=normalizeGamePackPresentation({...previous,...patch});delete next.configured;
+  if(packId==='minecraft-box-cyber'){
+   for(const [key,values] of Object.entries({cardPlacement:['sides','bottom'],cameraPlacement:['top','bottom'],rowOrder:['help-first','trap-first']}))if(Object.hasOwn(incoming,key)){if(!values.includes(incoming[key]))throw Error('Disposition invalide.');patch[key]=incoming[key];}
+   if(Object.hasOwn(incoming,'cardSize')){if(!Number.isFinite(Number(incoming.cardSize)))throw Error('Taille invalide.');patch.cardSize=Number(incoming.cardSize);}
+  }
+  const next=normalizeGamePackPresentation({...previous,...patch},packId);delete next.configured;
   store.set("settings.overlayConfigs",{...current.overlayConfigs,gameInteractionOverlays:{...current.overlayConfigs?.gameInteractionOverlays,[packId]:{...previous,...next}}});
   notify(core,"state-changed",core.snapshot());return core.snapshot();
  });

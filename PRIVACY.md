@@ -1,6 +1,6 @@
 # Politique de confidentialité de ShenPulse
 
-Dernière mise à jour : 29 octobre 2026
+Dernière mise à jour : 4 novembre 2026
 
 ShenPulse traite localement les événements de livestream nécessaires aux
 automatisations choisies par l'utilisateur : pseudonyme public, avatar public,
@@ -25,6 +25,14 @@ le coffre-fort du système et il est supprimé lors de la déconnexion. Les droi
 d'abonnement, les achats de jeux et les bénéficiaires Premium sont rattachés à
 l'identifiant Firebase et à l'adresse e-mail du compte, jamais au pseudonyme
 TikTok.
+
+## Synthèse vocale et messages du chat
+
+Lorsque vous choisissez une voix naturelle en ligne, le texte autorisé et filtré à lire est transmis au service vocal Microsoft. Le catalogue des voix est actualisé auprès du service, avec un miroir Backblaze et une liste embarquée en secours. Les modèles vocaux ne sont pas téléchargés sur le PC. Une voix Windows locale peut être utilisée sans ce service de synthèse en ligne. Le service vocal ShenPulse n’écrit pas les commentaires dans un fichier ; votre journal d’événements conserve son fonctionnement habituel.
+
+Les alertes viewer peuvent diffuser le pseudonyme, la photo publique et les variables sélectionnées dans les sources Media choisies. Les liens de diffusion sont privés à votre configuration et ne doivent pas être publiés.
+
+Les réponses du chat et messages programmés ne sont envoyés que lorsqu’une connexion autorisée et les droits nécessaires sont disponibles. En mode bot commun TikTok, le serveur reçoit le texte à publier, l’identifiant du salon et celui du compte ShenPulse afin de vérifier les droits et limiter les envois. Le bot commun reste inactif tant qu’aucun compte bot n’est configuré et autorisé. Aucun identifiant fournisseur n’est demandé aux créateurs dans ce mode.
 
 ## Paiements et abonnements
 

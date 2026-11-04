@@ -56,7 +56,7 @@ test("le profil OBS portrait est isolé et ne modifie ni le profil original ni s
  const {prepareObsProfile,value}=require("../src/main/studio-installation/obs-profile");
  const root=fs.mkdtempSync(path.join(os.tmpdir(),"shenpulse-obs-profile-"));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));const base=path.join(root,"basic/profiles/Original");fs.mkdirSync(base,{recursive:true});fs.writeFileSync(path.join(root,"user.ini"),"[Basic]\nProfileDir=Original\n");
  const initial="[General]\nName=Original\n[Video]\nBaseCX=1920\nBaseCY=1080\n[Output]\nMode=Simple\n";fs.writeFileSync(path.join(base,"basic.ini"),initial);fs.writeFileSync(path.join(base,"service.json"),JSON.stringify({settings:{key:"private-original"}}));
- const name=prepareObsProfile(root,"test1234"),target=path.join(root,"basic/profiles/ShenPulse_test1234");const current=fs.readFileSync(path.join(target,"basic.ini"),"utf8");assert.equal(name,"ShenPulse Supermarket test1234");assert.equal(value(current,"Video","BaseCX"),"1080");assert.equal(value(current,"Video","BaseCY"),"1920");assert.equal(value(current,"Output","Mode"),"Simple");assert.equal(fs.readFileSync(path.join(base,"basic.ini"),"utf8"),initial);assert.equal(fs.readFileSync(path.join(target,"service.json"),"utf8"),fs.readFileSync(path.join(base,"service.json"),"utf8"));
+ const name=prepareObsProfile(root,"test1234","Fortnite"),target=path.join(root,"basic/profiles/ShenPulse_test1234");const current=fs.readFileSync(path.join(target,"basic.ini"),"utf8");assert.equal(name,"ShenPulse · Fortnite · test1234");assert.equal(value(current,"Video","BaseCX"),"1080");assert.equal(value(current,"Video","BaseCY"),"1920");assert.equal(value(current,"Output","Mode"),"Simple");assert.equal(fs.readFileSync(path.join(base,"basic.ini"),"utf8"),initial);assert.equal(fs.readFileSync(path.join(target,"service.json"),"utf8"),fs.readFileSync(path.join(base,"service.json"),"utf8"));
 });
 test("Streamlabs crée et vérifie les trois sources par son API locale, sans doublon ni déclenchement de LIVE",async()=>{
  const {installStreamlabs}=require("../src/main/studio-installation/streamlabs");let scene=null;const sources=[],items=[],calls=[],transforms=[];let id=0;
@@ -118,13 +118,14 @@ test("OBS et Streamlabs refusent de modifier leur scène actuellement diffusée"
 });
 
 
-test("TikTok conserve le cadrage, le zoom et les découpes personnalisés lors d’une réinstallation",()=>{
- const first=prepareTikTok(tiktokFixture(),plan),scene=first.document.SourceService.state.sceneSource[first.sceneId];
+test("TikTok conserve le cadrage, le zoom et les découpes personnalisés des jeux de référence",()=>{
+ const preservedPlan={...plan,packId:'cult-of-the-lamb',overlayUrl:plan.overlayUrl.replace('supermarket-simulator','cult-of-the-lamb')};
+ const first=prepareTikTok(tiktokFixture(),preservedPlan),scene=first.document.SourceService.state.sceneSource[first.sceneId];
  for(const source of Object.values(scene.data)){source.lock=true;source.clip={x:3,y:4,z:5,w:6};source.effectiveClip={x:3,y:4,z:5,w:6};}
  const overlay=Object.values(scene.data).find(s=>s.type==="browser");
- overlay.payload.url=plan.overlayUrl;overlay.payload.cx=1080;overlay.payload.cy=1920;overlay.payload.zoom=1.25;
+ overlay.payload.url=preservedPlan.overlayUrl;overlay.payload.cx=1080;overlay.payload.cy=1920;overlay.payload.zoom=1.25;
  overlay.transform={translateX:-183.35629272460938,translateY:136.5625,rotateAngle:0,scaleX:0.964548647403717,scaleY:0.964548647403717,flipH:false,flipV:false,size:{cx:1080,cy:1019},preview_cx:675,preview_cy:1200,fixed_edge:1};
- const before=structuredClone(scene),updated={...plan,overlayUrl:plan.overlayUrl+"&channel=new-channel&motion=fixed"};
+ const before=structuredClone(scene),updated={...preservedPlan,overlayUrl:preservedPlan.overlayUrl+"&channel=new-channel&motion=fixed"};
  const second=prepareTikTok(first.document,updated).document.SourceService.state.sceneSource[first.sceneId];
  for(const source of Object.values(second.data)){assert.deepEqual(source.transform,before.data[source.id].transform);assert.deepEqual(source.clip,before.data[source.id].clip);assert.equal(source.lock,true);}
  const saved=Object.values(second.data).find(s=>s.type==="browser");assert.equal(saved.payload.url,updated.overlayUrl);assert.equal(saved.payload.cx,1080);assert.equal(saved.payload.cy,1920);assert.equal(saved.payload.zoom,1.25);

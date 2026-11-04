@@ -64,7 +64,8 @@ async function drainAlerts() {
   const payload = alertQueue.shift();
   const stage = document.getElementById("alert-stage");
   const mediaOnly = payload.displayMode === "media-only";
-  if (mediaOnly && !payload.mediaUrl) {
+  const caption = mediaOnly ? actionAlertCaptionMarkup(payload.alert) : "";
+  if (mediaOnly && !payload.mediaUrl && !caption) {
     alertRunning = false;
     drainAlerts();
     return;
@@ -77,19 +78,21 @@ async function drainAlerts() {
   );
   const node = document.createElement("article");
   node.className = mediaOnly
-    ? "alert media-only"
+    ? `alert media-only${caption ? " has-alert-caption" : ""}${caption && payload.alert?.position === "top" ? " caption-top" : ""}${!payload.mediaUrl ? " text-only" : ""}`
     : `alert${payload.mediaUrl ? " has-media" : ""}`;
   node.dataset.animation = overlayAnimation;
   node.style.setProperty("--alert-color", payload.color || "#A855F7");
   node.style.setProperty("--alert-duration", `${duration}ms`);
   node.innerHTML = mediaOnly
-    ? `<div class="alert-media-only">${actionMediaMarkup(payload.mediaUrl)}</div>`
+    ? `${payload.mediaUrl ? `<div class="alert-media-only">${actionMediaMarkup(payload.mediaUrl)}</div>` : ""}${caption}`
     : `
       <div class="alert-icon">${actionMediaMarkup(payload.mediaUrl)}</div>
       <div><strong>${escapeHtml(payload.title || "Nouvelle interaction")}</strong><span>${escapeHtml(payload.message || "")}</span></div>
       <div class="alert-progress"></div>`;
   stage.classList.toggle("media-only-stage", mediaOnly);
+  stage.closest(".view")?.classList.toggle("media-only-view", mediaOnly);
   stage.replaceChildren(node);
+  const stopCaptionFit = fitActionAlertCaption(node);
   if (
     overlaySoundEnabled &&
     payload.soundUrl &&
@@ -97,18 +100,60 @@ async function drainAlerts() {
   ) {
     const audio = new Audio(payload.soundUrl);
     audio.volume = overlaySoundVolume;
+    globalThis.ShenPulseAudio?.runtime.media(audio, "overlays", payload, () => overlaySoundEnabled ? overlaySoundVolume : 0);
     audio.play().catch(() => {});
   }
   await new Promise((resolve) => setTimeout(resolve, duration));
   node.classList.add("leaving");
   await new Promise((resolve) => setTimeout(resolve, 430));
   node.remove();
+  stopCaptionFit();
   stage.classList.remove("media-only-stage");
+  stage.closest(".view")?.classList.remove("media-only-view");
   if (overlayPauseTime) {
     await new Promise((resolve) => setTimeout(resolve, overlayPauseTime * 1000));
   }
   alertRunning = false;
   drainAlerts();
+}
+
+function actionAlertCaptionMarkup(alert) {
+  if (!alert || typeof alert !== "object") return "";
+  const username = String(alert.username || "").slice(0, 160);
+  const message = String(alert.message || "").slice(0, 500);
+  const parts = Array.isArray(alert.parts) ? alert.parts.slice(0, 40) : [];
+  if (!username && !message && !parts.length) return "";
+  const color = /^#[0-9a-f]{6}$/i.test(alert.color || "") ? alert.color : "#ffffff";
+  const stroke = /^#[0-9a-f]{6}$/i.test(alert.strokeColor || "") ? alert.strokeColor : "#000000";
+  const font = ["Inter", "Arial", "Georgia", "Impact", "Verdana"].includes(alert.font) ? alert.font : "Inter";
+  const fontSize = alert.fontSize != null && Number.isFinite(Number(alert.fontSize)) ? `;--action-alert-size:${Math.min(240, Math.max(8, Number(alert.fontSize)))}px` : "";
+  const strokeWidth = alert.strokeWidth != null && Number.isFinite(Number(alert.strokeWidth)) ? `;--action-alert-stroke-width:${Math.min(20, Math.max(0, Number(alert.strokeWidth)))}px` : "";
+  const content = parts.length ? parts.map(part => {
+    if (part?.type !== "avatar") return escapeHtml(String(part?.text || "").slice(0, 500));
+    let url = "";
+    try { const image = new URL(part.url); if (image.protocol === "https:" && !image.username && !image.password) url = image.href; } catch { /* Initiale si aucune photo. */ }
+    const label = String(part.label || "Viewer").slice(0, 160);
+    return `<span class="action-alert-avatar" role="img" aria-label="${escapeHtml(label)}"><span>${escapeHtml(Array.from(label)[0] || "?")}</span>${url ? `<img src="${escapeHtml(url)}" alt="" referrerpolicy="no-referrer">` : ""}</span>`;
+  }).join("") : escapeHtml(message);
+  return `<div class="action-alert-caption" style="--action-alert-text:${color};--action-alert-stroke:${stroke};--action-alert-font:${font},Arial,sans-serif${fontSize}${strokeWidth}">${username ? `<strong>${escapeHtml(username)}</strong>` : ""}${content ? `<span class="action-alert-message">${content}</span>` : ""}</div>`;
+}
+
+/** Adapter aussi le texte aux petites sources ; libérer l'observateur à la fin. */
+function fitActionAlertCaption(node) {
+  const caption = node.querySelector(".action-alert-caption");
+  if (!caption || typeof ResizeObserver !== "function") return () => {};
+  const fit = () => {
+    caption.style.removeProperty("font-size");
+    let size = parseFloat(getComputedStyle(caption).fontSize) || 24;
+    while ((caption.scrollHeight > caption.clientHeight + 1 || caption.scrollWidth > caption.clientWidth + 1) && size > 8) {
+      size -= 1;
+      caption.style.fontSize = `${size}px`;
+    }
+  };
+  const observer = new ResizeObserver(fit);
+  observer.observe(node);
+  fit();
+  return () => observer.disconnect();
 }
 
 const liveAudioQueue = [];
@@ -151,7 +196,8 @@ function playLiveAudio(payload = {}) {
     const audio = new Audio(url);
     audio.preload = "auto";
     audio.volume = Math.min(1, Math.max(0, Number(payload.volume ?? 1)));
-    const done = () => resolve();
+    const release = globalThis.ShenPulseAudio?.runtime.media(audio, payload.audioKind || "sounds", payload, () => overlaySoundEnabled ? (parameters.has("soundVolume") ? overlaySoundVolume : 1) : 0);
+    const done = () => { release?.(); resolve(); };
     audio.addEventListener("ended", done, { once: true });
     audio.addEventListener("error", done, { once: true });
     audio.play().catch(done);
@@ -159,8 +205,10 @@ function playLiveAudio(payload = {}) {
 }
 
 function playLiveTts(payload = {}) {
+  if (payload.audioUrl) return playLiveAudio({ ...payload, url: payload.audioUrl, audioKind: "tts" });
   const text = String(payload.text || "").trim();
   if (!text || !("speechSynthesis" in window)) return Promise.resolve();
+  if (globalThis.ShenPulseAudio) return new Promise(resolve => ShenPulseAudio.runtime.speak(payload, { onEnd: resolve, sourceVolume: () => overlaySoundEnabled ? (parameters.has("soundVolume") ? overlaySoundVolume : 1) : 0 }));
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = Number(payload.rate || 1);

@@ -102,11 +102,11 @@
     {
       "gameId": "the-mortuary-assistant",
       "id": "mod",
-      "version": "1.0.0",
-      "key": "installer-assets/the-mortuary-assistant/1.0.0/the-mortuary-assistant-shenpulse-1.0.0.zip",
-      "size": 20163863,
-      "sha256": "bd43b6cf4beb09d0dcbb10c424e116e2c7e5b75bdee92b539471179ef13b5505",
-      "buildPath": ".artifacts/game-pack-builds/the-mortuary-assistant/1.0.0/the-mortuary-assistant-shenpulse-1.0.0.zip"
+      "version": "1.0.2",
+      "key": "installer-assets/the-mortuary-assistant/1.0.2/the-mortuary-assistant-shenpulse-1.0.2.zip",
+      "size": 20644878,
+      "sha256": "a4abf67dfd20996aaae360ed58be29161e0e834c1e0855b909dd0f4d57fd10e9",
+      "buildPath": ".artifacts/game-pack-builds/the-mortuary-assistant/1.0.2/the-mortuary-assistant-shenpulse-1.0.2.zip"
     },
     {
       "gameId": "pokemon-red-blue",
@@ -697,6 +697,123 @@
       "key": "installer-assets/gtav-montchiliad/1.0.0/gta-v-enhanced-mont-chiliad-save.zip",
       "size": 789698,
       "sha256": "13f06f99c75c913b2ce6c953e7bd1d545f14f47c369520cab3e6b681e448111e"
+    },
+    {
+      "gameId": "final-fantasy-1-pixel-remaster",
+      "id": "xbox-module",
+      "version": "1.0.1",
+      "key": "installer-assets/final-fantasy-1-pixel-remaster/1.0.1/final-fantasy-1-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+      "size": 35615916,
+      "sha256": "649a7f8ec8f139d0231e0a044eb3da79cbd84f437ea3208100211765523ab766",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-1-pixel-remaster/1.0.1/final-fantasy-1-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "final-fantasy-2-pixel-remaster",
+      "id": "xbox-module",
+      "version": "1.0.1",
+      "key": "installer-assets/final-fantasy-2-pixel-remaster/1.0.1/final-fantasy-2-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+      "size": 35616969,
+      "sha256": "a8cf79c40cb6913ad606abf782c6cd7c8489eca3c04555071ec996a31b31a4fa",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-2-pixel-remaster/1.0.1/final-fantasy-2-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "final-fantasy-3-pixel-remaster",
+      "id": "xbox-module",
+      "version": "1.0.1",
+      "key": "installer-assets/final-fantasy-3-pixel-remaster/1.0.1/final-fantasy-3-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+      "size": 35615389,
+      "sha256": "2eaf0988c0ea520539515607e43e6b87f007e455d84d531d9f57445b3ac41672",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-3-pixel-remaster/1.0.1/final-fantasy-3-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "final-fantasy-4-pixel-remaster",
+      "id": "xbox-module",
+      "version": "1.0.1",
+      "key": "installer-assets/final-fantasy-4-pixel-remaster/1.0.1/final-fantasy-4-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+      "size": 36968884,
+      "sha256": "5efcf9975c44e11fd8f8e96e967adfbdb13fc387aa3aa896a48fd6d91847da3e",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-4-pixel-remaster/1.0.1/final-fantasy-4-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "final-fantasy-5-pixel-remaster",
+      "id": "xbox-module",
+      "version": "1.0.1",
+      "key": "installer-assets/final-fantasy-5-pixel-remaster/1.0.1/final-fantasy-5-pixel-remaster-gamepass-shenpulse-1.0.1.zip",
+      "size": 36973781,
+      "sha256": "f13a1ee00879d05a281c0b6aa488e025be26a879be1aceb40df2512dc43f5c23",
+      "buildPath": ".artifacts/game-pack-builds/final-fantasy-5-pixel-remaster/1.0.1/final-fantasy-5-pixel-remaster-gamepass-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "frog-sqwad",
+      "id": "module",
+      "version": "1.0.1",
+      "key": "installer-assets/frog-sqwad/1.0.1/frog-sqwad-shenpulse-1.0.1.zip",
+      "size": 764905,
+      "sha256": "f08729ec64b19dbaa8677336d5926b32b54a981a2b9685a2372fb20861b8a212",
+      "buildPath": ".artifacts/game-pack-builds/frog-sqwad/1.0.1/frog-sqwad-shenpulse-1.0.1.zip"
+    },
+    {
+      "gameId": "farming-simulator-25",
+      "id": "module",
+      "version": "1.0.5",
+      "key": "installer-assets/farming-simulator-25/1.0.5/farming-simulator-25-shenpulse-1.0.5.zip",
+      "size": 264483,
+      "sha256": "548fd2dd548eeee3d937c43e4161ff23a00e05f35ca0e579b540c2b1dd10fb85",
+      "buildPath": ".artifacts/game-pack-builds/farming-simulator-25/1.0.5/farming-simulator-25-shenpulse-1.0.5.zip"
+    },
+    {
+      "gameId": "minecraft-diamond-rush",
+      "id": "module",
+      "version": "1.0.2",
+      "key": "installer-assets/minecraft-diamond-rush/1.0.2/minecraft-diamond-rush-shenpulse-1.0.2.zip",
+      "size": 26201,
+      "sha256": "cdeda46a849807a43157a56e6fd413b11af623eee1b28f9cc5d7909c0f380ce9",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-diamond-rush/1.0.2/minecraft-diamond-rush-shenpulse-1.0.2.zip"
+    },
+    {
+      "gameId": "minecraft-box-cyber",
+      "id": "module",
+      "version": "1.0.2",
+      "key": "installer-assets/minecraft-box-cyber/1.0.2/minecraft-box-cyber-shenpulse-1.0.2.zip",
+      "size": 37657,
+      "sha256": "a541af8506bfaee1890edca145b4c55f157c07597d3d03cc4881593d0ff70336",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-box-cyber/1.0.2/minecraft-box-cyber-shenpulse-1.0.2.zip"
+    },
+    {
+      "gameId": "minecraft-diamond-rush",
+      "id": "module",
+      "version": "1.0.3",
+      "key": "installer-assets/minecraft-diamond-rush/1.0.3/minecraft-diamond-rush-shenpulse-1.0.3.zip",
+      "size": 26202,
+      "sha256": "897bb6def873c939aca6d7cba78629daa2760d5d05070fca4feff2624d5ec6b0",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-diamond-rush/1.0.3/minecraft-diamond-rush-shenpulse-1.0.3.zip"
+    },
+    {
+      "gameId": "minecraft-box-cyber",
+      "id": "module",
+      "version": "1.0.3",
+      "key": "installer-assets/minecraft-box-cyber/1.0.3/minecraft-box-cyber-shenpulse-1.0.3.zip",
+      "size": 37672,
+      "sha256": "df986b30596cbc4c63e90dfd738695953cb2f57fd32b3ada5056771dc1e5730c",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-box-cyber/1.0.3/minecraft-box-cyber-shenpulse-1.0.3.zip"
+    },
+    {
+      "gameId": "minecraft-diamond-rush",
+      "id": "module",
+      "version": "1.0.4",
+      "key": "installer-assets/minecraft-diamond-rush/1.0.4/minecraft-diamond-rush-shenpulse-1.0.4.zip",
+      "size": 26200,
+      "sha256": "cfe0b1509090626ea5da0621105a53d47ba9d8a2c1963bb99d28ae1384bf40cc",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-diamond-rush/1.0.4/minecraft-diamond-rush-shenpulse-1.0.4.zip"
+    },
+    {
+      "gameId": "minecraft-box-cyber",
+      "id": "module",
+      "version": "1.0.4",
+      "key": "installer-assets/minecraft-box-cyber/1.0.4/minecraft-box-cyber-shenpulse-1.0.4.zip",
+      "size": 37687,
+      "sha256": "4b99d280f7b5282e986c06f4c20648429c0ea9e094645feb8bb2961d47356f7c",
+      "buildPath": ".artifacts/game-pack-builds/minecraft-box-cyber/1.0.4/minecraft-box-cyber-shenpulse-1.0.4.zip"
     }
   ]
 }

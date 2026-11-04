@@ -2,25 +2,88 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "Name": "ShenPulse",
   "Author": "ShenPulse",
-  "Description": "Lancez vos actions et changez de profil ShenPulse depuis Stream Deck.",
-  "Version": "1.1.0.0",
+  "Description": "Pilotez les animations de match, wins, timers, musique, règles et profils ShenPulse depuis Stream Deck.",
+  "Version": "1.2.0.0",
   "UUID": "com.shenpulse.control",
   "SDKVersion": 2,
   "CodePath": "plugin.html",
   "Icon": "images/plugin",
   "Category": "ShenPulse",
   "CategoryIcon": "images/plugin",
-  "URL": "https://shenpulse.com",
+  "URL": "https://shenpulse.leuridan.fr",
   "Software": { "MinimumVersion": "6.6" },
   "OS": [{ "Platform": "windows", "MinimumVersion": "10" }],
   "Actions": [
+    {
+      "Name": "Animation de match",
+      "UUID": "com.shenpulse.control.match",
+      "Tooltip": "Lance ×2, ×3, Gants, Snipe et les autres animations avec le pack visuel choisi.",
+      "Icon": "images/match",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/match", "TitleAlignment": "bottom", "FontSize": 11 }],
+      "SupportedInMultiActions": true
+    },
+    {
+      "Name": "Compteur de wins",
+      "UUID": "com.shenpulse.control.counter",
+      "Tooltip": "Ajoute, retire, inverse ou réinitialise les wins et active leur multiplicateur.",
+      "Icon": "images/counter",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/counter", "TitleAlignment": "bottom", "FontSize": 11 }],
+      "SupportedInMultiActions": true
+    },
+    {
+      "Name": "Timer et bonus",
+      "UUID": "com.shenpulse.control.timer",
+      "Tooltip": "Démarre, ajuste, met en pause ou reprend le timer et le timer multiplicateur.",
+      "Icon": "images/timer",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/timer", "TitleAlignment": "bottom", "FontSize": 11 }],
+      "SupportedInMultiActions": true
+    },
+    {
+      "Name": "Musique Spotify",
+      "UUID": "com.shenpulse.control.music",
+      "Tooltip": "Pilote la lecture, les titres et le volume du compte Spotify connecté à ShenPulse.",
+      "Icon": "images/music",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/music", "TitleAlignment": "bottom", "FontSize": 11 }],
+      "SupportedInMultiActions": true
+    },
+    {
+      "Name": "Automatisation de match",
+      "UUID": "com.shenpulse.control.automation",
+      "Tooltip": "Déclenche une automatisation du profil avec ses animations, sons et actions configurés.",
+      "Icon": "images/match",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/match", "TitleAlignment": "bottom", "FontSize": 11 }],
+      "SupportedInMultiActions": true
+    },
+    {
+      "Name": "Lancer la roue",
+      "UUID": "com.shenpulse.control.wheel",
+      "Tooltip": "Lance la roue configurée dans ShenPulse et ses actions associées.",
+      "Icon": "images/rule",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/rule", "TitleAlignment": "bottom", "FontSize": 11 }],
+      "SupportedInMultiActions": true
+    },
+    {
+      "Name": "Lancer une règle",
+      "UUID": "com.shenpulse.control.rule",
+      "Tooltip": "Exécute toutes les actions actives d’une règle du profil ShenPulse.",
+      "Icon": "images/rule",
+      "PropertyInspectorPath": "inspector.html",
+      "States": [{ "Image": "images/rule", "TitleAlignment": "bottom", "FontSize": 11 }],
+      "SupportedInMultiActions": true
+    },
     {
       "Name": "Lancer une action",
       "UUID": "com.shenpulse.control.action",
       "Tooltip": "Lance une action ShenPulse enregistrée.",
       "Icon": "images/action",
       "PropertyInspectorPath": "inspector.html",
-      "States": [{ "Image": "images/action", "TitleAlignment": "bottom", "FontSize": "11" }],
+      "States": [{ "Image": "images/action", "TitleAlignment": "bottom", "FontSize": 11 }],
       "SupportedInMultiActions": true
     },
     {
@@ -29,7 +92,7 @@
       "Tooltip": "Sélectionne un profil ShenPulse.",
       "Icon": "images/action",
       "PropertyInspectorPath": "inspector.html",
-      "States": [{ "Image": "images/action", "TitleAlignment": "bottom", "FontSize": "11" }],
+      "States": [{ "Image": "images/action", "TitleAlignment": "bottom", "FontSize": 11 }],
       "SupportedInMultiActions": true
     }
   ]

@@ -1,7 +1,7 @@
 "use strict";
 
 module.exports = {
-  version: "1.0.0",
+  version: "1.0.2",
   title: "The Mortuary Assistant",
   targetLabel: "dossier contenant The Mortuary Assistant.exe",
   autoDetect: true,
@@ -24,11 +24,11 @@ module.exports = {
     },
     {
       id: "mod",
-      fileName: "the-mortuary-assistant-shenpulse-1.0.0.zip",
+      fileName: "the-mortuary-assistant-shenpulse-1.0.2.zip",
       action: "extract",
-      url: "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/the-mortuary-assistant/1.0.0/the-mortuary-assistant-shenpulse-1.0.0.zip",
-      size: 20163863,
-      sha256: "bd43b6cf4beb09d0dcbb10c424e116e2c7e5b75bdee92b539471179ef13b5505"
+      url: "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/the-mortuary-assistant/1.0.2/the-mortuary-assistant-shenpulse-1.0.2.zip",
+      size: 20644878,
+      sha256: "a4abf67dfd20996aaae360ed58be29161e0e834c1e0855b909dd0f4d57fd10e9"
     }
   ]
 };

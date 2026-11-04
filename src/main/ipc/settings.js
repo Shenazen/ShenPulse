@@ -10,6 +10,8 @@ const { notify } = require("./notifications");
 const { readState } = require("../state-projection");
 const { assertProFeatureAccess } = require("../pro-feature-access");
 const { settingsAllowedForAccount } = require("../settings-access");
+const { normalizeTtsSettings } = require("../state/defaults/preferences");
+const { normalizeSettings: normalizeAudioMixer } = require("../../../resources/overlays/audio-control");
 
 function registerSettingsIpc({ handle, core, store, localServerSettingsSignature }) {
   handle("server:restart", () => core.restartServers());
@@ -78,7 +80,8 @@ function registerSettingsIpc({ handle, core, store, localServerSettingsSignature
       liveDirectory: current.liveDirectory,
       locale: ["fr-FR", "en-US"].includes(settings.locale) ? settings.locale : current.locale,
       overlayScene: sceneLayout.normalizeScene(settings.overlayScene || current.overlayScene),
-      tts: { ...current.tts, ...(settings.tts || {}) },
+      tts: normalizeTtsSettings(settings.tts, current.tts),
+      audioMixer: normalizeAudioMixer(settings.audioMixer || current.audioMixer),
       obs: { ...current.obs, ...(settings.obs || {}) },
       spotify: { ...current.spotify, ...(settings.spotify || {}) },
       backblaze: {

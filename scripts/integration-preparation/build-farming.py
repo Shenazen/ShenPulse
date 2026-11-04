@@ -1,6 +1,6 @@
 """Prepare the local Farming 25 module without starting or modifying the installed game."""
 import argparse,hashlib,importlib.util,json,pathlib,re,zipfile
-parser=argparse.ArgumentParser();parser.add_argument('--version',default='1.0.4');args=parser.parse_args()
+parser=argparse.ArgumentParser();parser.add_argument('--version',default='1.0.5');args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('common',ROOT/'scripts/integration-preparation/build-script-games.py');common=importlib.util.module_from_spec(spec);spec.loader.exec_module(common)
 source=ROOT/'.artifacts/integration-wave-20261029/fs25/FS25_SyncLiveBridge/SyncLiveBridge.lua'
@@ -31,6 +31,10 @@ s=s[:start]+'''function ShenPulseBridge:actionReset()
 end
 
 '''+s[end:]
+# Resolve the dealer from the loaded map, rather than coordinates from one map.
+start=s.index('function ShenPulseBridge:actionTeleportDealer()')
+end=s.index('function ShenPulseBridge:teleportToPosition(',start)
+s=s[:start]+(ROOT/'scripts/integration-preparation/farming-dealer.lua').read_text(encoding='utf8')+'\n'+s[end:]
 # Propagate actual precondition failures to the command acknowledgement.
 s=s.replace('    self:fillVehicle(fillTypeIndex, "Ble")','    return self:fillVehicle(fillTypeIndex, "Ble")')
 s=s.replace('    self:fillVehicle(fillTypeIndex, "Orge")','    return self:fillVehicle(fillTypeIndex, "Orge")')

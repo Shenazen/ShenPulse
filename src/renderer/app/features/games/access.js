@@ -130,6 +130,9 @@ function gameArtwork(pack) {
 
 // Library covers are independent from the artwork used for gameplay previews.
 function gameTileArtwork(pack) {
+  if (pack.artworkPanels?.length) {
+    return `<div class="game-tile-art game-tile-collection" style="--collection-count:${pack.artworkPanels.length}">${pack.artworkPanels.map(artwork => `<img src="assets/games/${escapeHtml(artwork)}" alt="" loading="lazy">`).join("")}</div>`;
+  }
   const cover = pack.coverArtwork ? `assets/games/${pack.coverArtwork}` : gameArtwork(pack);
   const className = pack.coverArtwork ? "game-tile-art game-tile-cover" : "game-tile-art";
   return `<div class="${className}" style="background-image:linear-gradient(180deg,transparent,rgba(5,7,13,.25)),url('${escapeHtml(cover)}')"></div>`;
@@ -273,7 +276,8 @@ function gameTileCaption(pack) {
 
 function gameTileActionLabel(pack) {
   if (isGameUnlocked(pack)) {
-    return pack.modeSelector ? "Choisir le mode" : "Entrer dans le jeu";
+    if(pack.customGameBuilder)return "Créer mon pack";
+    return pack.id === "final-fantasy-pixel-remaster" ? "Choisir l’épisode" : pack.modeSelector ? "Choisir le mode" : "Entrer dans le jeu";
   }
   if (!hasProAccess()) return "Voir l’abonnement";
   if (pack.accessMode === "purchase" && !hasGameEntitlement(pack)) {
@@ -542,6 +546,7 @@ function renderGamesV2() {
   }
   const query = gameSearch.trim().toLocaleLowerCase();
   const matchingPacks = availablePacks.filter((pack) => {
+    if(pack.customGameBuilder)return true;
     const effects = (pack.effects || []).map((effect) => effect.name).join(" ");
     const matchesSearch =
       !query ||
@@ -557,7 +562,7 @@ function renderGamesV2() {
       const modes = pack.modes.filter((mode) => ShenPulseGameCategories.matchesCategory(mode, gameCategory));
       return modes.length ? [gameModeLauncherPack(modes,pack.id)] : [];
     }
-    return ShenPulseGameCategories.matchesCategory(pack, gameCategory) ? [pack] : [];
+    return pack.customGameBuilder || ShenPulseGameCategories.matchesCategory(pack, gameCategory) ? [pack] : [];
   });
   const resultCount = ShenPulseGameCategories.countGames(packs);
   return `
@@ -586,23 +591,24 @@ function renderGamesV2() {
 
 function openMinecraftModeSelector(launcher) {
   const gta=launcher.id===GTA_LAUNCHER_ID;
+  const finalFantasy=launcher.id==="final-fantasy-pixel-remaster";
   const modes = launcher?.modes || [];
   if (!modes.length) {
     return toast(
-      gta ? "GTA indisponible" : "Minecraft indisponible",
-      gta ? "Aucun mod GTA n’est actuellement visible." : "Aucun mode Minecraft n’est actuellement visible.",
+      finalFantasy ? "Final Fantasy indisponible" : gta ? "GTA indisponible" : "Minecraft indisponible",
+      finalFantasy ? "Aucun épisode n’est actuellement visible." : gta ? "Aucun mod GTA n’est actuellement visible." : "Aucun mode Minecraft n’est actuellement visible.",
       true
     );
   }
   openEditor({
-    title: gta ? "Choisir un mod GTA Enhanced/Amélioré" : "Choisir un mode Minecraft",
-    kicker: gta ? "GTA ENHANCED · CHILIAD, KOTH OU HIKING" : "MINECRAFT · CHOISISSEZ VOTRE MODE",
+    title: finalFantasy ? "Choisir un Final Fantasy Pixel Remaster" : gta ? "Choisir un mod GTA Enhanced/Amélioré" : "Choisir un mode Minecraft",
+    kicker: finalFantasy ? "FINAL FANTASY · PIXEL REMASTER" : gta ? "GTA ENHANCED · CHILIAD, KOTH OU HIKING" : "MINECRAFT · CHOISISSEZ VOTRE MODE",
     variant: "minecraft-modes",
     body: `<div class="minecraft-mode-picker">
       <header>
         <span>${modes.length} EXPÉRIENCES COMPLÈTES</span>
-        <h3>Dans quel mode voulez-vous jouer ?</h3>
-        <p>Chaque mode conserve sa propre installation, ses réglages et son catalogue d’interactions TikTok LIVE.</p>
+        <h3>${finalFantasy ? "À quel épisode voulez-vous jouer ?" : "Dans quel mode voulez-vous jouer ?"}</h3>
+        <p>Chaque ${finalFantasy ? "épisode" : "mode"} conserve sa propre installation, ses réglages et son catalogue d’interactions TikTok LIVE.</p>
       </header>
       <div class="minecraft-mode-grid">
         ${modes.map((mode) => `
@@ -610,15 +616,17 @@ function openMinecraftModeSelector(launcher) {
             <div class="minecraft-mode-art"><img src="${escapeHtml(mode.coverArtwork ? `assets/games/${mode.coverArtwork}` : gameArtwork(mode))}" alt="" loading="eager">${!gta && mode.minecraftVersion ? `<b class="minecraft-mode-version">Minecraft Java ${escapeHtml(mode.minecraftVersion)}</b>` : ""}</div>
             <span>
               <small>${escapeHtml(
-                gta ? (mode.id === "gtav-koth-enhanced" ? "RAMPE INTERACTIVE" : mode.id === "gtav-hiking-enhanced" ? "RANDONNÉE INTERACTIVE" : "ASCENSION INTERACTIVE") : mode.id === "minecraft-lavarise" ? "ASCENSION DE LAVE" : mode.id === "minecraft-bedrock-box"
+                finalFantasy ? "ÉPISODE " + ["I", "II", "III", "IV", "V"][Number(mode.id.split("-")[2]) - 1] : gta ? (mode.id === "gtav-koth-enhanced" ? "RAMPE INTERACTIVE" : mode.id === "gtav-hiking-enhanced" ? "RANDONNÉE INTERACTIVE" : "ASCENSION INTERACTIVE") : mode.id === "minecraft-lavarise" ? "ASCENSION DE LAVE" : mode.id === "minecraft-bedrock-box"
                   ? "SURVIE VERTICALE"
+                  : mode.id === "minecraft-box-cyber" ? "BOX INTERACTIVE"
+                  : mode.id === "minecraft-diamond-rush" ? "RUÉE AUX DIAMANTS"
                   : mode.id === "minecraft-survival-plugin"
                     ? "SURVIE INTERACTIVE"
                     : "PLATEFORME DE SABLE"
               )}</small>
               <strong>${escapeHtml(mode.name)}</strong>
               <b>${mode.effects.length} interactions disponibles</b>
-              <em>Ouvrir ce mode →</em>
+              <em>${finalFantasy ? "Ouvrir cet épisode" : "Ouvrir ce mode"} →</em>
             </span>
           </button>`).join("")}
       </div>
@@ -646,6 +654,7 @@ async function enterGameWorkspace(pack) {
   const current = () => gameWorkspaceEntry === entry && gameWorkspaceScope() === entry.scope &&
     currentPage === 'games' && gamePageMode === 'detail' && selectedGameId === pack.id;
   selectedGameId = pack.id;
+  if(pack.customGameBuilder){gamePageMode='detail';render();content.scrollTop=0;return;}
   gamePageMode = 'detail';
   gameWorkspaceStep = 'installation';
   gameEffectSearch = '';
@@ -684,6 +693,7 @@ async function enterGameWorkspace(pack) {
 }
 
 function renderGameWorkspace(pack) {
+  if (pack.customGameBuilder) return renderCustomGamesBuilder();
   if (typeof usesSharedGameWorkspace === "function" && usesSharedGameWorkspace(pack)) return renderSupermarketWorkspace(pack);
   if (pack.id === "supermarket-simulator") return renderSupermarketWorkspace(pack);
   if (pack.id === "super-mario-kart") {

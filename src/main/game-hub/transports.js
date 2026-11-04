@@ -159,6 +159,7 @@ class GameTransports {
     );
     const request = {
       ...payload.effect,
+      ...(connector.viewerIdentity ? { viewerIdentity: true } : {}),
       ...(connector.parameterOrderByCode?.[payload.effect.code] ? {parameterOrder:connector.parameterOrderByCode[payload.effect.code]} : connector.parameterFormat==="array"?{parameterOrder:[]}:{}),
       duration: Math.round(
         Number(payload.effect.duration || 0) * durationMultiplier

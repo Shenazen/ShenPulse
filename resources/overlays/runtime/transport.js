@@ -28,7 +28,12 @@ function waitForOverlayMedia(element) {
 
 async function markOverlayReady() {
   const revision = ++overlayReadyRevision;
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  // Les sources navigateur mises en arrière-plan par un studio peuvent suspendre
+  // leurs frames. Elles doivent quand même sortir de l’écran transparent initial.
+  await Promise.race([
+    new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    new Promise((resolve) => setTimeout(resolve, 120))
+  ]);
   const criticalMedia = [
     ...activeView.querySelectorAll(".theme-frame:not([hidden]), .coin-jar-layer:not([hidden])")
   ];
@@ -115,6 +120,10 @@ for (const [channel, handler] of Object.entries(overlayChannels)) {
 }
 if (typeof hydrateOverlaySession === "function") overlayChannels["session-state"] = hydrateOverlaySession;
 overlayChannels.bootstrap = applyRelayState;
+overlayChannels["audio-control"] = payload => {
+  globalThis.ShenPulseAudio?.runtime.update(payload);
+  if (viewName === "scene") dispatchSceneMessage("audio-control", payload);
+};
 overlayChannels.design = updatePreviewDesign;
 overlayChannels.configuration = updateOverlayConfiguration;
 if (viewName === "scene") {
@@ -127,7 +136,7 @@ if (viewName === "scene") {
 }
 
 function currentViewAcceptsChannel(channel, payload = {}) {
-  if (channel === "bootstrap") return true;
+  if (["bootstrap", "audio-control"].includes(channel)) return true;
   return overlayCatalog.acceptsChannel({
     view: viewName,
     channel,
@@ -358,6 +367,7 @@ function connectLocalEventSource() {
 
 function applyRelayState(state, options = {}) {
   if (!state || typeof state !== "object") return;
+  if (state.audioControl) globalThis.ShenPulseAudio?.runtime.update(state.audioControl);
   if (viewName === "match-widget") {
     if (typeof hydrateMatchWidget === "function") hydrateMatchWidget(state.matches || {});
     return;
@@ -646,6 +656,8 @@ function synchronizePublicMatchWidget() {
 }
 
 function synchronizePublicMatchSource() {
+  const audio = publicMatchRelayDocument?.state?.audioControl;
+  if (audio) globalThis.ShenPulseAudio?.runtime.update(audio);
   if (isPublicMatchWidgetSource) {
     synchronizePublicMatchWidget();
     return;
@@ -708,7 +720,7 @@ function synchronizePublicMatchSource() {
   publicMatchPlaybackBatchId = batchId;
   const messages = Array.isArray(batch.messages) ? batch.messages : Object.values(batch.messages || {});
   for (const message of messages.slice(-64)) {
-    if (!["match", "match-media", "match-audio"].includes(message?.channel)) continue;
+    if (!["match", "match-media", "match-audio", "audio-control"].includes(message?.channel)) continue;
     const emittedAtMs = Date.parse(String(message.timestamp || batch.timestamp || ""));
     if (!Number.isFinite(emittedAtMs) || nowMs - emittedAtMs > 15000 || emittedAtMs > nowMs + 15000) continue;
     if (!currentViewAcceptsChannel(message.channel, message.payload)) continue;

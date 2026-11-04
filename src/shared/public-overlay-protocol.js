@@ -2,6 +2,7 @@
 const { createGamePackOverlays } = require("./game-pack-overlay");
 
 const overlayCatalog = require("../../resources/overlays/overlay-catalog");
+const { stateControl } = require("../../resources/overlays/audio-control");
 const sceneLayout = require("../../resources/overlays/scene-layout");
 const { uniqueViewerCount } = require("./live-statistics");
 
@@ -189,6 +190,7 @@ function createRelayState(state, options = {}) {
   return sanitizeRelayValue(
     {
       gamePacks: createGamePackOverlays(state),
+      audioControl: stateControl(state),
       goals: (state?.goals || []).map((goal) => ({
         id: goal.id || "",
         name: goal.name || goal.title || "",
@@ -221,9 +223,17 @@ function createRelayState(state, options = {}) {
 }
 
 function createRelayMessage(channel, payload, options = {}) {
+  const sanitized = sanitizeRelayValue(payload, options);
+  // L'audio TTS éphémère dépasse la borne des champs texte. Seul ce champ
+  // encodé, sur ce canal et dans la limite de 2 Mio décodés, fait exception.
+  if (channel === "tts" && sanitized && typeof sanitized === "object" && payload?.audioUrl) {
+    const audio = payload.audioUrl;
+    if (typeof audio === "string" && audio.length <= 2796230 && /^data:audio\/mpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(audio)) sanitized.audioUrl = audio;
+    else { delete sanitized.audioUrl; sanitized.voice = ""; sanitized.voiceFallback = true; }
+  }
   return {
     channel: String(channel || "").slice(0, 80),
-    payload: sanitizeRelayValue(payload, options),
+    payload: sanitized,
     timestamp: new Date().toISOString()
   };
 }

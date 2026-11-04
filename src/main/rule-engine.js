@@ -1,11 +1,13 @@
 "use strict";
+const { composeActionVisuals } = require("./actions/compound-visuals");
 
 const { EventEmitter } = require("node:events");
 const { readState } = require("./state-projection");
 const { getPath, id } = require("./utils");
 const { renderValue } = require("./template");
 const { compareGiftValue } = require("../shared/gift-value-filter");
-const { giftConditionMatches } = require("../shared/gift-identity");
+const { giftSelectionMatches, isGiftSelectionCondition } = require("../shared/gift-identity");
+const { GiftComboPolicy } = require("./gift-combo-policy");
 
 class RuleEngine extends EventEmitter {
   constructor({ store, actionRunner, giftCatalog = null }) {
@@ -15,6 +17,7 @@ class RuleEngine extends EventEmitter {
     this.giftCatalog = giftCatalog;
     this.cooldowns = new Map();
     this.thresholds = new Map();
+    this.giftCombos = new GiftComboPolicy();
     this.queue = [];
     this.processing = false;
     this.activeJobs = 0;
@@ -25,6 +28,7 @@ class RuleEngine extends EventEmitter {
   resetProfileState() {
     this.cooldowns.clear();
     this.thresholds.clear();
+    this.giftCombos.clear();
     this.nextCooldownCleanupAt = 0;
     for (const job of this.queue.splice(0)) job.resolveCompletion();
   }
@@ -46,10 +50,12 @@ class RuleEngine extends EventEmitter {
 
     const completions = [];
     for (const rule of matchingRules) {
-      const executionCount = this.#thresholdExecutionCount(rule, event);
-      if (executionCount <= 0) continue;
+      const thresholdCount = this.#thresholdExecutionCount(rule, event);
+      if (thresholdCount <= 0) continue;
       if (this.#onCooldown(rule, event)) continue;
-      this.#consumeThreshold(rule, event, executionCount);
+      this.#consumeThreshold(rule, event, thresholdCount);
+      const executionCount = this.giftCombos.count(event, state.session.profileId+":"+rule.id, rule.trigger?.repeatGiftCombos, thresholdCount);
+      if (executionCount <= 0) continue;
       let acceptedExecutionCount = 0;
       for (let index = 0; index < executionCount; index += 1) {
         if (Math.random() <= Number(rule.chance ?? 1)) {
@@ -97,6 +103,7 @@ class RuleEngine extends EventEmitter {
     const trigger = rule.trigger || {};
     if (trigger.enabled === false) return false;
     if (trigger.type !== "*" && trigger.type !== event.type) return false;
+    if (event.type === "gift" && !giftSelectionMatches(rule.conditions || [], event, this.giftCatalog?.gifts || [])) return false;
     return (rule.conditions || []).every((condition) => {
       const left = getPath(event, condition.field);
       const right = condition.value;
@@ -116,18 +123,7 @@ class RuleEngine extends EventEmitter {
       ) {
         return compareGiftValue(left, condition.operator, right);
       }
-      if (
-        event.type === "gift" &&
-        condition.field === "data.giftName" &&
-        ["equals", "notEquals"].includes(condition.operator)
-      ) {
-        const matches = giftConditionMatches(
-          condition,
-          event,
-          this.giftCatalog?.gifts || []
-        );
-        return condition.operator === "equals" ? matches : !matches;
-      }
+      if (event.type === "gift" && isGiftSelectionCondition(condition)) return true;
       switch (condition.operator) {
         case "equals":
           return String(left).toLowerCase() === String(right).toLowerCase();
@@ -301,7 +297,7 @@ class RuleEngine extends EventEmitter {
       const selectedRules = selection && Array.isArray(selection.actionIds)
         ? this.store.getRuleActionState?.(selection.actionIds) || readState(this.store, ["rules"]).rules
         : undefined;
-      const actions = selectRuleActions(job.rule, selectedRules);
+      const actions = composeActionVisuals(selectRuleActions(job.rule, selectedRules));
       for (const action of actions) {
         const hydratedAction = {
           ...action,

@@ -1,6 +1,7 @@
 "use strict";
 
 const { spawn } = require("node:child_process");
+const fs=require("node:fs"),os=require("node:os"),path=require("node:path");
 
 const MAX_EVENTS = 120;
 const MAX_SEQUENCE_MS = 30_000;
@@ -9,10 +10,12 @@ const WINDOWS_INPUT_SCRIPT = String.raw`
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $OutputEncoding = [Console]::OutputEncoding
 $Operation = [string]$env:SHENPULSE_INPUT_OPERATION
+$CancelFile = [string]$env:SHENPULSE_INPUT_CANCEL_FILE
 $ProcessName = [string]$env:SHENPULSE_INPUT_PROCESS
 $EncodedEvents = [string]$env:SHENPULSE_INPUT_EVENTS
 $KeyboardInputMode = [string]$env:SHENPULSE_INPUT_KEYBOARD_MODE
 $ErrorActionPreference = 'Stop'
+$foregroundOnly = @('play-foreground', 'play-focus-foreground') -contains $Operation
 
 $targets = @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)
 if ($targets.Count -eq 0) {
@@ -389,7 +392,9 @@ if ($Operation -eq 'status') {
   exit 0
 }
 
-if (-not [ShenPulseGameInput]::Activate($window)) {
+if ($foregroundOnly -and [IO.File]::Exists($CancelFile)) { throw 'La session a été arrêtée.' }
+if ($Operation -eq 'play-foreground' -and -not [ShenPulseGameInput]::IsForeground($window)) { throw 'Placez votre jeu au premier plan pour recevoir les interactions.' }
+if ($Operation -ne 'play-foreground' -and -not [ShenPulseGameInput]::Activate($window)) {
   throw "Windows n'a pas pu placer $ProcessName au premier plan."
 }
 Start-Sleep -Milliseconds 120
@@ -421,7 +426,15 @@ try {
     ) {
       $delayMs = 80
     }
-    if ($delayMs -gt 0) {
+    if ($foregroundOnly) {
+      while ($delayMs -gt 0) {
+        if ([IO.File]::Exists($CancelFile) -or -not [ShenPulseGameInput]::IsForeground($window)) { throw 'Interaction arrêtée : session ou fenêtre du jeu modifiée.' }
+        $slice = [Math]::Min(25, $delayMs)
+        Start-Sleep -Milliseconds $slice
+        $delayMs -= $slice
+      }
+      if ([IO.File]::Exists($CancelFile)) { throw 'La session a été arrêtée.' }
+    } elseif ($delayMs -gt 0) {
       Start-Sleep -Milliseconds $delayMs
     }
     $target.Refresh()
@@ -429,6 +442,7 @@ try {
       throw "$ProcessName s'est fermé pendant l'interaction."
     }
     if (-not [ShenPulseGameInput]::IsForeground($window)) {
+      if ($foregroundOnly) { throw 'Le jeu a perdu le premier plan ; raccourci arrêté.' }
       if (-not [ShenPulseGameInput]::Activate($window)) {
         throw "$ProcessName a perdu le premier plan ; l'interaction a été arrêtée."
       }
@@ -471,7 +485,7 @@ try {
   }
 } finally {
   if (($heldKeys.Count -gt 0 -or $heldMouseButtons.Count -gt 0) -and -not $target.HasExited) {
-    if (-not [ShenPulseGameInput]::IsForeground($window)) {
+    if (-not $foregroundOnly -and -not [ShenPulseGameInput]::IsForeground($window)) {
       [void][ShenPulseGameInput]::Activate($window)
     }
     foreach ($keyCode in @($heldKeys)) {
@@ -513,7 +527,7 @@ class WindowsInputService {
     sequence,
     keyLayout = "wasd",
     keyboardInputMode = "virtual-key",
-    { assertAccess = () => {} } = {}
+    { assertAccess = () => {}, foregroundOnly = false, activateBeforePlay = false } = {}
   ) {
     const normalizedProcess = normalizeProcessName(processName);
     const events = applyKeyboardLayout(
@@ -524,10 +538,11 @@ class WindowsInputService {
     return this.#enqueue(normalizedProcess, () => {
       assertAccess();
       return this.execute(
-        "play",
+        activateBeforePlay ? "play-focus-foreground" : foregroundOnly ? "play-foreground" : "play",
         normalizedProcess,
         events,
-        normalizeKeyboardInputMode(keyboardInputMode)
+        normalizeKeyboardInputMode(keyboardInputMode),
+        ...(foregroundOnly || activateBeforePlay ? [{assertAccess}] : [])
       );
     });
   }
@@ -653,12 +668,17 @@ function executeWindowsInput(
   operation,
   processName,
   events,
-  keyboardInputMode = "virtual-key"
+  keyboardInputMode = "virtual-key",
+  {assertAccess=()=>{}} = {}
 ) {
   const encodedEvents = Buffer.from(JSON.stringify(events), "utf8").toString(
     "base64"
   );
+  const cancelDirectory=['play-foreground','play-focus-foreground'].includes(operation)?fs.mkdtempSync(path.join(os.tmpdir(),'shenpulse-input-')):'';
+  const cancelFile=cancelDirectory?path.join(cancelDirectory,'cancel'):'';
   return new Promise((resolve, reject) => {
+    let poll;
+    const cleanup=()=>{clearInterval(poll);if(cancelDirectory)fs.rmSync(cancelDirectory,{recursive:true,force:true});};
     const child = spawn(
       "powershell.exe",
       [
@@ -673,6 +693,7 @@ function executeWindowsInput(
         env: {
           ...process.env,
           SHENPULSE_INPUT_OPERATION: operation,
+          SHENPULSE_INPUT_CANCEL_FILE: cancelFile,
           SHENPULSE_INPUT_PROCESS: processName,
           SHENPULSE_INPUT_EVENTS: encodedEvents,
           SHENPULSE_INPUT_KEYBOARD_MODE:
@@ -682,6 +703,7 @@ function executeWindowsInput(
         stdio: ["ignore", "pipe", "pipe"]
       }
     );
+    if(cancelFile)poll=setInterval(()=>{try{assertAccess();}catch{try{fs.writeFileSync(cancelFile,"cancel");}catch{}clearInterval(poll);}},50);
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => {
@@ -690,8 +712,9 @@ function executeWindowsInput(
     child.stderr.on("data", (chunk) => {
       stderr += chunk.toString("utf8");
     });
-    child.once("error", reject);
+    child.once("error", error=>{cleanup();reject(error);});
     child.once("close", (code) => {
+      cleanup();
       if (code !== 0) {
         const errorMessage = stderr
           .trim()

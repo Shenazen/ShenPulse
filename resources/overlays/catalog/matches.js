@@ -11,20 +11,21 @@
   const variants = Object.freeze([
     ["tikcontrol", "TikControl"],
     ["gladiador", "Gladiador"],
-    ["cyber", "Cyber"]
+    ["cyber", "Cyber"],
+    ["dragon", "Dragon"]
   ]);
   // Les options décrivent uniquement des fichiers réellement livrés. Le pack
-  // Cyber ne contient ni Coffre ni Enigma ; aucune variante fictive n'est créée.
+  // Cyber et Dragon ne contiennent ni Coffre ni Enigma.
   const legacyVariants = Object.freeze(["tikcontrol", "gladiador"]);
-  const cyberVariants = Object.freeze([...legacyVariants, "cyber"]);
+  const fullVariants = Object.freeze([...legacyVariants, "cyber", "dragon"]);
   const matches = Object.freeze([
-    { key: "matchX2", name: "Match x2", match: "x2", variants: cyberVariants },
-    { key: "matchX3", name: "Match x3", match: "x3", variants: cyberVariants },
-    { key: "matchGants", name: "Match Gants", match: "guantes", variants: cyberVariants },
+    { key: "matchX2", name: "Match x2", match: "x2", variants: fullVariants },
+    { key: "matchX3", name: "Match x3", match: "x3", variants: fullVariants },
+    { key: "matchGants", name: "Match Gants", match: "guantes", variants: fullVariants },
     { key: "matchCoffre", name: "Match Coffre", match: "cofre", variants: legacyVariants },
-    { key: "matchSnipe", name: "Match Snipe", match: "snipe", variants: cyberVariants },
-    { key: "matchTapTap", name: "Match TapTap", match: "taptap", variants: cyberVariants },
-    { key: "matchQuiereme", name: "Match Cœur du jour", match: "quiereme", variants: cyberVariants },
+    { key: "matchSnipe", name: "Match Snipe", match: "snipe", variants: fullVariants },
+    { key: "matchTapTap", name: "Match TapTap", match: "taptap", variants: fullVariants },
+    { key: "matchQuiereme", name: "Match Cœur du jour", match: "quiereme", variants: fullVariants },
     { key: "matchEnigma", name: "Match Enigma", match: "enigma", variants: Object.freeze(["tikcontrol"]) }
   ]);
   const byMatch = new Map(matches.map((entry) => [entry.match, entry]));
@@ -39,8 +40,8 @@
     if (entry.variants.includes(requested)) return requested;
     // Compatibilité des configurations historiques : une ancienne variante
     // inconnue ou Gladiador/Enigma conserve son repli de lecture TikControl.
-    // Cyber est un choix explicite récent : ne jamais le remplacer en silence.
-    return requested === "cyber" ? null : "tikcontrol";
+    // Ces packs sont des choix explicites : ne jamais les remplacer en silence.
+    return ["cyber", "dragon"].includes(requested) ? null : "tikcontrol";
   }
   const defaults = Object.freeze({
     variant: "tikcontrol",

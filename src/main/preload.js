@@ -8,6 +8,7 @@ const listeners = new Map();
 contextBridge.exposeInMainWorld("shenPulse", {
   getSnapshot: () => invoke("snapshot:get"),
   startupReady: () => invoke("startup:ready"),
+  ttsVoices: () => invoke("tts:voices"),
   saveGamePackPresentation: (options) => ipcRenderer.invoke("overlay:game-pack-presentation", options),
   studios: { status: () => invoke("studio:status"), install: (options) => invoke("studio:install", options) },
   liveDirectoryConfigure: (options) => invoke("live-directory:configure", options),
@@ -144,6 +145,9 @@ contextBridge.exposeInMainWorld("shenPulse", {
     invoke("overlay:configuration", key, configuration),
   selectProfile: (id) => invoke("profile:select", id),
   selectGame: (id) => invoke("game:select", id),
+  saveCustomGame: (data) => invoke('game:custom:save',data),
+  removeCustomGame: (data) => invoke('game:custom:remove',data),
+  customGameWindows: (data) => invoke('game:custom:windows',data),
   configureGame: (id, config) => invoke("game:configure", id, config),
   publishDealHostState: (state) =>
     invoke("game:deal-host-state", state),

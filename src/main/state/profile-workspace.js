@@ -114,6 +114,7 @@ function captureProfileWorkspace(state, previousWorkspace = {}) {
     overlayScene: sceneLayout.normalizeScene(state.settings.overlayScene),
     game: {
       ...clone(gameExtensions),
+      customPacks: clone(state.game.customPacks || []),
       connectorOverrides: clone(state.game.connectorOverrides || {}),
       interactionCatalogVersions: clone(state.game.interactionCatalogVersions || {}),
       interactionRulesByPack: clone(state.game.interactionRulesByPack || {}),

@@ -60,7 +60,7 @@ function sanitizeConnectionSecrets(snapshot, connections, secrets) {
 function sanitizeTikTokChatSettings(snapshot) {
   const chat = snapshot.settings?.tiktok?.chat;
   if (chat && typeof chat === "object") {
-    snapshot.settings.tiktok.chat = Object.fromEntries(["provider", "expiresAt", "scopes", "botUsername", "accountUid"]
+    snapshot.settings.tiktok.chat = Object.fromEntries(["provider", "expiresAt", "scopes", "botUsername", "accountUid", "automatic"]
       .filter((key) => Object.hasOwn(chat, key)).map((key) => [key, chat[key]]));
   }
   return snapshot;

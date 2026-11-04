@@ -10,6 +10,7 @@ const files = ['core', 'interactions', 'free-events', 'catalog', 'preview', 'upd
 function library(t) {
   const dom = new JSDOM('<main></main>', { runScripts: 'outside-only', url: 'https://fixture.test/' });
   t.after(() => dom.window.close());
+  dom.window.ShenPulseGameWorkspacePolicy = require('../src/shared/game-workspace-policy');
   Object.defineProperty(dom.window, 'snapshot', { get() { throw Error('Shared components must not read application state'); } });
   for (const file of files) dom.window.eval(fs.readFileSync(path.join(directory, file + '.js'), 'utf8'));
   return { dom, C: dom.window.ShenPulseGameWorkspace, root: dom.window.document.querySelector('main') };

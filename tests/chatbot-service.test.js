@@ -395,3 +395,34 @@ test("resynchroniser les sources sans timer n'invalide pas le journal d'une comm
   assert.equal(f.activity.length, 1);
   assert.equal(f.activity[0][4].sent, true);
 });
+
+
+test("production conversationnelle : seules les nouvelles réponses consenties sont exécutées", async () => {
+  const f = fixture();
+  f.service.requireConversationOptIn = true;
+  assert.equal(f.service.handleChat(f.event()), null);
+  f.state.commands[0].conversationVersion = 1;
+  f.service.handleChat(f.event()); await f.service.whenIdle();
+  assert.equal(f.sent.length, 1);
+  f.service.reset();
+  f.state.commands = [{ id: "old-timer", kind: "timer", response: "Ancien", intervalMs: 60000, enabled: true },
+    { id: "new-timer", kind: "timer", response: "Rappel", intervalMs: 60000, enabled: true, conversationVersion: 1 }];
+  f.service.syncTimers();
+  assert.equal(f.service.timerJobs.size, 1);
+  f.advance(60000); await f.service.tick(); await f.service.whenIdle();
+  assert.equal(f.sent.at(-1).payload.message, "Rappel");
+  f.service.reset();
+});
+
+
+test("le bot commun ne répond jamais à ses propres messages, sans copier son compte dans les réglages", async () => {
+  const f = fixture();
+  f.state.connections[0] = { id: "source_tiktok", type: "tiktok-direct", status: "connected", enabled: true };
+  f.state.settings.tiktok = { status: "live" };
+  f.state.commands = [{ id: "welcome", kind: "auto-reply", keywords: ["bonjour"], response: "Bonjour !", conversationVersion: 1, enabled: true }];
+  f.sourceHub.getChatCapabilities = () => ({ canSend: true, transport: "shenpulse-bot", botUsername: "ShenPulse.Bot" });
+  f.sourceHub.runtimes = new Map([["source_tiktok", { closed: false }]]);
+  assert.equal(f.service.handleChat({ ...f.event("bonjour", { name: "shenpulse.bot" }), source: "source_tiktok" }), null);
+  f.service.handleChat({ ...f.event("bonjour"), source: "source_tiktok" }); await f.service.whenIdle();
+  assert.equal(f.sent.length, 1);
+});

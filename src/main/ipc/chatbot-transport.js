@@ -10,11 +10,15 @@ function chatbotTransportStatus(core, store) {
   const state = readState(store, ["settings.tiktok.chat", "settings.account.uid", "connections"]);
   const config = state.settings.tiktok?.chat || {};
   const uid = state.settings.account?.uid || "";
+  const automatic = core.sourceHub.usesAutomaticChatBot?.() ?? !(config.accountUid === uid && (config.provider === "euler-oauth" || config.automatic === false));
+  const bot = automatic ? core.sourceHub.sharedChatBot?.status() : null;
   return {
     configuration: {
-      provider: config.accountUid === uid ? config.provider || "none" : "none",
+      provider: automatic ? "shenpulse-bot" : config.accountUid === uid ? config.provider || "none" : "none",
+      automatic,
+      ...(automatic ? { serviceReady: bot?.canSend === true, serviceReason: bot?.reason || "bot-configuration-required" } : {}),
       expiresAt: config.accountUid === uid ? config.expiresAt || "" : "",
-      botUsername: config.accountUid === uid ? config.botUsername || "" : "",
+      botUsername: automatic ? bot?.botUsername || "" : config.accountUid === uid ? config.botUsername || "" : "",
       hasApiKey: config.accountUid === uid && Boolean(config.apiKeySecretId && store.getSecret(config.apiKeySecretId)),
       hasAccessToken: config.accountUid === uid && Boolean(config.accessTokenSecretId && store.getSecret(config.accessTokenSecretId))
     },
@@ -28,14 +32,14 @@ function chatbotTransportStatus(core, store) {
 }
 
 function registerChatbotTransportIpc({ handle, core, store, integrationChange }) {
-  handle("chatbot:transport-status", () => chatbotTransportStatus(core, store));
+  handle("chatbot:transport-status", async () => { await core.sourceHub.refreshAutomaticChatBot?.(); return chatbotTransportStatus(core, store); });
   handle("chatbot:transport-configure", (_event, incoming) => integrationChange(() => {
     assertChatbotAccess(store);
     assertAuthenticatedAccount(store);
     const uid = String(readState(store, ["settings.account.uid"]).settings.account?.uid || "");
     const previous = readState(store, ["settings.tiktok.chat"]).settings.tiktok?.chat || {};
     const ownPrevious = previous.accountUid === uid ? previous : {};
-    if (!incoming || !["none", "euler-oauth"].includes(incoming.provider)) throw new Error("Choisissez le mode d'envoi TikTok.");
+    if (!incoming || !["none", "euler-oauth", "shenpulse-bot"].includes(incoming.provider)) throw new Error("Choisissez le mode d'envoi TikTok.");
     if (incoming.provider === "euler-oauth" && incoming.enableSend !== true) throw new Error("Confirmez l'activation des réponses automatiques avant d'enregistrer.");
     const secret = (value) => {
       if (value === undefined || value === "") return "";
@@ -45,13 +49,14 @@ function registerChatbotTransportIpc({ handle, core, store, integrationChange })
     const apiKey = secret(incoming.apiKey), accessToken = secret(incoming.accessToken);
     // On n'accepte jamais un ID de coffre fourni par le renderer : il pourrait
     // pointer vers un autre compte. Validation complète avant toute écriture.
-    const config = validateTikTokChatConfiguration(incoming.provider === "none" ? { provider: "none", accountUid: uid } : {
+    const config = validateTikTokChatConfiguration(incoming.provider !== "euler-oauth" ? { provider: "none", accountUid: uid } : {
       provider: incoming.provider, accountUid: uid,
       apiKeySecretId: apiKey ? "pending-api-key" : ownPrevious.apiKeySecretId,
       accessTokenSecretId: accessToken ? "pending-access-token" : ownPrevious.accessTokenSecretId,
       expiresAt: incoming.expiresAt || ownPrevious.expiresAt,
       scopes: incoming.scopes, botUsername: incoming.botUsername
     }, { requireCredentials: incoming.provider === "euler-oauth" });
+    if(incoming.provider !== "euler-oauth")config.automatic = incoming.provider === "shenpulse-bot";
     if (config.provider === "euler-oauth") {
       if (store.safeStorage?.isEncryptionAvailable() !== true) throw new Error("Le chiffrement Windows du coffre est indisponible. L'envoi TikTok reste désactivé.");
       if (!config.botUsername) throw new Error("Indiquez le @ du compte qui enverra les messages, pour éviter les réponses en boucle.");

@@ -100,7 +100,7 @@ test("règles, seuils et statistiques consomment les incréments une seule fois"
   const delivery = new TikTokGiftDelivery();
   const state = createDefaultState();
   const rules = [1, 5].map((threshold) => ({ id: `rule-${threshold}`, enabled: true, chance: 1,
-    trigger: { type: "gift", threshold }, actions: [{ id: `action-${threshold}`, type: "fixture", config: {} }] }));
+    trigger: { type: "gift", threshold, repeatGiftCombos: true }, actions: [{ id: `action-${threshold}`, type: "fixture", config: {} }] }));
   state.rules = rules;
   state.profiles[0].enabledRuleIds = rules.map((rule) => rule.id);
   state.session.profileId = state.profiles[0].id;

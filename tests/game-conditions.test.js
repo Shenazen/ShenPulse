@@ -20,7 +20,7 @@ const read = file => fs.readFileSync(path.join(root, "src/renderer/app", file), 
 
 function renderer() {
   const dom = new JSDOM("<main></main>");
-  const context = vm.createContext({
+  const context = vm.createContext({ShenPulseGamePackLayout: require("../resources/overlays/game-pack-layout"),
     document: dom.window.document,
     snapshot: { packs, state: { game: { installations: {}, connectorOverrides: {} }, session: {}, settings: {} } },
     gameWorkspaceStep: "installation", gameInstallBusyId: "", gameLaunchBusyId: "",

@@ -32,6 +32,7 @@ function fixture(t) {
   run(read("core/ui-foundations.js"));
   run(read("core/account-operation-guard.js"));
   run(read("features/media/library.js"));
+  run(fs.readFileSync(path.join(renderer, "../../resources/overlays/audio-control.js"), "utf8"));
   run(read("core/audio-playback.js"));
   window.toast = (...args) => toasts.push(args);
   const state = createDefaultState(); state.settings.account = { uid: "audio-owner" };
@@ -169,4 +170,42 @@ test("la fin du son libère le média et un ancien événement ne retire pas le 
   old.dispatchEvent(new f.window.Event("ended")); assert.equal(f.audio(), current);
   current.dispatchEvent(new f.window.Event("ended")); assert.equal(f.audio(), null);
   assert.equal(f.run("activePreviewAudio"), null); assert.equal(f.run("activePreviewAudioScope"), "");
+});
+
+test("cinq notifications de combo jouent cinq sons complets, avec leur volume", async (t) => {
+  const f = fixture(t), handler = f.requests.find((entry) => entry.name === "playback").handler;
+  for (let index = 0; index < 5; index++) await handler({ type: "audio", url: "https://media.example.invalid/rose.mp3", volume: .3 });
+  assert.equal(f.sounds.length, 1, "les répétitions attendent au lieu de se remplacer");
+  for (let index = 0; index < 5; index++) {
+    const audio = f.audio();
+    assert.equal(audio.volume, .3);
+    assert.equal(f.sounds.length, index + 1);
+    audio.dispatchEvent(new f.window.Event("ended"));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(audio.wasPaused, true);
+  }
+  assert.equal(f.sounds.length, 5); assert.equal(f.audio(), null);
+});
+
+test("une erreur audio passe à la répétition suivante, un changement de profil annule le reste", async (t) => {
+  const f = fixture(t), handler = f.requests.find((entry) => entry.name === "playback").handler;
+  for (let index = 0; index < 3; index++) await handler({ type: "audio", url: "https://media.example.invalid/rose.mp3" });
+  f.audio().dispatchEvent(new f.window.Event("error"));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.sounds.length, 2);
+  f.window.invalidateCreatorPrivateOperations();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.sounds.length, 2); assert.equal(f.audio(), null);
+});
+
+test("un aperçu manuel peut interrompre la file sans rejouer ses sons après fermeture", async (t) => {
+  const f = fixture(t), handler = f.requests.find((entry) => entry.name === "playback").handler;
+  for (let index = 0; index < 3; index++) await handler({ type: "audio", url: "https://media.example.invalid/rose.mp3" });
+  f.openLibrary();
+  await handler({ type: "audio", url: "https://media.example.invalid/preview.mp3", previewScope: "media-library" });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.sounds.length, 2); assert.match(f.audio().src, /preview/);
+  f.window.closeMediaLibrary();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.audio(), null); assert.equal(f.sounds.length, 2);
 });

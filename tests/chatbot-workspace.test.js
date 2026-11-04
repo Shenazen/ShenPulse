@@ -235,3 +235,20 @@ test("une commande musicale lente ne retarde pas les règles du même commentair
   assert.equal(core.liveEventActions.chatbot.activeDeliveries.size, 1);
   release({ ok: true }); await core.liveEventActions.chatbot.whenIdle();
 });
+
+
+test("IPC crée les trois messages explicites, conserve les commandes et contrôle chat.reply", () => {
+  const f = ipcFixture();
+  const save = item => f.handlers.get("entity:upsert")(f.event, "commands", { ...item, conversationVersion: 1 });
+  save({ id: "response", kind: "command", command: "!discord", response: "Notre communauté", enabled: false });
+  save({ id: "auto", kind: "auto-reply", keywords: ["bonjour"], response: "Bienvenue {user}", enabled: false });
+  save({ id: "timer", kind: "timer", response: "Rappel", intervalMs: 300000, messages: ["Rappel", "Merci"], enabled: false });
+  assert.equal(f.state.commands.length, 3);
+  assert.ok(f.state.commands.every(item => item.conversationVersion === 1));
+  assert.throws(() => save({ id: "invalid", kind: "timer", response: "x", intervalMs: 1000 }), /intervalle/);
+  assert.throws(() => save({ id: "duplicate", command: "!discord", response: "x" }), /existe déjà/);
+  f.state.settings.siteVisibility = { actionTypes: { "chat.reply": { scope: "hidden" } } };
+  assert.throws(() => save({ id: "forbidden", command: "!no", response: "x" }), { code: "CHATBOT_ACCESS_FORBIDDEN" });
+  f.handlers.get("entity:upsert")(f.event, "commands", { id: "music", command: "!skip", execution: { type: "music", operation: "next" } });
+  assert.equal(f.state.commands.length, 4);
+});

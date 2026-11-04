@@ -38,7 +38,20 @@ test("un échec Matchs ne coupe jamais musique, commandes, roue ou règles et ne
 test("la demande musicale vient après les statistiques et conserve les commandes et règles historiques", async () => {
   const { core, hooks, event, order } = fixture();
   await ingestCreatorEvent(core, hooks, event);
-  assert.deepEqual(order, ["viewer-stats", "live-stats", "song-request", "publish", "live-event", "legacy-command", "wheel", "rules", "completion", "changed"]);
+  assert.deepEqual(order, ["viewer-stats", "live-stats", "song-request", "publish", "live-event", "rules", "legacy-command", "wheel", "completion", "changed"]);
+});
+
+test("le TTS et les règles démarrent dès le commentaire, même si le chatbot attend le réseau", async () => {
+  const { core, hooks, event, order } = fixture();
+  let release;
+  hooks.handleCommand = () => new Promise((resolve) => { release = resolve; });
+  const pending = ingestCreatorEvent(core, hooks, event);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(order.includes("rules"));
+  assert.ok(!order.includes("completion"));
+  release();
+  await pending;
+  assert.equal(order.filter((entry) => entry === "rules").length, 1);
 });
 
 test("la modération garde les statistiques et interdit également les demandes musicales", async () => {

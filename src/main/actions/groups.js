@@ -4,6 +4,7 @@
 const { safeString } = require("../utils");
 const { readState } = require("../state-projection");
 const { renderValue } = require("../template");
+const { composeActionVisuals } = require("./compound-visuals");
 
 const ACTION_GROUP_STACK = Symbol("shenpulse.actionGroupStack");
 const ACTION_GROUP_MAX_DEPTH = 20;
@@ -94,6 +95,8 @@ async function runActionGroup({ store, runAction, randomImpl }, action, config, 
     ...stack,
     groupId || `groupe-anonyme-${stack.length + 1}`
   ];
+  const visualActions = composeActionVisuals(selectedActions.map(entry => entry.action));
+  selectedActions = selectedActions.map((entry, index) => ({ ...entry, action: visualActions[index] }));
   const missingFailures = missingActionIds.map((actionId) => ({
     actionId,
     actionName: actionId,

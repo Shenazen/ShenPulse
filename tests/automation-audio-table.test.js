@@ -19,6 +19,7 @@ function audioTableContext(t) {
     document: dom.window.document,
     window: dom.window,
     snapshot: { state },
+    ShenPulseActionAudio: require("../src/shared/action-audio"),
     escapeHtml: escape,
     canAccessFeature: () => true,
     isLiveAudioOutput: (config) => config?.outputMode === "live",

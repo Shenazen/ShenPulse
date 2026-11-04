@@ -1,0 +1,5 @@
+.shen-audio-mixer{margin:20px 0;padding:22px 24px;border:1px solid #41305f;border-radius:18px;background:linear-gradient(125deg,rgba(39,27,64,.9),rgba(13,21,34,.96));box-shadow:inset 0 1px rgba(255,255,255,.04)}
+.shen-audio-mixer h3{margin:0 0 6px;font-size:19px;color:#f4edff}.shen-audio-mixer p{margin:0;color:#ada8bd;font-size:13px;line-height:1.6}
+.shen-audio-mixer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:22px;margin-top:20px}
+.shen-audio-mixer label{display:grid;gap:12px;min-width:0}.shen-audio-mixer label>span{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#eee9fa;font-weight:600;font-size:13px}.shen-audio-mixer output{white-space:nowrap;color:#67e9ee;font-variant-numeric:tabular-nums}.shen-audio-mixer input{width:100%;accent-color:#b455e9;cursor:pointer}.shen-audio-mixer label:first-child{padding-right:18px;border-right:1px solid #433355}.shen-audio-mixer input:focus-visible{outline:2px solid #55dfeb;outline-offset:6px}
+@media(max-width:700px){.shen-audio-mixer{padding:18px}.shen-audio-mixer label:first-child{padding:0;border:0}}

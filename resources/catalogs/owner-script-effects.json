@@ -20903,7 +20903,8 @@
       ],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-diamant1",
@@ -20919,7 +20920,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-diamant2",
@@ -20935,7 +20937,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-double-diamonds",
@@ -20961,7 +20964,8 @@
       ],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-heal",
@@ -20977,7 +20981,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-clear-mobs",
@@ -20993,7 +20998,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-noprison",
@@ -21019,7 +21025,8 @@
       ],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-diamonds-remove",
@@ -21045,7 +21052,8 @@
       ],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-tnt1",
@@ -21061,7 +21069,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-tnt2",
@@ -21077,7 +21086,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-zombie",
@@ -21093,7 +21103,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-skeleton",
@@ -21109,7 +21120,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-lava",
@@ -21125,7 +21137,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-prison",
@@ -21151,7 +21164,8 @@
       ],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-nuclear",
@@ -21167,7 +21181,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-normal-diamonds",
@@ -21183,7 +21198,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-regenerate",
@@ -21199,7 +21215,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-diamond-rush-win-add",
@@ -21289,7 +21306,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-step3",
@@ -21305,7 +21323,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-step4",
@@ -21321,7 +21340,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-step5",
@@ -21337,7 +21357,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-fill",
@@ -21363,7 +21384,8 @@
       ],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-noprison1",
@@ -21379,7 +21401,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-noprison2",
@@ -21395,7 +21418,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-reset",
@@ -21411,7 +21435,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-prison1",
@@ -21427,7 +21452,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-prison2",
@@ -21443,7 +21469,8 @@
       "parameters": [],
       "service": "native",
       "duration": 0,
-      "quantity": 1
+      "quantity": 1,
+      "available": true
     },
     {
       "id": "minecraft-box-cyber-fusee",
@@ -21451,15 +21478,27 @@
       "name": "Fusée destructrice",
       "column": "trap",
       "category": "Piège",
-      "description": "Lance la fusée et retire la couche supérieure de la box.",
-      "command": "/shenpulse_box fusee {{viewer}}",
+      "description": "Propulse le joueur pendant la durée choisie, retire un bloc de la box puis le ramène automatiquement dans son arène.",
+      "command": "/shenpulse_box fusee {{seconds}} {{viewer}}",
       "commands": [
-        "/shenpulse_box fusee {{viewer}}"
+        "/shenpulse_box fusee {{seconds}} {{viewer}}"
       ],
-      "parameters": [],
+      "parameters": [
+        {
+          "id": "seconds",
+          "label": "Durée de la fusée (secondes)",
+          "type": "number",
+          "defaultValue": 8,
+          "min": 1,
+          "max": 30,
+          "step": 1
+        }
+      ],
       "service": "native",
-      "duration": 0,
-      "quantity": 1
+      "duration": 8,
+      "quantity": 1,
+      "available": true,
+      "durationParameter": "seconds"
     },
     {
       "id": "minecraft-box-cyber-win-add",

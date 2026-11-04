@@ -226,6 +226,10 @@
       const targetScreen = Math.min(8, Math.max(1, Math.round(Number(payload?.screen) || 1)));
       return normalizedView === "alerts" && hasMediaScreen && Number(screen) === targetScreen;
     }
+    if (normalizedChannel === "alert") {
+      const targetScreen = Math.min(8, Math.max(1, Math.round(Number(payload?.screen) || 1)));
+      return normalizedView === "alerts" && (!hasMediaScreen || Number(screen) === targetScreen);
+    }
     if (["configuration", "design"].includes(normalizedChannel)) return true;
     if (normalizedChannel === "match") {
       if (normalizedView !== "match") return false;

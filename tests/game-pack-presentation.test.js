@@ -18,7 +18,7 @@ test("la présentation publique ne contient que modèle, mouvement et couleur va
 });
 
 test("l’URL copiée Hiking utilise le panneau compact sans changer celles de Cult ou Euro Truck",t=>{
- const dom=new JSDOM('',{runScripts:'outside-only'});t.after(()=>dom.window.close());dom.window.ShenPulseGameWorkspace={escape:v=>String(v)};
+ const dom=new JSDOM('',{runScripts:'outside-only'});t.after(()=>dom.window.close());dom.window.ShenPulseGameWorkspace={escape:v=>String(v)};dom.window.ShenPulseGameWorkspacePolicy=require('../src/shared/game-workspace-policy');
  dom.window.eval(fs.readFileSync(path.join(__dirname,'../src/renderer/app/features/games/workspace/preview.js'),'utf8'));
  const source=dom.window.ShenPulseGameWorkspace.overlayUrl,base='https://overlay.test/game-pack.html?channel=creator-channel';
  for(const packId of ['gtav-hiking-enhanced','cult-of-the-lamb','euro-truck-simulator-2']){
@@ -28,7 +28,7 @@ test("l’URL copiée Hiking utilise le panneau compact sans changer celles de C
 });
 test("une source ouverte suit les trois modèles et le mode fixe sans changer d’URL",async()=>{
  const dom=new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>',{runScripts:"outside-only",url:"https://overlay.test/game-pack.html?profile=profile&motion=animated"});const pending=[],calls=[];dom.window.ShenPulseGamePackModels={render:(state,model,compact)=>{calls.push({model,compact});return new Promise(resolve=>pending.push(resolve));}};
- dom.window.eval(fs.readFileSync(path.join(__dirname,"../resources/overlays/runtime/game-pack.js"),"utf8"));
+ dom.window.ShenPulseGamePackLayout=require("../resources/overlays/game-pack-layout");dom.window.eval(fs.readFileSync(path.join(__dirname,"../resources/overlays/runtime/game-pack.js"),"utf8"));
  const state={enabled:true,profileId:"profile",packId:PACK_ID,cards:[{id:"gift",title:"Mon client",column:"help",triggerType:"gift",giftName:"Rose",giftImageUrl:""}],presentation:{model:1,motion:"animated",configured:true,backgroundColor:"#082b63"}};const api=dom.window.ShenPulseGamePack,doc=dom.window.document,url=dom.window.location.href;
  api.render(state);const card=doc.querySelector(".gift-card");state.presentation.motion="fixed";api.render(state);assert.ok(doc.body.classList.contains("fixed"));assert.equal(doc.querySelector(".gift-card"),card);
  state.presentation.model=2;api.render(state);assert.equal(calls[0].model,2);state.presentation.model=3;api.render(state);assert.equal(calls[1].model,3);
@@ -46,7 +46,7 @@ test("les modèles 2 et 3 appellent les deux moteurs historiques et cadrent leur
 test("le modèle 3 actualise son image sur la même URL sans changer le titre ou le cadeau", async () => {
  const dom=new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>',{runScripts:"outside-only",url:"https://overlay.test/game-pack.html?profile=profile"});
  const calls=[];dom.window.ShenPulseGamePackModels={render:async(state,model)=>{calls.push({image:state.cards[0].effectImageUrl,title:state.cards[0].title,gift:state.cards[0].giftImageUrl,model});return dom.window.document.createElement("canvas");}};
- dom.window.eval(fs.readFileSync(path.join(__dirname,"../resources/overlays/runtime/game-pack.js"),"utf8"));
+ dom.window.ShenPulseGamePackLayout=require("../resources/overlays/game-pack-layout");dom.window.eval(fs.readFileSync(path.join(__dirname,"../resources/overlays/runtime/game-pack.js"),"utf8"));
  const state={enabled:true,profileId:"profile",packId:PACK_ID,cards:[{id:"one",title:"Mon client",triggerType:"gift",giftImageUrl:"https://example.test/rose.png",effectImageUrl:"media/game-interactions/supermarket-simulator/supermarket-simulator-spawn-customers.png"}],presentation:{model:3,configured:true}};
  const runtime=dom.window.ShenPulseGamePack,url=dom.window.location.href;
  runtime.render(state);await Promise.resolve();const first=dom.window.document.querySelector("canvas");
@@ -59,7 +59,7 @@ test("le modèle 3 actualise son image sur la même URL sans changer le titre ou
 test("le changement de modèle garde le rendu précédent et indique le calcul dans l’aperçu compact", async () => {
  const dom=new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>',{runScripts:'outside-only',url:'https://overlay.test/game-pack.html?layout=compact'}),pending=[];
  dom.window.ShenPulseGamePackModels={render:()=>new Promise((resolve,reject)=>pending.push({resolve,reject}))};
- dom.window.eval(fs.readFileSync(path.join(__dirname,'../resources/overlays/runtime/game-pack.js'),'utf8'));
+ dom.window.ShenPulseGamePackLayout=require('../resources/overlays/game-pack-layout');dom.window.eval(fs.readFileSync(path.join(__dirname,'../resources/overlays/runtime/game-pack.js'),'utf8'));
  const runtime=dom.window.ShenPulseGamePack,doc=dom.window.document,state={enabled:true,profileId:'profile',packId:PACK_ID,cards:[{id:'one',title:'Un client',column:'help',triggerType:'gift'}],presentation:{model:1,motion:'animated',configured:true}};
  runtime.render(state);const first=doc.querySelector('.gift-card');state.presentation.model=2;runtime.render(state);
  assert.equal(doc.querySelector('.gift-card'),first);assert.equal(doc.querySelector('#pack').getAttribute('aria-busy'),'true');assert.equal(doc.querySelector('#render-status').hidden,false);assert.match(doc.querySelector('#render-status').textContent,/Mise à jour/);assert.ok(doc.body.classList.contains('animated'),'Le modèle visible garde sa disposition pendant le calcul.');
@@ -73,7 +73,7 @@ test("le changement de modèle garde le rendu précédent et indique le calcul d
 
 test("les réponses tardives ne remplacent ni le dernier choix, ni un nouveau profil, ni un overlay masqué", async () => {
  const dom=new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>',{runScripts:'outside-only',url:'https://overlay.test/game-pack.html?layout=compact'}),pending=[];
- dom.window.ShenPulseGamePackModels={render:()=>new Promise(resolve=>pending.push(resolve))};dom.window.eval(fs.readFileSync(path.join(__dirname,'../resources/overlays/runtime/game-pack.js'),'utf8'));
+ dom.window.ShenPulseGamePackModels={render:()=>new Promise(resolve=>pending.push(resolve))};dom.window.ShenPulseGamePackLayout=require('../resources/overlays/game-pack-layout');dom.window.eval(fs.readFileSync(path.join(__dirname,'../resources/overlays/runtime/game-pack.js'),'utf8'));
  const runtime=dom.window.ShenPulseGamePack,doc=dom.window.document,state={enabled:true,profileId:'first',packId:PACK_ID,cards:[{id:'one',title:'Profil A',column:'help'}],presentation:{model:2,configured:true}};
  runtime.render(state);const initial=doc.createElement('canvas');pending[0](initial);await Promise.resolve();
  state.presentation.backgroundColor='#123456';runtime.render(state);state.presentation.backgroundColor='#654321';runtime.render(state);
@@ -86,7 +86,7 @@ test("les réponses tardives ne remplacent ni le dernier choix, ni un nouveau pr
 test("le chargement ne s’affiche pas dans la source du LIVE et un échec synchrone est signalé dans l’aperçu", async () => {
  for(const compact of [false,true]){
   const dom=new JSDOM('<main id="pack"><div id="cards"></div><div id="reaction"></div></main>',{runScripts:'outside-only',url:'https://overlay.test/game-pack.html'+(compact?'?layout=compact':'')});dom.window.ShenPulseGamePackModels={render:()=>{throw new Error('Canvas indisponible');}};
-  dom.window.eval(fs.readFileSync(path.join(__dirname,'../resources/overlays/runtime/game-pack.js'),'utf8'));dom.window.ShenPulseGamePack.render({enabled:true,profileId:'profile',packId:PACK_ID,cards:[{id:'one',title:'Client'}],presentation:{model:3}});
+  dom.window.ShenPulseGamePackLayout=require('../resources/overlays/game-pack-layout');dom.window.eval(fs.readFileSync(path.join(__dirname,'../resources/overlays/runtime/game-pack.js'),'utf8'));dom.window.ShenPulseGamePack.render({enabled:true,profileId:'profile',packId:PACK_ID,cards:[{id:'one',title:'Client'}],presentation:{model:3}});
   assert.equal(dom.window.document.querySelector('#render-status').hidden,!compact);await Promise.resolve();await Promise.resolve();assert.equal(dom.window.document.querySelector('#render-status').dataset.state,'error');assert.equal(dom.window.document.querySelector('#render-status').hidden,!compact);dom.window.close();
  }
 });

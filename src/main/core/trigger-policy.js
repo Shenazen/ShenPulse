@@ -2,16 +2,18 @@
 
 /** Politiques pures des déclencheurs, tests, objectifs et entrées du journal. */
 const { giftValueFilterMatches, normalizeGiftValueFilter } = require("../../shared/gift-value-filter");
-const { giftConditionMatches } = require("../../shared/gift-identity");
+const { giftConditionMatches, giftSelectionMatches, isGiftSelectionCondition } = require("../../shared/gift-identity");
 
 function wheelGiftTriggerMatches(wheel, event, gifts = []) {
   if (wheel?.enabled === false || event?.type !== "gift") return false;
+  const filter = normalizeGiftValueFilter(wheel?.giftValueFilter);
+  if (filter) return giftValueFilterMatches(filter, event.data?.value);
+  const giftConditions = Array.isArray(wheel.giftConditions) ? wheel.giftConditions.filter(isGiftSelectionCondition) : [];
+  if (giftConditions.length) return giftSelectionMatches(giftConditions, event, gifts);
   const trigger = String(wheel?.trigger || "")
     .trim()
     .toLocaleLowerCase("fr");
-  const filter = normalizeGiftValueFilter(wheel?.giftValueFilter);
-  if (!trigger && !filter) return false;
-  if (filter) return giftValueFilterMatches(filter, event.data?.value);
+  if (!trigger) return false;
   return giftConditionMatches(
     {
       field: "data.giftName",

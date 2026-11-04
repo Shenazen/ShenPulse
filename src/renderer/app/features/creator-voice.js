@@ -27,7 +27,7 @@ function renderCreatorVoiceSummary(rows, mode = "voice") {
   return `<section class="voice-summary-grid" aria-label="Résumé de l’atelier audio">
     ${creatorVoiceSummaryCard("rules", mode === "voice" ? "Règles TTS actives" : "Alertes actives", `${active} / ${rows.length}`, "Dans votre profil actif")}
     ${mode === "voice"
-      ? creatorVoiceSummaryCard("voice", "Voix par défaut", snapshot.state.settings.tts?.voice || "Voix Windows", "Personnalisable dans chaque règle", { userContent: Boolean(snapshot.state.settings.tts?.voice) })
+      ? creatorVoiceSummaryCard("voice", "Voix par défaut", ShenPulseTtsVoices.voiceLabel(snapshot.state.settings.tts?.voice), "Personnalisable par rôle et par viewer", { userContent: Boolean(snapshot.state.settings.tts?.voice) })
       : creatorVoiceSummaryCard("sounds", "Écoute locale", rows.length - live, "Sons réservés à ShenPulse")}
     ${creatorVoiceSummaryCard("overlays", "Diffusion LIVE", live, "Règles dirigées vers vos écrans audio")}
   </section>`;
@@ -36,6 +36,7 @@ function renderCreatorVoiceSummary(rows, mode = "voice") {
 function renderCreatorVoiceWorkspace(body, rows) {
   return `<div class="reference-page creator-voice-page">
     ${renderStudioHero("voice", "Une voix pour votre communauté.", "Choisissez qui peut parler, filtrez les commentaires et dirigez les voix et les sons vers votre écoute locale ou votre LIVE.")}
+    ${typeof renderAudioMixer === "function" ? renderAudioMixer() : ""}
     ${creatorVoiceTabsMarkup(rows)}
     <div id="creator-voice-panel" class="voice-workspace">${body}</div>
   </div>`;
@@ -76,6 +77,6 @@ function renderCreatorVoiceDetails(allRows) {
   if (!available) return renderPrivateDataPlaceholder("Synthèse vocale indisponible", "L’accès à la synthèse vocale est masqué par la configuration de votre espace ShenPulse.");
   const availableRows = allRows || soundActionRows();
   const rows = availableRows.filter(({ action }) => action.type === "tts.speak");
-  return renderCreatorVoiceWorkspace(`${renderCreatorVoiceSummary(rows)}${renderTtsRules(rows)}${renderCreatorVoicePolicies(rows)}${renderMediaScreensPanel(flattenActions(), { context: "sounds", collapsible: true })}`, availableRows);
+  return renderCreatorVoiceWorkspace(`${creatorVoicePreferencesMarkup()}${renderCreatorVoiceSummary(rows)}${renderTtsRules(rows)}${renderCreatorVoicePolicies(rows)}${renderMediaScreensPanel(flattenActions(), { context: "sounds", collapsible: true })}`, availableRows);
 }
 

@@ -14,13 +14,13 @@ async function ensureRuleInActiveProfile() {
 function actionTypeOptions(currentType) {
   const canonicalCurrentType = canonicalActionType(currentType);
   const groups = [
-    ["VISUEL & AUDIO", ["overlay.media", "audio.play"]],
+    ["VISUEL & AUDIO", ["overlay.media", "overlay.text", "audio.play"]],
     ["INTERACTIONS", ["goal.add", "timer.add", "wheel.spin", "action.group", "overlay.match", "chat.reply"]],
     ["INTÉGRATIONS", ["irl.shelly", "spotify.queue", "obs.request", "http.request", "websocket.send"]],
     ["SYSTÈME", ["system.keys", "system.open", "delay"]]
   ];
   const existingHiddenOption =
-    canonicalCurrentType && !canAccessActionType(canonicalCurrentType)
+    canonicalCurrentType && (!canAccessActionType(canonicalCurrentType) || !groups.some(([, types]) => types.includes(canonicalCurrentType)))
       ? `<optgroup label="ACTION EXISTANTE"><option value="${escapeHtml(canonicalCurrentType)}" selected>${escapeHtml(actionTypeOptionLabel(canonicalCurrentType))} · masquée par l’administration</option></optgroup>`
       : "";
   return existingHiddenOption + groups
@@ -168,8 +168,9 @@ function gameEffectParameterFields(effect, config) {
       ].join(" ");
       if (parameter.type === "select") return '<label class="field"><span>'+escapeHtml(parameter.label||parameter.id)+'</span><select name="'+escapeHtml(name)+'">'+parameter.options.map(option=>'<option value="'+escapeHtml(option.value)+'" '+(String(option.value)===String(value)?'selected':'')+'>'+escapeHtml(option.label||option.value)+'</option>').join('')+'</select></label>';
       if (parameter.type === "text") {
+        if(parameter.format === "shortcut" && globalThis.ShenPulseShortcutInput) return '<label class="field"><span>'+escapeHtml(parameter.label||parameter.id)+'</span>'+ShenPulseShortcutInput.render(value,'name="'+escapeHtml(name)+'"')+'</label>';
         return field(name, parameter.label || parameter.id, value, "text",
-          `maxlength="${Math.min(80, Math.max(1, Number(parameter.maxLength) || 80))}" pattern="[a-zA-Z0-9_-]+"`);
+          `maxlength="${Math.min(80, Math.max(1, Number(parameter.maxLength) || 80))}" ${parameter.format === "shortcut" ? "" : 'pattern="[a-zA-Z0-9_-]+"'}`);
       }
       return field(
         name,
@@ -194,6 +195,7 @@ function gameEffectParametersFromForm(effect, data) {
       if (parameter.type === "text") {
         const value = String(data.get(`effectParameter_${parameter.id}`) ?? parameter.defaultValue ?? "")
           .trim().slice(0, Math.min(80, Math.max(1, Number(parameter.maxLength) || 80)));
+        if(parameter.format === "shortcut") { ShenPulseCustomShortcuts.compile({...Object.fromEntries(effect.parameters.map(p=>[p.id,p.defaultValue])),shortcut:value}); return [parameter.id,ShenPulseCustomShortcuts.normalize(value)]; }
         if (!/^[a-zA-Z0-9_-]+$/.test(value)) throw new Error("Identifiant invalide : utilisez des lettres, chiffres, tirets, ou random.");
         return [parameter.id, value];
       }
@@ -298,6 +300,7 @@ function gameInteractionDraftFromForm(
     trigger: {
       ...(currentRule.trigger || {}),
       enabled: automatic,
+      repeatGiftCombos: automatic ? data.has("repeatGiftCombos") : currentRule.trigger?.repeatGiftCombos === true,
       type: data.get("triggerType") || "gift",
       source: "*",
       threshold: Math.max(1, Number(data.get("threshold")) || 1)
@@ -404,7 +407,7 @@ function openGameInteractionEditor(pack, effect, row = null) {
         "Associez un événement ou un cadeau précis à cet effet.",
         `<label class="field"><span>Type de déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(currentRule.trigger?.type)}</select></label>
         ${field("threshold", "Seuil / quantité", currentRule.trigger?.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions, { giftLabel: "Cadeau TikTok précis (optionnel)" })}</div>
+        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions, { giftLabel: "Cadeau TikTok précis (optionnel)", repeatGiftCombos: currentRule.trigger?.repeatGiftCombos })}</div>
         <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Le message contient (optionnel)", conditionValue(currentRule.conditions, "data.message", "contains"), "text", "full")}</div>
         ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(currentRule.conditions, "user.name", "equals"), "text", "full")}`,
         "game-interaction-trigger-section",

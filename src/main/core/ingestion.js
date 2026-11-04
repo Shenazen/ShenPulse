@@ -62,9 +62,18 @@ async function ingestCreatorEvent(core, hooks, raw, source) {
     : event;
   core.overlayServer.publishEvent(overlayEvent);
   core.notifyRenderer("live-event", overlayEvent);
-  await hooks.handleCommand(event);
-  await hooks.handleWheelGiftTriggers(event);
-  await core.ruleEngine.process(event);
+  if (event.type === "chat") {
+    // Une réponse conversationnelle distante peut prendre plusieurs secondes.
+    // Les règles du chat, dont le TTS, démarrent sans attendre cette réponse.
+    await Promise.all([
+      core.ruleEngine.process(event),
+      (async () => { await hooks.handleCommand(event); await hooks.handleWheelGiftTriggers(event); })()
+    ]);
+  } else {
+    await hooks.handleCommand(event);
+    await hooks.handleWheelGiftTriggers(event);
+    await core.ruleEngine.process(event);
+  }
   await core.overlayCompletionController.handleLikeGoalChange(
     completionChange.previousLikeGoalCurrent, completionChange.likeGoalCurrent,
     { ...event, event, now: new Date().toISOString() }

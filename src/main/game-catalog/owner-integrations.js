@@ -1,6 +1,6 @@
 "use strict";
 const { game } = require("./builders");
-const records = require("../../../resources/catalogs/owner-game-preparation.json").games;
+const records = require("../../../resources/catalogs/owner-game-preparation.json").games.map(require("./final-fantasy").finalFantasyRecord);
 const modules = require("../../../resources/catalogs/owner-prepared-modules.json");
 const { GIFTS } = require("./presentation");
 const { artworkPack } = require("../../shared/game-workspace-policy");
@@ -48,20 +48,23 @@ function guide(record) {
         : bundled ? "Cliquez sur Installer automatiquement, puis sur Lancer le jeu."
         : "Cliquez sur Installer automatiquement et choisissez l’édition à préparer si plusieurs installations sont présentes.",
       "Choisissez les cadeaux des six aides et des six pièges, dans la limite des effets disponibles.",
-      tested ? "Lancez le jeu depuis ShenPulse, chargez une partie puis fermez les menus avant les interactions." : "Les essais en jeu de ce nouveau pack restent à effectuer avant son ouverture aux autres utilisateurs."
+      tested ? minecraft ? "Gardez le serveur ShenPulse actif et le personnage connecté dans ce mode pour recevoir les interactions." : "Lancez le jeu depuis ShenPulse, chargez une partie puis fermez les menus avant les interactions." : "Les essais en jeu de ce nouveau pack restent à effectuer avant son ouverture aux autres utilisateurs."
     ] : ["Cette fiche est privée et réservée au compte propriétaire.", record.preparationBlocker?.message || "Les fichiers et la connexion autonome de ce jeu sont encore en préparation.", "Aucun essai en jeu n’a été effectué dans cette phase."],
     notes: [
       ...Object.values(installer?.unsupportedPlatformReasons || {}),
+      ...(record.id === "frog-sqwad" ? ["Terminez le didacticiel, hébergez une partie et entrez dans un niveau jouable. Les effets sont refusés dans le menu principal et dans le camp de préparation. Les apparitions demandent que vous soyez l’hôte.", "L’inventaire dispose de trois emplacements : libérez une place avant de recevoir un objet. Les effets de têtard, de retour en grenouille, de réanimation et de téléportation vers un coéquipier nécessitent une partie à plusieurs ; la réanimation demande un coéquipier transformé en têtard."] : []),
+      ...(record.id === "the-sims-4" ? ["Lancez Les Sims 4 une première fois depuis Steam et terminez la configuration de l’application Electronic Arts si elle s’ouvre. Fermez ensuite le jeu avant Installer automatiquement. Les scripts de mods sont activés dans le dossier Documents du compte Windows.", "Chargez un foyer sur son terrain et passez en mode Vie, hors construction et achat. Les effets liés aux objets, aux carrières ou aux relations demandent les objets et les personnages correspondants."] : []),
       ...(record.id === "fallout-new-vegas" ? ["Pour Xbox / Game Pass, acceptez la demande Windows du module ShenPulse au lancement. Si la version du jeu n’est pas reconnue, réinstallez le pack à jour. La mort est refusée pendant une invincibilité active."] : []),
       ...(record.id === "cloverpit" ? ["Chargez une partie hors menus. Les effets de tours demandent une manche active ; le retrait demande plus de deux tours restants. Pour ranger un charme, il faut un charme équipé et un tiroir débloqué et disponible. Les retraits de ressources exigent la quantité correspondante."] : []),
       ...(installer?.helperGame === "pvz-goty" ? ["Cette version du module cible Plants vs. Zombies GOTY sur Steam. L’édition Electronic Arts nécessite une adaptation distincte ; son logo indique la disponibilité du jeu de base. Chargez un niveau jouable, hors écran de choix des plantes, avant les interactions."] : []),
       ...(installer?.helperGame === "tf2" ? ["Installez Team Fortress 2 depuis Steam et lancez-le une première fois. Ensuite, lancez-le depuis ShenPulse : les options de connexion locale et les fichiers de configuration sont préparés automatiquement. Les effets agissent sur votre client ; ils ne permettent pas de modifier librement le serveur ni de créer des ennemis."] : []),
       ...(installer?.fileGame === "srb2" ? ["Installez Sonic Robo Blast 2 pour Windows, puis lancez-le depuis ShenPulse : le module et son profil de sauvegarde dédié sont chargés automatiquement. Démarrez une partie pour activer les effets."] : []),
-      ...(installer?.fileGame === "fs25" ? ["Activez le mod Interactions ShenPulse dans les mods de la sauvegarde, puis chargez une partie solo ou hôte. Les effets de véhicule exigent de conduire un véhicule. Pour le blé ou l’orge, utilisez une remorque ou un réservoir compatible. La croissance est traitée progressivement par le jeu."] : []),
+      ...(installer?.fileGame === "fs25" ? ["Sur Steam, ShenPulse prépare un profil local dans AppData et y importe une copie de vos parties, réglages et mods au premier démarrage. Vos fichiers d’origine restent intacts. Lancez le jeu depuis ShenPulse pour retrouver et poursuivre ces parties ; un lancement Steam habituel conserve son profil d’origine distinct. Le profil Xbox / Game Pass reste inchangé.", "Activez le mod Interactions ShenPulse dans les mods de la sauvegarde, puis chargez une partie solo ou hôte. Les effets de véhicule exigent de conduire un véhicule. Pour le blé ou l’orge, utilisez une remorque ou un réservoir compatible. La croissance est traitée progressivement par le jeu."] : []),
       ...(record.id === "escape-the-backrooms" ? ["Utilisez l’édition Xbox / Game Pass, puis une partie solo ou une partie dont vous êtes l’hôte. Les entités apparaissent à proximité et restent au maximum huit à la fois. Les dons demandent assez de places libres dans l’inventaire ; les effets dangereux peuvent terminer la vie du personnage."] : []),
+      ...(/^final-fantasy-[1-5]-pixel-remaster$/.test(record.id) ? ["Lancez l’édition choisie depuis ShenPulse et chargez une sauvegarde. Les effets ciblant un emplacement demandent un personnage présent à cet emplacement ; les quatrième et cinquième personnages dépendent de votre progression.", "Pendant les combats, désactivez le combat automatique et attendez l’écran de choix des actions. Les rencontres demandent un terrain à monstres, hors ville sûre, menu et cinématique. Les soins et retraits exigent des PV, états ou ressources modifiables."] : []),
       ...(minecraft ? [record.id === "minecraft-diamond-rush" ? "Récoltez 3 000 diamants avec la pioche fournie pour gagner une win. Les cadeaux peuvent modifier la mine et le compteur." : "Remplissez la box avec les blocs fournis et maintenez son sommet complet jusqu’à la fin du décompte pour gagner une win. Les prisons disposent d’actions de libération."] : []),
       record.compatibilityNote || "La présence d’un logo indique où obtenir le jeu ; elle ne garantit pas encore la compatibilité du module avec chaque boutique.",
-      tested ? "La validation indiquée concerne l’édition Xbox / Game Pass testée. Les autres éditions gardent leurs propres conditions de compatibilité." : "Les essais en jeu sont réservés à la seconde phase. Aucun abonnement à un autre logiciel n’est nécessaire pour les packs locaux finalisés."
+      tested ? minecraft ? `La validation concerne Minecraft Java ${installer.minecraftVersion}, avec le serveur et les interactions téléchargés par ShenPulse.` : "La validation indiquée concerne l’édition Xbox / Game Pass testée. Les autres éditions gardent leurs propres conditions de compatibilité." : "Les essais en jeu sont réservés à la seconde phase. Aucun abonnement à un autre logiciel n’est nécessaire pour les packs locaux finalisés."
     ], sources: []
   };
 }
@@ -78,6 +81,10 @@ function connector(record, module) {
     ...(installer.localHttpGame ? { localHttpGame: true } : {}),
     ...(installer.fileGame ? { fileGame: installer.fileGame } : {}),
     host: "127.0.0.1", port: module.port,
+    ...(/^final-fantasy-[1-5]-pixel-remaster$/.test(record.id) ? {
+      viewerIdentity: true, temporaryFailureRetryCodes: ["viewerbattle"],
+      temporaryFailureRetryMs: 12000, temporaryFailureRetryIntervalMs: 500
+    } : {}),
     parameterOrderByCode: record.parameterOrderByCode,
     ...(installer.parameterFormat ? { parameterFormat: installer.parameterFormat } : {}),
     timeoutMs: 12000, durationMultiplier: module.durationMultiplier, expectResponse: true, launchConnectionTimeoutMs: 90000
@@ -93,10 +100,11 @@ const OWNER_INTEGRATIONS = records.filter(record =>
   const module = modules[record.id], details = guide(record);
   return {
     ...game(record.id, record.name, {
-      included: true, source: "ShenPulse", workspaceLayout: "shared", ownerOnly: true,
-      artwork: record.artwork, storefronts: record.platforms, tags: ["inclus", "préparation privée"],
+      included: true, source: "ShenPulse", workspaceLayout: "shared", ownerOnly: record.ownerOnly !== false,
+      minAppVersion: record.minAppVersion,
+      artwork: record.artwork, coverArtwork: record.coverArtwork, storefronts: record.platforms, tags: ["inclus", record.ownerOnly === false ? "interactions vérifiées" : "préparation privée"],
       ...(module?.installer?.minecraftServer ? { minecraftVersion: module.installer.minecraftVersion, serverAddress: "127.0.0.1:" + module.installer.minecraftServer.port } : {}),
-      installerVersion: module?.version || "", interactionCatalogVersion: 2026103001,
+      installerVersion: module?.version || "", interactionCatalogVersion: record.interactionCatalogVersion || (/^final-fantasy-[1-5]-pixel-remaster$/.test(record.id) ? 2026110201 : 2026103001),
       connector: connector(record, module), effects: artworkPack(record).effects,
       defaultMappings: defaults(record), description: details.summary
     }),

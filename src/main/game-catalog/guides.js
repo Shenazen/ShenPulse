@@ -184,7 +184,8 @@ const GAME_GUIDES = Object.freeze({
     ],
     notes: [
       "Le jeu et ShenPulse doivent rester ouverts sur le même PC. Le premier lancement du mod peut prendre plusieurs minutes pour préparer les fichiers du jeu.",
-      "Les interactions démoniaques nécessitent que le démon soit éveillé : elles sont indisponibles pendant le tutoriel d’ouverture.",
+      "Terminez le tutoriel, démarrez une garde normale et récupérez le magnétophone avant les interactions démoniaques. Elles restent indisponibles pendant le tutoriel d’ouverture.",
+      "Pour remplir la machine, installez un corps sur la table et gardez une poche libre. Les ingrédients manquants sont ajoutés automatiquement ; une machine déjà remplie ne peut pas être remplie une seconde fois.",
       "Revenez dans la partie pour les interactions : le jeu doit être au premier plan, hors pause, menus, chargements et cinématiques. Certaines actions demandent un corps, une étape d’embaumement ou une place libre dans l’inventaire.",
       "F8 affiche ou masque l’indicateur ShenPulse. F9 relance la connexion locale.",
       "L’intégration cible le jeu complet Steam sous Windows. La démo n’est pas prise en charge."

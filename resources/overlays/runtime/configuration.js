@@ -81,8 +81,8 @@ let timerValueScale = Math.min(4, Math.max(.5, Number(parameters.get("timerValue
 let timerTitleColor = parameters.get("timerTitleColor") || parameters.get("accent") || parameters.get("textColor") || "#ffffff";
 let timerValueColor = parameters.get("timerValueColor") || parameters.get("textColor") || "#ffffff";
 let timerMultiplierColor = parameters.get("timerMultiplierColor") || "#ffe575";
-const overlaySoundEnabled = parameters.get("soundEnabled") !== "false";
-const overlaySoundVolume = Math.min(1, Math.max(0, Number(parameters.get("soundVolume") || 70) / 100));
+let overlaySoundEnabled = parameters.get("soundEnabled") !== "false";
+let overlaySoundVolume = globalThis.ShenPulseAudio ? ShenPulseAudio.volume(parameters.has("soundVolume") ? Number(parameters.get("soundVolume")) / 100 : .7, .7) : Math.min(1, Math.max(0, Number(parameters.get("soundVolume") ?? 70) / 100));
 const overlayDisplayTime = Math.min(120, Math.max(1, Number(parameters.get("displayTime") || 8)));
 const overlayPauseTime = Math.min(30, Math.max(0, Number(parameters.get("pauseTime") || 2)));
 const overlayAnimation = parameters.get("animation") || "pop";
@@ -437,6 +437,12 @@ function updatePreviewConfiguration(payload = {}) {
   timerTitleColor = payload.timerTitleColor || payload.accent || timerTitleColor;
   timerValueColor = payload.timerValueColor || payload.textColor || timerValueColor;
   timerMultiplierColor = payload.timerMultiplierColor || timerMultiplierColor;
+  overlaySoundEnabled = previewBoolean(payload, "soundEnabled", overlaySoundEnabled);
+  if (Object.hasOwn(payload, "soundVolume")) {
+    overlaySoundVolume = previewNumber(payload, "soundVolume", overlaySoundVolume * 100, 0, 100) / 100;
+    parameters.set("soundVolume", String(overlaySoundVolume * 100));
+  }
+  if (globalThis.ShenPulseAudio) ShenPulseAudio.runtime.update(ShenPulseAudio.runtime.control);
   matchAutoplay = previewBoolean(payload, "autoplay", matchAutoplay);
   matchLoop = previewBoolean(payload, "loop", matchLoop);
   matchFit = payload.fit === "cover" ? "cover" : payload.fit ? "contain" : matchFit;

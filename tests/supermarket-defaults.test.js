@@ -59,6 +59,7 @@ test("chaque cadeau ne déclenche que son interaction, y compris les variantes r
  async function send(giftId,giftName,count=1){await engine.process(normalizeEvent({event:"gift",data:{giftId,giftName,count,user:{id:"viewer",nickname:"Donateur"}}},"tiktok"));}
  for(const [,code,,name,giftId] of reference){const before=calls.length;await send(giftId,name);assert.equal(calls.length,before+1,name);assert.equal(f.pack.effects.find(e=>e.id===calls.at(-1).config.effectId).code,code);}
  await send("11015","Tofu");assert.equal(calls.at(-1).config.effectId,"supermarket-simulator-spawn-shoplifter");await send("17490","Capybara");assert.equal(calls.at(-1).config.effectId,"supermarket-simulator-cart-chaos");
+ for(const rule of f.rules)rule.trigger.repeatGiftCombos=true;
  const before=calls.length;await send("5655","Rose",3);assert.equal(calls.length,before+3);assert.ok(calls.slice(before).every(a=>a.config.parameters.count===1));
  await send("999999","Autre cadeau");assert.equal(calls.length,before+3);f.state.session.game.running=false;await send("5655","Rose");assert.equal(calls.length,before+3);
 });

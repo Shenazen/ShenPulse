@@ -1,0 +1,57 @@
+.voice-personality { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:26px; border:1px solid #5e3b84; border-radius:18px; background:radial-gradient(ellipse at top right,#39214988,transparent 65%),#121022; }
+.voice-personality h3 { margin:8px 0; font-size:23px; color:#fff; }
+.voice-personality p { color:#d0c2df; margin:10px 0; }
+.voice-personality small { color:#ad9fc1; line-height:1.5; }
+.voice-personality .button { flex:none; }
+.tts-voice-field { min-width:0; }
+.tts-voice-field > label { display:flex; align-items:center; justify-content:space-between; gap:12px; font-weight:700; }
+.tts-voice-field [data-tts-voice-count] { color:#bba9d1; font-size:12px; font-weight:400; }
+.tts-voice-controls { display:flex; align-items:stretch; gap:10px; min-width:0; }
+.tts-voice-controls select { flex:1; width:0; min-width:0; text-overflow:ellipsis; }
+.tts-voice-test { flex:none; white-space:nowrap; border-color:#735098; }
+.tts-voice-field [data-voice-preview-status]:empty { display:none; }
+.tts-voice-field [data-voice-preview-status] { color:#73e3ee; line-height:1.45; }
+dialog:has(.tts-rule-editor) { width:min(1040px,calc(100vw - 32px)); }
+.tts-rule-editor .dialog-section { border-radius:16px; }
+.tts-rule-editor .dialog-section > header { padding:18px 22px; }
+.tts-rule-editor .dialog-section > .form-grid { padding:20px 22px; gap:18px; }
+.tts-render-sliders { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:22px; padding:16px; background:#0c0c18; border:1px solid #30263e; border-radius:12px; }
+.tts-slider output { float:right; color:#6aebef; font-variant-numeric:tabular-nums; }
+.tts-slider input[type=range] { width:100%; min-height:30px; padding:0; accent-color:#bb50e6; cursor:pointer; }
+.tts-rule-editor .tts-moderation-fields { display:grid; gap:22px; min-width:0; }
+.tts-rule-editor .tts-audience-roles { margin:0; padding:16px; border:1px solid #3d304e; border-radius:12px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.tts-rule-editor .tts-audience-roles legend { padding:0 7px; color:#f0e8fa; font-size:14px; font-weight:700; }
+.tts-rule-editor .tts-audience-roles .filter-check { display:flex; align-items:center; gap:10px; min-height:36px; padding:8px; border-radius:8px; background:#241a32; }
+.tts-rule-editor .tts-audience-roles small { grid-column:1 / -1; line-height:1.5; }
+.tts-rule-editor .tts-moderation-fields > .form-grid { grid-template-columns:minmax(130px,.6fr) repeat(2,minmax(0,1fr)); align-items:start; }
+.tts-rule-editor .tts-moderation-fields > .form-grid .field.full { grid-column:auto; }
+.tts-rule-editor textarea { min-height:80px; resize:vertical; }
+.tts-rule-editor .tts-comment-filters { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.tts-rule-editor .tts-comment-filters .check-row { height:100%; padding:14px; border:1px solid #30283e; border-radius:12px; background:#161222; }
+@media(max-width:760px) { .tts-rule-editor .tts-audience-roles { grid-template-columns:repeat(2,minmax(0,1fr)); } .tts-rule-editor .tts-moderation-fields > .form-grid { grid-template-columns:1fr; } .tts-render-sliders { gap:14px; } }
+@media(max-width:520px) { .tts-render-sliders, .tts-rule-editor .tts-comment-filters, .tts-rule-editor .tts-audience-roles { grid-template-columns:1fr; } .tts-voice-controls { flex-wrap:wrap; } .tts-voice-controls select { flex-basis:100%; width:100%; } .tts-voice-test { width:100%; } }
+.voice-assignment-row { display:grid; grid-template-columns:minmax(120px,1fr) minmax(180px,2fr) auto; align-items:end; gap:12px; padding:12px 0; }
+.voice-assignment-row select { max-width:100%; }
+[data-voice-preferences] .voice-policies, [data-conversation-editor] .voice-policies { padding:18px; margin:18px 0; color:#d8c9e9; }
+[data-voice-preferences] .dialog-grid, [data-conversation-editor] .dialog-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:16px; }
+[data-voice-preferences] output { float:right; color:#68ebef; font-variant-numeric:tabular-nums; }
+[data-voice-preferences] input[type=range] { accent-color:#b650e9; padding:0; width:100%; min-height:32px; }
+.chatbot-tabs { margin-bottom:24px; flex-wrap:wrap; }
+.chatbot-tabs svg { width:21px; height:21px; flex:none; }
+.chatbot-template-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr)); gap:16px; margin:20px 0; }
+.chatbot-template-card { display:grid; grid-template-columns:40px 1fr; align-items:center; gap:8px 14px; text-align:left; padding:22px; border:1px solid #46315e; background:linear-gradient(135deg,#261a39,#11101e); border-radius:16px; color:#eee6f7; cursor:pointer; }
+.chatbot-template-card:hover { border-color:#b56fe0; background:#2a1b3e; }
+.chatbot-template-card > svg { grid-row:1 / 4; width:34px; height:34px; color:#d591ff; }
+.chatbot-template-card strong { font-size:17px; }
+.chatbot-template-card span { color:#bbacca; line-height:1.45; }
+.chatbot-template-card small { color:#64d8e3; margin-top:5px; }
+.chatbot-message-list { padding:18px; display:grid; gap:12px; }
+.chatbot-message-card { display:grid; grid-template-columns:44px minmax(0,1fr) auto auto; align-items:center; gap:18px; padding:22px; border:1px solid #382b4c; border-radius:14px; background:#191326; }
+.chatbot-message-symbol svg { width:29px; height:29px; color:#b987df; }
+.chatbot-message-card h4 { margin:0 0 8px; color:#f4eafd; font-size:16px; overflow-wrap:anywhere; }
+.chatbot-message-card p { margin:0 0 10px; color:#cfbfdc; line-height:1.55; white-space:pre-line; overflow-wrap:anywhere; }
+.chatbot-message-card small { color:#a799b7; line-height:1.5; }
+.chatbot-message-card.is-paused { border-style:dashed; }
+[data-conversation-editor] textarea { width:100%; resize:vertical; min-height:104px; }
+@media(max-width:1100px) { .chatbot-message-card { grid-template-columns:36px minmax(0,1fr) auto; } .chatbot-message-card .chatbot-entry-actions { grid-column:2 / -1; justify-content:flex-end; } }
+@media(max-width:760px) { .voice-personality { align-items:stretch; flex-direction:column; padding:20px; } .voice-assignment-row { grid-template-columns:minmax(0,1fr) auto; } .voice-assignment-row .field:nth-child(2) { grid-row:2; } .voice-assignment-row > button { grid-column:2; grid-row:1 / 3; } [data-voice-preferences] .dialog-grid, [data-conversation-editor] .dialog-grid { grid-template-columns:1fr; } .chatbot-message-card { grid-template-columns:32px minmax(0,1fr); padding:16px; } .chatbot-message-card .chatbot-entry-toggle { grid-column:2; } }

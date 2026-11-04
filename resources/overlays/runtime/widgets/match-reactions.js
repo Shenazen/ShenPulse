@@ -57,7 +57,7 @@ function playMatchMedia(payload = {}) {
     clearTimeout(state.deadline);
     state.duration = setTimeout(() => finishMatchMediaPlayback(id),
       Math.min(60000, Math.max(500, Number(payload.durationMs) || 5000)));
-    if (isVideo) playMatchVideo(node, { isCurrent: () => playMatchMedia.state === state, onFailure: fail });
+    if (isVideo) playMatchVideo(node, { volume: payload.volume, originActionId: payload.originActionId, isCurrent: () => playMatchMedia.state === state, onFailure: fail });
   };
   node.addEventListener("error", fail, { once: true });
   node.addEventListener(isVideo ? "canplay" : "load", ready, { once: true });
@@ -80,6 +80,7 @@ function stopMatchAudio() {
   playMatchAudio.queue = [];
   if (!state) return;
   clearTimeout(state.deadline);
+  state.releaseAudio?.();
   state.audio.pause(); state.audio.removeAttribute("src"); state.audio.load();
 }
 
@@ -103,11 +104,13 @@ function playMatchAudio(payload = {}) {
   const audio = new Audio(url), state = { audio, deadline: null };
   playMatchAudio.state = state;
   audio.volume = Math.min(1, Math.max(0, Number(payload.volume ?? 1)));
+  state.releaseAudio = globalThis.ShenPulseAudio?.runtime.media(audio, "matches", payload);
   audio.preload = "auto";
   const complete = (failed = false) => {
     if (playMatchAudio.state !== state) return;
     clearTimeout(state.deadline);
     playMatchAudio.state = null;
+    state.releaseAudio?.();
     audio.pause(); audio.removeAttribute("src"); audio.load();
     if (failed) setMatchPlaybackDiagnostic("audio-unavailable");
     let next;

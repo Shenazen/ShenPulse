@@ -9,7 +9,7 @@
   // Le document Match local porte l'empreinte du code réellement installé.
   // La version publique reste le repli des anciens documents sans métadonnée.
   const VERSION = encodeURIComponent(String(
-    document.querySelector?.('meta[name="shenpulse-overlay-version"]')?.content || "2.1.2-overlay1"
+    document.querySelector?.('meta[name="shenpulse-overlay-version"]')?.content || "2.1.3-overlay1"
   ).trim());
   const query = new URLSearchParams(location.search);
   if (globalThis.shenPulseMatchLocalEntry) {
@@ -66,7 +66,7 @@
     return Promise.all(pendingScripts.map(({ completion }) => completion));
   }
 
-  const scripts = ["catalog/shared.js"];
+  const scripts = ["audio-control.js", "catalog/shared.js"];
   if (view === "scene") {
     scripts.push(...["my-actions", "game", "like-goal", "top-donors", "top-tappers",
       "coin-jar", "timer", "multiplier-timer", "win-counter", "wheel"]

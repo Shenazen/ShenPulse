@@ -51,6 +51,7 @@ test("les 42 cadeaux Supermarket passent par le moteur de règles et transmetten
  const funds = received.find(message => message.code === "GiveMoney"); assert.equal(funds.duration, 0); assert.equal(funds.quantity, 100);
  const customer=game.effects.find(e=>e.code==="SpawnCustomers"), mapping=game.defaultMappings.find(m=>m.effectId===customer.id);
  const burst=defaultGameInteractionRule(game,customer,{...mapping,parameters:{count:5},triggerEnabled:true},game.interactionCatalogVersion);
+ burst.trigger.repeatGiftCombos=true;
  burst.conditions=[{field:"data.giftName",operator:"equals",value:"Burst",giftId:"market-burst"}];state.game.interactionRulesByPack[gameId]=[burst];
  await engine.process(normalizeEvent({event:"gift",data:{giftId:"market-burst",giftName:"Burst",count:3,user:{nickname:viewer}}},"tiktok"));
  assert.deepEqual(received.slice(42).map(r=>({code:r.code,quantity:r.quantity,viewer:r.viewer})),Array.from({length:3},()=>({code:"SpawnCustomers",quantity:5,viewer})));

@@ -21,8 +21,10 @@ function voiceContext(t, { authenticated = true, ttsVisible = true, uploadsVisib
     { id: "sound_rule", name: "Bienvenue sonore", enabled: true, trigger: { type: "follow" }, actions: [{ id: "sound_action", type: "audio.play", config: { url: "https://example.invalid/welcome.mp3", soundName: "Bienvenue", volume: 0.4, outputMode: "local" } }] },
     { id: "sound_live", name: "Cadeau sonore", enabled: false, trigger: { type: "gift" }, actions: [{ id: "live_action", type: "audio.play", config: { url: "https://example.invalid/gift.mp3", soundName: "Fanfare", volume: 0.6, outputMode: "live", liveScreen: 4 } }] }
   ];
-  const context = vm.createContext({
+  const context = vm.createContext({ShenPulseActionAudio: require("../src/shared/action-audio"),
     document: dom.window.document,
+    dialog: dom.window.document.createElement("dialog"), registerActionHandler: () => {},
+    ShenPulseTtsVoices: require("../src/shared/tts-voices"),
     window: dom.window,
     content: dom.window.document.getElementById("content"),
     snapshot: { state, overlayUrls: { mediaScreens: Array.from({ length: 8 }, (_entry, index) => `https://example.invalid/screen/${index + 1}`) } },
@@ -49,7 +51,9 @@ function voiceContext(t, { authenticated = true, ttsVisible = true, uploadsVisib
     fetch() { throw new Error("Aucune requête audio attendue."); }
   });
   vm.runInContext(fs.readFileSync(path.join(rendererRoot, "app", "core", "automation-table.js"), "utf8"), context, { filename: "automation-table.js" });
-  for (const file of ["studio-design.js", "actions.js", "audio.js", "creator-voice.js"]) vm.runInContext(readFeature(file), context, { filename: file });
+  const giftLabels = fs.readFileSync(path.join(rendererRoot, "app/core/ui-foundations.js"), "utf8");
+  vm.runInContext(giftLabels.slice(giftLabels.indexOf("function giftSelectionLabel("), giftLabels.indexOf("const GIFT_VALUE_OPERATOR_OPTIONS")), context);
+  for (const file of ["studio-design.js", "actions.js", "audio.js", "creator-voice.js", "voice-preferences.js"]) vm.runInContext(readFeature(file), context, { filename: file });
   context.renderTab = (tab) => {
     vm.runInContext(`creatorVoiceTab = ${JSON.stringify(tab)}`, context);
     context.content.innerHTML = context.renderCreatorVoice();
@@ -99,7 +103,7 @@ test("les règles TTS gardent toutes leurs commandes et un seul aperçu généra
   assert.equal(card.querySelector('[data-action="set-audio-output"]').checked, true);
   assert.match(card.textContent, /Hortense.*70 %/s);
   const summary = [...page.querySelectorAll(".voice-summary-card strong")].map((node) => node.textContent);
-  assert.deepEqual(summary, ["1 / 1", context.snapshot.state.settings.tts.voice || "Voix Windows", "1"]);
+  assert.deepEqual(summary, ["1 / 1", context.snapshot.state.settings.tts.voice || "Voix Windows par défaut", "1"]);
   assert.equal(JSON.stringify(context.snapshot.state), before, "Aucun changement de profil ou réglage pendant le rendu.");
 });
 

@@ -32,7 +32,8 @@ class MatchPublication {
   publish(channel, payload) {
     const context = readState(this.store, MATCH_WIDGET_CONTEXT_PATHS);
     if (!hasPublicMatchWidgetAccess(this.store, context)) return;
-    const mediaContext = channel === "match" ? {} : readState(this.store,
+    if (channel === "audio-control") payload = { ...payload, requestId: crypto.randomUUID() };
+    const mediaContext = ["match", "audio-control"].includes(channel) ? {} : readState(this.store,
       ["settings.backblaze.publicBaseUrl", "customSounds", "customMedia", "settings.matches.automations", "settings.overlayConfigs.wheel"]);
     // Les actions de l'espace actif restent des références de lecture valides
     // après retrait du catalogue ; aucune copie des workspaces inactifs.

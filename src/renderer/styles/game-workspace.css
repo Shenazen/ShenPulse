@@ -540,3 +540,37 @@ dialog.game-tour-layer::backdrop { background:transparent; backdrop-filter:none;
 
 /* Named effect choices need room for their translated option labels. */
 .game-pack-workspace .game-pack-choice { width:auto; min-width:110px; max-width:100%; flex:0 1 180px; }
+
+.studio-obs-targets{padding:20px;border:1px solid #70578f80;border-radius:14px;background:linear-gradient(135deg,#271c3e,#111827)}.studio-obs-targets h3{margin:0 0 10px;font-size:20px}.studio-obs-targets p{line-height:1.6;color:#c3b8d4}.studio-obs-targets .field{display:grid;gap:9px;margin:18px 0}.studio-obs-targets select{width:100%;min-height:46px;padding:10px;border:1px solid #796195;border-radius:9px;background:#0b0d17;color:#fff}.studio-obs-targets .button-row{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.studio-target-result{color:#6ee7df;font-weight:600}
+.box-cyber-layout .game-pack-phone-screen{position:relative;aspect-ratio:9/16;display:block}.box-cyber-layout .game-pack-camera-preview,.box-cyber-layout .game-pack-phone-game{position:absolute;aspect-ratio:auto;margin:0;border-radius:0;max-height:none}.box-cyber-layout .game-pack-phone-source{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;min-height:0;pointer-events:none;z-index:5}.box-cyber-layout .game-pack-phone-source iframe{position:absolute;inset:0;width:100%;height:100%}.box-cyber-layout .game-pack-phone-wins-source{z-index:4}
+
+
+/* Box Cyber : réglages regroupés sous le téléphone, sans masquer l’aperçu. */
+.game-pack-preview-settings { justify-self:end; width:var(--game-pack-phone-width); max-width:100%; margin-top:18px; padding:17px; border:1px solid #8b62bc55; border-radius:20px; background:linear-gradient(145deg,#20192feF,#0c101eef); box-shadow:0 12px 28px #05040c35; }
+.game-pack-preview-settings > header { display:flex; align-items:center; gap:10px; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid #ffffff12; }
+.game-pack-preview-settings h3 { margin:0; font:800 14px/1.4 Inter,sans-serif; color:#f4edff; }
+.game-pack-preview-settings header p { margin:3px 0 0; color:#aa9aba; font-size:11px; line-height:1.45; }
+.game-pack-settings-icon { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border:1px solid #ad7de747; border-radius:10px; color:#bda2e8; background:#a35ae314; }
+.game-pack-settings-icon svg { width:20px; height:20px; fill:#1f1830; stroke:currentColor; stroke-width:1.6; }
+.game-pack-settings-live { margin-left:auto; padding:4px 7px; border-radius:6px; color:#59dfcf; background:#0ab79a12; font:700 9px/1.4 Inter,sans-serif; white-space:nowrap; }
+.game-pack-preview-settings .game-pack-preview-controls { width:100%; margin:0; gap:8px; }
+.game-pack-preview-settings .game-pack-preview-models { padding:3px; border-radius:10px; }
+.game-pack-preview-settings .game-pack-preview-models button { min-height:32px; font-size:11px; border-radius:7px; }
+.game-pack-preview-settings .game-pack-preview-mode { padding:3px; border-radius:10px; }
+.game-pack-preview-settings .game-pack-preview-mode button { min-height:34px; padding:5px 7px; font-size:12px; border-radius:7px; }
+.game-pack-preview-settings .game-pack-preview-mode button:first-child { flex:1; }
+.game-pack-preview-settings .game-pack-preview-mode svg { width:16px; height:16px; flex-basis:16px; }
+.game-pack-layout-controls { display:grid; gap:14px; margin-top:18px; padding-top:16px; border-top:1px solid #ffffff12; }
+.game-pack-layout-field { min-width:0; padding:0; margin:0; border:0; }
+.game-pack-layout-field legend { margin-bottom:7px; color:#c8bed6; font:650 11px/1.4 Inter,sans-serif; }
+.game-pack-layout-choices { display:flex; gap:4px; padding:3px; border:1px solid #ffffff14; border-radius:10px; background:#090b15a0; }
+.game-pack-layout-choices button { position:relative; flex:1; min-width:0; min-height:34px; padding:6px 8px; border:1px solid transparent; border-radius:7px; color:#a99dbb; background:transparent; font:700 11px/1.4 Inter,sans-serif; cursor:pointer; transition:background 120ms,color 120ms,border-color 120ms; }
+.game-pack-layout-choices button:hover { background:#a56aee15; color:#fff; }
+.game-pack-layout-choices button[aria-pressed=true] { color:#f5efff; border-color:#b17bed65; background:linear-gradient(110deg,#6934a7a8,#863c8f66); box-shadow:0 2px 8px #0003; }
+.game-pack-preview-settings button:focus-visible,.game-pack-card-size input:focus-visible { outline:2px solid #29d4df; outline-offset:2px; }
+.game-pack-card-size { display:grid; grid-template-columns:1fr auto; gap:9px; color:#c8bed6; font:650 11px/1.5 Inter,sans-serif; }
+.game-pack-card-size input { grid-column:1/-1; width:100%; min-width:0; margin:0; accent-color:#b576ed; cursor:pointer; }
+.game-pack-card-size output { padding:2px 7px; border:1px solid #b17bed33; border-radius:6px; color:#e2c7ff; background:#af75e511; font-variant-numeric:tabular-nums; }
+.game-pack-layout-note { margin:0; padding:10px; border-radius:9px; background:#14a7c30a; color:#9fa9c3; font-size:10px; line-height:1.6; }
+@container game-pack-layout (max-width:1249px) { .game-pack-preview-settings { justify-self:center; } }
+@media (max-width:420px) { .game-pack-preview-settings { padding:12px; }.game-pack-settings-live { display:none; } }

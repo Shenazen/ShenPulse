@@ -142,7 +142,7 @@ test("cooldowns : un nettoyage opportuniste ne supprime jamais les délais encor
 });
 
 test("seuils : seuls les reliquats nuls sont supprimés, les lots et accumulations restent exacts", async () => {
-  const { engine, calls } = fixture([rule("gift", "gift", { trigger: { type: "gift", threshold: 5 } })]);
+  const { engine, calls } = fixture([rule("gift", "gift", { trigger: { type: "gift", threshold: 5, repeatGiftCombos: true } })]);
   await engine.process(event("gift", { count: 2 }));
   assert.equal(engine.thresholds.get("gift:fixture-viewer"), 2);
   await engine.process(event("gift", { count: 3 }));

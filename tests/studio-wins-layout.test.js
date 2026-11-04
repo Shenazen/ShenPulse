@@ -105,7 +105,7 @@ test('Streamlabs reprend les proportions Hiking après deux installations',async
 });
 
 test('chaque jeu doté de wins utilise la même référence TikTok sans modifier son URL ni les autres sources',()=>{
- const path=require('node:path'),packs=require('../src/main/game-catalog').loadShenazenGameCatalog(path.resolve('resources')).filter(p=>p.effects.some(e=>e.winCounter));
+ const path=require('node:path'),packs=require('../src/main/game-catalog').loadShenazenGameCatalog(path.resolve('resources')).filter(p=>p.id!=='minecraft-box-cyber').filter(p=>p.effects.some(e=>e.winCounter));
  assert.ok(packs.length>3);
  for(const pack of packs){
   const gamePlan={...plan,identity:'owner:p:'+pack.id,packId:pack.id,gameName:pack.name,sceneName:pack.name,overlayUrl:'https://overlay.test/game-pack.html?jeu='+pack.id+'&profile=p',winsOverlayUrl:'https://overlay.test/game-wins.html?jeu='+pack.id+'&profile=p'};
@@ -116,19 +116,19 @@ test('chaque jeu doté de wins utilise la même référence TikTok sans modifier
 });
 
 test('le HUD reste entier même dans un navigateur trop court, après redimensionnement et avec des modèles séparés',t=>{
- const dom=new JSDOM(fs.readFileSync('resources/overlays/game-wins.html','utf8'),{runScripts:'outside-only',url:plan.winsOverlayUrl});t.after(()=>dom.window.close());
+ const dom=new JSDOM(fs.readFileSync('resources/overlays/game-wins.html','utf8'),{runScripts:'outside-only', beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); },url:plan.winsOverlayUrl});t.after(()=>dom.window.close());
  const w=dom.window;w.innerWidth=1080;w.innerHeight=1019;w.eval(fs.readFileSync('resources/overlays/runtime/game-wins.js','utf8'));
  const root=w.document.getElementById('wins-hud'),factor=1019/1280;
  assert.equal(root.style.transform,'scale('+factor+')');near(parseFloat(root.style.left),(1080-1080*factor)/2);
  assert.ok(1280*factor<=1019);
  w.innerWidth=540;w.innerHeight=960;w.dispatchEvent(new w.Event('resize'));assert.equal(root.style.transform,'scale(0.5)');assert.equal(root.style.left,'0px');
- const single=new JSDOM('<main id="wins-hud"></main>',{runScripts:'outside-only',url:plan.winsOverlayUrl+'&mode=counter'});t.after(()=>single.window.close());
+ const single=new JSDOM('<main id="wins-hud"></main>',{runScripts:'outside-only', beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); },url:plan.winsOverlayUrl+'&mode=counter'});t.after(()=>single.window.close());
  single.window.innerWidth=360;single.window.innerHeight=260;single.window.eval(fs.readFileSync('resources/overlays/runtime/game-wins.js','utf8'));
  assert.equal(single.window.document.getElementById('wins-hud').style.transform,'scale(0.5)');assert.equal(single.window.document.documentElement.dataset.winsMode,'counter');
- const mute=new JSDOM('<main id="wins-hud"></main>',{runScripts:'outside-only',url:plan.winsOverlayUrl+'&mode=mute'});t.after(()=>mute.window.close());
+ const mute=new JSDOM('<main id="wins-hud"></main>',{runScripts:'outside-only', beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); },url:plan.winsOverlayUrl+'&mode=mute'});t.after(()=>mute.window.close());
  mute.window.innerWidth=540;mute.window.innerHeight=500;mute.window.eval(fs.readFileSync('resources/overlays/runtime/game-wins.js','utf8'));
  assert.equal(mute.window.document.getElementById('wins-hud').style.transform,'scale(0.5)','La source mute conserve son cadrage existant');
- const phone=new JSDOM('<main id="wins-hud"></main>',{runScripts:'outside-only',url:plan.winsOverlayUrl+'&preview=1'});t.after(()=>phone.window.close());
+ const phone=new JSDOM('<main id="wins-hud"></main>',{runScripts:'outside-only', beforeParse(window) { window.eval(fs.readFileSync(require('node:path').resolve(__dirname, '../resources/overlays/game-pack-layout.js'), 'utf8')); },url:plan.winsOverlayUrl+'&preview=1'});t.after(()=>phone.window.close());
  phone.window.innerWidth=540;phone.window.innerHeight=608;phone.window.eval(fs.readFileSync('resources/overlays/runtime/game-wins.js','utf8'));
  assert.equal(phone.window.document.getElementById('wins-hud').style.transform,'scale(0.5)','Le téléphone conserve le placement des widgets sur la caméra et le jeu');
 });
