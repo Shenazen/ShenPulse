@@ -1,6 +1,6 @@
 # Rapport de validation — ShenPulse 2.1.3
 
-Date : 4 novembre 2026. Windows 11 x64, Node.js 24.14.0, Electron 43.2.0. Version conservée à 2.1.3 ; version Windows 2.1.3.0. Publication publique directe autorisée, sans vol privé. Discord reporté à la demande du propriétaire.
+Date : 4 novembre 2026. Windows 11 x64, Node.js 24.14.0, Electron 43.2.0. Version conservée à 2.1.3 ; version Windows 2.1.3.0. Publication publique directe autorisée, sans vol privé. Discord initialement reporté, puis actualisé sur demande du propriétaire le 4 novembre 2026.
 
 Notes : [2.1.3](releases/2.1.3.fr.md). Rapport précédent : [2.1.2](validation/2.1.2.fr.md).
 
@@ -37,7 +37,7 @@ Farming Simulator 25 : les effets Steam et Game Pass ont leurs résultats préc�
 
 ## Publication
 
-Soumission publique 15 : 1152921505702316401. Notes françaises, description, confidentialité, classification, diffusion publique détectable et 240 marchés contrôlés. Publication automatique après certification sélectionnée. Envoi confirmé dans Partner Center le 4 novembre 2026 : « Mise à jour en cours de certification », étape 2 sur 4, prétraitement en cours. La diffusion publique 2.1.3 attend la certification Microsoft ; aucun vol privé créé.
+Soumission publique 15 : 1152921505702316401. Notes françaises, description, confidentialité, classification, diffusion publique détectable et 240 marchés contrôlés. Publication automatique après certification sélectionnée. Certification et publication confirmées dans Partner Center le 4 novembre 2026 : « Félicitations ! Votre produit est maintenant mis à jour » et « Votre dernier produit est désormais disponible sur le Microsoft Store ». La présence dans le Store est celle de la soumission 15. Aucun vol privé créé. La propagation de la mise à jour peut varier selon le PC.
 
 Les preuves et journaux détaillés sont conservés hors Git sous .artifacts/release-2.1.3/ ; les distribuables restent sous dist/. Aucun secret, certificat privé, donnée utilisateur ou distribuable n’est ajouté au dépôt.
 
@@ -45,4 +45,4 @@ Les preuves et journaux détaillés sont conservés hors Git sous .artifacts/rel
 - Site public et installateur 2.1.3 publiés. Téléchargement HTTP complet contrôlé : 797 380 472 octets, SHA-256 identique à l’EXE qualifié. Anciennes versions conservées.
 - Hosting overlays : version `c6f0a8460031d530`, runtime `2.1.3-overlay1`, ressources préexistantes conservées.
 - Contrôle final de la vitrine : 34 vues sans échec. Les légendes des captures décrivent des aperçus, sans leur attribuer une version récente artificielle ; FAQ des réponses du chat alignée sur ses prérequis.
-- Discord explicitement reporté par le propriétaire : aucune annonce publiée pendant cette release.
+- Discord actualisé le 4 novembre 2026 : nouvelle annonce 2.1.3 publiée et diffusée, anciennes annonces conservées. Guides Actions, Voix & sons, Minecraft, sommaire jeux, installation/liens et FAQ actualisés. Fiches Final Fantasy I à V, The Mortuary Assistant et Personnalise tes jeux créées ; état du déploiement publié. Annonce : https://discord.com/channels/1561730092995051671/1561731045949313327/1567619296602099892
