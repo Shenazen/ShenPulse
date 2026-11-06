@@ -391,7 +391,7 @@ async function run() {
     });
   }
   for (const [width,height] of [viewports[0],viewports[5],viewports[6]]) {
-    for(const route of ["/jeux","/guides","/guides/synthese-vocale","/jeux/palworld","/mises-a-jour/2.1.3"]) {
+    for(const route of ["/jeux","/guides","/guides/synthese-vocale","/jeux/palworld","/mises-a-jour/2.1.5"]) {
       await scenario("seo-"+route+"-"+width,async()=>{
         await load(route,width,height);
         const page = route==="/jeux"?"games":route==="/guides"?"guides":route.startsWith("/guides/")?"guide":route.startsWith("/jeux/")?"game":"release";

@@ -1,8 +1,8 @@
-import { LEGAL_PAGES } from './legal-pages.js?v=20261104-seo1'
-import { APP_TABS, CLIENT_RELEASE } from '../content.js?v=20261104-seo1'
-import { GAMES } from '../game-catalog.js?v=20261104-seo1'
-import { IMAGES } from '../image-assets.js?v=20261104-seo1'
-import { PUBLIC_RELEASE } from '../public-release.js?v=20261104-seo1'
+import { LEGAL_PAGES } from './legal-pages.js?v=20261106-release215'
+import { APP_TABS, CLIENT_RELEASE } from '../content.js?v=20261106-release215'
+import { GAMES } from '../game-catalog.js?v=20261106-release215'
+import { IMAGES } from '../image-assets.js?v=20261106-release215'
+import { PUBLIC_RELEASE } from '../public-release.js?v=20261106-release215'
 import {
   homePage,
   docsPage,
@@ -12,10 +12,10 @@ import {
   normalizePath,
   DOWNLOAD_URL,
   SITE_ORIGIN,
-} from './pages.js?v=20261104-seo1'
-import { screenshot } from './visual-tour.js?v=20261104-seo1'
-import { PRODUCT_TOUR } from './product-tour.js?v=20261104-seo1'
-import { escapeHtml as e } from './html.js?v=20261104-seo1'
+} from './pages.js?v=20261106-release215'
+import { screenshot } from './visual-tour.js?v=20261106-release215'
+import { PRODUCT_TOUR } from './product-tour.js?v=20261106-release215'
+import { escapeHtml as e } from './html.js?v=20261106-release215'
 
 const GUIDE_PATHS = {
   accueil: 'accueil',

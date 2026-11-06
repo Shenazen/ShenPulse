@@ -140,7 +140,7 @@ async function run() {
   check(
     installer.status === 200 &&
       Number(installer.headers['content-length']) === installerBytes,
-    'Installateur 2.1.3 modifié',
+    'Installateur ' + version + ' incorrect',
   )
   for (const host of ['https://shenpulse.leuridan.fr', origin]) {
     const health = await get(host + '/api/live/health')

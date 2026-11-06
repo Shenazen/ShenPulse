@@ -10,13 +10,13 @@
 | PFN attendu | `ShenPulse.ShenPulse_mammcwaggkw0m` |
 | Store ID | `9NDR71Z41ZJG` |
 
-`npm run build:store` génère `dist/ShenPulse-2.1.4-x64.appx` ainsi que le
-conteneur recommandé `dist/ShenPulse-2.1.4-x64.appxupload`. Son manifeste porte
-la version Store `2.1.4.0`, dont le numéro de révision est conforme. Le Microsoft Store
+`npm run build:store` génère `dist/ShenPulse-2.1.5-x64.appx` ainsi que le
+conteneur recommandé `dist/ShenPulse-2.1.5-x64.appxupload`. Son manifeste porte
+la version Store `2.1.5.0`, dont le numéro de révision est conforme. Le Microsoft Store
 accepte le format AppX pour une application Desktop Bridge et le resigne pour la
 distribution. L'identité Store est déjà renseignée dans `package.json`.
 
-Les [notes 2.1.4](releases/2.1.4.fr.md) décrivent les changements. Les résultats
+Les [notes 2.1.5](releases/2.1.5.fr.md) décrivent les changements. Les résultats
 de qualification et le statut réel du canal Store sont consignés séparément
 dans [VALIDATION.md](VALIDATION.md) ; construire le package ne vaut pas soumission.
 
@@ -51,3 +51,9 @@ Trusted People de la machine de test. Ne distribuez jamais la clé privée.
 Les secrets OAuth, approbations d'API, URL légales et comptes de test ne peuvent
 pas être fabriqués dans le dépôt. Une soumission publique ne doit être déclarée
 prête qu'après leur fourniture et validation.
+
+## Communication de publication
+
+- Les annonces, nouveautés, fiches Store, site et Discord présentent uniquement ShenPulse et ses fonctionnalités. Aucune mention, comparaison, lien, crédit promotionnel ou référence à Tikfinity, Crowd Control/CrowdControl, Tik360, SyncLive, StreamToEarn/Stream To Earn ou à une application concurrente. Contrôler les textes avant leur envoi. Ne pas retirer les avis de licence obligatoires des composants distribués.
+- Publier une nouvelle annonce Discord, sans écraser les anciennes. Utiliser le lien Microsoft Store officiel pour le téléchargement dans les annonces.
+- Regrouper les changements depuis la dernière annonce publique ; ne pas annoncer les versions urgentes intermédiaires si le propriétaire demande de les omettre. Ne pas annoncer comme publics les jeux encore réservés à un compte ou en essais privés.

@@ -1,13 +1,22 @@
 export const CLIENT_RELEASE = {
-  version: '2.1.3',
-  publishedAt: '2026-11-04',
-  displayDate: '4 novembre 2026',
-  title: 'Tes jeux, tes actions, ton ambiance.',
-  summary: 'Crée tes packs de raccourcis, combine plusieurs effets et personnalise les alertes de tes viewers. De nouvelles voix, le pack Dragon et un meilleur contrôle audio complètent cette mise à jour.',
-  highlights: [
-    ['Personnalise tes jeux', 'Associe cadeaux et touches du clavier dans tes propres packs. Combine médias, sons et alertes viewer dans une même action ; choisis les cadeaux autorisés ou exclus et la répétition des combos.'],
-    ['Fais entendre ton LIVE', 'Le catalogue embarqué propose 322 voix naturelles, dont 13 francophones, avec actualisation automatique et secours Windows. Pilote le volume général et ceux des sons, voix, animations et overlays. Les voix naturelles nécessitent Internet.'],
-    ['Soigne ta diffusion', 'Ajoute le pack Dragon à tes animations Cyber, règle photo, texte, police et contour des alertes viewer, puis utilise les huit écrans Media. Les liens des cadeaux bénéficient d’un cadrage plus net et l’installation OBS propose la destination de diffusion.']
+  "version": "2.1.5",
+  "publishedAt": "2026-11-06",
+  "displayDate": "6 novembre 2026",
+  "title": "Des interactions plus vivantes, un espace agence complet.",
+  "summary": "Des cartes plus lisibles et réactives, des combos de jeux fiables, des actions IRL visibles et un espace agence organisé avec offres groupées.",
+  "highlights": [
+    [
+      "Des cartes qui réagissent",
+      "Une mise en valeur au démarrage de chaque action, des étincelles par cadeau, des textes lisibles et des sources nettes. Follow et Likes restent premiers ; les neutres complètent les rangées."
+    ],
+    [
+      "Vos actions dans vos jeux",
+      "Choisissez les actions et interactions IRL à afficher sur les cartes de chaque jeu. Les cadeaux partagés regroupent leurs effets et les combos gardent tous leurs déclenchements."
+    ],
+    [
+      "Votre espace agence",
+      "Invitations, membres et paliers dans des onglets dédiés. Une offre groupée attribuée permet au fondateur de gérer la prise en charge de son équipe selon les conditions négociées."
+    ]
   ]
 }
 

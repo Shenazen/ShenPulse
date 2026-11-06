@@ -83,3 +83,9 @@ Documents utiles :
 - docs/VALIDATION.md
 - docs/PUBLIC_OVERLAYS.md
 - docs/FEATURE_MATRIX.md
+
+## Communication de publication
+
+- Les annonces, nouveautés, fiches Store, site et Discord présentent uniquement ShenPulse et ses fonctionnalités. Aucune mention, comparaison, lien, crédit promotionnel ou référence à Tikfinity, Crowd Control/CrowdControl, Tik360, SyncLive, StreamToEarn/Stream To Earn ou à une application concurrente. Contrôler les textes avant leur envoi. Ne pas retirer les avis de licence obligatoires des composants distribués.
+- Publier une nouvelle annonce Discord, sans écraser les anciennes. Utiliser le lien Microsoft Store officiel pour le téléchargement dans les annonces.
+- Regrouper les changements depuis la dernière annonce publique ; ne pas annoncer les versions urgentes intermédiaires si le propriétaire demande de les omettre. Ne pas annoncer comme publics les jeux encore réservés à un compte ou en essais privés.

@@ -1,6 +1,6 @@
-import { header, footer, normalizePath, normalizeSearch } from './app/pages.js?v=20261104-seo1'
-import { resolvePage, pageGraph } from './app/seo.js?v=20261104-seo1'
-import { screenshotDialog, bindVisuals } from './app/visual-tour.js?v=20261104-seo1'
+import { header, footer, normalizePath, normalizeSearch } from './app/pages.js?v=20261106-release215'
+import { resolvePage, pageGraph } from './app/seo.js?v=20261106-release215'
+import { screenshotDialog, bindVisuals } from './app/visual-tour.js?v=20261106-release215'
 document.documentElement.classList.replace('no-js', 'js')
 const app = document.querySelector('#app')
 let pageController = null

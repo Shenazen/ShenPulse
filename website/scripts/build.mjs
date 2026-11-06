@@ -26,7 +26,7 @@ for (const file of ['inter-latin-wght-normal.woff2', 'LICENSE-Inter.txt'])
     path.join(dist, 'fonts', file),
   )
 const { CLIENT_RELEASE } = await import(
-  pathToFileURL(path.join(dist, 'content.js')).href + '?v=20261104-seo1'
+  pathToFileURL(path.join(dist, 'content.js')).href + '?v=20261106-release215'
 )
 const images = {},
   imageReport = []
@@ -63,7 +63,7 @@ async function optimize(key, input, largeWidth, smallWidth) {
   })
 }
 const { SCREENSHOTS } = await import(
-  pathToFileURL(path.join(dist, 'app/screenshots.js')).href + '?v=20261104-seo1'
+  pathToFileURL(path.join(dist, 'app/screenshots.js')).href + '?v=20261106-release215'
 )
 for (const src of Object.keys(SCREENSHOTS))
   await optimize(src, path.join(dist, src), 1440, 720)
@@ -148,10 +148,10 @@ const { resolvePage, publicPaths, pageGraph } = await import(
   pathToFileURL(path.join(dist, 'app/seo.js')).href + '?build=' + Date.now()
 )
 const { header, footer } = await import(
-  pathToFileURL(path.join(dist, 'app/pages.js')).href + '?v=20261104-seo1'
+  pathToFileURL(path.join(dist, 'app/pages.js')).href + '?v=20261106-release215'
 )
 const { screenshotDialog } = await import(
-  pathToFileURL(path.join(dist, 'app/visual-tour.js')).href + '?v=20261104-seo1'
+  pathToFileURL(path.join(dist, 'app/visual-tour.js')).href + '?v=20261106-release215'
 )
 const template = await readFile(path.join(root, 'index.html'), 'utf8')
 const buildDate = new Date().toISOString().slice(0, 10),
@@ -209,7 +209,7 @@ function documentHtml(page) {
     page.content +
     footer() +
     screenshotDialog() +
-    '</div><noscript><p class="noscript-note">Le contenu et les liens sont accessibles sans JavaScript. Les aperçus interactifs et filtres nécessitent son activation.</p></noscript><script type="module" src="/app.js?v=20261104-seo1"></script></body>'
+    '</div><noscript><p class="noscript-note">Le contenu et les liens sont accessibles sans JavaScript. Les aperçus interactifs et filtres nécessitent son activation.</p></noscript><script type="module" src="/app.js?v=20261106-release215"></script></body>'
   return html
     .replace('</head>', schema + '\n</head>')
     .replace(/<body>[\s\S]*<\/body>/, body)

@@ -1,7 +1,7 @@
-import { IMAGES } from '../image-assets.js?v=20261104-seo1'
-import { PRODUCT_TOUR } from './product-tour.js?v=20261104-seo1'
-import { SCREENSHOTS } from './screenshots.js?v=20261104-seo1'
-import { escapeHtml } from './html.js?v=20261104-seo1'
+import { IMAGES } from '../image-assets.js?v=20261106-release215'
+import { PRODUCT_TOUR } from './product-tour.js?v=20261106-release215'
+import { SCREENSHOTS } from './screenshots.js?v=20261106-release215'
+import { escapeHtml } from './html.js?v=20261106-release215'
 
 const SCREENSHOT_VERSION = '20261015-2.0.2'
 

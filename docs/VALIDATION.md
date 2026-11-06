@@ -1,38 +1,40 @@
-# Rapport de validation — ShenPulse 2.1.4
+# Rapport de validation — ShenPulse 2.1.5
 
-Date : 5 novembre 2026. Mise à jour urgente limitée au Microsoft Store, autorisée par le propriétaire. Publication directe sans vol privé. Site, installateur EXE, Discord et autres étapes de diffusion reportés à sa demande. Version Windows : 2.1.4.0.
+Date : 6 novembre 2026. Release complète autorisée : application, Git, site public, overlays, Store et Discord. Publication directe sans vol privé. Les communications regroupent les changements depuis la dernière annonce 2.1.3. Notes : [2.1.5](releases/2.1.5.fr.md). Rapport précédent : [2.1.4](validation/2.1.4.fr.md).
 
-Notes : [2.1.4](releases/2.1.4.fr.md). Rapport précédent : [2.1.3](validation/2.1.3.fr.md).
-
-La protection contre le partage de comptes a été rappelée au propriétaire avant la publication ; elle reste hors de ce correctif urgent.
+La protection contre le partage de compte a été rappelée au propriétaire ; elle reste hors de cette release. Les Sims 4 conserve sa restriction au compte du propriétaire et n'est pas annoncé comme jeu public.
 
 ## Qualification réussie
 
-- `npm ci` réussi ; audit des dépendances de production : zéro vulnérabilité.
-- `npm run verify` final : 3 683 tests réussis, zéro échec ; structure, syntaxe et imports validés.
-- 77 contrôles ciblés supplémentaires réussis, dont les combos de jeux, les packs agences et les métadonnées de version/cache des overlays.
-- Paquet AppX x64 et AppXUpload construits en 2.1.4.0. Identité Microsoft Store `ShenPulse.ShenPulse`, éditeur réservé conservé.
-- Audit ASAR : 3 831 fichiers contrôlés, aucune anomalie, aucun fichier interdit ; les 27 médias protégés sont conservés chiffrés.
-- AppXUpload : AppX embarqué identique au paquet contrôlé, vérifié par SHA-256.
-- Kit officiel de certification Windows : `PASS`, version 2.1.4.0, exécution complète (`PARTIAL_RUN FALSE`). Installation Store 2.1.3.0 conservée pendant le contrôle.
+- Dépendances réinstallées par npm ci. Audit des dépendances de production : zéro vulnérabilité. Les avertissements de dépendances de développement sont conservés dans les journaux ; aucune mise à jour majeure forcée.
+- npm run verify : 3 810 tests réussis, zéro échec, lint et imports valides. Les mêmes contrôles passent dans les constructions Store et EXE.
+- 47 régressions ciblées passent après la correction du contrôle strict de l'identifiant Steam et du cache overlay 2.1.5.
+- Audit ASAR : 3 841 fichiers identiques aux sources, aucune anomalie ni fichier interdit ; 27 médias protégés conservés chiffrés.
+- Identité Store ShenPulse.ShenPulse, éditeur réservé, architecture x64, version Windows 2.1.5.0. AppXUpload vérifié : paquet embarqué identique par SHA-256.
+- Installation, lancement et désinstallation de l'EXE validés dans un environnement isolé. Mise à jour 2.1.3 vers 2.1.5 validée avec conservation des données utilisateur.
+- Site : 79 pages HTML, 227 fichiers, 3 299 liens et ressources vérifiés. Contrôle dans un navigateur réel : 59 captures, zéro échec.
+- Relais public des overlays validé. Déploiement Firebase database/hosting réussi ; six fichiers publics comparés octet pour octet aux sources, version de cache 2.1.5-overlay1.
+- Santé du backend positive. Configuration des paiements prête en production ; les huit jeux annoncés sont effectivement à 4,99 EUR. Aucun paiement réel ni modification de contrat client pour ces vérifications.
 
-Journaux et audits : `.artifacts/release-2.1.4/`. Rapport Windows : `.artifacts/wack-2.1.4.xml`.
+## Limites de certification et signature
 
-## Soumission publique Microsoft Store
+Le kit officiel Microsoft signé est présent, mais sa commande reset ne peut pas démarrer dans cette session non élevée : « L'opération demandée nécessite une élévation ». Le propriétaire est absent. Aucun écran de sécurité n'a été contourné et aucun résultat WACK 2.1.5 n'est revendiqué. Les anciens rapports ne qualifient pas ce nouveau paquet. Ce blocage est consigné avant la soumission publique, conformément à la procédure.
 
-Le 5 novembre 2026 vers 10 h 24 (Europe/Paris), la soumission publique 16, identifiant `1152921505702322167`, a été envoyée pour certification. Microsoft a validé le paquet `ShenPulse-2.1.4-x64.appxupload`. Description et notes françaises mises à jour pour ce correctif ; tarification et disponibilité conservées.
+L'installateur EXE n'a pas de signature Authenticode configurée (NotSigned) : Windows peut présenter un avertissement SmartScreen. Le paquet soumis au Store est destiné à être signé par Microsoft pour sa distribution.
 
-État observé après envoi : **mise à jour en cours de certification**, prétraitement en cours. La publication démarre automatiquement dès acceptation. Aucun vol privé créé. La disponibilité publique de 2.1.4 n’est pas encore confirmée ; le délai de certification appartient à Microsoft.
+## Distribution
 
-Preuve visuelle enregistrée via le navigateur intégré : `C:/Users/alexa/AppData/Local/Temp/shenpulse-2.1.4-store-submitted.png`.
+- Microsoft Store : brouillon 17, identifiant 1152921505702332400. Nouveau paquet 2.1.5 validé et textes français enregistrés. Audience publique, détectabilité active, 240 marchés et publication dès certification confirmés. La soumission finale reste à effectuer après les derniers contrôles.
+- Site : contenu et EXE qualifiés ; publication à effectuer.
+- Discord : nouvelle annonce et compléments de guides à publier après la soumission, sans écraser les anciennes annonces et sans mention d'application concurrente.
 
 ## Empreintes des artefacts
 
 | Artefact | Taille | SHA-256 |
 | --- | ---: | --- |
-| `ShenPulse-2.1.4-x64.appx` | 851 826 279 octets | `a198a6558d82873791c9758d5aa58ff1f9bd5c5ecdae5b561636c9e1f6d8ed3c` |
-| `ShenPulse-2.1.4-x64.appxupload` | 851 748 779 octets | `1bd5c457e139eb5de59f508a30c4bb6df603435197e5e7c85a9021ee3b0ac953` |
+| `ShenPulse-2.1.5-x64.appx` | 851853322 | `6fdbff74ca0e6d4dea352c0c8a65826bd772bf205b07396ca7d2b461e38a83c4` |
+| `ShenPulse-2.1.5-x64.appxupload` | 851778609 | `af93dba3960c9a28d466261bac136bdcbb2c7fc9a09d160b17e29e9c91276d53` |
+| `ShenPulseSetup-2.1.5-x64.exe` | 797402169 | `02d908022794f1eac4e6b1b2a6abe0e9d76ec25d0618c546867b8bac4708d5e9` |
+| `ShenPulseSetup-2.1.5.exe` | 797402169 | `02d908022794f1eac4e6b1b2a6abe0e9d76ec25d0618c546867b8bac4708d5e9` |
 
-## Étapes reportées à la demande du propriétaire
-
-Le site public, l’installateur EXE, Discord et les autres opérations de la procédure complète restent à réaliser ultérieurement. Le correctif des combos est contenu dans l’application ; aucune mise à jour de pack de jeu ni du backend n’est nécessaire pour l’activer après installation de 2.1.4.
+Journaux et rapports : .artifacts/release-2.1.5/. Le contrôle visuel du site est conservé dans .artifacts/public-site-qa/2026-11-06T11-27-36-812Z/.

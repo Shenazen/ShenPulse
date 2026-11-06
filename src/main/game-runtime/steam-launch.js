@@ -18,7 +18,7 @@ async function launchSteamGame({ gameId, manifest, executable, shell, assertAcce
   const compiled = require("../game-installer-manifest").installerForGame(gameId);
   const dualPlatform = compiled && require("./installation-platform").supportsPlatformChoice(compiled);
   const appId = allowed[gameId] || (dualPlatform ? compiled.steamAppIds[0] : "");
-  if (!/^\d+$/.test(appId) || (allowed[gameId] ? (manifest.steamLaunchAppId !== appId && !manifest.steamAppIds?.includes(appId)) : !manifest.steamAppIds?.includes(appId))) {
+  if (!/^\d+$/.test(appId) || (allowed[gameId] ? (manifest.steamLaunchAppId !== undefined ? manifest.steamLaunchAppId !== appId : !manifest.steamAppIds?.includes(appId)) : !manifest.steamAppIds?.includes(appId))) {
     throw new Error("Identifiant de lancement Steam non autorisé.");
   }
   if (!executable) throw new Error("L’exécutable du jeu Steam est introuvable. Réparez son installation puis réessayez.");
