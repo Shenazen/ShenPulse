@@ -300,8 +300,8 @@ async function installGame(runtime, gameId, {assertClosed=assertModGameClosed} =
           assertAccess
         });
 
-      additionalDeployments.push(...(await require("./owner-integration-installation").configureOwnerIntegration(gameId,{targetPath,documentsPath:runtime.app.getPath("documents"),backupRoot,assertAccess}) || []));
-      await require("./owner-integration-installation").assertOwnerIntegrationReady(gameId,targetPath,{documentsPath:runtime.app.getPath("documents")});
+      additionalDeployments.push(...(await require("./owner-integration-installation").configureOwnerIntegration(gameId,{targetPath,documentsPath:runtime.app.getPath("documents"),localAppDataPath:process.env.LOCALAPPDATA,backupRoot,assertAccess}) || []));
+      await require("./owner-integration-installation").assertOwnerIntegrationReady(gameId,targetPath,{documentsPath:runtime.app.getPath("documents"),localAppDataPath:process.env.LOCALAPPDATA});
       assertAccess();
       const emulatorSetup =
         gameId === "pokemon-red-blue"

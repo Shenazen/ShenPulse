@@ -179,17 +179,23 @@ def _process_effect(s, values, current_zone):
                     fgl_search_flags = placement.FGLSearchFlagsDefault | placement.FGLSearchFlag.USE_SIM_FOOTPRINT | placement.FGLSearchFlag.STAY_IN_CURRENT_BLOCK
 
                     additional_avoid_sim_radius = routing.get_sim_extra_clearance_distance()
-                    starting_location = placement.create_starting_location(position=final_position)
-                    fgl_context = placement.create_fgl_context_for_sim(starting_location, self,
+                    starting_location = placement.create_starting_location(position=final_position, routing_surface=active_sim.routing_surface)
+                    fgl_context = placement.create_fgl_context_for_sim(starting_location, active_sim,
                                                                        search_flags=fgl_search_flags,
                                                                        additional_avoid_sim_radius=additional_avoid_sim_radius)
-                    final_position, orient = placement.find_good_location(fgl_context)
+                    placement_result = placement.find_good_location(fgl_context)
+                    final_position, orient = placement_result[0], placement_result[1]
 
+
+                    if final_position is None:
+                        respondRetry(s, id)
+                        break
 
                     new_location = active_sim.location.clone(translation=final_position)
 
                     if not active_sim.validate_location(new_location):
                         respondRetry(s, id)
+                        break
 
                     active_sim.on_reset_internal_state(ResetReason.NONE)
                     active_sim.location = new_location
@@ -222,8 +228,9 @@ def _process_effect(s, values, current_zone):
                     for tag in obj.definition.build_buy_tags:
                         val = int(str(tag).strip())
                         if val in tags:
+                            before_states = dict(obj.state_component._states) if obj.state_component else {}
                             make_broken(obj.id)
-                            found = True
+                            found = found or (bool(obj.state_component) and before_states != dict(obj.state_component._states))
 
             if not found:
                 respondRetry(s, id)
@@ -253,8 +260,9 @@ def _process_effect(s, values, current_zone):
                     for tag in obj.definition.build_buy_tags:
                         val = int(str(tag).strip())
                         if val in tags:
+                            before_states = dict(obj.state_component._states) if obj.state_component else {}
                             make_fixed(obj.id)
-                            found = True
+                            found = found or (bool(obj.state_component) and before_states != dict(obj.state_component._states))
 
             if not found:
                 respondRetry(s, id)
@@ -284,8 +292,9 @@ def _process_effect(s, values, current_zone):
                     for tag in obj.definition.build_buy_tags:
                         val = int(str(tag).strip())
                         if val in tags:
+                            before_states = dict(obj.state_component._states) if obj.state_component else {}
                             make_dirty(obj.id)
-                            found = True
+                            found = found or (bool(obj.state_component) and before_states != dict(obj.state_component._states))
 
             if not found:
                 respondRetry(s, id)
@@ -315,8 +324,9 @@ def _process_effect(s, values, current_zone):
                     for tag in obj.definition.build_buy_tags:
                         val = int(str(tag).strip())
                         if val in tags:
+                            before_states = dict(obj.state_component._states) if obj.state_component else {}
                             make_clean(obj.id)
-                            found = True
+                            found = found or (bool(obj.state_component) and before_states != dict(obj.state_component._states))
 
             if not found:
                 respondRetry(s, id)
@@ -331,7 +341,8 @@ def _process_effect(s, values, current_zone):
                 respondRetry(s, id)
                 break
 
-            SimulateToTime().start(0, 0, 1, ClockSpeedMode.SUPER_SPEED3)
+            now = game_clock.now()
+            SimulateToTime().start(now.hour(), now.minute(), 1, ClockSpeedMode.SUPER_SPEED3)
             show_notification(user + " forced time to fly!", "Fast Forward")
             respondSuccess(s, id)
             break
@@ -371,19 +382,18 @@ def _process_effect(s, values, current_zone):
 
             relationship = None
 
+            if any(rel_tracker.has_bit(rel.get_other_sim_id(current_sim.sim_id), bit)
+                   for rel in relationships
+                   for bit in (RelationshipGlobalTuning.MARRIAGE_RELATIONSHIP_BIT, RelationshipGlobalTuning.ENGAGEMENT_RELATIONSHIP_BIT)):
+                respondRetry(s, id)
+                break
+
+            relationships = [rel for rel in relationships if romantic_pair_allowed(current_sim, sim_info_manager.get(rel.get_other_sim_id(current_sim.sim_id)))]
+
             if len(relationships)==0:
                 respondRetry(s, id)
                 break
 
-            for rel in relationships:
-                other_sim_id = rel.get_other_sim_id(current_sim.sim_id)
-
-                if rel_tracker.has_bit(other_sim_id,RelationshipGlobalTuning.MARRIAGE_RELATIONSHIP_BIT):
-                    respondRetry(s, id)
-                    break
-                if rel_tracker.has_bit(other_sim_id,RelationshipGlobalTuning.ENGAGEMENT_RELATIONSHIP_BIT):
-                    respondRetry(s, id)
-                    break
 
             for rel in relationships:
                 other_sim_id = rel.get_other_sim_id(current_sim.sim_id)
@@ -471,6 +481,8 @@ def _process_effect(s, values, current_zone):
             relationships = services.relationship_service()._get_relationships_for_sim(current_sim.sim_id)
 
             relationship = None
+
+            relationships = [rel for rel in relationships if romantic_pair_allowed(current_sim, sim_info_manager.get(rel.get_other_sim_id(current_sim.sim_id)))]
 
             if len(relationships) == 0:
                 respondRetry(s, id)
@@ -734,7 +746,11 @@ def _process_effect(s, values, current_zone):
             first = user
             # first = "dtothefourth"
 
-            sim_creator = SimCreator(age=age, gender=gender, first_name=first, last_name=current_sim.last_name)
+            if len(list(current_sim.household.sim_info_gen())) >= 8:
+                respondRetry(s, id, "Le foyer contient déjà huit Sims.")
+                break
+
+            sim_creator = SimCreator(age=age, gender=gender, first_name=first[:64], last_name=current_sim.last_name)
 
             count = len(sim_info_manager.get_all())
 
@@ -1326,11 +1342,11 @@ def _process_effect(s, values, current_zone):
 
             pto = career.pto
 
-            career.add_pto(-1)
-
             if pto < 1:
                 respondRetry(s, id)
                 break
+
+            career.add_pto(-1)
 
             if pto == career.pto:
                 respondRetry(s, id)
@@ -1477,6 +1493,8 @@ def _process_effect(s, values, current_zone):
                 break
 
             if current_sim.age == Age.BABY:
+                SimInfoBaseWrapper.apply_age(current_sim, Age.INFANT)
+            elif current_sim.age == Age.INFANT:
                 SimInfoBaseWrapper.apply_age(current_sim, Age.TODDLER)
             elif current_sim.age == Age.TODDLER:
                 SimInfoBaseWrapper.apply_age(current_sim, Age.CHILD)
@@ -2091,7 +2109,17 @@ def get_skill(name, sim_info):
     stat = sim_info.get_statistic(skill_instance)
     return stat
 
+def romantic_pair_allowed(first, second):
+    if second is None or first.age < Age.TEEN or second.age < Age.TEEN:
+        return False
+    if (first.age == Age.TEEN) != (second.age == Age.TEEN):
+        return False
+    return second.sim_id not in set(first.genealogy.get_family_sim_ids_gen())
+
+
 def check_sim(sim):
+    if sim is None:
+        return False
     if sim.species != SpeciesExtended.HUMAN:
         return False
     if not sim.is_simulating:
@@ -2101,6 +2129,8 @@ def check_sim(sim):
     return True
 
 def check_sim_home(sim):
+    if sim is None:
+        return False
     if sim.species != SpeciesExtended.HUMAN:
         return False
     if not sim.is_simulating:
@@ -2112,6 +2142,8 @@ def check_sim_home(sim):
     return True
 
 def check_sim_busy(sim):
+    if sim is None:
+        return False
     if sim.species != SpeciesExtended.HUMAN:
         return False
     if not sim.is_simulating:

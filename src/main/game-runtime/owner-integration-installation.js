@@ -3,6 +3,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
+const {enableSimsScripts} = require("./sims-managed-profile");
 const modules = require("../../../resources/catalogs/owner-prepared-modules.json");
 
 async function verifyFile(file, expected) {
@@ -32,23 +33,13 @@ async function assertOwnerIntegrationReady(gameId, targetPath, {documentsPath,lo
     await verifyFile(path.join(profile.modsDirectory, "FS25_ShenPulse.zip"), definition.moduleSha256);
   }
   if (gameId === "the-sims-4" && documentsPath) {
-    await verifyFile(path.join(documentsPath, "Electronic Arts/The Sims 4/Mods/ShenPulse/ShenPulse.ts4script"), definition.moduleSha256);
-    const options = await fs.readFile(path.join(documentsPath, "Electronic Arts/The Sims 4/Options.ini"), "utf8").catch(() => "");
+    const profile = await require("./sims-managed-profile").assertSimsRuntimeProfile(targetPath, {documentsPath,localAppDataPath});
+    await verifyFile(path.join(profile.modsDirectory, "ShenPulse.ts4script"), definition.moduleSha256);
+    const options = await fs.readFile(path.join(profile.directory, "Options.ini"), "utf8").catch(() => "");
     if (!/^scriptmodsenabled\s*=\s*1\s*$/im.test(options) || !/^modsdisabled\s*=\s*0\s*$/im.test(options)) {
       throw new Error("Les scripts de mods sont désactivés dans Les Sims 4. Réinstallez les interactions ou activez-les dans Options du jeu → Autres, puis redémarrez le jeu.");
     }
   }
-}
-
-function enableSimsScripts(source) {
-  let text = source || "[options]\r\n";
-  if (!/^\[options\]\s*$/im.test(text)) text += "\r\n[options]\r\n";
-  for (const [key, value] of [["scriptmodsenabled", "1"], ["modsdisabled", "0"]]) {
-    const expression = new RegExp("^" + key + "\\s*=.*$", "gim");
-    if (expression.test(text)) text = text.replace(expression, key + " = " + value);
-    else text = text.replace(/^(\[options\]\s*)$/im, "$1\r\n" + key + " = " + value);
-  }
-  return text;
 }
 
 async function configureOwnerIntegration(gameId, {targetPath, documentsPath, localAppDataPath, backupRoot, assertAccess = () => {}}) {
@@ -63,22 +54,11 @@ async function configureOwnerIntegration(gameId, {targetPath, documentsPath, loc
     return [{ root: "farming-mods", path: destination }];
   }
   if (gameId !== "the-sims-4") return;
-  const optionsPath = path.join(documentsPath, "Electronic Arts/The Sims 4/Options.ini");
-  const original = await fs.readFile(optionsPath, "utf8").catch(error => {
-    if (error.code === "ENOENT") return "";
-    throw error;
+  const profile = await require("./sims-managed-profile").prepareSimsRuntimeProfile(targetPath, {
+    documentsPath,localAppDataPath,backupRoot,assertAccess,
+    modulePath:path.join(targetPath,modules[gameId].module),moduleSha256:modules[gameId].moduleSha256
   });
-  const updated = enableSimsScripts(original);
-  if (updated === original) return;
-  assertAccess();
-  if (original) {
-    const backup = path.join(backupRoot, "sims-options/Options.ini");
-    await fs.mkdir(path.dirname(backup), {recursive: true});
-    await fs.copyFile(optionsPath, backup);
-  }
-  assertAccess();
-  await fs.mkdir(path.dirname(optionsPath), {recursive: true});
-  await fs.writeFile(optionsPath, updated, "utf8");
+  return [{root:"sims-managed-profile",path:path.join(profile.modsDirectory,"ShenPulse.ts4script"),profileDirectory:profile.directory}];
 }
 
 module.exports = {assertOwnerIntegrationReady, configureOwnerIntegration, enableSimsScripts};

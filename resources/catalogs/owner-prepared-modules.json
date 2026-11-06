@@ -559,20 +559,20 @@
     }
   },
   "the-sims-4": {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "port": 58814,
     "durationMultiplier": 1000,
     "asset": {
       "id": "module",
       "action": "extract",
-      "fileName": "the-sims-4-shenpulse-1.0.0.zip",
-      "size": 25965,
-      "sha256": "2c413a09863edb49d9d7f8bdd9ab78706487915cf3c3220eddb391d8de1d91d5",
-      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/the-sims-4/1.0.0/the-sims-4-shenpulse-1.0.0.zip"
+      "fileName": "the-sims-4-shenpulse-1.0.1.zip",
+      "size": 26924,
+      "sha256": "1c498b81b53dea5db2027720617c31f80e00dbe0f9c4a59b569a93c6dece338b",
+      "url": "https://f003.backblazeb2.com/file/shenpulse-media/installer-assets/the-sims-4/1.0.1/the-sims-4-shenpulse-1.0.1.zip"
     },
     "module": ".shenpulse-sims4-mods/ShenPulse.ts4script",
-    "moduleSha256": "50ad9f54db0aa54d262df90d522d9b38679b8840c43d4187d64a63e27ee4c1ea",
-    "inGameValidation": "pending",
+    "moduleSha256": "a6e2bb15995ab107e0aede10386c18ab8167635b453a82cb2c1fe032716ffbd5",
+    "inGameValidation": "steam-1.129.39.1030-143-effects-2026-11-06",
     "installer": {
       "directoryNames": [
         "The Sims 4",
@@ -591,15 +591,7 @@
         "TS4_x64"
       ],
       "requireLaunchExecutable": true,
-      "forceSteamLaunch": true,
-      "additionalInstallTargets": [
-        {
-          "root": "documents",
-          "sourcePath": ".shenpulse-sims4-mods",
-          "targetPath": "Electronic Arts/The Sims 4/Mods/ShenPulse",
-          "directory": true
-        }
-      ]
+      "forceSteamLaunch": true
     }
   },
   "brotato": {

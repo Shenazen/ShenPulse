@@ -406,11 +406,11 @@
     {
       "gameId": "the-sims-4",
       "id": "module",
-      "version": "1.0.0",
-      "key": "installer-assets/the-sims-4/1.0.0/the-sims-4-shenpulse-1.0.0.zip",
-      "size": 25965,
-      "sha256": "2c413a09863edb49d9d7f8bdd9ab78706487915cf3c3220eddb391d8de1d91d5",
-      "buildPath": ".artifacts/game-pack-builds/the-sims-4/1.0.0/the-sims-4-shenpulse-1.0.0.zip"
+      "version": "1.0.1",
+      "key": "installer-assets/the-sims-4/1.0.1/the-sims-4-shenpulse-1.0.1.zip",
+      "size": 26924,
+      "sha256": "1c498b81b53dea5db2027720617c31f80e00dbe0f9c4a59b569a93c6dece338b",
+      "buildPath": ".artifacts/game-pack-builds/the-sims-4/1.0.1/the-sims-4-shenpulse-1.0.1.zip"
     },
     {
       "gameId": "brotato",

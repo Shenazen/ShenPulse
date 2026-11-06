@@ -67,6 +67,10 @@ async function launchExternalGame({ gameId, manifest, installation, shell, asser
   assertAccess();
   if (gameId === "euro-truck-simulator-2") await assertTruckSimulatorReady(installation.path);
   await assertStandaloneModuleReady(gameId, installation.path);
+  if(gameId === "the-sims-4" && !existing) await require("./sims-managed-profile").prepareSimsRuntimeProfile(installation.path, {
+    documentsPath,localAppDataPath,modulePath:path.join(installation.path,ownerModules[gameId].module),moduleSha256:ownerModules[gameId].moduleSha256,
+    backupRoot:path.join(userDataPath || localAppDataPath || process.env.LOCALAPPDATA,"game-backups/the-sims-4"),assertAccess
+  });
   await require("./owner-integration-installation").assertOwnerIntegrationReady(gameId,installation.path,{documentsPath,localAppDataPath});
   await assertShopModuleReady(gameId, installation.path);
   await require("./palworld-installation").assertPalworldModuleReady(gameId,installation.path);

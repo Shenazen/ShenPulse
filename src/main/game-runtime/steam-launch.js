@@ -14,11 +14,11 @@ async function launchSteamDemo({ gameId, manifest, executable, shell, assertAcce
 }
 
 async function launchSteamGame({ gameId, manifest, executable, shell, assertAccess }) {
-  const allowed = { "escape-from-duckov": "3167020", terraria: "1281930" };
+  const allowed = { "escape-from-duckov": "3167020", terraria: "1281930", "the-sims-4": "1222670" };
   const compiled = require("../game-installer-manifest").installerForGame(gameId);
   const dualPlatform = compiled && require("./installation-platform").supportsPlatformChoice(compiled);
   const appId = allowed[gameId] || (dualPlatform ? compiled.steamAppIds[0] : "");
-  if (!/^\d+$/.test(appId) || (allowed[gameId] ? manifest.steamLaunchAppId !== appId : !manifest.steamAppIds?.includes(appId))) {
+  if (!/^\d+$/.test(appId) || (allowed[gameId] ? (manifest.steamLaunchAppId !== appId && !manifest.steamAppIds?.includes(appId)) : !manifest.steamAppIds?.includes(appId))) {
     throw new Error("Identifiant de lancement Steam non autorisé.");
   }
   if (!executable) throw new Error("L’exécutable du jeu Steam est introuvable. Réparez son installation puis réessayez.");

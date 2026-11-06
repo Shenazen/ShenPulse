@@ -66,5 +66,52 @@ class TransportTests(unittest.TestCase):
         self.assertIsNone(namespace['client'])
         self.assertGreater(namespace['retry'], 0)
 
+import types
+
+class EffectTests(unittest.TestCase):
+    def context(self):
+        parsed = ast.parse(SOURCE.read_text(encoding='utf8'))
+        node = next(n for n in parsed.body if isinstance(n, ast.FunctionDef) and n.name == '_process_effect')
+        service = Mock()
+        service.active_sim_info.return_value.full_name = 'Test Sim'
+        namespace = dict(services=service, check_sim=lambda sim: True,
+                         respondRetry=Mock(), respondSuccess=Mock(), respondFail=Mock(), show_notification=Mock())
+        exec(compile(ast.Module(body=[node], type_ignores=[]), str(SOURCE), 'exec'), namespace)
+        zone = types.SimpleNamespace(is_in_build_buy=False)
+        return namespace, service, lambda code: namespace['_process_effect'](Mock(), {'id': 4, 'code': code}, zone)
+
+    def test_no_negative_leave_when_no_day_remains(self):
+        ns, service, dispatch = self.context()
+        career = Mock(pto=0)
+        service.active_sim_info.return_value._career_tracker._careers = {1: career}
+        dispatch('ptodown')
+        career.add_pto.assert_not_called()
+        ns['respondSuccess'].assert_not_called()
+        ns['respondRetry'].assert_called_once()
+
+    def test_teleport_uses_sim_and_accepts_three_placement_results(self):
+        ns, service, dispatch = self.context()
+        sim = service.get_active_sim.return_value
+        sim.should_be_swimming_at_position.return_value = False
+        ns.update(WalksStyleBehavior=types.SimpleNamespace(WALKSTYLES_OVERRIDE_TELEPORT=set()),
+                  TeleportHelper=Mock(), placement=Mock(), routing=Mock(), ResetReason=types.SimpleNamespace(NONE=0))
+        ns['TeleportHelper'].does_routing_slave_prevent_teleport.return_value = False
+        ns['placement'].FGLSearchFlagsDefault = 1
+        ns['placement'].FGLSearchFlag = types.SimpleNamespace(USE_SIM_FOOTPRINT=2, STAY_IN_CURRENT_BLOCK=4)
+        ns['placement'].find_good_location.return_value = ('position', 'orientation', 'success')
+        dispatch('teleport')
+        self.assertIs(ns['placement'].create_fgl_context_for_sim.call_args.args[1], sim)
+        ns['respondSuccess'].assert_called_once()
+        ns['respondRetry'].assert_not_called()
+
+    def test_fast_forward_keeps_current_time_of_day_for_exactly_one_day(self):
+        ns, service, dispatch = self.context()
+        simulate = Mock(_alarm_handle=None)
+        ns.update(SimulateToTime=Mock(return_value=simulate), ClockSpeedMode=types.SimpleNamespace(SUPER_SPEED3=5))
+        service.game_clock_service.return_value.now.return_value.hour.return_value = 17
+        service.game_clock_service.return_value.now.return_value.minute.return_value = 23
+        dispatch('warp')
+        simulate.start.assert_called_once_with(17, 23, 1, 5)
+
 if __name__ == '__main__':
     unittest.main()

@@ -59,10 +59,11 @@ test("les scripts Sims sont activés sans modifier les autres options et le rég
  const fresh=enableSimsScripts("");assert.match(fresh,/^\[options\]$/m);assert.match(fresh,/^scriptmodsenabled = 1$/m);assert.match(fresh,/^modsdisabled = 0$/m);
 });
 
-test("Les Sims 4 conserve le déploiement de son script dans Documents", () => {
+test("Les Sims 4 utilise son profil local et ne déploie plus dans le dossier anglais", () => {
  const {installerForGame}=require("../src/main/game-installer-manifest");
  const sims=installerForGame("the-sims-4");
- assert.equal(sims.additionalInstallTargets[0].root,"documents");assert.equal(sims.additionalInstallTargets[0].targetPath,"Electronic Arts/The Sims 4/Mods/ShenPulse");
+ assert.equal(sims.additionalInstallTargets?.length || 0,0);
+ assert.deepEqual(sims.steamAppIds,["1222670"]);
 });
 
 
