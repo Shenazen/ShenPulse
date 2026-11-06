@@ -24,9 +24,15 @@ L'installateur EXE n'a pas de signature Authenticode configurée (NotSigned) : W
 
 ## Distribution
 
-- Microsoft Store : brouillon 17, identifiant 1152921505702332400. Nouveau paquet 2.1.5 validé et textes français enregistrés. Audience publique, détectabilité active, 240 marchés et publication dès certification confirmés. La soumission finale reste à effectuer après les derniers contrôles.
-- Site : contenu et EXE qualifiés ; publication à effectuer.
-- Discord : nouvelle annonce et compléments de guides à publier après la soumission, sans écraser les anciennes annonces et sans mention d'application concurrente.
+- Git : commit de release `4da4886` et tag annoté `v2.1.5` poussés sur origin. Les artefacts et journaux ne sont pas versionnés. Le compte rendu final est ajouté ensuite sans déplacer le tag qualifié.
+- Microsoft Store : soumission 17, identifiant `1152921505702332400`, envoyée le 6 novembre 2026. L'interface confirme « Mise à jour en cours de certification ». Nouveau paquet 2.1.5 validé et textes français enregistrés. Audience publique, détectabilité active, 240 marchés et publication automatique dès certification confirmés ; aucun vol privé. La disponibilité publique de la 2.1.5 dépend encore de Microsoft et n'est pas revendiquée.
+- Site public et EXE publiés. Contrôle de production réussi : 79 pages, zéro erreur. Téléchargement intégral de l'EXE public vérifié le `2026-11-06T11:35:01.659Z` : HTTP 200, 797 402 169 octets, SHA-256 identique à l'artefact qualifié. L'ancien installateur 2.1.3 reste disponible. Sauvegarde distante avant publication : `/var/www/shenpulse/.public-site-backups/pre-public-site-2.1.5-20261106T113238Z-0bdc1b94`.
+- Overlays et règles Firebase publiés ; comparaison des six fichiers publics réussie. Le backend de production n'a pas été redémarré pour cette publication.
+- Discord : [nouvelle annonce 2.1.5](https://discord.com/channels/1561730092995051671/1561731045949313327/1568228117817065532), publiée aussi vers les abonnés du salon. Elle regroupe les nouveautés depuis 2.1.3, omet la version urgente intermédiaire, conserve les anciennes annonces et utilise le lien Microsoft Store officiel. L'intégration automatique périmée de la fiche Store a été masquée sur ce seul nouveau message.
+- Documentation Discord : [complément du guide des jeux](https://discord.com/channels/1561730092995051671/1561739559895834725/1568229786134904894) sur les combos, les cartes et Actions & IRL ; [nouveau guide des agences et offres groupées](https://discord.com/channels/1561730092995051671/1561738323553427456/threads/1568231323095662662). Contenu envoyé et présence vérifiés dans l'interface.
+- Application locale finale relancée depuis `dist/win-unpacked/ShenPulse.exe` : version 2.1.5 observée, compte et profil conservés, connexion LIVE rétablie. Aucun jeu relancé pour ce contrôle.
+
+La règle interdisant les références à des applications concurrentes dans les communications de publication est intégrée à `DEPLOIEMENT.txt`, `docs/STORE_SUBMISSION.md` et au skill personnel de mise en production. Les textes de cette release ont été contrôlés avant envoi.
 
 ## Empreintes des artefacts
 
