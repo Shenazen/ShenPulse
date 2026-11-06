@@ -4,6 +4,10 @@ function giftComboRepeatField(repeat = false, name = "repeatGiftCombos", attribu
   return `<div class="gift-combo-option full"><label><input type="checkbox" name="${escapeHtml(name)}" value="true" ${repeat === true ? "checked" : ""} ${attributes}><span>${label}</span></label><span class="field-label-with-info"><button type="button" class="field-info-button" aria-label="Information : ${label}" title="${escapeHtml(help)}">i</button><span class="field-info-popover" role="tooltip">${help}</span></span></div>`;
 }
 
+function gameGiftComboNotice() {
+  return '<p class="muted full" data-game-gift-combos>Les combos sont toujours actifs pour les jeux : chaque cadeau déclenche une interaction, selon le seuil configuré.</p>';
+}
+
 function giftPickerField(
   name,
   label,
@@ -89,6 +93,7 @@ function giftTriggerConditionFields(
     operatorName = "giftValueOperator",
     amountName = "giftValueAmount",
     repeatGiftCombos = false,
+    giftCombosRequired = false,
     comboFieldName = "repeatGiftCombos"
   } = {}
 ) {
@@ -142,7 +147,7 @@ function giftTriggerConditionFields(
         <input name="${escapeHtml(amountName)}" type="number" min="1" step="1" value="${escapeHtml(valueCondition?.value ?? "")}" placeholder="500" ${currentMode === "value" ? "" : "disabled"}>
       </label>
     </div>
-    ${giftComboRepeatField(repeatGiftCombos, comboFieldName)}
+    ${giftCombosRequired ? gameGiftComboNotice() : giftComboRepeatField(repeatGiftCombos, comboFieldName)}
     <small class="gift-trigger-condition-note">La méthode sélectionnée remplace l’autre : elles ne sont jamais cumulées.</small>
   </div>`;
 }

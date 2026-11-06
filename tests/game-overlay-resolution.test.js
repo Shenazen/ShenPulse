@@ -44,7 +44,7 @@ test('le lien manuel cadre les cartes et garde les références et la scène aut
     assert.equal(url.searchParams.get('fit'),null,'L’aperçu complet garde son cadrage.');
     const browserSettings = obsSettings(plan, 'overlay');
     assert.equal(new URL(browserSettings.url).searchParams.get('layout'), 'compact');
-    assert.equal(new URL(browserSettings.url).searchParams.get('fit'),null,'La scène automatique conserve son cadrage.');
+    assert.equal(new URL(browserSettings.url).searchParams.get('fit'),customLayout(plan)?'panel':null,'La scène automatique rend seulement la zone cadeaux dans sa source dédiée.');
     assert.equal(browserSettings.width, sourceViewport(plan,'overlay').width);
     assert.equal(browserSettings.height, sourceViewport(plan,'overlay').height);
   }
@@ -52,7 +52,7 @@ test('le lien manuel cadre les cartes et garde les références et la scène aut
 
 for (const pack of packs.filter(pack => !preserved.has(pack.id))) test('résolution et réparation studio : ' + pack.name, () => {
   const plan = planFor(pack), first = prepareTikTok(tiktokDocument(), plan), overlay = overlayFrom(first), expectedTransform = structuredClone(overlay.transform);
-  assert.deepEqual([overlay.payload.cx, overlay.payload.cy, overlay.payload.zoom], [customLayout(plan)?1080:OVERLAY_VIEWPORT.width, customLayout(plan)?1920:OVERLAY_VIEWPORT.height, 1]);
+  assert.deepEqual([overlay.payload.cx, overlay.payload.cy, overlay.payload.zoom], [customLayout(plan)?sourceViewport(plan,'overlay').width:OVERLAY_VIEWPORT.width, customLayout(plan)?sourceViewport(plan,'overlay').height:OVERLAY_VIEWPORT.height, 1]);
   assert.equal(new URL(overlay.payload.url).searchParams.get('layout'), 'compact');
   const state = first.document.SourceService.state, scene = state.sceneSource[first.sceneId];
   const camera = structuredClone(Object.values(scene.data).find(source => source.type === 'camera'));

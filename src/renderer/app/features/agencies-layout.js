@@ -78,7 +78,7 @@ function renderAgencySteps() {
   return '<section class="agency-steps" aria-label="Rejoindre en trois étapes">'+[
     ["search","Trouvez votre agence","Cliquez sur « Rejoindre » sur sa fiche, ou saisissez le code donné par votre agence."],
     ["member","Votre agence valide","Votre directeur confirme que vous faites bien partie de son équipe."],
-    ["tag","Le tarif agence est disponible","Choisissez Pro ou Premium au tarif agence. Le paiement reste à confirmer dans PayPal."]
+    ["tag","Le tarif agence est disponible","Choisissez Pro ou Premium au tarif agence. Le paiement reste à confirmer avec le moyen choisi."]
   ].map(([icon,title,detail],i)=>'<article class="agency-step"><span class="agency-step-number" aria-hidden="true">'+(i+1)+'</span><span class="agency-step-icon">'+agencyIcon(icon)+'</span><h3>'+title+'</h3><p>'+detail+'</p></article>').join("")+'</section>';
 }
 function renderAgencyTiers(view=agencyState()) {
@@ -101,7 +101,7 @@ function renderAgencyPageContent(view) {
     '<ul class="agency-benefits"><li>'+agencyIcon("bolt")+'Les avantages de votre formule, au tarif agence</li><li>'+agencyIcon("shield")+'Agences vérifiées par ShenPulse</li><li>'+agencyIcon("refresh")+'Sans engagement, résiliable à tout moment</li></ul>'+renderAgencyJoin(view)+'</div>'+renderAgencyPrices(p)+'</section>'+
     agencyNotice(view)+'<section class="agency-list-section" aria-labelledby="agency-directory-title"><header class="agency-heading"><h3 id="agency-directory-title">Agences partenaires <span class="badge">'+agencies.length+'</span></h3><button type="button" class="button small" data-action="agency-refresh" '+(view.busy?"disabled":"")+'>'+agencyIcon("refresh")+' Actualiser</button></header><p class="agency-directory-order">Les agences avec le plus de créateurs abonnés apparaissent en premier.</p>'+
     (featured?'<div class="agency-day"><span>'+agencyIcon("crown")+' Agence du jour</span><strong>'+escapeHtml(featured.name)+'</strong><button type="button" class="button small" data-action="agency-join" data-id="'+escapeHtml(featured.id)+'" '+(active?"disabled":"")+'>Rejoindre</button></div>':"")+directoryBody+'</section>'+
-    renderAgencySteps()+renderAgencyDirector(view)+renderAgencyEditorSection(view)+renderAgencyTiers(view)+'<p class="agency-contract-note">Les abonnements existants conservent leur tarif convenu. Toute modification d’un abonnement nécessite votre confirmation dans PayPal.</p></div>';
+    renderAgencySteps()+renderAgencyDirector(view)+renderAgencyEditorSection(view)+'<p class="agency-contract-note">Les abonnements existants conservent leur tarif convenu. Les paiements et changements commerciaux doivent être confirmés par leur payeur.</p></div>';
 }
 function renderAgencyHomeSpotlight() {
   const view=ensureAgencyData(),a=view.directory?.agencies?.find(a=>a.id===view.directory?.homeAgencyId);
@@ -117,5 +117,5 @@ function renderAgencyDirectorProgress(paid) {
     paid>=10?'Votre agence peut apparaître comme Agence du jour. Encore '+(25-paid)+' créateurs abonnés pour le palier Diamant et Pro offert au directeur.':
     paid>=3?'Votre fiche est visible dans l’annuaire. Encore '+(10-paid)+' créateurs abonnés pour le palier Or.':
     'Votre code fonctionne déjà. Encore '+(3-paid)+' créateurs abonnés pour afficher votre fiche dans l’annuaire.';
-  return '<section class="agency-director-progress '+agencyLevelClass(level)+'" aria-label="Progression de votre agence"><div class="agency-director-section-title"><span>'+agencyIcon(level==="diamond"?"diamond":"crown")+'</span><div><small>VOTRE PROGRESSION</small><h4>Palier '+tier+'</h4></div></div><div class="agency-progress-count"><strong>'+paid+'</strong><span>/ '+target+' créateurs abonnés</span></div><progress value="'+Math.min(paid,target)+'" max="'+target+'" aria-label="Créateurs abonnés vers le prochain palier"></progress><p>'+detail+'</p><small>Seuls les abonnements payants actifs de vos membres validés comptent pour les paliers.</small></section>';
+  return '<section class="agency-director-progress '+agencyLevelClass(level)+'" aria-label="Progression de votre agence"><div class="agency-director-section-title"><span>'+agencyIcon(level==="diamond"?"diamond":"crown")+'</span><div><small>VOTRE PROGRESSION</small><h4>Palier '+tier+'</h4></div></div><div class="agency-progress-count"><strong>'+paid+'</strong><span>/ '+target+' créateurs abonnés</span></div><progress value="'+Math.min(paid,target)+'" max="'+target+'" aria-label="Créateurs abonnés vers le prochain palier"></progress><p>'+detail+'</p><small>Les abonnements actifs de vos membres validés et les essais explicitement comptabilisés par ShenPulse comptent pour les paliers.</small></section>';
 }

@@ -45,3 +45,13 @@
 @import url("styles/game-presentation.css");
 
 @import url("styles/agencies.css");
+@import url("styles/agency-packs.css");
+@import url("styles/admin-storage.css");
+
+/* Actions globales choisies pour les cartes d'un jeu. */
+.game-linked-editor{display:grid;gap:20px;max-width:100%;color:var(--text-primary,#f7f5ff)}
+.game-linked-intro{display:flex;gap:16px;padding:20px;border:1px solid #4cddff45;border-radius:18px;background:linear-gradient(125deg,#143b4a66,#21143966)}
+.game-linked-intro>span{color:#54dfff;font-size:32px}.game-linked-intro h3{margin:0 0 8px}.game-linked-intro p,.game-linked-note{color:#b8b4cb;line-height:1.6;margin:0}
+.game-linked-master{display:flex;align-items:center;gap:14px;padding:18px;border:1px solid #54dfff65;border-radius:14px;background:#54dfff0a}.game-linked-master small{display:block;margin-top:6px;color:#aaa7bf}
+.game-linked-editor input[type=checkbox]{width:20px;height:20px;flex:0 0 20px;accent-color:#36cbef}.game-linked-list{max-height:min(45vh,480px);overflow:auto;display:grid;gap:10px}
+.game-linked-choice{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid #39314e;border-radius:14px;background:#191426;cursor:pointer}.game-linked-choice:has(input:checked){border-color:#54dfff;background:#102a3880}.game-linked-choice[hidden]{display:none}.game-linked-gift{display:grid;place-items:center;width:42px;flex:0 0 42px}.game-linked-gift img,.game-linked-gift svg{width:40px;height:40px;object-fit:contain}.game-linked-caption{min-width:0;flex:1;overflow-wrap:anywhere}.game-linked-caption strong{display:block;color:#54dfff}.game-linked-caption small{display:block;color:#bbb5ce;margin-top:5px}.game-linked-tag{font-size:10px;font-weight:800;letter-spacing:.6px;color:#54dfff;border:1px solid #54dfff50;border-radius:7px;padding:5px 7px}.game-linked-note{font-size:13px}.game-linked-empty{padding:20px;color:#aaa7bf}

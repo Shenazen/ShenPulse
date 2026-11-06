@@ -1,0 +1,12 @@
+const once=(s,from,to)=>{if(s.split(from).length!==2)throw Error('Ancrage de facturation absent ou ambigu : '+from.slice(0,80));return s.replace(from,to);};
+/** Adaptation du serveur historique : pas de modification des contrats personnels. */
+export function integrateAgencyPackBilling(input){
+ let payments=input.replace(/\r\n/g,'\n');if(payments.includes('const agencyPackBilling ='))throw Error('La facturation groupée est déjà intégrée.');
+ payments="import { createAgencyPackBilling } from './agencies/billing.mjs'\n"+payments;
+ payments=once(payments,"  const directorReward = await agencyService.directorReward(cleanUid, subscription)","  try { await agencyService.billing?.refreshMember(cleanUid) } catch { console.warn('[Agences] Synchronisation du pack indisponible.') }\n  const groupAccess = await agencyService.billing?.entitlement(cleanUid)\n  if (groupAccess) return {...publicEntitlementResponse({checkedAt, ...groupAccess,source:'trial'}),accessSource:'agencyPack',agencyRenewalDate:groupAccess.renewalDate,renewalDate:groupAccess.renewalDate}\n\n  const directorReward = await agencyService.directorReward(cleanUid, subscription)");
+ payments=once(payments,"export async function createSubscriptionCheckout(request, body = {}) {\n  const user = await requireAuthenticatedUser(request, body.ownerId)","export async function createSubscriptionCheckout(request, body = {}) {\n  const user = await requireAuthenticatedUser(request, body.ownerId)\n  await agencyService.billing?.assertPersonalAllowed(user.uid)");
+ payments=once(payments,'  applySubscription: applyStripeSubscription,','  applySubscription: applyStripeSubscription,\n  assertPersonalAllowed: uid => agencyService.billing?.assertPersonalAllowed(uid),');
+ payments=once(payments,'export const handleStripeWebhook = (request, rawBody) => stripePayments.webhook(request, rawBody)',"export const handleStripeWebhook = async (request, rawBody) => {\n  await agencyPackBilling.webhook(request, rawBody)\n  return stripePayments.webhook(request, rawBody)\n}");
+ payments+="\nconst agencyPackBilling = agencyService.configurePackBilling(options => createAgencyPackBilling({...options, stripe:stripePayments, returnUrls:(request,body)=>desktopSubscriptionReturnUrls(request,body,'pro',{agencyPack:'1'})}))\nconst agencyPackBillingSweep=setInterval(()=>agencyPackBilling.sweep().catch(()=>console.warn('[Agences] Vérification des packs différée.')),60000)\nagencyPackBillingSweep.unref()\n";
+ return payments;
+}

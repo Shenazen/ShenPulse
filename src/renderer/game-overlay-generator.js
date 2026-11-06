@@ -549,21 +549,24 @@ var ShenPulseGameOverlay = (() => {
   // src/renderer/game-overlays/canvas.mjs
   function drawImageContainWithOutline(ctx, image, x, y, width, height, options) {
     const rect = containImageRect(image, x, y, width, height);
-    const offsets = outlineOffsets(options.outlineSize);
     ctx.save();
+    ctx.filter = "brightness(0)";
+    ctx.globalAlpha = 1;
     ctx.shadowColor = options.shadowColor;
     ctx.shadowBlur = options.shadowBlur;
     ctx.shadowOffsetY = options.shadowOffsetY;
-    ctx.filter = "brightness(0)";
-    ctx.globalAlpha = 0.96;
-    for (const [offsetX, offsetY] of offsets) {
+    ctx.drawImage(image, rect.x, rect.y, rect.width, rect.height);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    for (const [offsetX, offsetY] of outlineOffsets(options.outlineSize)) {
       ctx.drawImage(image, rect.x + offsetX, rect.y + offsetY, rect.width, rect.height);
     }
     ctx.restore();
     ctx.save();
-    ctx.shadowColor = options.shadowColor;
-    ctx.shadowBlur = options.shadowBlur * 0.55;
-    ctx.shadowOffsetY = options.shadowOffsetY * 0.7;
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
     ctx.drawImage(image, rect.x, rect.y, rect.width, rect.height);
     ctx.restore();
   }
@@ -978,6 +981,7 @@ var ShenPulseGameOverlay = (() => {
       return {
         ...badge,
         actionLabels,
+        actionLines: Array.isArray(entry.actionLines) ? entry.actionLines.filter((line) => line && typeof line.label === "string").map((line) => ({ label: line.label.slice(0, 120), color: /^#[0-9a-f]{6}$/i.test(line.color) ? line.color : "#54dfff" })) : null,
         badgeLayout: entry.badgeLayout,
         badges: [badge],
         effect,
@@ -1010,7 +1014,7 @@ var ShenPulseGameOverlay = (() => {
         ...item.actionLabels
       ]);
     }
-    return Array.from(groups.values());
+    return Array.from(groups.values()).sort((a, b) => Math.min(...a.badges.map(overlayBadgeRank)) - Math.min(...b.badges.map(overlayBadgeRank)));
   }
   function mergeOverlayActionLabels(labels) {
     return Array.from(new Set(labels.map((label) => compactTitle(label, "ACTION"))));
@@ -1043,8 +1047,8 @@ var ShenPulseGameOverlay = (() => {
   }
   function overlayBadgeRank(badge) {
     if (badge.triggerType === "follow") return 0;
-    if (badge.triggerType === "gift") return 1;
-    if (badge.triggerType === "likes") return 2;
+    if (badge.triggerType === "gift") return 2;
+    if (["like", "likes"].includes(badge.triggerType)) return 1;
     if (badge.triggerType === "subscribe") return 3;
     if (badge.triggerType === "share") return 4;
     if (badge.triggerType === "chat") return 5;
@@ -1215,10 +1219,10 @@ var ShenPulseGameOverlay = (() => {
     if (item.giftImage) {
       drawImageContainWithOutline(ctx, item.giftImage, x, y, size, size, {
         outlineColor: "#020617",
-        outlineSize: Math.max(3, size * 0.085),
-        shadowBlur: size * 0.22,
+        outlineSize: Math.max(2, size * 0.018),
+        shadowBlur: size * 0.09,
         shadowColor: "rgba(0, 0, 0, 0.58)",
-        shadowOffsetY: size * 0.1
+        shadowOffsetY: size * 0.06
       });
     } else {
       const colors = item.colors.length >= 2 ? item.colors : ["#14b8a6", "#0f172a"];
@@ -1764,6 +1768,7 @@ var ShenPulseGameOverlay = (() => {
     ctx.restore();
   }
   function overlayActionTextLines(item) {
+    if (item.actionLines?.length) return item.actionLines;
     const labels = mergeOverlayActionLabels(
       item.actionLabels?.length ? item.actionLabels : [item.effect.label]
     );

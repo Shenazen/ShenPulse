@@ -56,9 +56,9 @@ test('Box Cyber : 8 dispositions × 17 tailles × 2 modes, coordonnées et insta
   for(const box of [a.camera,a.game,a.gifts]){assert.ok(box.x>=0&&box.y>=0);assert.ok(box.x+box.width<=1080&&box.y+box.height<=1920.001);}
   assert.ok(a.capacity>=2&&a.capacity<=6);
   const p={...plan,presentation};const obs=prepareCollection({name:'test',sources:[],groups:[],scene_order:[],resolution:{x:1080,y:1920}},p);
-  const overlay=obs.document.sources.find(source=>source.settings?.url?.includes('game-pack.html'));assert.equal(overlay.settings.width,1080);assert.equal(overlay.settings.height,1920);
+  const overlay=obs.document.sources.find(source=>source.settings?.url?.includes('game-pack.html'));assert.equal(overlay.settings.width,1080);assert.equal(overlay.settings.height,Math.ceil(a.gifts.height));assert.equal(new URL(overlay.settings.url).searchParams.get('fit'),'panel');
   const tiktok=prepareTikTok({SourceService:{state:{scenes:[],sceneSource:{},layerMap:{}}}},p);const sources=Object.values(tiktok.document.SourceService.state.sceneSource[tiktok.sceneId].data);
-  const browser=sources.filter(source=>source.type==='browser');assert.equal(browser.length,2);for(const source of browser){assert.equal(source.payload.cy,1920);assert.equal(source.transform.size.cy,1920);assert.equal(source.transform.translateY,0);}
+  const browser=sources.filter(source=>source.type==='browser');assert.equal(browser.length,2);for(const source of browser){const gifts=new URL(source.payload.url).pathname.endsWith('game-pack.html');assert.equal(source.payload.cy,gifts?Math.ceil(a.gifts.height):1920);assert.equal(source.transform.size.cy,source.payload.cy);assert.ok(Math.abs(source.transform.translateY-(gifts?a.gifts.y*675/1080:0))<1);}
  }
  for(const packId of ['cult-of-the-lamb','euro-truck-simulator-2','gtav-hiking'])assert.equal(layout.normalize({cardPlacement:'sides'},packId),null);
 });

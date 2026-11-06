@@ -84,6 +84,7 @@ async function prepareMinecraftStyledOverlayItems(entries) {
     return {
       ...badge,
       actionLabels,
+      actionLines:Array.isArray(entry.actionLines)?entry.actionLines.filter(line=>line&&typeof line.label==='string').map(line=>({label:line.label.slice(0,120),color:/^#[0-9a-f]{6}$/i.test(line.color)?line.color:'#54dfff'})):null,
       badgeLayout: entry.badgeLayout,
       badges: [badge],
       effect,
@@ -117,7 +118,7 @@ function groupOverlayEffectItems(items) {
       ...item.actionLabels
     ]);
   }
-  return Array.from(groups.values());
+  return Array.from(groups.values()).sort((a,b)=>Math.min(...a.badges.map(overlayBadgeRank))-Math.min(...b.badges.map(overlayBadgeRank)));
 }
 
 function mergeOverlayActionLabels(labels) {
@@ -155,8 +156,8 @@ function overlayBadgeKey(badge) {
 
 function overlayBadgeRank(badge) {
   if (badge.triggerType === "follow") return 0;
-  if (badge.triggerType === "gift") return 1;
-  if (badge.triggerType === "likes") return 2;
+  if (badge.triggerType === "gift") return 2;
+  if (["like","likes"].includes(badge.triggerType)) return 1;
   if (badge.triggerType === "subscribe") return 3;
   if (badge.triggerType === "share") return 4;
   if (badge.triggerType === "chat") return 5;

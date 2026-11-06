@@ -9,7 +9,7 @@ content.addEventListener('change',event=>{
  if(timer){const scope=gameWinsScope(),value=timer.checked;const operation=marketWriteQueue.catch(()=>{}).then(async()=>{if(!gameWinsScopeCurrent(scope))throw Error('Le profil a changé.');await saveOverlayConfig('multiplierTimer',{...overlayConfig('multiplierTimer'),enabled:value});});marketWriteQueue=operation;perform(()=>operation).catch(()=>{});return;}
  if(config){const scope=gameWinsScope(),field=config.dataset.gameWinConfig,allowed=['enabled','showGoal','target','winCounterLabelColorPositive','winCounterLabelColorNegative','winCounterLabelColorNeutral'];if(!allowed.includes(field))return;const value=config.type==='checkbox'?config.checked:config.type==='number'?Math.max(0,Number(config.value)||0):config.value;const operation=marketWriteQueue.catch(()=>{}).then(async()=>{if(!gameWinsScopeCurrent(scope))throw Error('Le profil a changé.');await saveOverlayConfig('winCounter',{...overlayConfig('winCounter'),[field]:value});});marketWriteQueue=operation;perform(()=>operation).catch(()=>{});}
 });
-const GAME_WIN_ACTIONS=new Set(['game-win-add','game-win-remove','game-win-start','game-win-stop','game-win-install-mute','game-win-superfan','game-win-release-mute','game-round-preview','game-round-restart']);
+const GAME_WIN_ACTIONS=new Set(['game-win-add','game-win-remove','game-win-start','game-win-stop','game-win-superfan','game-win-release-mute','game-round-preview','game-round-restart']);
 registerActionHandler(GAME_WIN_ACTIONS,async({action,target})=>{
  if(!GAME_WIN_ACTIONS.has(action))return ACTION_NOT_HANDLED;const pack=supermarketPack();if(!pack||!requireGameAccess(pack))return;
 
@@ -20,7 +20,6 @@ registerActionHandler(GAME_WIN_ACTIONS,async({action,target})=>{
   if(!url)throw Error('La source du chrono est indisponible.');
   return openEditor({title:'Timer avant défaite',body:'<p>Le chrono suit la partie active. À l’arrêt, cet aperçu montre la durée de la prochaine partie.</p><div class="game-pack-round-preview-dialog"><iframe src="'+escapeHtml(url)+'" title="Aperçu du timer avant défaite"></iframe></div>',onSubmit:null});
  }
- if(action==='game-win-install-mute')return openStudioInstallation({overlayOnly:true});
  if(action==='game-win-release-mute')return perform(()=>api.testAction({type:'overlay.win-counter',config:{operation:'unmute',duration:3600,packId:pack.id}}));
  if(action==='game-win-superfan'){const features=snapshot.state.settings.overlayConfigs?.gameWinsFeatures?.[pack.id]||{};if(!features.superFanEnabled)return;return perform(()=>api.testAction({type:'overlay.win-counter',config:{operation:'adjust',amount:(Number(features.superFanAmount)||500)*(target.dataset.sign==='-1'?-1:1),packId:pack.id}}));}
  if(action==='game-win-add')return saveGameWinsLevel({operation:'add',amount:1});

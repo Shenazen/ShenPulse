@@ -4,7 +4,7 @@ const winsOnly=process.argv.includes('--wins-only');
 const assetsGame=process.argv.find(value=>value.startsWith('--assets-game='))?.slice(14)||'';
 if(assetsGame&&!/^[a-z0-9][a-z0-9-]{1,100}$/.test(assetsGame))throw Error('Invalid artwork game ID');
 if(assetsGame&&winsOnly)throw Error('Choose artwork or wins-only publication');
-const site='shenpulse-overlays',root='https://firebasehosting.googleapis.com/v1beta1/',files=['/game-pack.html','/runtime/game-pack.js','/runtime/game-pack-models.js','/game-wins.html','/styles/game-wins.css','/runtime/game-wins.js','/fonts/game-wins-orbitron.ttf','/fonts/LICENSE-Orbitron.txt'];
+const site='shenpulse-overlays',root='https://firebasehosting.googleapis.com/v1beta1/',files=['/game-pack-layout.js','/styles/game-pack.css','/game-pack.html','/runtime/game-pack.js','/runtime/game-pack-models.js','/vendor/game-pack-generator.js','/game-wins.html','/styles/game-wins.css','/runtime/game-wins.js','/fonts/game-wins-orbitron.ttf','/fonts/LICENSE-Orbitron.txt'];
 async function main(){
  fs.mkdirSync('.artifacts/game-wins-complete-20261026',{recursive:true});
  const selectedFiles=assetsGame?[]:winsOnly?files.filter(name=>['/game-wins.html','/styles/game-wins.css','/runtime/game-wins.js'].includes(name)):files;

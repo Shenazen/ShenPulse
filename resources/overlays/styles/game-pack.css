@@ -7,19 +7,23 @@
 #cards::before{content:"";position:absolute;top:-3px;left:18px;right:18px;height:3px;border-radius:100%;background:linear-gradient(90deg,transparent,var(--shen-blue),#d8faff,var(--shen-red),transparent);box-shadow:0 0 14px #5fdbe599}
 .pack-row{--accent:#4dff99;--glow:#1bdb6e70;--shade:#102c21;--ink:#08160f;display:flex;justify-content:center;gap:12px}
 .pack-row.trap{--accent:#ff548c;--glow:#ff175b66;--shade:#36111f;--ink:#1c0710}
+.gift-card.help{--accent:#4dff99;--glow:#1bdb6e70;--shade:#102c21;--ink:#08160f}
+.gift-card.trap{--accent:#ff548c;--glow:#ff175b66;--shade:#36111f;--ink:#1c0710}
 .gift-card.neutral{--accent:#ffda66;--glow:#ffc14566;--shade:#362915;--ink:#191307}
 .gift-card{position:relative;min-width:0;flex:0 0 calc((100% - 60px)/6);height:242px;border:2px solid #e4effb;border-radius:14px;padding:3px;background:linear-gradient(145deg,#f8fdff,#7d8999 24%,#e8f2ff 45%,#515b6e 73%,#eff7ff);box-shadow:0 0 9px #becfff40,inset 0 0 0 1px #ffffff75;color:var(--accent);text-align:center;isolation:isolate}
 .gift-card.gold{border-color:#ffe187;background:linear-gradient(145deg,#fff2bb,#a47b29 24%,#ffeb88 47%,#795312 73%,#ffe9a1);box-shadow:0 0 14px #ffcf554d,inset 0 0 0 1px #fff0b899}
-.card-face{position:relative;height:100%;overflow:hidden;border:1px solid #ffffff35;border-radius:9px;display:grid;grid-template-rows:24px 116px minmax(47px,1fr) 14px;gap:3px;align-items:center;justify-items:center;padding:5px 7px 7px;background:radial-gradient(ellipse at 50% 42%,var(--glow),transparent 72%),linear-gradient(var(--shade),var(--ink))}
+.card-face{position:relative;height:100%;overflow:hidden;border:1px solid #ffffff35;border-radius:9px;display:grid;grid-template-rows:22px 104px minmax(61px,1fr) 13px;gap:3px;align-items:center;justify-items:center;padding:5px 7px 7px;background:radial-gradient(ellipse at 50% 34%,color-mix(in srgb,var(--accent) 58%,transparent),transparent 67%),linear-gradient(var(--shade),#020304)}
 .card-face>:not(.card-rays):not(.card-foil){position:relative;z-index:2}
-.card-rays{position:absolute;width:390px;height:390px;left:calc(50% - 195px);top:-88px;opacity:.25;background:repeating-conic-gradient(from 8deg,#ffffffa0 0deg 7deg,transparent 7deg 25deg);mask-image:radial-gradient(circle,#000 1%,#0009 18%,transparent 58%);transform-origin:center;pointer-events:none}
+.card-rays{position:absolute;width:calc(390px * var(--card-scale,1));height:calc(390px * var(--card-scale,1));left:calc(50% - 195px * var(--card-scale,1));top:calc(34% - 195px * var(--card-scale,1));opacity:.52;background:repeating-conic-gradient(from 8deg,color-mix(in srgb,var(--accent) 70%,#fff) 0deg 7deg,transparent 7deg 25deg);mask-image:radial-gradient(circle,#000 1%,#000b 27%,transparent 60%);transform-origin:center;pointer-events:none}
 .card-foil{position:absolute;inset:-70% -110%;z-index:3;pointer-events:none;opacity:0;background:linear-gradient(110deg,transparent 37%,#ffffff0a 42%,#b0ffff47 48%,#ffb8f452 52%,#ffffff0a 59%,transparent 65%);transform:translateX(-50%)}
 .gift-card .category{align-self:center;border-radius:8px;padding:3px 12px;color:white;background:var(--accent);box-shadow:0 0 13px var(--glow);font-size:12px;line-height:1;font-weight:900;letter-spacing:.3px;text-shadow:0 1px 3px #000;max-width:90px}
 .gift-card .card-stars{position:absolute!important;right:4px;top:5px;font-size:9px;line-height:12px;letter-spacing:-1px;color:#fff2a7;text-shadow:0 0 5px #d69e13}
-.gift-card .art{display:grid;place-items:center;width:110px;height:110px;font-size:70px;filter:drop-shadow(0 3px 8px #0007)}
-.gift-card .social-art{display:block;width:104px;height:104px;overflow:visible;filter:drop-shadow(0 5px 8px #0005)}
-.gift-card img{display:block;width:104px;height:104px;object-fit:contain}
-.gift-card h2{font-size:17px;font-weight:900;line-height:1.14;margin:0;overflow-wrap:anywhere;text-transform:uppercase;text-shadow:0 0 8px var(--glow),0 2px 2px #000,-.5px -.5px 0 #fff5}
+.gift-card .art{display:grid;place-items:center;width:110px;height:110px;font-size:70px;isolation:isolate}
+.gift-card .social-art{display:block;width:104px;height:104px;overflow:visible;filter:url(#shen-gift-relief)}
+.gift-card img{display:block;width:104px;height:104px;object-fit:contain;filter:url(#shen-gift-relief)}
+.gift-card .art>img,.gift-card .art>.social-art{position:relative;z-index:1;translate:0 -2px;scale:1.025}
+.gift-card .art::before{content:"";position:absolute;left:22%;right:22%;bottom:0;height:9%;border-radius:50%;background:#0008;filter:blur(3px);z-index:0;pointer-events:none}
+.gift-card h2{align-self:stretch;display:flex;align-items:center;justify-content:center;width:100%;min-width:0;min-height:0;padding:4px 3px 0;font-size:23px;font-weight:900;line-height:1.04;margin:0;white-space:normal;overflow-wrap:normal;word-break:normal;hyphens:none;text-transform:uppercase;-webkit-text-stroke:1.2px #000;paint-order:stroke fill;text-shadow:0 2px 1px #000,1px 0 #000,-1px 0 #000}
 .gift-card small{justify-self:end;color:var(--accent);font-size:10px;line-height:14px;font-weight:800;opacity:.85}
 .brand{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 330px minmax(0,1fr);align-items:center;gap:24px;height:90px;padding:2px 14px;isolation:isolate}
 .brand-mark{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;height:100%}
@@ -35,7 +39,7 @@
 .animated .brand-mark::before{animation:brand-glow 2.4s ease-in-out infinite}
 .animated .brand-line::after{animation:line-sweep 3.2s ease-in-out infinite}
 .animated .brand-line.right::after{animation-direction:reverse}
-.animated .gift-card.hit{animation:gift-hit 1.5s ease-out;z-index:4}
+.gift-card.hit{z-index:4;box-shadow:0 0 calc(14px + var(--hit-strength,1) * 4px) var(--accent)}.animated .gift-card.hit{animation:gift-hit .7s ease-out}
 .animated .gift-card.hit .card-face{box-shadow:inset 0 0 35px var(--glow)}
 #reaction{position:absolute;bottom:740px;left:90px;right:90px;text-align:center;color:#fff;background:#0d131eef;border:2px solid var(--shen-blue);border-right-color:var(--shen-red);border-radius:18px;padding:20px 30px;font-size:30px;font-weight:800;opacity:0;transform:translateY(16px);transition:opacity .2s,transform .25s;box-shadow:0 0 26px #00dadd30}
 #reaction.visible{opacity:1;transform:translateY(0)}
@@ -47,7 +51,7 @@
 @keyframes card-foil{0%,12%{transform:translateX(-45%);opacity:0}20%{opacity:.7}47%{transform:translateX(45%);opacity:.55}58%,100%{transform:translateX(45%);opacity:0}}
 @keyframes brand-glow{0%,100%{transform:scale(.9);opacity:.35}50%{transform:scale(1.12);opacity:.8}}
 @keyframes line-sweep{0%,20%{left:-65%;opacity:0}35%{opacity:.85}75%,100%{left:110%;opacity:0}}
-@keyframes gift-hit{0%,100%{transform:scale(1)}25%,55%{transform:scale(1.12);filter:brightness(1.4);box-shadow:0 0 32px var(--accent)}}
+@keyframes gift-hit{0%,100%{transform:translateY(0) scale(1)}24%{transform:translateY(-4px) scale(1.1)}55%{transform:translateY(-2px) scale(1.035)}}
 
 .pack-pages{position:relative;display:grid;min-height:598px}
 .pack-page{grid-area:1/1;display:grid;grid-template-rows:242px 90px 242px;gap:12px;opacity:0;visibility:hidden;transition:opacity .6s ease,visibility 0s linear .6s}
@@ -65,4 +69,28 @@
 @keyframes pack-loading-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.pack-render-status i{animation:none!important}}
 /* Box Cyber uniquement : coordonnées de la scène 1080 × 1920. */
-.custom-layout #cards{border:0;padding:14px 18px;background:transparent;box-shadow:none;border-radius:0;display:flex;align-items:center;justify-content:center}.custom-layout #cards::before{display:none}.custom-layout .pack-pages{width:100%;min-height:0;display:grid}.custom-layout .pack-page{grid-template-rows:calc(242px * var(--card-scale)) 80px calc(242px * var(--card-scale));gap:12px}.custom-layout .pack-row{gap:12px;align-items:center}.custom-layout .gift-card{flex:0 0 calc(162px * var(--card-scale));height:calc(242px * var(--card-scale));max-width:calc((100% - 12px * (var(--cards-per-page) - 1))/var(--cards-per-page))}.custom-layout .card-face{grid-template-rows:12% 49% minmax(0,1fr) 7%;gap:1%;padding:3%}.custom-layout .gift-card .art,.custom-layout .gift-card img,.custom-layout .gift-card .social-art{width:100%;height:100%;max-width:calc(104px * var(--card-scale));max-height:calc(104px * var(--card-scale))}.custom-layout .gift-card h2{font-size:calc(17px * var(--card-scale))}.custom-layout .gift-card .category{font-size:calc(12px * var(--card-scale));padding:2px 8px}.custom-layout .gift-card small{font-size:calc(10px * var(--card-scale))}.custom-layout.traps-first .pack-row.help{grid-row:3}.custom-layout.traps-first .pack-row.trap{grid-row:1}.custom-layout .brand{height:80px}.custom-layout #reaction{bottom:auto;top:48%;z-index:10}.custom-layout.cards-sides #cards{align-items:flex-start;padding-top:12px}.custom-layout.cards-sides .pack-page{display:flex;justify-content:space-between;gap:12px}.custom-layout.cards-sides .pack-row{flex-direction:column;gap:12px;align-items:center;width:calc(170px * var(--card-scale));max-width:34%}.custom-layout.cards-sides .gift-card{flex:none;width:100%;max-width:100%;height:calc(148px * var(--card-scale))}.custom-layout.cards-sides .card-face{grid-template-rows:16% 42% minmax(0,1fr) 7%}.custom-layout.cards-sides .gift-card .art,.custom-layout.cards-sides .gift-card img{max-height:calc(65px * var(--card-scale))}.custom-layout.cards-sides .gift-card h2{font-size:calc(14px * var(--card-scale))}.custom-layout.cards-sides .brand{display:none}.custom-layout.cards-sides.traps-first .pack-row.help{order:2}.custom-layout.cards-sides.traps-first .pack-row.trap{order:0}
+.custom-layout #cards{border:0;padding:14px 18px;background:transparent;box-shadow:none;border-radius:0;display:flex;align-items:center;justify-content:center}.custom-layout #cards::before{display:none}.custom-layout .pack-pages{width:100%;min-height:0;display:grid}.custom-layout .pack-page{grid-template-rows:calc(242px * var(--card-scale)) 80px calc(242px * var(--card-scale));gap:12px}.custom-layout .pack-row{gap:12px;align-items:center}.custom-layout .gift-card{flex:0 0 calc(162px * var(--card-scale));height:calc(242px * var(--card-scale));max-width:calc((100% - 12px * (var(--cards-per-page) - 1))/var(--cards-per-page))}.custom-layout .card-face{grid-template-rows:12% 46% minmax(0,1fr) 7%;gap:1%;padding:3%}.custom-layout .gift-card .art,.custom-layout .gift-card img,.custom-layout .gift-card .social-art{width:100%;height:100%;max-width:calc(104px * var(--card-scale));max-height:calc(104px * var(--card-scale))}.custom-layout .gift-card h2{font-size:calc(23px * var(--card-scale))}.custom-layout .gift-card .category{font-size:calc(12px * var(--card-scale));padding:2px 8px}.custom-layout .gift-card small{font-size:calc(10px * var(--card-scale))}.custom-layout.traps-first .pack-row.help{grid-row:3}.custom-layout.traps-first .pack-row.trap{grid-row:1}.custom-layout .brand{height:80px}.custom-layout #reaction{bottom:auto;top:48%;z-index:10}.custom-layout.cards-sides #cards{align-items:flex-start;padding-top:12px}.custom-layout.cards-sides .pack-page{display:flex;justify-content:space-between;gap:12px}.custom-layout.cards-sides .pack-row{flex-direction:column;gap:12px;align-items:center;width:calc(170px * var(--card-scale));max-width:34%}.custom-layout.cards-sides .gift-card{flex:none;width:100%;max-width:100%;height:calc(148px * var(--card-scale))}.custom-layout.cards-sides .card-face{grid-template-rows:16% 37% minmax(0,1fr) 7%}.custom-layout.cards-sides .gift-card .art,.custom-layout.cards-sides .gift-card img{max-height:calc(65px * var(--card-scale))}.custom-layout.cards-sides .gift-card h2{font-size:calc(18px * var(--card-scale))}.custom-layout.cards-sides .brand{display:none}.custom-layout.cards-sides.traps-first .pack-row.help{order:2}.custom-layout.cards-sides.traps-first .pack-row.trap{order:0}
+
+/* Le bas des cartes reste noir, même pendant les reflets et les réactions. */
+.card-face::before{content:"";position:absolute;inset:calc(min(64%,var(--title-black-top,64%)) - 18px) 0 0;z-index:1;background:linear-gradient(transparent,#000 18px);pointer-events:none}
+.cards-sides .card-face::before{top:calc(min(60%,var(--title-black-top,60%)) - 18px)}
+.card-title-text{display:block;width:100%;min-width:0}
+.card-foil{mask-image:linear-gradient(#000 0 48%,transparent 68%)}
+.gift-card::before,.gift-card::after{content:"✦";position:absolute;z-index:5;pointer-events:none;color:#fff5c4;text-shadow:0 0 5px #fff,0 0 10px var(--accent);opacity:.5}
+.gift-card::before{left:-4px;top:20px;font-size:12px}.gift-card::after{right:-3px;bottom:18px;font-size:9px}
+.animated .gift-card::before,.animated .gift-card::after{animation:card-glint 3.6s ease-in-out infinite;animation-delay:var(--foil-delay,0s)}
+.animated .gift-card::after{animation-delay:calc(var(--foil-delay,0s) + 1.5s)}
+.card-combo{position:absolute;right:-5px;top:22px;z-index:8;min-width:34px;padding:4px 7px;border:1px solid var(--accent);border-radius:9px;background:#050609;color:#fff;font-size:21px;font-weight:900;line-height:1;text-shadow:0 2px 2px #000;box-shadow:0 0 12px var(--glow)}
+.card-combo[hidden]{display:none}
+.card-sparks{position:absolute;inset:-6px;z-index:7;pointer-events:none;overflow:visible}
+.card-spark{position:absolute;width:var(--spark-size);height:var(--spark-size);background:#fff8db;border-radius:50%;box-shadow:0 0 5px #fff,0 0 10px var(--accent);animation:card-spark .65s ease-out both;animation-delay:var(--spark-delay)}
+@keyframes card-glint{0%,70%,100%{opacity:.2;transform:scale(.65)}80%{opacity:1;transform:scale(1.25)}90%{opacity:.55;transform:scale(.9)}}
+@keyframes card-spark{0%{opacity:0;transform:translate(0,0) scale(.3)}12%{opacity:1}100%{opacity:0;transform:translate(var(--spark-x),var(--spark-y)) scale(.1)}}
+
+.card-spark:nth-child(3n){border-radius:0;clip-path:polygon(50% 0,62% 35%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 35%);width:calc(var(--spark-size) * 1.6);height:calc(var(--spark-size) * 1.6)}
+.card-spark:nth-child(3n + 1){border-radius:2px;width:calc(var(--spark-size) * 2);height:2px;background:linear-gradient(90deg,#fff,var(--accent))}
+.card-sparks::before{content:"";position:absolute;inset:2px;border:2px solid var(--accent);border-radius:16px;box-shadow:0 0 14px var(--glow);animation:card-impact .8s ease-out both}
+@keyframes card-impact{from{opacity:.9;transform:scale(.98)}to{opacity:0;transform:scale(1.12)}}
+
+/* Titres des actions choisies : même carte, couleur et espace propres. */
+.gift-card.has-linked .card-face{grid-template-rows:22px 72px minmax(0,1fr) 13px}.gift-card.has-linked .art,.gift-card.has-linked img{height:72px;max-height:72px}.gift-card.has-linked h2{padding-top:0}.card-action-label{display:block;min-width:0}.card-action-label.linked{color:#54dfff}.card-action-label.help{color:#4dff99}.card-action-label.neutral{color:#ffda66}.card-action-label.trap{color:#ff548c}.gift-card.linked-only{--accent:#54dfff;--glow:#22c8ff70;--shade:#103440;--ink:#071822}.custom-layout .gift-card.has-linked .card-face{grid-template-rows:12% 30% minmax(0,1fr) 7%}.custom-layout .gift-card.has-linked .art,.custom-layout .gift-card.has-linked img{height:100%;max-height:calc(72px * var(--card-scale))}.custom-layout.cards-sides .gift-card.has-linked .card-face{grid-template-rows:16% 23% minmax(0,1fr) 7%}.custom-layout.cards-sides .gift-card.has-linked .art,.custom-layout.cards-sides .gift-card.has-linked img{max-height:calc(40px * var(--card-scale))}

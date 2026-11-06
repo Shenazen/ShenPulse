@@ -19,7 +19,7 @@ function externalFixture(){
 }
 test('les 38 modules disponibles proposent six aides et six pièges avec les mêmes douze cadeaux, sans wins mélangées',()=>{
  let available=0;
- for(const pack of packs.filter(p=>require('../src/shared/game-workspace-policy').eligible(p))){
+ for(const pack of packs.filter(p=>require('../src/shared/game-workspace-policy').starterEligible(p))){
   if(!pack.effects.some(e=>e.available!==false)){assert.equal(pack.defaultMappings.filter(m=>m.marketColumn).length,0,pack.id);continue;}
   available++;
   for(const column of ['help','trap']){

@@ -33,6 +33,7 @@ function membershipPopupPlanStatus(plan, model) {
 }
 
 function membershipPopupPlanButton(plan, model) {
+  if(model.subscription.source === "agencyPack") return '<button type="button" class="button" disabled>Géré par votre agence</button>';
   const focus = `data-membership-focus="plan-${escapeHtml(plan.tier)}"`;
   if (!model.authenticated) {
     return `<button type="button" class="button ${plan.tier === "free" ? "" : "primary"}" data-membership-login ${focus}>${plan.tier === "free" ? "Commencer gratuitement" : `Choisir ${escapeHtml(plan.name)}`}</button>`;
@@ -63,6 +64,7 @@ function membershipPopupStatusMarkup(model) {
     const date = membershipDateLabel(model.pendingStop.effectiveAt || model.subscription.renewalDate);
     return `<p class="membership-popup-notice" role="status"><span>Renouvellement arrêté. Votre accès reste actif jusqu’à la fin de la période payée.</span>${date ? ` <strong>${escapeHtml(date)}</strong>` : ""}</p>`;
   }
+  if (model.activeTier !== "free" && model.subscription.source === "agencyPack") return '<p class="membership-popup-notice" role="status">Votre accès est payé par votre agence. Aucun prélèvement personnel n’est effectué.</p>';
   if (model.activeTier !== "free" && model.subscription.source === "agencyReward") {
     return '<p class="membership-popup-notice" role="status">Votre accès Pro est offert grâce au palier Diamant de votre agence, tant qu’elle compte au moins 25 créateurs abonnés.</p>';
   }

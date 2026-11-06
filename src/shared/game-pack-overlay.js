@@ -5,10 +5,11 @@ const {title: interactionTitle}=require('./game-interaction-titles');
 const policy=require('./game-workspace-policy');
 const {gameWinsOverlay}=require('./game-wins-overlay');
 const {ordered}=require('./game-interaction-order');
+const linked=require('./game-pack-linked-actions');
 const sceneLayout=require('../../resources/overlays/scene-layout');
 const marketEffects=require('../../resources/catalogs/supermarket-simulator-effects.json');
 const PACK_ID='supermarket-simulator';
-const STATE_PATHS=['session.profileId','session.game','game.roundSettingsByPack','game.customPacks','game.interactionRulesByPack','commerce.subscription','settings.overlayConfigs.gameInteractionOverlays','settings.overlayConfigs.winCounter','settings.overlayConfigs.timer','settings.overlayConfigs.multiplierTimer','settings.overlayConfigs.gameWinsFeatures','overlaySession'];
+const STATE_PATHS=['rules','profiles','session.profileId','session.game','game.roundSettingsByPack','game.customPacks','game.interactionRulesByPack','commerce.subscription','settings.overlayConfigs.gameInteractionOverlays','settings.overlayConfigs.winCounter','settings.overlayConfigs.timer','settings.overlayConfigs.multiplierTimer','settings.overlayConfigs.gameWinsFeatures','overlaySession'];
 const help=new Set(['SpawnCustomers','CustomerRush','GiveMoney','Jackpot','FillShelves','MaxLevel','AntiChaos','SpeedBoost','OpenStore','DeliverProducts','HireEmployees','UnlockAllLicenses','UpgradeStore','DeliverFurniture','ResetEffects']);
 const neutral=new Set(['SpeedUpTime','ThrowItem','DropAllItems','RandomizePrices','Teleport','ChangeFOV','GameSpeedUp','ChangeLanguage','AutoDiscount','FinishDay','ResetGame']);
 const text=(value,limit=120)=>String(value||'').slice(0,limit);
@@ -51,24 +52,41 @@ function createGamePackOverlay(state,packId=PACK_ID){
   const options={compact:packId!==PACK_ID,defaultTitles:([...(pack.defaultMappings||[]),...(pack.previousDefaultMappings||[])]).filter(mapping=>mapping.effectId===effect.id).map(mapping=>mapping.title).filter(Boolean)};
   return [{id:text(rule.id),title:text(interactionTitle(rule,effect,options)),column,
    actionLabels:[text(interactionTitle(rule,effect,options)),...rule.actions.filter(a=>a!==action&&a.config?.packId===packId&&a.config?.effectId).map(a=>effects.get(a.config.effectId)).filter(e=>e&&e.available!==false).map(e=>text(interactionTitle({},e,options)))].slice(0,16),
-   triggerType:rule.trigger.type,threshold:Math.max(1,Number(rule.trigger.threshold)||1),effectImageUrl:publicArtwork(effect,packId),giftName:text(gift.value),giftImageUrl,giftCost:Math.max(0,Number(gift.giftCost)||0)}];
+   giftId:text(gift.giftId,160),giftIds:Array.isArray(gift.giftIds)?gift.giftIds.filter(id=>typeof id==='string').slice(0,30):[],giftFamily:text(gift.giftFamily),triggerType:rule.trigger.type,threshold:Math.max(1,Number(rule.trigger.threshold)||1),effectImageUrl:publicArtwork(effect,packId),giftName:text(gift.value),giftImageUrl,giftCost:Math.max(0,Number(gift.giftCost)||0)}];
  });
- return {profileId,packId,enabled,cards,wins:enabled?gameWinsOverlay(state,pack,ordered(rules)):null,presentation:normalizeGamePackPresentation(state?.settings?.overlayConfigs?.gameInteractionOverlays?.[packId]||{},packId)};
+ return {profileId,packId,enabled,cards:enabled?require('../../resources/overlays/game-pack-layout').prioritizeCards(linked.mergeCards(cards,state,packId)):cards,wins:enabled?gameWinsOverlay(state,pack,ordered(rules)):null,presentation:normalizeGamePackPresentation(state?.settings?.overlayConfigs?.gameInteractionOverlays?.[packId]||{},packId)};
 }
 function createGamePackOverlays(state){
  // Preserve the previous Supermarket payload for older browser sources.
  const legacy=createGamePackOverlay(state),packs={};
- for(const packId of Object.keys(state?.game?.interactionRulesByPack||{})){
+ for(const packId of new Set([...Object.keys(state?.game?.interactionRulesByPack||{}),...Object.keys(state?.settings?.overlayConfigs?.gameInteractionOverlays||{})])){
   if(packId===PACK_ID)continue;const pack=packFor(packId,state);if(pack&&policy.eligible(pack))packs[packId]=createGamePackOverlay(state,packId);
  }
  return {...legacy,packs};
 }
-function gamePackOverlayTrigger({ok,rule,action,event,profileId}){
+function gamePackOverlayTrigger({ok,started,rule,action,event,profileId}){
  const packId=action?.config?.packId;
- if(!ok||!rule||!['game.effect','overlay.win-counter','audio.play'].includes(action?.type)||!action.config?.effectId)return null;
+ if((!started&&!ok)||!rule||!['game.effect','overlay.win-counter','audio.play'].includes(action?.type)||!action.config?.effectId)return null;
  const pack=packFor(packId)||(/^custom-game-[a-f0-9-]{36}$/.test(String(packId))?{id:packId,workspaceLayout:"shared"}:null);if(!pack||(packId!==PACK_ID&&!policy.eligible(pack)))return null;
  const first=rule.actions?.find(item=>item.config?.packId===packId&&item.config?.effectId);
  if(first!==action&&(!first?.id||first.id!==action.id))return null;
- return {profileId:text(profileId),packId,ruleId:text(rule.id),viewer:text(event?.user?.displayName||event?.user?.uniqueId||'Viewer',80)};
+ const count=Math.min(9999,Math.max(1,Math.floor(Number(event?.data?.count)||1)));
+ // Chaque démarrage est déjà une unité du moteur : ne jamais rejouer le total du combo.
+ // Le total sert uniquement à l'intensité visuelle de la carte.
+ const comboCount=Math.min(9999,Math.max(count,Math.floor(Number(event?.data?.raw?.repeatCount)||0),Math.floor(Number(event?.data?.batchCount)||0)));
+ return {profileId:text(profileId),packId,ruleId:text(rule.id),viewer:text(event?.user?.displayName||event?.user?.uniqueId||'Viewer',80),count,comboCount};
 }
-module.exports={PACK_ID,STATE_PATHS,createGamePackOverlay,createGamePackOverlays,gamePackOverlayTrigger,publicGamePackAssets};
+function linkedGamePackOverlayTriggers({ok,started,rule,event,profileId,state}){
+ if((!started&&!ok)||!rule||!(state?.rules||[]).some(r=>r.id===rule.id))return [];
+ const payloads=[];
+ for(const [packId,config] of Object.entries(state.settings?.overlayConfigs?.gameInteractionOverlays||{})){
+  if(config.linkedActionsEnabled!==true||!config.linkedRuleIds?.includes(rule.id))continue;
+  const overlay=createGamePackOverlay(state,packId);if(!overlay.enabled)continue;
+  for(const card of overlay.cards.filter(c=>c.ruleIds?.includes(rule.id))){
+   if(card.triggerType==='gift'&&!card.wildcard&&!require('./gift-identity').sameGiftIdentity(require('./gift-identity').giftIdentity(card),require('./gift-identity').giftIdentity(event?.data||{})))continue;
+   payloads.push({profileId:text(profileId),packId,ruleId:card.id,viewer:text(event?.user?.displayName||event?.user?.uniqueId||'Viewer',80),count:1,comboCount:Math.max(1,Number(event?.data?.raw?.repeatCount)||1),...(event?.id?{eventKey:text(event.id,220)}:{})});
+  }
+ }
+ return payloads;
+}
+module.exports={linkedGamePackOverlayTriggers,PACK_ID,STATE_PATHS,createGamePackOverlay,createGamePackOverlays,gamePackOverlayTrigger,publicGamePackAssets};

@@ -2,8 +2,8 @@
   {
     "type": "styled",
     "model": 1,
-    "hash": "b265d2871b085a1ae417eff720b1c585b5a879239b80e12946eb204899ff6d31",
-    "operations": 464,
+    "hash": "896d955dfa343f34853812b0156ec1d14b561ed3e2ffcf57cdd7a986e2094611",
+    "operations": 468,
     "width": 1080,
     "height": 1920,
     "images": [
@@ -20,8 +20,8 @@
   {
     "type": "styled",
     "model": 2,
-    "hash": "f34582eebcfa2c31568179f3ca0cd7ea2d39ddeb17ff1dfd6cef2577ac90b9d2",
-    "operations": 668,
+    "hash": "ab53dcec523d2a0ef95dbdd2db98004918275de2444d04d60bac3938b8b16234",
+    "operations": 672,
     "width": 1080,
     "height": 1920,
     "images": [
@@ -39,8 +39,8 @@
   {
     "type": "bedrock",
     "model": 1,
-    "hash": "3b5dbbd4ce7f9f964c2998993360bc90774748c41c9021f93647663d13615e12",
-    "operations": 230,
+    "hash": "abd949793ef9d8e0d0afa62ee9655b83a9e7810d5840347509f229dc7384aad1",
+    "operations": 234,
     "width": 1080,
     "height": 1920,
     "images": [
@@ -57,8 +57,8 @@
   {
     "type": "bedrock",
     "model": 2,
-    "hash": "c69d6bbf10de256657999bd5c2ccd66b5e7dec300df4aa76ec5932bf887ce434",
-    "operations": 325,
+    "hash": "f84addd229fd4703f6b5094066ba45e2dc9aba2a5f7d9041ce78c2d364dc6238",
+    "operations": 329,
     "width": 1080,
     "height": 1920,
     "images": [

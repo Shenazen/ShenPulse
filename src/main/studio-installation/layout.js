@@ -1,8 +1,14 @@
 "use strict";
 const crypto = require("node:crypto"), fs = require("node:fs"), path = require("node:path");
 const gamePackLayout = require("../../../resources/overlays/game-pack-layout");
-function customLayout(plan={}) { return plan.packId===gamePackLayout.PACK_ID && Number(plan.presentation?.model||1)===1; }
-function sourceViewport(plan,kind) { return customLayout(plan) ? {width:1080,height:1920} : kind==='wins'?WINS_VIEWPORT:OVERLAY_RENDER_SIZE; }
+function customLayout(plan={}) { return gamePackLayout.supports(plan.packId) && Number(plan.presentation?.model||1)===1; }
+function sourceViewport(plan,kind) {
+  if(customLayout(plan)) {
+    const area=kind==='wins'?{width:1080,height:1920}:gamePackLayout.geometry(plan.presentation).gifts;
+    return {width:Math.ceil(area.width),height:Math.ceil(area.height)};
+  }
+  return kind==='wins'?WINS_VIEWPORT:OVERLAY_RENDER_SIZE;
+}
 function stableId(value) { const h = crypto.createHash("sha256").update(String(value)).digest("hex").slice(0,32); return [h.slice(0,8),h.slice(8,12),"4"+h.slice(13,16),"a"+h.slice(17,20),h.slice(20)].join("-"); }
 // Values captured from the approved TikTok scene. The native rendered size differs
 // slightly from the requested browser viewport; keep both instead of fitting to full width.
@@ -23,7 +29,7 @@ function winsArea(overlay, game) {
     height:WINS_VIEWPORT.height*WINS_REFERENCE.scale*scale
   };
 }
-function overlayUrl(plan) { const url=new URL(plan.overlayUrl);url.searchParams.set("layout","compact");return url.href; }
+function overlayUrl(plan) { const url=new URL(plan.overlayUrl);url.searchParams.set("layout","compact");if(customLayout(plan))url.searchParams.set("fit","panel");return url.href; }
 function referenceScale(width,height) { return Math.min(width/REFERENCE_CANVAS.width,height/REFERENCE_CANVAS.height); }
 function tiktokOverlayTransform(width=675,height=1200) {
   const scale=referenceScale(width,height),offset=(width-REFERENCE_CANVAS.width*scale)/2;
@@ -33,7 +39,7 @@ function layout(width = 1080, height = 1920, plan = {}) {
   if(customLayout(plan)){
     const geometry=gamePackLayout.geometry(plan.presentation),scale=Math.min(width/1080,height/1920),offset=(width-1080*scale)/2;
     const box=value=>({x:offset+value.x*scale,y:value.y*scale,width:value.width*scale,height:value.height*scale});
-    return {width,height,camera:box(geometry.camera),game:box(geometry.game),overlay:box({x:0,y:0,width:1080,height:1920}),wins:box({x:0,y:0,width:1080,height:1920})};
+    return {width,height,camera:box(geometry.camera),game:box(geometry.game),overlay:box(geometry.gifts),wins:box({x:0,y:0,width:1080,height:1920})};
   }
   const scale = referenceScale(width,height), x = (width - REFERENCE_CANVAS.width * scale) / 2;
   const game={x,y:384*scale,width:675*scale,height:379.6875*scale};

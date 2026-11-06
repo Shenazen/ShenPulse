@@ -18,7 +18,7 @@ test("le découpage garde exactement les catalogues de jeux et Minecraft", () =>
   assert.equal(catalog.length, 63);
   // Évolution commerciale demandée le 15/10/2026 : seule cette différence
   // est retirée de la comparaison historique, aucun autre champ n'est ignoré.
-  const prices = { "tiklive-climb": 9.99, "clash-of-live": 12.99, "tiklive-cube-wars": 9.99, "tiklive-stack-tower": 9.99 };
+  const prices = { "tiklive-climb": 4.99, "clash-of-live": 4.99, "tiklive-cube-wars": 4.99, "tiklive-stack-tower": 4.99 };
   const historical = structuredClone(catalog.filter(pack => !["minecraft-lavarise", "gtav-hiking-enhanced", "gtav-koth-enhanced", "shenfarm", "shenpaint", "shenkite", "splash-bombes", "hogwarts-legacy", "tcg-card-shop-simulator", "supermarket-simulator", "shift-at-midnight", "escape-from-duckov", "dead-by-daylight", "dredge", "egging-on", "fallout-4", "ark-survival-ascended", "balatro", "blue-prince", "find-the-needle-demo", "the-mortuary-assistant", "unturned", "crash-bandicoot-n-sane-trilogy"].includes(pack.id)));
   for (const pack of historical) if (Object.hasOwn(prices, pack.id)) {
     assert.equal(pack.price, prices[pack.id]);

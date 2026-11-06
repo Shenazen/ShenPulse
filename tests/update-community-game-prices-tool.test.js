@@ -36,8 +36,8 @@ test("inspection par défaut : aucune sauvegarde, aucune publication, aucun iden
   assert.equal(reports[0].publicationSafe, true);
   assert.doesNotMatch(JSON.stringify(reports), /synthetic|old-history|token|Authorization/);
 });
-test("plan limité à quatre produits complets, montants exacts, autres offres et disponibilité existante conservées", () => {
-  assert.deepEqual(TARGETS, { "tiklive-climb": "9.99", "clash-of-live": "12.99", "tiklive-cube-wars": "9.99", "tiklive-stack-tower": "9.99" });
+test("plan limité à huit produits complets, montants exacts, autres offres et disponibilité existante conservées", () => {
+  assert.deepEqual(TARGETS, { "tiklive-climb":"4.99","clash-of-live":"4.99","tiklive-cube-wars":"4.99","tiklive-stack-tower":"4.99","shenfarm":"4.99","shenpaint":"4.99","splash-bombes":"4.99","shenkite":"4.99" });
   const before = admin(), expected = proposedCatalog(before);
   assert.deepEqual(expected.products["old-game"], before.channels.prod.products["old-game"]);
   assert.deepEqual(expected.subscriptions, before.channels.prod.subscriptions);
@@ -53,22 +53,22 @@ test("plan limité à quatre produits complets, montants exacts, autres offres e
   assert.equal(proposedCatalog(before).products["tiklive-climb"].enabled, false);
   assert.equal(proposedCatalog(before).products["tiklive-climb"].trialEligible, false);
 });
-test("correction du tarif Clash : seul son montant passe de 2,99 à 12,99 €, les trois autres et leurs champs restent identiques", () => {
+test("correction du tarif Clash : seul son montant passe de 2,99 à 4,99 €, les autres champs restent identiques", () => {
   const before = admin(), previous = proposedCatalog(before);
   previous.products["clash-of-live"].baseAmount = "2.99";
   before.channels.prod = structuredClone(previous);
   before.channels.draft = structuredClone(previous);
   const actual = proposedCatalog(before);
-  assert.equal(actual.products["clash-of-live"].baseAmount, "12.99");
+  assert.equal(actual.products["clash-of-live"].baseAmount, "4.99");
   const restored = structuredClone(actual);
   restored.products["clash-of-live"].baseAmount = "2.99";
   assert.deepEqual(restored, previous);
   for (const id of ["tiklive-climb", "tiklive-cube-wars", "tiklive-stack-tower"]) {
-    assert.equal(actual.products[id].baseAmount, "9.99");
+    assert.equal(actual.products[id].baseAmount, "4.99");
     assert.deepEqual(actual.products[id], previous.products[id]);
   }
 });
-test("publication : sauvegarde puis relecture exacte, quatre produits prod/draft, test et historique préservés", async () => {
+test("publication : sauvegarde puis relecture exacte, huit produits prod/draft, test et historique préservés", async () => {
   const before = admin(), operations = [], reports = [];
   const after = await updatePrices({ client: client(before, operations), apply: true,
     backup: (value) => { operations.push("backup"); assert.deepEqual(value, before); }, report: (value) => reports.push(value) });

@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { createAgencyPackService } from './packs.mjs';
 export const AGENCY_PATH = 'serverOnly/agencyProgram';
 export const AGENCY_CHECKOUT_PATH = 'serverOnly/agencyCheckouts';
 export const AGENCY_PRICES = { public: { pro: 14.99, premium: 20.99 }, agency: { pro: 9.99, premium: 13.99 } };
@@ -43,6 +44,7 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,t
   const ref=()=>db().ref(AGENCY_PATH), read=async()=>empty((await ref().get()).val() || {}), stamp=()=>new Date(now()).toISOString();
   const memberCountingStatus=async uid=>{
     const sub=await subscription(uid),at=now();
+    if(!activePaid(sub,at)){const group=await service.billing?.entitlement(uid);if(group)return {counted:true,paid:true,tier:group.tier,source:'agencyPack',expiresAtMs:group.expiresAtMs};}
     return countingStatus(sub,activePaid(sub,at)?null:await trial(uid),at);
   };
   let directoryCache=null,directoryPending=null,revision=0;
@@ -89,7 +91,10 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,t
     return {ok:true};
     } finally { reference.off('value',hold); }
   };
+  const packs=createAgencyPackService({read,mutate,authenticate,requireAdmin,now});
   const service={
+    packs,
+    configurePackBilling(factory){service.billing=factory({read,mutate,db,authenticate,subscription,now});packs.setBilling(service.billing);return service.billing;},
     publicList:directoryStats,
     invalidateDirectoryCache(){revision++;directoryCache=null;},
     async directorReward(uid,current={}){
@@ -104,7 +109,9 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,t
     async invitation(code){const s=await read(),a=Object.values(s.agencies).find(a=>a.status==='approved' && a.code===clean(code,30).toUpperCase());if(!a)fail('Invitation introuvable.',404);return publicAgency(a);},
     async quote(uid,current){return quoteAgencyPrices(await read(),uid,current || await subscription(uid));},
     async dashboard(request,admin=false){
-      const u=admin?await requireAdmin(request):await authenticate(request),s=await read(),own=Object.values(s.agencies).find(a=>a.ownerUid===u.uid);
+      const u=admin?await requireAdmin(request):await authenticate(request);
+      if(!admin)await service.billing?.refreshOwner(u.uid);
+      const s=await read(),own=Object.values(s.agencies).find(a=>a.ownerUid===u.uid);
       const visible=admin?Object.values(s.agencies):own?[own]:[],entries=Object.entries(s.memberships).filter(([,m])=>visible.some(a=>a.id===m.agencyId));
       if(entries.length>2000)fail('Liste trop importante. Contactez ShenPulse.',409);
       const members=[];
@@ -112,7 +119,7 @@ export function createAgencyService({db,authenticate,requireAdmin,subscription,t
         const status=await memberCountingStatus(uid);
         return {uid,...m,paying:status.counted,tier:status.tier,paidSubscription:status.paid,countingSource:status.source};
       })));
-      return {ok:true,uid:u.uid,...(admin?{admin:true,allAgencies:visible,audit:Object.values(s.audit || {}).slice(-100)}:{}),ownAgency:own || null,membership:s.memberships[u.uid] || null,members,pricing:await service.quote(u.uid),commissionsEnabled:false};
+      return {ok:true,uid:u.uid,...(admin?{admin:true,...packs.snapshot(s),allAgencies:visible,audit:Object.values(s.audit || {}).slice(-100)}:{}),...(!admin?packs.ownSnapshot(s,u.uid):{}),ownAgency:own || null,membership:s.memberships[u.uid] || null,members,pricing:await service.quote(u.uid),commissionsEnabled:false};
     },
     async save(request,body){
       const u=await authenticate(request),fields=profile(body);

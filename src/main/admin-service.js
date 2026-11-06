@@ -323,7 +323,22 @@ class AdminService {
     );
   }
 
-  async #api(path, { method = "GET", body, retry = true } = {}) {
+  async getStorageFiles(incoming = {}) {
+    const query = new URLSearchParams({ownerId:""});
+    await this.status();
+    query.set("ownerId", this.#ownerId());
+    for(const field of ["query","kind","category","page"]) if(incoming[field] !== undefined)query.set(field,String(incoming[field]).slice(0,180));
+    if(incoming.refresh===true)query.set("refresh","1");
+    return this.#api("/api/admin/storage?"+query, {timeout:75000});
+  }
+
+  async getStorageFile(key, preview = false) {
+    await this.status();
+    const ticket=await this.#api("/api/admin/storage/file",{method:"POST",body:{ownerId:this.#ownerId(),key:String(key||""),preview:preview===true}});
+    return require("./admin/storage").validateStorageTicket(ticket,String(key||""));
+  }
+
+  async #api(path, { method = "GET", body, retry = true, timeout = 15000 } = {}) {
     const token = await this.#token();
     const response = await this.fetch(`${SHENPULSE_API_URL}${path}`, {
       method,
@@ -332,14 +347,14 @@ class AdminService {
         "Content-Type": "application/json",
         "Cache-Control": "no-store"
       },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeout),
       body: body === undefined ? undefined : JSON.stringify(body)
     });
     const payload = await readPayload(response);
     if (!response.ok) {
       if (retry && (response.status === 401 || response.status === 403)) {
         this.expiresAt = 0;
-        return this.#api(path, { method, body, retry: false });
+        return this.#api(path, { method, body, retry: false, timeout });
       }
       throw new Error(remoteErrorMessage(payload, response));
     }

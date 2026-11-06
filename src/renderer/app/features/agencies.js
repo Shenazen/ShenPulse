@@ -51,7 +51,7 @@ function renderAdminAgencies(){
   if(!isVerifiedAdminSession())return "";
   const view=ensureAgencyData(true),data=view.admin;
   const cards=data?(data.allAgencies || []).map(a=>renderAgencyReviewCard(a,(data.members || []).filter(m=>m.agencyId===a.id))).join(""):"";
-  return '<div class="agency-page"><section class="agency-panel"><header class="agency-heading"><div><h3>Agences partenaires</h3><p>Validez les fiches des agences. Leurs fondateurs gèrent les adhésions dans Agences → Mon agence. Aucune commission n’est versée aux agences.</p></div><button class="button" data-action="agency-admin-refresh">Actualiser</button></header>'+agencyNotice(view)+'</section>'+(data?cards?'<div class="agency-review-grid">'+cards+'</div>':'<p class="agency-panel">Aucune agence n’a encore envoyé de fiche.</p>':"")+'</div>';
+  return '<div class="agency-page"><section class="agency-panel"><header class="agency-heading"><div><h3>Agences partenaires</h3><p>Validez les fiches des agences. Leurs fondateurs gèrent les adhésions dans Agences → Mon espace agence. Aucune commission n’est versée aux agences.</p></div><button class="button" data-action="agency-admin-refresh">Actualiser</button></header>'+agencyNotice(view)+'</section>'+(data?cards?'<div class="agency-review-grid">'+cards+'</div>':'<p class="agency-panel">Aucune agence n’a encore envoyé de fiche.</p>':"")+'</div>';
 }
 async function agencyCommand(command,body={},admin=false){
   const owner=captureCreatorPrivateOperation(),view=agencyState();
@@ -64,8 +64,9 @@ async function agencyCommand(command,body={},admin=false){
     view.busy=false;await refreshAgencies(admin || currentPage==="admin");
   }finally{if(agencyState()===view){view.busy=false;render();}}
 }
+const AGENCY_ACTIONS = new Set(["agency-refresh","agency-admin-refresh","agency-copy","agency-link","agency-edit","agency-join","agency-cancel-edit","agency-upload","agency-clear-image","agency-rotate-code","agency-leave","agency-member","agency-review"]);
 async function handleAgencyAction({action,target,id}){
-  if(!action.startsWith("agency-"))return ACTION_NOT_HANDLED;
+  if(!AGENCY_ACTIONS.has(action))return ACTION_NOT_HANDLED;
   if(action==="agency-refresh" || action==="agency-admin-refresh")return refreshAgencies(action==="agency-admin-refresh" || currentPage==="admin");
   if(action==="agency-link")return api.openExternal(target.dataset.value);
   if(!isAccountAuthenticated())return openAccountLogin();
@@ -79,7 +80,7 @@ async function handleAgencyAction({action,target,id}){
   if(action==="agency-leave" && await confirmAction("Quitter l’agence ou annuler la demande ? Votre abonnement actuel conserve son tarif convenu.",{title:"Adhésion à l’agence",confirmLabel:"Confirmer"}))return agencyCommand("leave");
   if(action==="agency-member"){
     const view=agencyState(),a=view.dashboard?.ownAgency,member=view.dashboard?.members?.find(m=>m.uid===id);
-    if(currentPage!=="agencies" || a?.status!=="approved" || !member || member.agencyId!==a.id)throw Error("Gérez les membres de votre agence depuis Agences → Mon agence. Seul son fondateur peut valider les adhésions.");
+    if(currentPage!=="agencies" || a?.status!=="approved" || !member || member.agencyId!==a.id)throw Error("Gérez les membres de votre agence depuis Agences → Mon espace agence. Seul son fondateur peut valider les adhésions.");
     const owner=captureCreatorPrivateOperation();
     if(!await confirmAction("Confirmer cette décision pour ce créateur ?",{title:"Gestion des membres",confirmLabel:"Confirmer"}))return;
     assertCreatorPrivateOperation(owner);
@@ -87,4 +88,4 @@ async function handleAgencyAction({action,target,id}){
   }
   if(action==="agency-review")return openEditor({title:"Décision concernant l’agence",submitLabel:"Confirmer",body:'<p>Décision : '+escapeHtml(AGENCY_STATUS_LABELS[target.dataset.status])+'.</p><label class="field full"><span>Motif ou message au directeur</span><textarea name="reason" maxlength="500"></textarea></label>',onSubmit:async data=>agencyCommand("reviewAgency",{agencyId:id,status:target.dataset.status,reason:data.get("reason")},true)});
 }
-registerActionHandler(new Set(["agency-refresh","agency-admin-refresh","agency-copy","agency-link","agency-edit","agency-join","agency-cancel-edit","agency-upload","agency-clear-image","agency-rotate-code","agency-leave","agency-member","agency-review"]),handleAgencyAction);
+registerActionHandler(AGENCY_ACTIONS,handleAgencyAction);

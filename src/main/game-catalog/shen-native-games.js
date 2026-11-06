@@ -30,7 +30,7 @@ const descriptions={
 };
 function nativeEffects(id){return DEFINITIONS[id].map(([code,name,column])=>({id:id+'-'+code,code,name,column:column==='score'?'neutral':column,category:column==='score'?'Victoires':'Partie',image:'assets/games/shen-native/'+id+'/'+code+'.svg',available:true,description:name+' dans '+SPECS[id].title+'. Commencez une partie avant de tester.',quantity:1,parameters:[{id:'count',label:'Quantité',min:1,max:100,step:1,defaultValue:1}],quantityParameter:'count',icon:column==='help'?'✦':column==='trap'?'⚡':'◆'}));}
 const SHEN_NATIVE_GAMES=Object.entries(SPECS).map(([id,spec])=>game(id,spec.title,{
- price:9.99,workspaceLayout:'shared',storefronts:['shenpulse'],coverArtwork:'covers/'+id+'.webp',artwork:'shen-native/scenes/'+id+'.svg',sceneArtwork:'shen-native/scenes/'+id+'.svg',
+ price:4.99,workspaceLayout:'shared',storefronts:['shenpulse'],coverArtwork:'covers/'+id+'.webp',artwork:'shen-native/scenes/'+id+'.svg',sceneArtwork:'shen-native/scenes/'+id+'.svg',
  source:'ShenPulse · jeu autonome',description:descriptions[id],tags:['ShenPulse','achat unique','jeu autonome'],
  connector:{type:'shen-native',host:'127.0.0.1',port:spec.port,launchConnectionTimeoutMs:60000},effects:nativeEffects(id),interactionCatalogVersion:2026102605,installerVersion:require('../game-installers/shen-native-games')[id].version
 }));

@@ -116,6 +116,7 @@ function syncCreatorAccountChrome() {
   const tier = pro ? subscription.tier : "free";
   const label = !session.authenticated ? "INVITÉ" : !pro ? "GRATUIT"
     : subscription.source === "trial" ? "PRO · ESSAI"
+      : subscription.source === "agencyPack" ? (subscription.tier === "premium" ? "PREMIUM · AGENCE" : "PRO · AGENCE")
       : ["premiumSeat", "agencyReward"].includes(subscription.source) ? "PRO · OFFERT"
         : tier === "premium" ? "PREMIUM" : "PRO";
   const badge = document.getElementById("account-plan");

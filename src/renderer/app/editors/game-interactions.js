@@ -300,7 +300,7 @@ function gameInteractionDraftFromForm(
     trigger: {
       ...(currentRule.trigger || {}),
       enabled: automatic,
-      repeatGiftCombos: automatic ? data.has("repeatGiftCombos") : currentRule.trigger?.repeatGiftCombos === true,
+      repeatGiftCombos: true,
       type: data.get("triggerType") || "gift",
       source: "*",
       threshold: Math.max(1, Number(data.get("threshold")) || 1)
@@ -407,7 +407,7 @@ function openGameInteractionEditor(pack, effect, row = null) {
         "Associez un événement ou un cadeau précis à cet effet.",
         `<label class="field"><span>Type de déclencheur</span><select name="triggerType" data-editor-trigger-type>${triggerTypeOptions(currentRule.trigger?.type)}</select></label>
         ${field("threshold", "Seuil / quantité", currentRule.trigger?.threshold || 1, "number", 'min="1"')}
-        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions, { giftLabel: "Cadeau TikTok précis (optionnel)", repeatGiftCombos: currentRule.trigger?.repeatGiftCombos })}</div>
+        <div class="editor-conditional full" data-trigger-types="gift">${giftTriggerConditionFields(currentRule.conditions, { giftLabel: "Cadeau TikTok précis (optionnel)", giftCombosRequired: true })}</div>
         <div class="editor-conditional full" data-trigger-types="chat">${field("messageCondition", "Le message contient (optionnel)", conditionValue(currentRule.conditions, "data.message", "contains"), "text", "full")}</div>
         ${field("usernameCondition", "@ viewer précis (optionnel)", conditionValue(currentRule.conditions, "user.name", "equals"), "text", "full")}`,
         "game-interaction-trigger-section",

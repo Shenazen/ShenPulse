@@ -8,10 +8,10 @@ function fixture(t,id='shenfarm'){
  const store={getState:()=>state,getSecret:id=>secrets.get(id),setSecret:(id,value)=>{id||=crypto.randomUUID();secrets.set(id,value);return id;},mutate:fn=>fn(state)},bridge=new ShenNativeGameBridge({store,gameId:id,port:0});
  bridge.on('error',()=>{});t.after(async()=>{await bridge.close();fs.rmSync(root,{recursive:true,force:true});});return {root,state,store,bridge,secrets,metadataPath};
 }
-test('quatre jeux autonomes à 9,99 €, logo ShenPulse, nouvelle disposition et douze cadeaux configurés',()=>{
+test('quatre jeux autonomes à 4,99 €, logo ShenPulse, nouvelle disposition et douze cadeaux configurés',()=>{
  const packs=require('../src/main/game-catalog').loadShenazenGameCatalog(path.resolve('resources')),policy=require('../src/shared/game-workspace-policy');
- for(const id of Object.keys(SPECS)){const pack=packs.find(p=>p.id===id);assert.equal(pack.price,9.99);assert.deepEqual(pack.storefronts,['shenpulse']);assert.equal(pack.accessMode,'purchase');assert.equal(policy.eligible(pack,['shenpulse']),true);assert.equal(pack.defaultMappings.filter(m=>m.marketColumn==='help').length,6);assert.equal(pack.defaultMappings.filter(m=>m.marketColumn==='trap').length,6);assert.ok(pack.effects.every(e=>e.available===true));assert.ok(fs.existsSync('src/renderer/assets/games/'+pack.artwork));}
- assert.equal(policy.eligible(packs.find(p=>p.id==='color-strike')),false);
+ for(const id of Object.keys(SPECS)){const pack=packs.find(p=>p.id===id);assert.equal(pack.price,4.99);assert.deepEqual(pack.storefronts,['shenpulse']);assert.equal(pack.accessMode,'purchase');assert.equal(policy.eligible(pack,['shenpulse']),true);assert.equal(pack.defaultMappings.filter(m=>m.marketColumn==='help').length,6);assert.equal(pack.defaultMappings.filter(m=>m.marketColumn==='trap').length,6);assert.ok(pack.effects.every(e=>e.available===true));assert.ok(fs.existsSync('src/renderer/assets/games/'+pack.artwork));}
+ assert.equal(policy.eligible(packs.find(p=>p.id==='color-strike')),true);
 });
 test('la réécriture Unity conserve tous les indices et recale les sections après un texte plus long',()=>{
  const values=['SyncLive','Bonjour'],data=Buffer.concat(values.map(s=>Buffer.from(s))),header=Buffer.alloc(44),table=Buffer.alloc(12);header.writeUInt32LE(0xfab11baf);header.writeUInt32LE(39,4);header.writeUInt32LE(44,8);header.writeUInt32LE(12,12);header.writeUInt32LE(3,16);header.writeUInt32LE(56,20);header.writeUInt32LE(data.length,24);header.writeUInt32LE(2,28);header.writeUInt32LE(56+data.length,32);header.writeUInt32LE(4,36);table.writeUInt32LE(8,4);table.writeUInt32LE(data.length,8);

@@ -10,7 +10,7 @@ function fixture(t){
  w.openEditor=o=>calls.push(o);w.confirmAction=async(message,options)=>{confirmations.push({message,...options});return true;};w.openAccountLogin=()=>calls.push("login");
  const prices={public:{pro:14.99,premium:20.99},agency:{pro:9.99,premium:13.99}};
  w.api={agencies:{list:async()=>({agencies:[],prices}),dashboard:async()=>({uid,membership:null,ownAgency:null,members:[],pricing:{quoted:prices.public}}),command:async(...a)=>calls.push(a)},admin:{agenciesDashboard:async()=>({allAgencies:[],members:[]})}};
- vm.runInContext('let currentPage="agencies";const ACTION_NOT_HANDLED=Symbol();const SUBSCRIPTION_PLANS=[{tier:"free",price:0},{tier:"pro",price:14.99},{tier:"premium",price:20.99}];'+["studio-design.js","agencies-layout.js","agencies-director.js","agencies-forms.js","agencies.js","agencies-identity.js"].map(file=>fs.readFileSync(path.join(__dirname,"../src/renderer/app/features",file),"utf8")).join("\n"),dom.getInternalVMContext());
+ vm.runInContext('let currentPage="agencies";const ACTION_NOT_HANDLED=Symbol();const SUBSCRIPTION_PLANS=[{tier:"free",price:0},{tier:"pro",price:14.99},{tier:"premium",price:20.99}];'+["studio-design.js","agencies-layout.js","agencies-director.js","agencies-space.js","agencies-forms.js","agencies.js","agencies-identity.js"].map(file=>fs.readFileSync(path.join(__dirname,"../src/renderer/app/features",file),"utf8")).join("\n"),dom.getInternalVMContext());
  return {w,calls,confirmations,setUid:v=>{uid=v;},run:s=>vm.runInContext(s,dom.getInternalVMContext())};
 }
 test("l’annuaire affiche les tarifs du programme et un vrai état vide",async t=>{
@@ -28,7 +28,7 @@ test("l’espace directeur affiche les membres, le code et les boutons fonctionn
  const {w,calls}=fixture(t);
  w.api.agencies.dashboard=async()=>({ownAgency:{id:"agency",name:"Équipe Test",status:"approved",code:"TESTCODE",description:"Une équipe"},members:[{uid:"m",agencyId:"agency",email:"m@example.invalid",displayName:"Membre",status:"pending"}],pricing:{quoted:{pro:9.99,premium:13.99},eligible:true}});
  await w.refreshAgencies();const html=w.renderAgencies();
- assert.match(html,/TESTCODE/);assert.match(html,/Accepter/);assert.match(html,/Refuser/);
+ assert.match(html,/TESTCODE/);w.selectAgencySpaceSection("members");assert.match(w.renderAgencies(),/Accepter/);assert.match(w.renderAgencies(),/Refuser/);
  await w.handleAgencyAction({action:"agency-member",id:"m",target:{dataset:{status:"approved",admin:"false"}}});
  assert.equal(calls[0][0],"reviewMember");assert.equal(calls[0][1].uid,"m");
  w.editAgency();assert.match(w.renderAgencies(),/Envoyer ma fiche à ShenPulse/);
@@ -223,6 +223,7 @@ test("les cadres Argent, Or et Diamant sont identiques entre paliers et fiches d
  const {w}=fixture(t);const agencies=['silver','gold','diamond'].map((level,i)=>({id:level,name:'Agence '+level,description:'Notre agence partenaire.',payingCount:[4,12,30][i],level}));
  w.api.agencies.list=async()=>({agencies});w.api.agencies.dashboard=async()=>({ownAgency:{id:"owned",status:"approved"},members:[]});await w.refreshAgencies();
  const main=w.document.querySelector('main');main.innerHTML=w.renderAgencies();
+ w.selectAgencySpaceSection('tiers');
  for(const level of ['silver','gold','diamond']){
    assert.ok(main.querySelector('.agency-tier.agency-tier-frame.agency-level-'+level),level+' palier');
    assert.ok(main.querySelector('.agency-card.agency-tier-frame.agency-level-'+level),level+' agence');
@@ -249,7 +250,8 @@ test("Mon agence regroupe les demandes en attente, les membres et leurs commande
  ]});
  await f.w.refreshAgencies();
  const main=f.w.document.querySelector('main');main.innerHTML=f.w.renderAgencies();
- assert.match(main.textContent,/MON AGENCE/);assert.match(main.textContent,/Demandes et membres/);
+ f.w.selectAgencySpaceSection("members");
+ assert.match(main.textContent,/MON ESPACE AGENCE/);assert.match(main.textContent,/Demandes et membres/);
  assert.match(main.textContent,/1 demande en attente/);
  assert.equal(main.querySelectorAll('[data-action="agency-member"]').length,3);
  assert.equal(main.querySelectorAll('[data-admin]').length,0);
@@ -279,7 +281,7 @@ test("l’administration garde uniquement les décisions sur les agences et les 
 });
 test("un ancien bouton d’administration ou un tiers ne déclenche aucune gestion d’adhésion",async t=>{
  const f=fixture(t);f.setUid('admin');await f.w.refreshAgencies();
- await assert.rejects(f.w.handleAgencyAction({action:'agency-member',id:'foreign',target:{dataset:{status:'approved',admin:'true'}}}),/Mon agence/);
+ await assert.rejects(f.w.handleAgencyAction({action:'agency-member',id:'foreign',target:{dataset:{status:'approved',admin:'true'}}}),/Mon espace agence/);
  assert.equal(f.calls.length,0);assert.equal(f.confirmations.length,0);
 });
 test("changer de compte pendant la confirmation annule la décision du fondateur",async t=>{
@@ -327,8 +329,10 @@ test('les paliers sont réservés au fondateur connecté dont l’agence est val
  for(const status of ['pending','rejected','suspended','approved']){
   f.w.api.agencies.dashboard=async()=>({ownAgency:{id:'owned',ownerUid:'creator',name:'Mon agence',status,description:'Notre équipe.',code:'PRIVATE'},members:[]});
   await f.w.refreshAgencies();const main=f.w.document.querySelector('main');main.innerHTML=f.w.renderAgencies();
-  assert.equal(!!main.querySelector('.agency-tiers-section'),status==='approved',status);
+  f.w.selectAgencySpaceSection('invitation');
   assert.equal(!!main.querySelector('[data-action="agency-rotate-code"]'),status==='approved',status);
+  f.w.selectAgencySpaceSection('tiers');
+  assert.equal(!!main.querySelector('.agency-tiers-section'),status==='approved',status);
  }
  f.setUid('other');await f.w.refreshAgencies();assert.doesNotMatch(f.w.renderAgencies(),/Paliers des agences|PRIVATE|MON AGENCE/);
  f.setUid('');await f.w.refreshAgencies();assert.doesNotMatch(f.w.renderAgencies(),/Paliers des agences|PRIVATE|MON AGENCE/);
@@ -345,9 +349,9 @@ test('l’espace fondateur distingue les statistiques, l’invitation et les mem
  assert.ok(main.querySelector('.agency-director'));assert.equal(main.querySelectorAll('.agency-director-stat').length,3);
  assert.match(main.querySelector('.agency-director-stats').textContent,/2.*membres validés.*1.*demandes en attente.*1.*abonnements actifs/s);
  assert.equal(main.querySelector('#agency-invitation-code').readOnly,true);
- assert.ok(main.querySelector('.agency-director-members [data-action="agency-member"]'));
  assert.match(main.querySelector('.agency-invitation').textContent,/ancien code.*inactifs.*membres/s);
- assert.ok(main.querySelector('progress'));assert.equal(main.querySelector("test"),null);
+ f.w.selectAgencySpaceSection('members');assert.ok(main.querySelector('.agency-director-members [data-action="agency-member"]'));
+ f.w.selectAgencySpaceSection('tiers');assert.ok(main.querySelector('progress'));assert.equal(main.querySelector("test"),null);
 });
 
 test('la régénération demande confirmation, recharge le code et ne gère aucun membre',async t=>{

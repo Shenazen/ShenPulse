@@ -181,8 +181,9 @@ test("les neutres restent accessibles sans troisième rangée ; en mode Fixe les
   try {
     assert.equal(f.dom.window.document.querySelectorAll(".brand").length, 1); assert.equal(f.active().querySelectorAll(".pack-row").length, 2);
     assert.deepEqual(f.visible().slice(0, 3), ["help-0", "help-1", "help-2"]);
-    assert.equal(f.active().querySelector(".pack-row.trap .neutral")!==null,true);
-    f.advance(8000); assert.deepEqual(f.visible(), ["trap-1", "trap-2", "trap-3", "trap-4", "trap-5"]); assert.ok(f.dom.window.document.body.classList.contains("fixed"));
+    assert.equal(f.active().querySelectorAll(".pack-row.help .neutral").length,3);
+    assert.equal(f.active().querySelectorAll(".pack-row.trap .neutral").length,0);
+    f.advance(8000); assert.deepEqual(f.visible(), ["neutral-3", "neutral-4"]); assert.ok(f.dom.window.document.body.classList.contains("fixed"));
   } finally { f.dom.window.close(); }
 });
 
@@ -201,7 +202,7 @@ test("l’image publique suit l’effet sélectionné même si le titre personna
 });
 
 
-test('Follow et Likes ont une illustration vectorielle colorée et les cartes neutres restent sous le logo',()=>{
+test('Follow et Likes gardent leur illustration vectorielle lorsque les neutres complètent la rangée libre',()=>{
  const f=paginationFixture({top:2,neutral:1,bottom:0});try{
  f.state.cards.find(c=>c.id==='help-0').triggerType='follow';f.state.cards.find(c=>c.id==='help-1').triggerType='like';f.runtime.render(f.state);
  const page=f.active();assert.ok(page.querySelector('.help .follow-art circle'));assert.ok(page.querySelector('.help .likes-art path'));assert.equal(page.querySelector('.help .art').textContent.includes('♡'),false);assert.equal(page.querySelector('.trap .neutral').dataset.rule,'neutral-0');assert.equal(new Set([...page.querySelectorAll('svg [id]')].map(n=>n.id)).size,2);

@@ -41,7 +41,7 @@ const MATCH_SOURCE_PATHS = [
 ];
 // Keep this projection aligned with createRelayState, not the complete local
 // workspace (catalogues, chat history, secrets and other accounts stay local).
-const RELAY_STATE_PATHS = [
+const RELAY_STATE_PATHS = ["rules", "profiles",
   "session.game", "game.roundSettingsByPack", "settings.overlayConfigs.timer",
   "goals", "session.running", "session.startedAt", "session.profileId", "overlaySession",
   "game.interactionRulesByPack", "game.customPacks", "settings.overlayConfigs.gameInteractionOverlays",

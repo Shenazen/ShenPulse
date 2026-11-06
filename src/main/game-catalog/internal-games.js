@@ -162,7 +162,7 @@ const INTERNAL_GAMES = [
   game("tiklive-climb", "Climb", {
     artwork: "catalog/shenpulse-climb.jpg",
     coverArtwork: "covers/tiklive-climb.webp",
-    price: 9.99,
+    price: 4.99,
     requiresPro: true,
     source: "ShenPulse · Climb autonome",
     description:
@@ -187,7 +187,7 @@ const INTERNAL_GAMES = [
   game("tiklive-cube-wars", "ShenPulse Cube Wars", {
     artwork: "catalog/shenpulse-cube-wars.png",
     coverArtwork: "covers/tiklive-cube-wars.webp",
-    price: 9.99,
+    price: 4.99,
     requiresPro: true,
     source: "ShenPulse · Cube Wars autonome",
     description:
@@ -212,7 +212,7 @@ const INTERNAL_GAMES = [
   game("tiklive-stack-tower", "ShenPulse Stack Tower", {
     artwork: "catalog/shenpulse-stack-tower.png",
     coverArtwork: "covers/tiklive-stack-tower.webp",
-    price: 9.99,
+    price: 4.99,
     requiresPro: true,
     source: "ShenPulse · Stack Tower autonome",
     description:
@@ -237,7 +237,7 @@ const INTERNAL_GAMES = [
   game("clash-of-live", "Clash Of ShenPulse", {
     artwork: "catalog/clash-of-shenpulse.jpg",
     coverArtwork: "covers/clash-of-live.webp",
-    price: 12.99,
+    price: 4.99,
     requiresPro: true,
     source: "ShenPulse · Clash Of ShenPulse autonome",
     description:

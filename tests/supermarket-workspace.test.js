@@ -259,16 +259,19 @@ test('une réponse régionale tardive actualise le popup ouvert sans effacer rec
 });
 
 
-test('le popup de cadeau mémorise la répétition sans changer cadeau, actions ou filtres',async()=>{
- const f=fixture();f.render();const row=f.ctx.supermarketRows(pack)[0],reference={ruleId:row.rule.id,actionId:row.action.id,index:row.actionIndex};const original=structuredClone(row.rule);
- await f.ctx.openSupermarketGifts(reference);const input=f.dom.window.document.querySelector('[data-market-gift-combos]');assert.equal(input.checked,false);
- input.checked=true;input.dispatchEvent(new f.dom.window.Event('change',{bubbles:true}));await new Promise(setImmediate);
- assert.equal(f.saved.at(-1).trigger.repeatGiftCombos,true);assert.deepEqual(f.saved.at(-1).actions,original.actions);assert.deepEqual(f.saved.at(-1).conditions,original.conditions);
- await f.ctx.chooseSupermarketGift('6267');assert.equal(f.saved.at(-1).trigger.repeatGiftCombos,true);assert.equal(f.saved.at(-1).conditions[0].giftId,'6267');
+test('le popup de cadeau impose les combos sans modifier une règle à son ouverture',async()=>{
+ const f=fixture();f.render();const row=f.ctx.supermarketRows(pack)[0],reference={ruleId:row.rule.id,actionId:row.action.id,index:row.actionIndex};row.rule.trigger.repeatGiftCombos=false;const original=structuredClone(row.rule);
+ await f.ctx.openSupermarketGifts(reference);
+ assert.equal(f.dom.window.document.querySelector('[data-market-gift-combos]'),null);
+ assert.match(f.ctx.dialogBody.querySelector('[data-game-gift-combos]').textContent,/toujours actifs/);
+ assert.equal(f.saved.length,0);
+ await f.ctx.chooseSupermarketGift('6267');assert.equal(f.saved.at(-1).trigger.repeatGiftCombos,true);
+ assert.deepEqual(f.saved.at(-1).actions,original.actions);assert.equal(f.saved.at(-1).conditions[0].giftId,'6267');
 });
-
-test('une nouvelle carte reste sans répétition, et son choix est enregistré avec le cadeau',async()=>{
- const f=fixture();f.render();await f.ctx.addSupermarketInteraction('gift','help');const input=f.dom.window.document.querySelector('[data-market-gift-combos]');assert.equal(input.checked,false);input.checked=true;input.dispatchEvent(new f.dom.window.Event('change',{bubbles:true}));await new Promise(setImmediate);assert.equal(f.saved.length,0);
+test('une nouvelle carte de jeu répète obligatoirement les combos après choix du cadeau',async()=>{
+ const f=fixture();f.render();await f.ctx.addSupermarketInteraction('gift','help');
+ assert.equal(f.dom.window.document.querySelector('[data-market-gift-combos]'),null);
+ assert.ok(f.ctx.dialogBody.querySelector('[data-game-gift-combos]'));assert.equal(f.saved.length,0);
  await f.ctx.chooseSupermarketGift('5655');assert.equal(f.saved.length,1);assert.equal(f.saved[0].trigger.repeatGiftCombos,true);
 });
 

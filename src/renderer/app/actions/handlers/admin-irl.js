@@ -140,6 +140,7 @@ async function handleAdminAndIrlAction({ action, target, id }) {
   }
   if (action === "admin-workspace") {
     adminWorkspace = target.dataset.value || "overview";
+    if(adminWorkspace === "storage") { render(); content.scrollTop=0; return loadAdminStorage(); }
     render();
     content.scrollTop = 0;
     return;

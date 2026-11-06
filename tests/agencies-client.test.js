@@ -68,3 +68,30 @@ test('le renouvellement d’invitation transmet seulement le code attendu et gar
  assert.equal(sent.headers.Authorization,'Bearer private-test-token');
  await assert.rejects(agencyRequest(service,'rotateCode',{expectedCode:'OLD'},true),/fondateur/);
 });
+
+test("toutes les commandes de packs empruntent uniquement le canal administrateur authentifié",async()=>{
+ const routes={savePack:"save",archivePack:"archive",assignPack:"assign",unassignPack:"unassign",previewPack:"preview"};
+ for(const [command,path]of Object.entries(routes)){
+  let sent;const service=setup(async(url,options)=>{sent={url,options};return jsonResponse({ok:true});});
+  await assert.rejects(agencyRequest(service,command,{}),/administrateur/);assert.equal(sent,undefined);
+  const body={id:"pack",prices:{pro:850,premium:1199},expectedRevision:2,seats:[{uid:"member",tier:"pro"}]};
+  await agencyRequest(service,command,body,true);
+  assert.equal(sent.url,"https://example.invalid/api/admin/agencies/packs/"+path);assert.equal(sent.options.method,"POST");
+  assert.equal(sent.options.headers.Authorization,"Bearer private-test-token");assert.deepEqual(JSON.parse(sent.options.body),body);
+ }
+});
+test("une réponse privée de pack est écartée après un changement de compte",async()=>{
+ let finish,entered;const ready=new Promise(r=>entered=r),pending=new Promise(r=>finish=r),service=setup(async()=>{entered();return pending;});
+ const request=agencyRequest(service,"previewPack",{},true);await ready;service.sessionGeneration++;
+ finish(jsonResponse({ok:true,quote:{eligibleCreators:20}}));await assert.rejects(request,{code:"ACCOUNT_SESSION_CHANGED"});
+});
+
+test('le fondateur utilise uniquement les deux routes privées de son offre groupée',async()=>{
+ for(const [command,path] of [['previewOwnPack','preview'],['selectOwnPack','selection']]){
+  let sent;const service=setup(async(url,options)=>{sent={url,options};return jsonResponse({ok:true});});
+  const body={expectedRevision:2,expectedPackRevision:3,seats:[{uid:'member',tier:'pro'}]};
+  await agencyRequest(service,command,body);
+  assert.equal(sent.url,'https://example.invalid/api/agencies/pack/'+path);assert.equal(sent.options.headers.Authorization,'Bearer private-test-token');assert.deepEqual(JSON.parse(sent.options.body),body);
+  await assert.rejects(agencyRequest(service,command,body,true),/fondateur/);
+ }
+});

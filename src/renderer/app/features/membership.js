@@ -52,6 +52,7 @@ function renderMembership() {
     ? "Free"
     : subscription.source === "trial"
       ? `${subscription.tier} · essai`
+      : subscription.source === "agencyPack" ? subscription.tier + " · agence"
       : ["premiumSeat", "agencyReward"].includes(subscription.source)
         ? `${subscription.tier} · offert`
         : activePlan?.name || activeSubscriptionTier;
@@ -59,6 +60,8 @@ function renderMembership() {
     ? "Jeux vidéo, Commandes et Matchs nécessitent un accès Pro ou Premium actif. Machines IRL est réservé à Premium."
     : subscription.source === "trial"
       ? "Vous profitez d’un essai actif. Vos droits restent synchronisés avec votre compte."
+      : subscription.source === "agencyPack"
+        ? "Votre accès est payé par votre agence. Aucun abonnement personnel n’est nécessaire."
       : subscription.source === "agencyReward"
         ? "Votre accès Pro est offert grâce au palier Diamant de votre agence, tant qu’elle compte au moins 25 créateurs abonnés."
         : subscription.source === "premiumSeat"

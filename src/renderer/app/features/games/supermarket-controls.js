@@ -182,15 +182,16 @@ function openSupermarketExtraActions(reference) {
   });
 }
 
-const SUPERMARKET_PAGE_ACTIONS = new Set(['market-section', 'market-overlay-customize', 'market-overlay-layout', 'market-overlay-model', 'market-overlay-color', 'market-preview-mode', 'market-category', 'market-add', 'market-add-kind', 'market-add-effect', 'market-gift', 'market-extra-add', 'market-remove-extra', 'market-cancel-extra', 'market-follow', 'market-sound', 'market-preview-sound', 'market-extra-actions']);
+const SUPERMARKET_PAGE_ACTIONS = new Set(['market-linked-actions', 'market-section', 'market-overlay-customize', 'market-overlay-layout', 'market-overlay-model', 'market-overlay-color', 'market-preview-mode', 'market-category', 'market-add', 'market-add-kind', 'market-add-effect', 'market-gift', 'market-extra-add', 'market-remove-extra', 'market-cancel-extra', 'market-follow', 'market-sound', 'market-preview-sound', 'market-extra-actions']);
 registerActionHandler(SUPERMARKET_PAGE_ACTIONS, async ({ action, target }) => {
   if (!SUPERMARKET_PAGE_ACTIONS.has(action)) return ACTION_NOT_HANDLED;
   const pack = supermarketPack();
   if (!pack || !requireGameAccess(pack)) return;
   if (action === 'market-section') return revealSupermarketSection(target.dataset.value);
+  if (action === 'market-linked-actions') return openGameLinkedActionsEditor(pack);
   if (action === 'market-overlay-customize') return openGamePackPresentationEditor(pack);
   if (action === 'market-overlay-layout') {
-    if (pack.id !== 'minecraft-box-cyber' || !['cardPlacement','cameraPlacement','rowOrder'].includes(target.dataset.layoutKey)) return ACTION_NOT_HANDLED;
+    if (!ShenPulseGameWorkspacePolicy.customizable(pack) || !['cardPlacement','cameraPlacement','rowOrder'].includes(target.dataset.layoutKey)) return ACTION_NOT_HANDLED;
     return saveSupermarketOverlayPresentation({[target.dataset.layoutKey]:target.dataset.value});
   }
   if (action === 'market-overlay-model') return saveSupermarketOverlayPresentation({model:Number(target.dataset.value)});
@@ -251,7 +252,7 @@ content.addEventListener('toggle', event => {
 }, true);
 
 content.addEventListener('change', event => {
-  if(event.target.matches('[data-market-card-size]')&&supermarketPack()?.id==='minecraft-box-cyber'){perform(()=>saveSupermarketOverlayPresentation({cardSize:Number(event.target.value)})).catch(()=>{});return;}
+  if(event.target.matches('[data-market-card-size]')&&ShenPulseGameWorkspacePolicy.customizable(supermarketPack())){perform(()=>saveSupermarketOverlayPresentation({cardSize:Number(event.target.value)})).catch(()=>{});return;}
   if(event.target.matches('[data-market-overlay-color]')){perform(()=>saveSupermarketOverlayPresentation({backgroundColor:event.target.value})).catch(()=>{});return;}
   const target = event.target.closest('[data-market-inline]');
   if (!target) return;

@@ -109,17 +109,17 @@ test("conserve les jeux existants et ajoute les jeux ShenPulse sans doublon", ()
       thiercelieux: 4.99,
       "coin-pusher": 4.99,
       "connect-four": 4.99,
-      "clash-of-live": 12.99,
+      "clash-of-live": 4.99,
       "color-strike": 19.99,
-      "tiklive-climb": 9.99,
-      "tiklive-cube-wars": 9.99,
-      "tiklive-stack-tower": 9.99,
+      "tiklive-climb": 4.99,
+      "tiklive-cube-wars": 4.99,
+      "tiklive-stack-tower": 4.99,
       "deal-or-no-deal": 4.99,
       "diamond-drop": 4.99,
-      shenfarm: 9.99,
-      shenpaint: 9.99,
-      shenkite: 9.99,
-      "splash-bombes": 9.99
+      shenfarm: 4.99,
+      shenpaint: 4.99,
+      shenkite: 4.99,
+      "splash-bombes": 4.99
     }
   );
   assert.ok(

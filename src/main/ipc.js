@@ -72,7 +72,7 @@ function registerIpc({
   const handle = (channel, listener) => {
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, (...args) => {
-      if (["tts:voices", "sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level"].includes(channel) || ["game:custom:", "kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:", "agencies:", "admin:agencies"].some((prefix) => channel.startsWith(prefix))) {
+      if (["tts:voices", "sound:remove", "startup:ready", "overlay:game-pack-presentation", "game:uninstall", "game:interactions:reset", "game:interactions:move", "game:wins:level"].includes(channel) || ["game:custom:", "kick:", "controllers:", "live-directory:", "users:", "spotify:", "chatbot:", "irl:", "matches:", "studio:", "agencies:", "admin:agencies", "admin:storage-"].some((prefix) => channel.startsWith(prefix))) {
         assertIntegrationIpcSender(channel, args[0], getWindow());
       }
       if (["entity:upsert", "entity:remove"].includes(channel) && args[1] === "commands") {
@@ -171,7 +171,7 @@ function registerIpc({
 
   registerIntegrationsIpc({ handle, core, store, integrationChange });
   registerAccountIpc({ handle, core, store, accountService, adminService, storeUpdateService, getWindow, switchAccountWorkspace, refreshAccountWorkspace });
-  registerAdminIpc({ handle, core, store, adminService });
+  registerAdminIpc({ handle, core, store, adminService, getWindow, dialog });
   registerAgencyIpc({ handle, accountService });
   registerMediaIpc({ handle, core, store, backblazeMedia, getWindow, dialog, net });
   registerSessionIpc({ handle, core, store });

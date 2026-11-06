@@ -51,7 +51,7 @@ function supermarketGiftPriceMatches(cost, range) {
 }
 
 function supermarketGiftView(context) {
- return {...context,comboOptionMarkup:giftComboRepeatField(context.repeatGiftCombos, 'repeatGiftCombos', 'data-market-gift-combos')+'<button type="button" class="button small ghost" data-market-gift-conditions>Plusieurs cadeaux ou exclusions…</button>',ranges:MARKET_GIFT_RANGES,commonIds:MARKET_COMMON_GIFTS,selectedId:String(ruleGiftCondition(context.row.rule)?.giftId || ''),usedIds:supermarketRows(supermarketPack()).map(row=>String(ruleGiftCondition(row.rule)?.giftId || ''))};
+ return {...context,comboOptionMarkup:gameGiftComboNotice()+'<button type="button" class="button small ghost" data-market-gift-conditions>Plusieurs cadeaux ou exclusions…</button>',ranges:MARKET_GIFT_RANGES,commonIds:MARKET_COMMON_GIFTS,selectedId:String(ruleGiftCondition(context.row.rule)?.giftId || ''),usedIds:supermarketRows(supermarketPack()).map(row=>String(ruleGiftCondition(row.rule)?.giftId || ''))};
 }
 function supermarketGiftContextCurrent(context) {
   return context && context.packId === supermarketPack()?.id && marketGiftContext === context && dialog.open && dialog.dataset.variant === 'market-gifts' && dialogSessionId === context.dialogSessionId && snapshot.state.session.profileId === context.profileId && (snapshot.state.settings.account?.uid || '') === context.accountUid && JSON.stringify(giftPickerCatalogContext()) === context.scope;
@@ -107,7 +107,7 @@ function refreshSupermarketGiftCatalog() {
 async function openSupermarketGifts(reference, draft = null) {
   const pack = supermarketPack(), row = draft || findGameInteractionRow(pack.id, reference.ruleId, reference.actionId, reference.index);
   if (!row) throw new Error('Interaction introuvable.');
-  const context = { reference, row, packId: pack.id, profileId: snapshot.state.session.profileId, accountUid: snapshot.state.settings.account?.uid || '', scope: JSON.stringify(giftPickerCatalogContext()), query: '', range: 'all', showAll: false, visibleLimit: 60, gifts: null, saving: false, repeatGiftCombos: row.rule.trigger?.repeatGiftCombos === true };
+  const context = { reference, row, packId: pack.id, profileId: snapshot.state.session.profileId, accountUid: snapshot.state.settings.account?.uid || '', scope: JSON.stringify(giftPickerCatalogContext()), query: '', range: 'all', showAll: false, visibleLimit: 60, gifts: null, saving: false };
   marketGiftContext = context;
   const title = ShenPulseGameInteractionTitles.title(row.rule, pack.effects.find(effect => effect.id === row.action.config.effectId)) || 'cette interaction';
   const ctx = supermarketContext(pack);
@@ -133,7 +133,7 @@ function applySupermarketGift(rule, gift) {
   const firstAllowed = ruleGiftCondition(rule);
   rule.conditions = (rule.conditions || []).filter(condition => condition.field === 'data.giftName' ? condition !== firstAllowed : !['data.giftId', 'data.giftValue', 'data.diamondCount', 'data.giftCoins', 'data.value'].includes(condition.field));
   rule.conditions.unshift({ ...reference, field: 'data.giftName', operator: 'equals', value: gift.name });
-  rule.trigger = { ...rule.trigger, type: 'gift', enabled: true };
+  rule.trigger = { ...rule.trigger, type: 'gift', enabled: true, repeatGiftCombos: true };
 }
 
 async function chooseSupermarketGift(giftId) {
@@ -155,20 +155,6 @@ async function chooseSupermarketGift(giftId) {
 dialogBody.addEventListener('input', event => {
   if (!event.target.matches('[data-market-gift-search]') || !marketGiftContext) return;
   marketGiftContext.query = event.target.value; marketGiftContext.visibleLimit = 60; refreshSupermarketGiftResults({ resetScroll: true });
-});
-dialogBody.addEventListener('change', event => {
-  if (!event.target.matches('[data-market-gift-combos]')) return;
-  const context = marketGiftContext, control = event.target;
-  if (!supermarketGiftContextCurrent(context) || context.saving) return;
-  const previous = context.repeatGiftCombos, repeat = control.checked;
-  context.repeatGiftCombos = repeat;
-  const update = rule => { rule.trigger = { ...rule.trigger, repeatGiftCombos: repeat }; };
-  perform(async () => {
-    try {
-      if (context.row.isNew) update(context.row.rule);
-      else await mutateSupermarketRule(context.reference, update);
-    } catch (error) { if (marketGiftContext === context) { context.repeatGiftCombos = previous; control.checked = previous; } throw error; }
-  }).catch(() => {});
 });
 
 dialogBody.addEventListener('change', event => {

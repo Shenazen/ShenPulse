@@ -110,7 +110,7 @@ test("le tarif reste visible sans Pro, sans contourner l'abonnement ni le libell
 test("les quatre nouveaux prix du vrai catalogue sont cohérents entre cartes et dialogues d'achat", (t) => {
   const { loadShenazenGameCatalog } = require("../src/main/game-catalog");
   const { window, render } = gameContext(t, { tier: "pro", status: "active" });
-  const prices = { "tiklive-climb": 9.99, "clash-of-live": 12.99, "tiklive-cube-wars": 9.99, "tiklive-stack-tower": 9.99 };
+  const prices = { "tiklive-climb": 4.99, "clash-of-live": 4.99, "tiklive-cube-wars": 4.99, "tiklive-stack-tower": 4.99 };
   window.snapshot.packs = loadShenazenGameCatalog(path.resolve(sourceRoot, "../resources")).filter((pack) => Object.hasOwn(prices, pack.id));
   const page = render();
   assert.equal(page.querySelectorAll(".tile-purchase-price").length, 4);

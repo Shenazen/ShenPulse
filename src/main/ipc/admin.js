@@ -8,8 +8,28 @@ const { safeString } = require("../utils");
 const { sanitizeEntity } = require("./sanitizers");
 const { notify } = require("./notifications");
 
-function registerAdminIpc({ handle, core, store, adminService }) {
+function registerAdminIpc({ handle, core, store, adminService, getWindow, dialog }) {
   handle("admin:status", () => adminService.status());
+  let storageDownloadBusy=false;
+  async function storageOwner(){const status=await adminService.status();if(!status.authorized||!status.uid)throw Error("Accès administrateur requis.");return status.uid;}
+  handle("admin:storage-list", async (_event,incoming) => {
+    const uid=await storageOwner();const result=await adminService.getStorageFiles(sanitizeEntity(incoming||{}));
+    if(await storageOwner()!==uid)throw Error("Le compte a changé. Rouvrez le stockage.");return result;
+  });
+  handle("admin:storage-preview", async (_event,key) => {
+    const uid=await storageOwner();const result=await adminService.getStorageFile(safeString(key,1100),true);
+    if(await storageOwner()!==uid)throw Error("Le compte a changé. Rouvrez le stockage.");return result;
+  });
+  handle("admin:storage-download", async (_event,incoming) => {
+    const uid=await storageOwner();if(storageDownloadBusy)throw Error("Un téléchargement est déjà en cours.");storageDownloadBusy=true;
+    const key=safeString(incoming?.key,1100),requestId=safeString(incoming?.requestId,80);
+    try{return await require("../admin/storage").downloadStorageFile({
+      getTicket:()=>adminService.getStorageFile(key),
+      choosePath:name=>dialog.showSaveDialog(getWindow(),{title:"Télécharger depuis Backblaze",defaultPath:name,buttonLabel:"Télécharger"}),
+      assertOwner:async()=>{if(await storageOwner()!==uid)throw Error("Le compte a changé. Téléchargement annulé.");},
+      onProgress:progress=>{if(!getWindow()?.isDestroyed())getWindow()?.webContents.send("admin:storage-progress",{requestId,...progress});}
+    });}finally{storageDownloadBusy=false;}
+  });
   
   handle("admin:login", (_event, incoming) =>
     adminService.login({

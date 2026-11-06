@@ -32,7 +32,7 @@ function encodeForm(value, prefix = '', target = new URLSearchParams()) {
 }
 
 /** Aucun secret ou jeton Stripe n'est envoyé au renderer ou enregistré dans les journaux. */
-export function createStripePayments({ db, authenticate, catalog, priceProduct, quote, subscription, returnUrls, applySubscription, fetchImpl = globalThis.fetch, env = process.env, now = Date.now }) {
+export function createStripePayments({ db, authenticate, catalog, priceProduct, quote, subscription, returnUrls, applySubscription, assertPersonalAllowed=async()=>{}, fetchImpl = globalThis.fetch, env = process.env, now = Date.now }) {
   const key = String(env.STRIPE_SECRET_KEY || '').trim();
   const webhookSecret = String(env.STRIPE_WEBHOOK_SECRET || '').trim();
   const live = key.startsWith('sk_live_') || key.startsWith('rk_live_');
@@ -126,6 +126,7 @@ export function createStripePayments({ db, authenticate, catalog, priceProduct, 
       amount = Math.round(Number(priced.amount) * 100); currency = String(product.currency).toLowerCase(); title = product.title;
       line = { price_data: { currency, unit_amount: amount, product_data: { name: title } }, quantity: 1 };
     } else {
+      await assertPersonalAllowed(user.uid);
       tier = String(body.tier || '');
       if (!['pro', 'premium'].includes(tier)) fail('Offre invalide.');
       pricing = await quote(user.uid, current);

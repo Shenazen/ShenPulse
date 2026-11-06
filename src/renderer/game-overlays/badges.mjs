@@ -165,10 +165,10 @@ function drawGiftBadge(ctx, item, x, y, size) {
   if (item.giftImage) {
     drawImageContainWithOutline(ctx, item.giftImage, x, y, size, size, {
       outlineColor: "#020617",
-      outlineSize: Math.max(3, size * 0.085),
-      shadowBlur: size * 0.22,
+      outlineSize: Math.max(2, size * 0.018),
+      shadowBlur: size * 0.09,
       shadowColor: "rgba(0, 0, 0, 0.58)",
-      shadowOffsetY: size * 0.1
+      shadowOffsetY: size * 0.06
     });
   } else {
     const colors = item.colors.length >= 2 ? item.colors : ["#14b8a6", "#0f172a"];

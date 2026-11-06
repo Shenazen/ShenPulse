@@ -4,7 +4,7 @@
 let gamePackPresentationEditor = null;
 
 function openGamePackPresentationEditor(pack = supermarketPack()) {
-  if (pack?.id !== "minecraft-box-cyber" || !requireGameAccess(pack)) return;
+  if (!ShenPulseGameWorkspacePolicy.customizable(pack) || !requireGameAccess(pack)) return;
   const base = supermarketContext(pack);
   const editor = {
     scope: { packId: pack.id, profileId: base.profileId, accountUid: base.accountUid },

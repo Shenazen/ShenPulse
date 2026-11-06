@@ -1,6 +1,6 @@
 "use strict";
 
-/** Prix de quatre jeux : inspection par défaut, publication explicite --apply.
+/** Prix de huit jeux : inspection par défaut, publication explicite --apply.
  * Seule l'API commerciale existante est utilisée. Elle exige un brouillon
  * identique à la production, sans promotion applicable ni perte de schéma.
  * Une relecture exacte précède l'écriture (pas de CAS proposé par cette API).
@@ -18,8 +18,8 @@ const { FIREBASE_DATABASE_URL, SHENPULSE_API_URL } = require("../src/main/admin/
 const { cloneEncryptionProfile, isEntryPoint, removeSmokeProfile, sha256 } = require("./smoke-media-upload");
 const { ownerMemoryStore, verifiedOwnerIdentity } = require("./maintenance/restrict-owner-pages");
 
-const TARGETS = Object.freeze({ "tiklive-climb": "9.99", "clash-of-live": "12.99", "tiklive-cube-wars": "9.99", "tiklive-stack-tower": "9.99" });
-const TITLES = Object.freeze({ "tiklive-climb": "Climb", "clash-of-live": "Clash Of ShenPulse", "tiklive-cube-wars": "ShenPulse Cube Wars", "tiklive-stack-tower": "ShenPulse Stack Tower" });
+const TARGETS = Object.freeze({"tiklive-climb":"4.99","clash-of-live":"4.99","tiklive-cube-wars":"4.99","tiklive-stack-tower":"4.99","shenfarm":"4.99","shenpaint":"4.99","splash-bombes":"4.99","shenkite":"4.99"});
+const TITLES = Object.freeze({"tiklive-climb":"Climb","clash-of-live":"Clash Of ShenPulse","tiklive-cube-wars":"ShenPulse Cube Wars","tiklive-stack-tower":"ShenPulse Stack Tower","shenfarm":"ShenFarm","shenpaint":"ShenPaint","splash-bombes":"Splash Bombes","shenkite":"ShenKite"});
 let phase = "startup";
 function emit(value) { process.stdout.write(`${JSON.stringify(value)}\n`); }
 function requireCondition(value, code) { if (!value) throw new Error(code); }
@@ -158,7 +158,7 @@ async function updatePrices({ client, apply = false, backup = writeBackup, repor
   const current = await client.readAdmin();
   requireCondition(current.status === 200 && isDeepStrictEqual(current.value, before), "CATALOG_CHANGED");
   proposedCatalog(current.value);
-  phase = "publish-four-products"; await client.publish(expected);
+  phase = "publish-eight-products"; await client.publish(expected);
   phase = "verify";
   const next = await client.readAdmin();
   requireCondition(next.status === 200, "POSTCHECK_FAILED");

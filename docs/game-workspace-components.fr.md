@@ -86,7 +86,7 @@ La source game-wins.html lit la projection publique minimale du même jeu/profil
 
 Les actions Mute et Démute utilisent le même moteur de règles, le même choix de cadeaux et la portée compte/profil/jeu. Le service GameMuteService sérialise les demandes ; le pont Core Audio Windows ne coupe que le micro d’entrée Windows par défaut. Le helper garde l’état initial, rétablit uniquement un mute qu’il possède, surveille sa durée, la fermeture de stdin et la disparition du processus ShenPulse. Un micro déjà coupé manuellement reste dans son état initial. Le runtime n’est publié qu’après confirmation du système et est vidé lors d’un changement de profil ou redémarrage.
 
-La configuration gameWinsFeatures, isolée par jeu dans le profil, contient le style du chrono et le montant/activation Super Fan. Super Fan reste une décision manuelle +/− après l’abonnement, conformément à son explication. Le HUD groupe Mute / Reset / Démute au-dessus du jeu, Super Fan juste dessous et l’inversion au bas de la colonne négative. Le compteur de mute ne paraît que pendant un mute actif. Installer le compteur met à jour sa source HUD avec overlayOnly et conserve caméra, jeu et cadeaux existants. Les sources et polices sont hébergées avec les overlays publics ; aucune modification des packs de jeux n’est nécessaire.
+La configuration gameWinsFeatures, isolée par jeu dans le profil, contient le style du chrono et le montant/activation Super Fan. Super Fan reste une décision manuelle +/− après l’abonnement, conformément à son explication. Le HUD groupe Mute / Reset / Démute au-dessus du jeu, Super Fan juste dessous et l’inversion au bas de la colonne négative. Le compteur de mute est intégré à la source HUD déjà utilisée par le jeu. Il apparaît automatiquement pendant un mute actif et disparaît lorsque Démute retire tout le temps restant ou à l’expiration. Aucun bouton d’installation propre au compteur n’est nécessaire. Les lignes Mute et Démute possèdent chacune un bouton Tester qui exécute leur action et leur durée configurées ; Rétablir le micro reste disponible sur Mute. Les sources et polices sont hébergées avec les overlays publics ; aucune modification des packs de jeux n’est nécessaire.
 
 ## Sections d’overlays par jeu et reprise des anciens réglages TCG
 
@@ -127,3 +127,80 @@ L’ancien −55 ne devient −50 que si la règle générée correspond exactem
 Les deux modes Bedrock Box et Sandbox utilisent désormais une carte réutilisable « Durée de la partie », placée après les trois étapes et avant les interactions. La fiche historique « Serveur et partie » est retirée de ces deux pages ; les boutons d’installation, de démarrage et les conditions restent dans l’en-tête. Les autres jeux, dont Minecraft Survival, conservent leurs préparations particulières.
 
 La carte d’overlay du chrono configure son apparence et sa source, sans dupliquer la durée. Le formulaire dédié appelle toujours saveGameRoundSettings, avec la même portée par jeu et profil et le même comportement de relance du chrono actif. Le guide pointe vers cette nouvelle carte. shared/minecraft-round-settings.js fournit le défaut commun de 15 minutes au serveur, au formulaire, au compteur et à la projection publique. Les durées enregistrées restent prioritaires.
+
+
+## Jeux ShenPulse : pages communes et personnalisation (5 novembre 2026)
+
+Les quinze jeux portant le logo ShenPulse utilisent désormais la page partagée et la popup de personnalisation de Minecraft Box Cyber : modèles 1 à 3, animé/fixe, couleurs, cartes latérales ou en bandeau, position de caméra, ordre aide/piège et taille des cartes. L’aperçu, la source publique et les trois installateurs studio consomment le même contrat game-pack-layout.js. Les réglages restent isolés par jeu et profil ; Annuler ne les enregistre pas. Les compteurs ne sont affichés que si le jeu en possède déjà.
+
+Les jeux intégrés ne demandent aucun téléchargement fictif. Coin Pusher, Puissance 4, Deal or No Deal et les Loups-Garous conservent leur formulaire de réglages dans la section « Réglages du jeu ». Les autres jeux conservent leur installation et leur lancement existants. starterEligible est volontairement distinct de eligible : le changement de présentation ne modifie ni les presets historiques, ni les cadeaux, ni les règles personnelles.
+
+Climb, Clash Of ShenPulse, ShenPulse Cube Wars, ShenPulse Stack Tower, ShenFarm, ShenPaint, Splash Bombes et ShenKite passent à 4,99 EUR dans le catalogue embarqué et le catalogue commercial en ligne. La maintenance ciblée update-shenpulse-game-prices.mjs sauvegarde les catalogues puis ne modifie que baseAmount de ces huit produits en production et dans le brouillon ; les autres différences du brouillon et les droits acquis sont conservés. Les anciens prix des abonnements et Color Strike restent inchangés.
+
+Validation : 3 741 tests réussis, dont quinze pages ShenPulse et 360 combinaisons de disposition studio ; lint complet réussi. Les fichiers de la construction locale 2.1.4 ont été comparés aux sources, et les overlays publiés ont été vérifiés en ligne. Aucun jeu n’a été lancé pour cette modification de présentation.
+
+## Installation studio : panneau de cadeaux à sa résolution native (5 novembre 2026)
+
+Les sources des jeux personnalisables (Minecraft Box Cyber et les quinze jeux ShenPulse) ne rendent plus les cadeaux dans un grand canevas de 1080 × 1920 placé ensuite dans une petite zone. L'installateur utilise la zone gifts du contrat partagé : 1080 × 600 à la taille par défaut en bandeau, ou 1080 × 1320 sur les côtés. La taille des cartes et la position de la caméra restent prises en compte. Les wins gardent leur source indépendante de 1080 × 1920.
+
+L'URL de la source installée utilise layout=compact&fit=panel. Le runtime recadre la zone de cadeaux à ces dimensions, puis le studio la place exactement dans la zone gifts de l'aperçu. Le bouton Copier l'URL conserve fit=cards pour cadrer le contenu lors d'une insertion manuelle ; l'aperçu du téléphone conserve le canevas complet. Ces trois usages partagent le même dessin des cartes.
+
+TikTok LIVE Studio, OBS (hors ligne et via WebSocket), SE.Live et Streamlabs utilisent la même géométrie et la même résolution. Réinstaller répare les anciennes dimensions et les découpes OBS des sources d'interactions concernées. Les cadrages Cult of the Lamb et Euro Truck Simulator 2 sont conservés.
+
+Validation : 3 763 tests réussis, dont 2 176 combinaisons de jeux/dispositions/tailles vérifiées dans les préparateurs de scènes. Un navigateur réel confirme scale(1), des cartes de 162 × 242 pixels à 100 %, et une largeur utile de 1 032 pixels sur 1 080 en bandeau. Les autres jeux du catalogue gardent leur panneau compact existant ; les modèles 2 et 3 restent inchangés. L'overlay public a été publié et comparé aux fichiers locaux. Pour une scène déjà installée avec l'ancien canevas portrait, réutiliser Installer sur le studio depuis la version corrigée.
+
+
+### Tests Mute / Démute et compteur automatique (5 novembre 2026)
+
+Le composant commun affiche Tester sur les deux lignes et retire l’ancienne commande game-win-install-mute de l’interface. Les compteurs et cadeaux ne sont pas modifiés. Le compteur intégré suit le mute réel confirmé par le service microphone, sans apparition fictive avant une commande réussie. Les dispositions personnalisables le centrent dans la caméra haute ou basse. Les boutons ne modifient ni les cadeaux, ni l’activation enregistrée des règles.
+
+Validation : 48 tests ciblés réussis, couvrant toutes les pages dotées de wins, le routage des deux boutons avec leur durée propre, la réduction partielle et complète du mute, l’expiration, l’échec microphone et 64 positions de caméra/cartes. Le service microphone est simulé lors des essais automatisés : aucune coupure du microphone réel n’est nécessaire pour ces contrôles.
+
+
+### Cartes neutres : remplissage des deux rangées
+
+La pagination du modèle à cartes est calculée par paginateCards dans game-pack-layout.js, pour tous les jeux. Les aides gardent leur rangée, les pièges la leur, et les neutres complètent les places disponibles des deux côtés, en équilibrant les rangées. Le calcul réserve la place des aides et pièges et minimise le nombre de pages. Les cartes neutres conservent leur catégorie et leur couleur jaune ; les règles enregistrées ne changent pas.
+
+Le même calcul sert à l’aperçu, aux URL copiées et aux sources installées sur les studios, en animé comme en fixe, en bandeau comme sur les côtés et quel que soit l’ordre des rangées. La capacité suit la taille des cartes. Les modèles historiques 2 et 3 utilisent déjà une grille unique, sans rangée réservée aux pièges ; leur rendu reste inchangé.
+
+Validation : tests de 34 295 répartitions, intégration sur les 90 jeux du catalogue et les trois types d’URL, variations de disposition et de taille, puis déclenchement d’une carte neutre sur une autre page. Aucune carte ne doit être perdue, dupliquée ou reclassée.
+
+
+### Lisibilité et réactions des cartes
+
+Le modèle à cartes commun réserve le bas de chaque carte à un fond noir. Les titres passent de 17 à 23 pixels à 100 % en bandeau (14 à 18 pixels sur les côtés), avec contour noir et ajustement après chargement de la police. Le texte conserve ses mots entiers et sa boîte dans toutes les tailles ; les dimensions des cartes, du canevas et des sources studio ne changent pas.
+
+Chaque cadeau reçu et exécuté avec succès place une mise en valeur dans la file de sa carte. Un lot de 20 roses produit 20 impulsions distinctes, espacées de 800 ms, avec un rebond de 700 ms et de nouvelles étincelles à chaque impulsion. Les réceptions rapprochées renforcent le halo et affichent le nombre reçu. count désigne les unités de la livraison ; comboCount ne règle que l’intensité et le badge, sans multiplier de nouveau les unités. Ce retour visuel ne déclenche aucune action de jeu. Les files des cartes sont indépendantes et le mode Fixe conserve un retour visuel sans particules.
+
+Les particules sont limitées à 64 par carte et 240 par source, puis retirées automatiquement. Les timers sont annulés lors d’une reconstruction, d’un changement de profil ou de la fermeture de la source.
+
+Validation : 166 tests ciblés (pagination, projection, combos, présentations, qualité studio et wins) et 18 contrôles dans un navigateur réel : bandeau/côtés × 80/100/160 % × titres courts/longs/mot unique de 120 caractères. Aucun débordement ; échelle native conservée à 1.
+
+Les halos et rayons des cartes reprennent la couleur de leur catégorie derrière le cadeau (vert, jaune ou rouge/rose). Un fondu de 18 pixels les arrête avant le fond noir des titres, y compris sur les cartes latérales. Les trois couleurs ont été vérifiées dans 12 configurations de disposition, taille et mouvement ; les dimensions et l’échelle native restent inchangées.
+
+La limite des rayons descend davantage vers les titres : jusqu’à 64 % de la hauteur de la carte en bandeau et 60 % sur les côtés, tout en restant deux pixels avant le texte réel. La position est recalculée après ajustement et chargement de la police pour protéger également les titres longs.
+
+
+Validation des réceptions individuelles : 170 tests ciblés et lint valides. Les cas couvrent 20 cadeaux en lot, en unités ou en livraisons incrémentales, le passage réel moteur de règles → projection → overlay, les doublons de lot public, deux viewers, douze cartes simultanées et le nettoyage des files/particules. Dans le navigateur réel, un lot de 20 joue exactement 20 impulsions ; douze cartes produisent chacune leurs étincelles sans réduire leurs dimensions natives de 162 × 242 pixels. Les polices et halos précédemment validés sont conservés.
+
+
+### Actions et interactions IRL sur les cartes d’un jeu
+
+Le bouton partagé Actions & IRL se trouve dans l’en-tête Ce que font vos viewers. Sa popup permet de rechercher les règles globales de cadeaux, follow et likes, d’en sélectionner jusqu’à 100 et de masquer l’ensemble sans perdre cette sélection. L’affichage reste désactivé par défaut et propre au jeu et au profil. Enregistrer passe par le même IPC de présentation, avec contrôle du compte, du profil, de l’accès au jeu et des identifiants sélectionnés.
+
+La projection game-pack-linked-actions ne publie que les titres choisis et les références visuelles des déclencheurs. Elle respecte les règles actives du profil. Un cadeau commun regroupe les lignes du jeu et les titres des actions sur la même carte ; les identifiants techniques et alias priment sur le nom traduit. Un autre cadeau crée une carte supplémentaire. Les actions et IRL utilisent le bleu cyan #54dfff, tandis que les lignes du jeu gardent leur couleur. Les actions avec plusieurs cadeaux produisent les cartes correspondantes ; les exclusions sont respectées. Un déclencheur couvrant tous les cadeaux utilise une carte générique distincte. Les paramètres des prises, chemins et commandes privées ne quittent pas l’application.
+
+Le runtime réserve davantage de place aux lignes combinées en remontant leur zone, puis ajuste leur taille sans couper les mots. Les dimensions natives des cartes et des sources studio restent identiques. Les modèles historiques reçoivent également les titres et couleurs structurés.
+
+La sélection ne crée aucune règle et ne modifie aucun déclenchement. Les réactions passent uniquement après un succès réel de l’action. Les effets du même scénario et les cartes partagées jeu/IRL dédupliquent leur reçu : un seul cadeau ne produit pas deux animations sur la même carte. Les combos des jeux et les choix de répétition des actions globales restent indépendants.
+
+Validation : suites ciblées de projection, popup, IPC, moteur, relais public, dispositions studio, pagination et animations réussies. Dans un navigateur réel, les titres combinés et les cartes autonomes restent dans leurs limites à 80, 100 et 160 %, en bandeau comme sur les côtés. À 100 % en bandeau, les cartes restent en 162 × 242 pixels, avec les lignes IRL en cyan.
+
+
+### Priorité Follow/Likes et relief des cadeaux
+
+Follow puis Likes occupent les premières places de la première rangée affichée. Le calcul commun les réserve avant les aides, pièges, cartes neutres et cartes IRL, y compris avec un ordre de rangées inversé ou une disposition latérale. Il ne modifie ni les règles, ni leurs catégories, ni les associations ; les neutres continuent de remplir les places libres. Les deux modèles historiques et les exports PNG utilisent également la priorité Follow → Likes → cadeaux.
+
+Le modèle animé/fixe dessine une bordure noire précise autour de la silhouette alpha des images et des pictogrammes sociaux, puis une ombre douce décalée dessous. Le filtre fusionne l'image originale en dernier, sans la flouter. Une surélévation et un agrandissement visuel de 2,5 % renforcent le relief, sans changer les dimensions des cartes ni celles des sources studio. Les modèles Canvas séparent aussi l'ombre, les huit passes du contour net et le dessin original final. Les halos de catégorie, les textes noirs/cyan et les étincelles de réception sont conservés.
+
+Validation : 195 tests ciblés réussis (références Canvas actualisées pour le seul changement de contour/ombre, ressources et dimensions inchangées). Dans un navigateur réel, Follow et Likes restent premiers et le rendu conserve scale(1) sans débordement à 80, 100 et 160 %, en bandeau comme sur les côtés. Le filtre reste présent en mode fixe, sans mouvement.

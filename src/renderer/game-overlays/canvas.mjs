@@ -4,21 +4,20 @@ import { FONT_FAMILY } from "./constants.mjs";
 
 function drawImageContainWithOutline(ctx, image, x, y, width, height, options) {
   const rect = containImageRect(image, x, y, width, height);
-  const offsets = outlineOffsets(options.outlineSize);
   ctx.save();
+  ctx.filter = "brightness(0)";
+  ctx.globalAlpha = 1;
+  // Ombre douce sous la silhouette, puis contour net et image originale intacte.
   ctx.shadowColor = options.shadowColor;
   ctx.shadowBlur = options.shadowBlur;
   ctx.shadowOffsetY = options.shadowOffsetY;
-  ctx.filter = "brightness(0)";
-  ctx.globalAlpha = 0.96;
-  for (const [offsetX, offsetY] of offsets) {
+  ctx.drawImage(image, rect.x, rect.y, rect.width, rect.height);
+  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  for (const [offsetX, offsetY] of outlineOffsets(options.outlineSize)) {
     ctx.drawImage(image, rect.x + offsetX, rect.y + offsetY, rect.width, rect.height);
   }
   ctx.restore();
-  ctx.save();
-  ctx.shadowColor = options.shadowColor;
-  ctx.shadowBlur = options.shadowBlur * 0.55;
-  ctx.shadowOffsetY = options.shadowOffsetY * 0.7;
+  ctx.save();ctx.shadowColor="transparent";ctx.shadowBlur=0;ctx.shadowOffsetY=0;
   ctx.drawImage(image, rect.x, rect.y, rect.width, rect.height);
   ctx.restore();
 }

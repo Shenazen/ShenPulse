@@ -1,5 +1,5 @@
 "use strict";
-const { gamePackOverlayTrigger } = require("../../shared/game-pack-overlay");
+const { bindGameCardFeedback } = require("./game-card-feedback");
 
 /** Relie les services au noyau ; callbacks explicites, aucun accès aux champs privés.
  * Ce module ne démarre aucun connecteur : il installe les abonnements une fois.
@@ -197,9 +197,8 @@ function bindCoreEvents({ minecraftRoundTimer, timerScheduler, sourceHub, ruleEn
       `${event.type} de ${event.user?.displayName || "viewer"}`
     );
   });
-  ruleEngine.on("action-result", ({ ok, action, error, result, rule, event }) => {
-    const trigger = gamePackOverlayTrigger({ ok, action, rule, event, profileId: readState(store, ["session.profileId"]).session?.profileId });
-    if (trigger) overlayServer.publish("game-pack-trigger", trigger);
+  bindGameCardFeedback({ ruleEngine, store, overlayServer });
+  ruleEngine.on("action-result", ({ ok, action, error, result }) => {
     store.mutateRuntime((state) => {
       if (ok) {
         if (state.session.running) {

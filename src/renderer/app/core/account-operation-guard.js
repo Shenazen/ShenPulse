@@ -22,6 +22,7 @@ function assertCreatorPrivateOperation(owner) {
 
 function invalidateCreatorPrivateOperations() {
   creatorPrivateOperationGeneration += 1;
+  if (typeof resetAdminStorage === "function") resetAdminStorage();
   if (typeof stopRendererAudioPlayback === "function") stopRendererAudioPlayback();
   if (typeof stopLocalTtsPlayback === "function") stopLocalTtsPlayback();
 }

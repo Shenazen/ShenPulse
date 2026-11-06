@@ -22,3 +22,15 @@ La configuration « Viewer et/ou texte » permet de régler la taille du texte d
 Le bouton « Tester », entre Annuler et Enregistrer, envoie le viewer et le texte du brouillon sur l’URL de chaque écran Media choisi, pour les voir dans le studio. Il ne crée aucun aperçu dans la configuration et ne sauvegarde pas l’action. Les autres effets du scénario ne sont pas exécutés par ce test du viewer.
 
 Le lien « Copier l’URL des cadeaux » utilise un cadrage dédié aux cartes (`fit=cards`). Sur Box Cyber, il retire l’espace transparent de la caméra et du jeu, y compris lorsque les cartes changent de côté ou de taille. L’aperçu complet et l’installation automatique conservent leur géométrie de scène. Les liens Cult of the Lamb et Euro Truck Simulator 2 restent inchangés. Une source créée avec un ancien lien doit recevoir l’URL recopiée depuis l’application mise à jour.
+
+## Combos des cadeaux et interactions de jeu — 5 novembre 2026
+
+Le choix « Répéter avec les combos de cadeaux ? » reste propre aux actions globales, sons et roues ; il est décoché par défaut. Les interactions provenant du catalogue du jeu actif répètent toujours les cadeaux, quels que soient les anciens champs `repeatGiftCombos` absents ou faux. Ce choix est imposé au moment de l’exécution, sans réécrire les règles enregistrées ni les dons reçus.
+
+Le moteur distingue les règles du jeu actif par leur provenance dans `game.interactionRulesByPack`, et non par leur type d’action : une action de jeu créée dans la page Actions conserve ainsi son choix de combo. Les sons et autres effets attachés à une interaction de jeu suivent ses répétitions. Les seuils, conditions, chances, profil et session restent appliqués. Dix roses au seuil 1 donnent dix exécutions ; au seuil 3, dix roses produisent trois exécutions et gardent un reliquat d’une rose. La déduplication du total final TikTok reste indépendante et évite de rejouer une série.
+
+Les sélecteurs de cadeaux des jeux affichent une information « combos toujours actifs » à la place d’une case facultative. Les nouvelles règles par défaut et celles enregistrées depuis les éditeurs de jeu indiquent explicitement cette politique. Les interfaces Actions, Sons et Roues conservent leur case.
+
+Trois tests reproduisaient la régression avant correction (dix roses réduites à une interaction, série progressive et seuil). Ils passent après correction, avec des contrôles de conservation des actions globales, des paramètres, des wins, des filtres et des sessions. Les tests des sélecteurs de jeux confirment qu’ouvrir la popup ne modifie rien et qu’un changement de cadeau conserve la répétition obligatoire.
+
+Ce correctif est exécuté par l’application Windows ; les anciennes versions déjà installées ne le reçoivent pas par une mise à jour des packs. Il doit être distribué dans une version de l’application avant d’être effectif chez les autres utilisateurs. Aucun déploiement Store ou changement de version n’est réalisé pendant cette correction.

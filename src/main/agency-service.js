@@ -2,13 +2,14 @@
 const { captureSessionGuard } = require("./account/session-guard");
 const { readState } = require("./state-projection");
 const { readPayload } = require("./account/http-client");
-const ROUTES = Object.freeze({save:"/api/agencies/save",join:"/api/agencies/join",leave:"/api/agencies/leave",reviewMember:"/api/agencies/members/review",updateIdentity:"/api/agencies/identity",rotateCode:"/api/agencies/invitation/rotate",reviewAgency:"/api/admin/agencies/review"});
+const ROUTES = Object.freeze({cancelPackPending:"/api/agencies/pack/billing/pending/cancel",previewPackBilling:"/api/agencies/pack/billing/preview",createPackCheckout:"/api/agencies/pack/billing/checkout",syncPackBilling:"/api/agencies/pack/billing/sync",abandonPackCheckout:"/api/agencies/pack/billing/abandon",applyPackChange:"/api/agencies/pack/billing/change",cancelPackBilling:"/api/agencies/pack/billing/cancel",resumePackBilling:"/api/agencies/pack/billing/resume",packBillingPortal:"/api/agencies/pack/billing/portal",previewOwnPack:"/api/agencies/pack/preview",selectOwnPack:"/api/agencies/pack/selection",save:"/api/agencies/save",join:"/api/agencies/join",leave:"/api/agencies/leave",reviewMember:"/api/agencies/members/review",updateIdentity:"/api/agencies/identity",rotateCode:"/api/agencies/invitation/rotate",reviewAgency:"/api/admin/agencies/review",savePack:"/api/admin/agencies/packs/save",archivePack:"/api/admin/agencies/packs/archive",assignPack:"/api/admin/agencies/packs/assign",unassignPack:"/api/admin/agencies/packs/unassign",previewPack:"/api/admin/agencies/packs/preview"});
 async function agencyRequest(accountService,command,body={},admin=false){
+  if(command==="checkoutOwnPack"&&!admin)return require("./account/agency-pack-checkout").runAgencyPackCheckout(accountService,body,(c,b)=>agencyRequest(accountService,c,b));
   const publicList=command==="list";
   const path=publicList?"/api/agencies":command==="dashboard"?(admin?"/api/admin/agencies":"/api/agencies/dashboard"):ROUTES[command];
   if(!path)throw new Error("Commande agence inconnue.");
-  if(!admin && command==="reviewAgency")throw new Error("Accès administrateur requis.");
-  if(admin && !["dashboard","reviewAgency"].includes(command))throw new Error("La gestion des membres revient au fondateur dans Agences → Mon agence.");
+  if(!admin && ["reviewAgency","savePack","archivePack","assignPack","unassignPack","previewPack"].includes(command))throw new Error("Accès administrateur requis.");
+  if(admin && !["dashboard","reviewAgency","savePack","archivePack","assignPack","unassignPack","previewPack"].includes(command))throw new Error("La gestion des membres revient au fondateur dans Agences → Mon espace agence.");
   if(["join","updateIdentity"].includes(command)){
     const state=readState(accountService.store,["settings.tiktok"]);
     const username=String(body.tiktokUsername ?? state.settings?.tiktok?.username ?? "").trim().replace(/^@+/,"").toLowerCase();

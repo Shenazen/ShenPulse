@@ -135,7 +135,9 @@ function renderAdmin() {
     ["game-cheats", "Triche de jeux", "Accès par e-mail"],
     ["trials", "Offres d’essai", "Utilisateurs"],
     ["commerce", "Tarifs & promotions", "PRO / Premium / jeux"],
-    ["agencies", "Agences", "Fiches partenaires"]
+    ["agencies", "Agences", "Fiches partenaires"],
+    ["agency-packs", "Packs agences", "Offres personnalisées"],
+    ["storage", "Stockage Backblaze", "Médias et téléchargements"]
   ];
   const contentByWorkspace = {
     overview: renderAdminOverview,
@@ -143,7 +145,9 @@ function renderAdmin() {
     "game-cheats": renderAdminGameCheats,
     trials: renderAdminTrials,
     commerce: renderAdminCommerce,
-    agencies: renderAdminAgencies
+    agencies: renderAdminAgencies,
+    "agency-packs": renderAdminAgencyPacks,
+    storage: () => renderAdminStorage()
   };
   return `<div class="admin-page">
     <section class="admin-hero">

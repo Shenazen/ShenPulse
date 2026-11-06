@@ -6,7 +6,7 @@ function hasActivePaidPremium(subscription = {}) {
   return (
     subscription.tier === "premium" &&
     ["active", "paid"].includes(String(subscription.status || "")) &&
-    subscription.source !== "trial"
+    !["trial","agencyPack"].includes(subscription.source)
   );
 }
 

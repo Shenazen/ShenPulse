@@ -54,11 +54,11 @@
         const p=ctx.preview,camera=p.camera||{},game=p.game||{},url=p.sourceUrl;
         const cameraHtml=camera.enabled===false?'':'<div class="game-pack-camera-preview"><img src="'+e(camera.src||'')+'" alt="'+e(camera.alt||'Exemple de caméra en LIVE')+'" width="960" height="540"><div class="game-pack-phone-top"><span class="game-pack-demo-user"><i aria-hidden="true"></i><b>'+e(camera.username||'ton_pseudo')+'</b></span><span class="game-pack-demo-live">LIVE</span></div></div>';
         const gameHtml=game.enabled===false?'':'<div class="game-pack-phone-game"><img src="'+e(game.src||ctx.hero?.artwork||'')+'" alt="'+e(game.alt||ctx.pack.name)+'"><span>'+e(game.label||'VOTRE PARTIE')+'</span></div>';
-        const selected=C.presentation(ctx),custom=ctx.pack.id==='minecraft-box-cyber'&&Number(selected.model)===1;
+        const selected=C.presentation(ctx),custom=globalThis.ShenPulseGamePackLayout?.supports(ctx.pack.id)&&Number(selected.model)===1;
         if(custom){
             const area=ShenPulseGamePackLayout.geometry(selected),box=(kind)=>Object.entries(area[kind]).map(([key,value])=>({x:'left',y:'top',width:'width',height:'height'}[key])+':'+(value/(key==='x'||key==='width'?1080:1920)*100)+'%').join(';');
             const place=(html,kind)=>html.replace('class="','style="'+box(kind)+'" class="');
-            return '<div class="game-pack-phone has-win-system box-cyber-layout" aria-label="Aperçu de la disposition du LIVE"><div class="game-pack-phone-screen">'+place(cameraHtml,'camera')+place(gameHtml,'game')+'<iframe class="game-pack-phone-wins-source" src="'+e(p.winsSourceUrl)+'" title="Wins et multiplicateur" tabindex="-1"></iframe><div class="game-pack-phone-source"><iframe src="'+e(url)+'" title="Overlay cadeaux du profil actif" tabindex="-1"></iframe></div></div></div>';
+            return '<div class="game-pack-phone has-win-system box-cyber-layout" aria-label="Aperçu de la disposition du LIVE"><div class="game-pack-phone-screen">'+place(cameraHtml,'camera')+place(gameHtml,'game')+(p.winsSourceUrl?'<iframe class="game-pack-phone-wins-source" src="'+e(p.winsSourceUrl)+'" title="Wins et multiplicateur" tabindex="-1"></iframe>':'')+'<div class="game-pack-phone-source"><iframe src="'+e(url)+'" title="Overlay cadeaux du profil actif" tabindex="-1"></iframe></div></div></div>';
         }
         let gameplay=cameraHtml+gameHtml;
         if(p.winsSourceUrl)gameplay='<div class="game-pack-phone-gameplay">'+gameplay+'<iframe class="game-pack-phone-wins-source" src="'+e(p.winsSourceUrl)+'" title="Wins, multiplicateur et cadeaux de wins" tabindex="-1"></iframe></div>';
@@ -66,7 +66,7 @@
     };
     C.renderLivePreview = function (ctx) {
         const p = ctx.preview, selected = C.presentation(ctx), animated = selected.definition.supportsMotion && selected.motion === 'animated';
-        const boxCyber = ctx.pack.id === 'minecraft-box-cyber', editing = p.editor === true;
+        const boxCyber = globalThis.ShenPulseGamePackLayout?.supports(ctx.pack.id), editing = p.editor === true;
         const area = boxCyber && Number(selected.model) === 1 ? ShenPulseGamePackLayout.geometry(selected) : null;
         const guides = (p.guides || []).map(guide => {
             const rect = area?.[{ camera: 'camera', game: 'game', gifts: 'gifts' }[guide.kind]];

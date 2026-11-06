@@ -22,6 +22,8 @@
   place('.hud-superfan',{x:245,y:area.side?g.y+g.height-42:g.y+82,width:590,height:45});
   place('.hud-counter, .hud-illustrated-counter',{x:740,y:area.flipped?c.y+12:c.y+c.height-100,width:330,height:95});
   place('.hud-multiplier, .hud-illustrated-multiplier',{x:10,y:area.flipped?c.y+12:c.y+c.height-100,width:300,height:95});
+  // The mute countdown belongs to the existing HUD, centered on either camera position.
+  place('.hud-mute-timer',{x:c.x+c.width*.15,y:c.y+(c.height-120)/2,width:c.width*.7,height:120});
   place('.hud-round-timer, .hud-illustrated-roundTimer',{x:390,y:area.flipped?c.y+10:c.y+c.height-130,width:300,height:120});
   root.querySelectorAll('.hud-gift-column').forEach(node=>{node.style.gap='6px';node.querySelectorAll('.hud-gift').forEach(card=>{card.style.height=Math.max(35,Math.min(150,(railHeight-60)/Math.max(1,node.querySelectorAll('.hud-gift').length)))+'px';});});
  }

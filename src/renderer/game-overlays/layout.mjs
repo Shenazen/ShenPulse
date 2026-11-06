@@ -191,6 +191,7 @@ function drawModelOneInteractionCard(ctx, item, x, y, width, height) {
 }
 
 function overlayActionTextLines(item) {
+  if(item.actionLines?.length)return item.actionLines;
   const labels = mergeOverlayActionLabels(
     item.actionLabels?.length ? item.actionLabels : [item.effect.label]
   );

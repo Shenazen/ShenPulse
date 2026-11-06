@@ -27,6 +27,7 @@ function defaultGameInteractionRule(
     priority: 50,
     trigger: {
       enabled: triggerEnabled,
+      repeatGiftCombos: true,
       type: mapping.triggerType || "gift",
       source: "*",
       threshold: Math.max(1, Number(mapping.threshold || 1))

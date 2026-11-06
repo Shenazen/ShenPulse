@@ -33,9 +33,9 @@ function prepareTikTok(document, plan) {
       delete source.stateData;
     }
     if(customLayout(plan)&&(kind==='overlay'||kind==='wins')){
-      const size=sourceViewport(plan,kind),area=areas[kind],scale=area.width/size.width;
+      const size=sourceViewport(plan,kind),area=areas[kind],scale=Math.min(area.width/size.width,area.height/size.height);
       source.payload={...(source.payload||{}),url:kind==='wins'?plan.winsOverlayUrl:overlayUrl(plan),cx:size.width,cy:size.height,enableCustomResolution:true,enableAudio:false,zoom:1};
-      source.transform={translateX:area.x,translateY:area.y,rotateAngle:0,scaleX:scale,scaleY:scale,flipH:false,flipV:false,size:{cx:size.width,cy:size.height},preview_cx:preview.preview_cx,preview_cy:preview.preview_cy,fixed_edge:1};
+      source.transform={translateX:area.x+(area.width-size.width*scale)/2,translateY:area.y+(area.height-size.height*scale)/2,rotateAngle:0,scaleX:scale,scaleY:scale,flipH:false,flipV:false,size:{cx:size.width,cy:size.height},preview_cx:preview.preview_cx,preview_cy:preview.preview_cy,fixed_edge:1};
       source.clip={x:0,y:0,z:0,w:0};source.effectiveClip={x:0,y:0,z:0,w:0};delete source.stateData;
     }
     else if (kind === "wins") {

@@ -44,6 +44,7 @@ class RuleEngine extends EventEmitter {
     const gameRules = activeGameInteractionRules(state).filter(
       (rule) => rule.enabled
     );
+    const gameRuleSet = new Set(gameRules);
     const matchingRules = [...globalRules, ...gameRules]
       .filter((rule) => this.#matches(rule, event))
       .sort((first, second) => Number(second.priority || 0) - Number(first.priority || 0));
@@ -54,7 +55,9 @@ class RuleEngine extends EventEmitter {
       if (thresholdCount <= 0) continue;
       if (this.#onCooldown(rule, event)) continue;
       this.#consumeThreshold(rule, event, thresholdCount);
-      const executionCount = this.giftCombos.count(event, state.session.profileId+":"+rule.id, rule.trigger?.repeatGiftCombos, thresholdCount);
+      // Les jeux répètent toujours les cadeaux ; le choix reste propre aux actions globales.
+      const repeatGiftCombos = gameRuleSet.has(rule) || rule.trigger?.repeatGiftCombos === true;
+      const executionCount = this.giftCombos.count(event, state.session.profileId+":"+rule.id, repeatGiftCombos, thresholdCount);
       if (executionCount <= 0) continue;
       let acceptedExecutionCount = 0;
       for (let index = 0; index < executionCount; index += 1) {
@@ -304,6 +307,11 @@ class RuleEngine extends EventEmitter {
           config: renderValue(action.config || {}, context)
         };
         try {
+          this.emit("action-start", {
+            action: hydratedAction,
+            rule: job.rule,
+            event: executionEvent
+          });
           const result = await this.actionRunner.run(
             hydratedAction,
             context

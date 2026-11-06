@@ -119,6 +119,7 @@ const HISTORICAL_CHANNELS = [
 ];
 
 const NEW_CHANNELS = [
+  "admin:storage-list", "admin:storage-preview", "admin:storage-download",
   "tts:voices",
   "game:custom:save", "game:custom:remove", "game:custom:windows",
   "agencies:list", "agencies:dashboard", "agencies:command", "admin:agencies-dashboard", "admin:agencies-command",
@@ -225,3 +226,5 @@ test("les tests source lisent les modules importés et non une fausse copie du m
   assert.match(readMainSource("source-hub.js"), /function tiktokRoomLiveMetadata/);
   assert.match(readMainSource("main.js"), /function createInteractionAuditRunner/);
 });
+
+test("les trois canaux de stockage refusent un renderer secondaire avant tout accès distant",()=>{const {handlers,trustedEvent}=registeredHandlers();for(const channel of ["admin:storage-list","admin:storage-preview","admin:storage-download"]){assert.throws(()=>handlers.get(channel)({...trustedEvent,senderFrame:{url:trustedEvent.senderFrame.url}},{}),{code:"IPC_SENDER_FORBIDDEN"});}});

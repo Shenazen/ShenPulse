@@ -10,24 +10,24 @@ const automatedInstallers=vm.runInNewContext(bootstrap.slice(bootstrap.indexOf("
 function fixture(){
  const file=path.resolve(__dirname,'supermarket-workspace.test.js'),source=fs.readFileSync(file,'utf8'),m=new Module(file,module);m.filename=file;m.paths=Module._nodeModulePaths(path.dirname(file));m._compile(source.slice(0,source.indexOf("test('Supermarket"))+'\nmodule.exports={fixture};',file);
  const f=m.exports.fixture(),ctx=f.ctx;
- Object.assign(ctx,{ShenPulseGamePackLayout:require("../resources/overlays/game-pack-layout"),selectedGameId:'',ShenPulseGameWorkspacePolicy:policy,gamePlatformIds:()=>['steam'],AUTOMATED_GAME_INSTALLERS:new Set(automatedInstallers),MANAGED_BIZHAWK_GAME_IDS:new Set(['pokemon-red-blue','super-mario-kart']),MINECRAFT_MODE_IDS:["minecraft-lavarise",'minecraft-bedrock-box','minecraft-sandbox-3','minecraft-survival-plugin'],GAME_OVERLAY_GENERATOR_ONLY_IDS:new Set(['supermarket-simulator','tcg-card-shop-simulator','hogwarts-legacy','shift-at-midnight']),
+ Object.assign(ctx,{ShenPulseGamePackLayout:require("../resources/overlays/game-pack-layout"),selectedGameId:'',ShenPulseGameWorkspacePolicy:policy,gamePlatformIds:()=>['steam'],AUTOMATED_GAME_INSTALLERS:new Set(automatedInstallers),CONFIGURABLE_INTEGRATED_GAMES:new Set(['coin-pusher','connect-four','deal-or-no-deal','thiercelieux']),MANAGED_BIZHAWK_GAME_IDS:new Set(['pokemon-red-blue','super-mario-kart']),MINECRAFT_MODE_IDS:["minecraft-lavarise",'minecraft-bedrock-box','minecraft-sandbox-3','minecraft-survival-plugin'],GAME_OVERLAY_GENERATOR_ONLY_IDS:new Set(['supermarket-simulator','tcg-card-shop-simulator','hogwarts-legacy','shift-at-midnight']),
  overlayConfig:()=>({}),renderGameInstallation:p=>'<div data-native-setup="'+p.id+'"></div>',renderGameLaunch:p=>'<div data-native-server="'+p.id+'"></div>',gameOverlayItemsFor:()=>[{key:'winCounter'},{key:'timer'}],renderOverlayCard:(item,options)=>'<div data-native-overlay="'+item.key+'" data-options="'+String(options.allowed)+'"></div>'});
  ctx.snapshot.packs=structuredClone(packs);ctx.snapshot.overlayUrls={gamePack:'https://example.test/game-pack.html?channel=public'};ctx.snapshot.localOverlayUrls={gamePack:'http://127.0.0.1/overlay/game-pack.html?token=local'};
  vm.runInContext(fs.readFileSync('src/renderer/app/features/games/external-workspace.js','utf8'),ctx);
  return f;
 }
 function rulesFor(pack){return (pack.defaultMappings||[]).map(mapping=>defaultGameInteractionRule(pack,pack.effects.find(e=>e.id===mapping.effectId),mapping,pack.interactionCatalogVersion));}
-test('les 52 jeux externes partagent la page complète ; les 11 jeux ShenPulse sont exclus',t=>{
- const f=fixture();t.after(()=>f.dom.window.close());const before=JSON.stringify(packs),external=packs.filter(p=>policy.eligible(p));assert.equal(external.length,52);
- for(const id of own)assert.equal(policy.eligible(packs.find(p=>p.id===id)),false,id);
- assert.equal(policy.eligible(external[0],['steam','shenpulse']),false);
+test('les 52 jeux externes et les 15 jeux ShenPulse partagent les composants complets',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());const before=JSON.stringify(packs),external=packs.filter(p=>policy.eligible(p));assert.equal(external.length,packs.length);
+ for(const id of own)assert.equal(policy.eligible(packs.find(p=>p.id===id)),true,id);
+ assert.equal(policy.eligible(external[0],['steam','shenpulse']),true);
  for(const pack of external){
   f.ctx.selectedGameId=pack.id;f.ctx.snapshot.state.game.interactionRulesByPack[pack.id]=rulesFor(pack);
   const html=f.ctx.renderSupermarketWorkspace(pack);f.ctx.content.innerHTML=html;const page=f.ctx.content;
   assert.equal(page.querySelector('.game-pack-workspace').dataset.gamePack,pack.id);assert.equal(page.querySelectorAll('.game-pack-phone').length,1,pack.id);assert.equal(page.querySelectorAll('.game-pack-column').length,3,pack.id);assert.equal(page.querySelectorAll('[data-game-reorder-list]').length,3,pack.id);assert.equal(page.querySelectorAll('[data-game-drag-handle]').length,page.querySelectorAll('.game-pack-action-card').length,pack.id);
   assert.ok(page.querySelector('[data-game-tour-start]'),pack.id);assert.ok(page.querySelector('#market-guide'),pack.id);assert.ok(page.querySelector('#market-follow'),pack.id);assert.equal(page.querySelector('#market-catalog').open,false,pack.id);assert.equal(page.querySelectorAll('.game-pack-catalog-grid article').length,0);
   assert.equal(new URL(page.querySelector('iframe').src).searchParams.get('jeu'),pack.id);assert.equal(page.querySelector('[data-action="launch-game"],[data-action="start-game-session"]').dataset.id,pack.id);
-  assert.equal(page.querySelectorAll('[data-action="market-overlay-model"]').length,3);assert.ok(page.querySelector('[data-action="market-studio-open"]'));
+  assert.equal(page.querySelectorAll('[data-action="market-overlay-model"]').length,policy.customizable(pack)?0:3);assert.ok(page.querySelector('[data-action="market-studio-open"]'));
   if(!pack.effects.some(e=>e.available!==false))assert.equal(page.querySelector('[data-action="install-game"]').disabled,true,pack.id);
   if(['input','emulator'].includes(pack.guide.mode)&&!policy.hasRoundTimer(pack))assert.equal(page.querySelector('[data-native-setup]').dataset.nativeSetup,pack.id);
   if(policy.hasRoundTimer(pack)){assert.equal(page.querySelector('#market-setup'),null);assert.ok(page.querySelector('#market-round [data-minecraft-round-settings]'));}
@@ -46,8 +46,8 @@ test('overlay multi-jeux : état, images, titres, modèles et réactions isolés
  const state={session:{profileId:'profile'},commerce:{subscription:{tier:'pro',status:'active',source:'paid'}},settings:{overlayConfigs:{gameInteractionOverlays:{balatro:{model:3,motion:'fixed',backgroundColor:'#112233'}}}},game:{interactionRulesByPack:{}}};
  for(const id of ['supermarket-simulator','balatro','hogwarts-legacy','minecraft-bedrock-box','thiercelieux'])state.game.interactionRulesByPack[id]=rulesFor(packs.find(p=>p.id===id));
  for(const rules of Object.values(state.game.interactionRulesByPack))for(const rule of rules){rule.trigger.enabled=true;rule.trigger.type='gift';}
- const all=createGamePackOverlays(state);assert.equal(all.packId,'supermarket-simulator');assert.ok(all.packs.balatro.cards.length>0);assert.equal(all.packs.thiercelieux,undefined);assert.equal(all.packs.balatro.presentation.model,3);
- for(const [id,overlay]of Object.entries(all.packs)){assert.equal(overlay.packId,id);const pack=policy.artworkPack(packs.find(p=>p.id===id));for(const card of overlay.cards){assert.ok(card.effectImageUrl);assert.ok(card.title.split(/\s+/).length<=2,card.title);}const rule=state.game.interactionRulesByPack[id][0],action=rule.actions[0];assert.equal(gamePackOverlayTrigger({ok:true,rule,action,event:{user:{displayName:'Viewer'}},profileId:'profile'}).packId,id);assert.equal(new Set(pack.effects.map(e=>e.image)).size,pack.effects.length);}
+ const all=createGamePackOverlays(state);assert.equal(all.packId,'supermarket-simulator');assert.ok(all.packs.balatro.cards.length>0);assert.equal(all.packs.thiercelieux.enabled,true);assert.equal(all.packs.balatro.presentation.model,3);
+ for(const [id,overlay]of Object.entries(all.packs)){assert.equal(overlay.packId,id);const pack=policy.artworkPack(packs.find(p=>p.id===id));for(const card of overlay.cards){assert.ok(card.effectImageUrl);assert.ok(card.title.split(/\s+/).length<=2,card.title);}const rule=state.game.interactionRulesByPack[id][0];if(rule){const action=rule.actions[0];assert.equal(gamePackOverlayTrigger({ok:true,rule,action,event:{user:{displayName:'Viewer'}},profileId:'profile'}).packId,id);}assert.equal(new Set(pack.effects.map(e=>e.image)).size,pack.effects.length);}
  assert.ok(!JSON.stringify(all).includes('inputSequence'));assert.equal(createGamePackOverlay(state,'missing-game').enabled,false);
 });
 test('titres compacts et dessins uniques conservent les noms personnalisés et échappent le contenu',()=>{
